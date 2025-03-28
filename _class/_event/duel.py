@@ -45,16 +45,13 @@ class Duel(Fight):
 
             if any(character.name == target.name for character in entity):
                 pass_target = True
-
+        
         if not pass_target:
             raise ValueError(f"{target.name} is not a fighter or not controlled.")
         
-
-        return f"{player.name} uses {action_user} on {target.name}."
-
-
-        if target:
-            skill.get_action(player, target)
+        print(skill.get_action(player, target))
+        print(target)
+        return f"{player.name} use {skill.name} on {target.name}"
     
     def get_entity_by_name(self, name: str) -> Character:
         """Finds a character by name in any team."""

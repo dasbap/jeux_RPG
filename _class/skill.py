@@ -38,6 +38,7 @@ class Skill:
         """
         if callable(self.action):
             try:
+                
                 return self.action(caster, target)
             except TypeError:
                 return f"L'action personnalisée de {self.name} est invalide."
@@ -48,6 +49,7 @@ class Skill:
         Retourne la fonction d'action par défaut en fonction du type de sort.
         Cette méthode est appelée si aucune fonction personnalisée n'est fournie.
         """
+        print(f"default action call {self.skill_type}, {self.name}")
         if self.skill_type == "damage":
             return self.default_damage_action
         elif self.skill_type == "heal":

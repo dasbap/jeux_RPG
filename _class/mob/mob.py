@@ -10,7 +10,7 @@ class Mob(Character):
             "Garde": Skill("Pack de sang", "buff", 20, 1, "hp"),
         },
         "level 10": {
-            Skill("bite", "damage",40,10, "hp")
+            Skill("fang", "damage",40,10, "hp")
     }}
     
     
