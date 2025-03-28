@@ -12,6 +12,12 @@ class Duel(Fight):
             "controlled": self.playable_entity,
             "bot": self.bot_entity
         }
+    
+    def add_to_controlled_entities(self, entity: Character, key: str) -> None:
+        """Ajoute une entité à la liste correspondante dans controlled_entities."""
+        if key not in self.controlled_entities:
+            raise ValueError(f"Invalid key '{key}'. Must be 'controlled' or 'bot'.")
+        self.controlled_entities[key].append(entity)
 
     def start(self):
         while not self.end_fight():
@@ -20,31 +26,6 @@ class Duel(Fight):
     def end_fight(self) -> bool:
         """Checks if one of the teams is completely defeated."""
         return not any(player.is_alive() for player in self.team["team_1"]) or not any(player.is_alive() for player in self.team["team_2"])
-
-    def round(self):
-        """Handles a round of combat, switching active teams."""
-        active_team_key = f"team_{self.team_active + 1}"
-        active_team = self.team[active_team_key]
-
-        for entity in active_team:
-            if not isinstance(entity, Character):
-                raise ValueError("Invalid character type.")
-
-            if not entity.is_alive():
-                continue  
-            
-            skill_usable = entity.get_skill_dict()
-            if not skill_usable:
-                print(f"{entity.name} has no skills available.")
-                continue
-            
-            print(f"You can use: {list(skill_usable.keys())}")
-            action_user = input("Choose a skill to use or type 'rest' to regenerate mana: ").strip()
-            target_name = input(f"Choose your target among {[p.name for p in self.get_opposing_team()]} or type 'Me' for yourself: ").strip()
-
-            self.player_action(entity, action_user, target_name)
-        
-        self.team_active = (self.team_active + 1) % 2  
 
     def player_action(self, player: Character, action_user: str, target: Character):
         """Handles the player's action in a round."""
@@ -55,13 +36,26 @@ class Duel(Fight):
         try:
             skill = player.get_skill(action_user)
         except KeyError:
-            return  f"Skill '{action_user}' not found. Turn skipped."
+            return f"Skill '{action_user}' not found. Turn skipped."
 
-        if not target in self.controlled_entities: raise 
+        pass_target = False 
+
+        for mod in self.controlled_entities:
+            entity = self.controlled_entities[mod]
+
+            if any(character.name == target.name for character in entity):
+                pass_target = True
+
+        if not pass_target:
+            raise ValueError(f"{target.name} is not a fighter or not controlled.")
         
+
+        return f"{player.name} uses {action_user} on {target.name}."
+
+
         if target:
             skill.get_action(player, target)
-
+    
     def get_entity_by_name(self, name: str) -> Character:
         """Finds a character by name in any team."""
         for team_key, team in self.team.items():
