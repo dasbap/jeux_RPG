@@ -12,88 +12,60 @@ class Duel(Fight):
             "controlled": self.playable_entity,
             "bot": self.bot_entity
         }
+    
+    def add_to_controlled_entities(self, entity: Character, key: str) -> None:
+        """Ajoute une entité à la liste correspondante dans controlled_entities."""
+        if key not in self.controlled_entities:
+            raise ValueError(f"Invalid key '{key}'. Must be 'controlled' or 'bot'.")
+        self.controlled_entities[key].append(entity)
 
     def start(self):
         while not self.end_fight():
             self.round()
 
     def end_fight(self) -> bool:
-        """Vérifie si l'un des deux groupes est complètement défait."""
+        """Checks if one of the teams is completely defeated."""
         return not any(player.is_alive() for player in self.team["team_1"]) or not any(player.is_alive() for player in self.team["team_2"])
 
-    def round(self):
-        """Gère un round de combat, en alternant les équipes actives."""
-        active_team_key = f"team_{self.team_active + 1}"
-        active_team = self.team[active_team_key]
-
-        for entity in active_team:
-            if not isinstance(entity, Character):
-                raise ValueError("Le type de joueur est invalide.")
-
-            if not entity.is_alive():
-                continue  
-            
-            skill_usable = entity.get_skill_dict()
-            if not skill_usable:
-                print(f"{entity.name} n'a aucune compétence disponible.")
-                continue
-            
-            print(f"Compétences disponibles : {list(skill_usable.keys())}")
-            action_user = input("Choisis une compétence ou tape 'rest' pour régénérer de l'énergie : ").strip()
-            target_name = input(f"Choisis une cible parmi {[p.name for p in self.get_opposing_team()]} ou tape 'Me' pour toi-même : ").strip()
-
-            if action_user.lower() == "rest":
-                entity.gain_energie(5)
-                print(f"{entity.name} se repose et régénère de l'énergie.")
-                continue  # Passer au prochain personnage
-
-            # Vérifie si la compétence est valide
-            try:
-                skill = entity.get_skill(action_user)
-            except KeyError:
-                print(f"Compétence '{action_user}' introuvable. Tour passé.")
-                continue
-
-            # Vérifie si la cible est un personnage valide
-            target = self.get_entity_by_name(target_name)
-            if target:
-                # Applique l'action de la compétence
-                skill.get_action(entity, target)
-            else:
-                print(f"{target_name} n'est pas une cible valide.")
-        
-        # Change l'équipe active après un round
-        self.team_active = (self.team_active + 1) % 2  
-
     def player_action(self, player: Character, action_user: str, target: Character):
-        """Gère l'action du joueur lors d'un round."""
+        """Handles the player's action in a round."""
         if action_user.lower() == "rest":
             player.gain_energie(5)
-            print(f"{player.name} se repose et régénère de l'énergie.")
-            return
+            return f"{player.name} rests and regenerates HP."
 
         try:
             skill = player.get_skill(action_user)
         except KeyError:
-            print(f"Compétence '{action_user}' introuvable. Tour passé.")
-            return
+            return f"Skill '{action_user}' not found. Turn skipped."
 
-        if not isinstance(target, Character):  # Vérification du type de la cible
-            raise ValueError("La cible doit être une instance de Character.")
+        pass_target = False 
+
+        for mod in self.controlled_entities:
+            entity = self.controlled_entities[mod]
+
+            if any(character.name == target.name for character in entity):
+                pass_target = True
+
+        if not pass_target:
+            raise ValueError(f"{target.name} is not a fighter or not controlled.")
         
-        # Applique la compétence
-        skill.get_action(player, target)
 
+        return f"{player.name} uses {action_user} on {target.name}."
+
+
+        if target:
+            skill.get_action(player, target)
+    
     def get_entity_by_name(self, name: str) -> Character:
-        """Trouve un personnage par son nom dans une équipe."""
+        """Finds a character by name in any team."""
         for team_key, team in self.team.items():
             for player in team:
                 if not isinstance(player, Character):
-                    raise ValueError(f"{name} n'est pas une instance valide de Character.")
+                    raise ValueError(f"Player {name} is not a valid Character instance")
                 if player.name == name:
                     return player
-        raise ValueError(f"{name} est inconnu. Cibles disponibles : {[p.name for t in self.team.values() for p in t]}")
+        raise ValueError(f"{name} is unknown. Available targets: {[p.name for t in self.team.values() for p in t]}")
 
     def get_opposing_team(self):
-        """Retourne la liste des personnages dans l'équipe adverse."""
+        """Returns the list of characters in the opposing team."""
         return self.team[f"team_{(self.team_active + 1) % 2 + 1}"]

@@ -91,3 +91,6 @@ class Character:
 
     def __str__(self):
         return f"{self.name} ({self.char_class}) Lvl {self.level} | HP: {self.hp}, FOR: {self.force}, END: {self.endurance}, Energie: {self.energie} | Skills: {', '.join(self.skills)}"
+
+    def __repr__(self):
+        return f"<Character {self.name} {self.char_class}>"
