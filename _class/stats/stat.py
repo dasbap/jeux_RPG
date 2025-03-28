@@ -54,12 +54,12 @@ class DefaultStat:
     def __setattr__(self, name : str, value):
         if name == "_current_value":
             if not isinstance(value, int):
-                raise ValueError("Stat value must be an integer")
+                raise ValueError("La valeur de la statistique doit être un entier")
         object.__setattr__(self, name, value) 
 
     @property
     def current_value(self) -> int:
-        """Getter pour la valeur actuelle de la statistique."""
+        """Retourne la valeur actuelle de la statistique."""
         return self._current_value
 
     def change_type(self, new_type: type):

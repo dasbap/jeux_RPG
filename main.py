@@ -1,13 +1,18 @@
-from _class.sub_character.archer import Archer
+from _class.sub_character.archer import Archer  # Correct import
 from _class.mob.mob import Mob
 from _class._event.duel import Duel
-player = Archer("12234411","bob")
 
-goblin = Mob("00001","goblin", 350)
+# Création des personnages
+player = Archer("12234411", "bob")  # Un archer (joueur)
+goblin = Mob("00001", "goblin", 350)  # Un gobelin (ennemi)
 
+# Affichage des personnages pour vérifier les stats
 print(player)
 print(goblin)
 
-combat = Duel(player,goblin)
 
-combat.player_action(player, "Arrow Rain", goblin.name)
+
+skill = player.get_skill("Arrow Rain")
+
+print(skill.default_damage_action(player, goblin))
+print(goblin)

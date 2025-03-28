@@ -1,6 +1,7 @@
 from ..character import Character
 from ..skill import Skill
 from ..stats.basic_stat import Mana
+
 class Mob(Character):
     class_skills_dict = {
         "level 1": {
@@ -10,19 +11,21 @@ class Mob(Character):
             "Garde": Skill("Pack de sang", "buff", 20, 1, "hp"),
         },
         "level 10": {
-            Skill("bite", "damage",40,10, "hp")
-    }}
+            "Bite": Skill("Bite", "damage", 40, 10, "hp")
+        }
+    }
     
-    
-    def __init__(self, user_id: str, name: str, xp_drop):
+    def __init__(self, user_id: str, name: str, xp_drop: int):
         super().__init__(user_id, name, hp=250, force=17, endurance=12, inteligence=2, energie=14, skills=self.class_skills_dict["level 1"])
         self.energie = self.energie.change_type(Mana)
-        if xp_drop > 0 : self.gain_exp(xp_drop)
+        if xp_drop > 0:
+            self.gain_exp(xp_drop)
     
     def exp_for_level_up(self):
         return self.level * 10
     
-    def lose_hp(self, attacker, value):
+    def lose_hp(self, value: int):
         value = super().lose_hp(value)
-        if not self.is_alive(): value = self.drop_xp(attacker)
+        if not self.is_alive(): 
+            value = self.drop_xp(self)
         return value

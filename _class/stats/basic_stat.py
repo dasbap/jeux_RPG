@@ -14,7 +14,6 @@ class HP(DefaultStat):
         super().__init__(value)
         self.name = "HP"
 
-
 class Force(DefaultStat):
     def __init__(self, value: int):
         super().__init__(value)
