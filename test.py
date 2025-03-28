@@ -1,9 +1,16 @@
-from _class.stats.basic_stat import HP
+from _class.sub_character.chevalier import Chevalier
+from _class.mob.mob import Mob
 
-hp = HP(50)
+chevalier = Chevalier("12345678", "Bob")
+goblin = Mob("00001", "goblin")
 
-print(hp)
+print(chevalier)
+print(goblin)
 
-hp -= 20
+goblin.gain_exp(20)
+print(goblin)
 
-print(hp)
+chevalier.lose_hp(chevalier, 15)
+
+print(chevalier)
+

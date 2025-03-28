@@ -29,6 +29,7 @@ class DefaultStat:
     def __iadd__(self, value):
         if isinstance(value, int): 
             self._current_value += value
+            self.check_all()  # Recalculate value after addition
             return self
         raise TypeError("L'opération += nécessite un nombre int")
 
@@ -40,6 +41,7 @@ class DefaultStat:
     def __isub__(self, value):
         if isinstance(value, int):
             self._current_value = max(0, self._current_value - value)
+            self.check_all()  # Recalculate value after subtraction
             return self
         raise TypeError("L'opération -= nécessite un nombre int")
 
@@ -97,3 +99,8 @@ class DefaultStat:
 
         for debuff in self.debuffs:
             self._current_value = max(1, self._current_value - debuff.value)  
+    
+    def update_value(self, value: int) -> None:
+        """Met à jour la valeur actuelle de la statistique."""
+        self.value += value
+        self.check_all()

@@ -34,11 +34,12 @@ class Character:
     def is_alive(self) -> bool:
         return self.hp > 0
 
-    def lose_hp(self, value: int) -> str:
+    def lose_hp(self, who : 'Character', value: int) -> str:
         if value <= 0:
             raise ValueError("HP loss must be positive")
         self.hp = max(0, self.hp - value)
-        return f"{self.name} perd {value} points de vie."
+        if self.hp <= 0: self.drop_xp(who)
+        return f"{who.name} dealt {value} damage to {self.name}."
 
     def gain_hp(self, value: int) -> None:
         if value <= 0:
@@ -72,10 +73,10 @@ class Character:
         
         self.exp -= self.exp_for_level_up()
         self.level += 1
-        self.hp += 50
-        self.force += 5
-        self.endurance += 5
-        self.energie += 20
+        self.hp.update_value(15)
+        self.force.update_value(3)
+        self.endurance.update_value(2)
+        self.energie.update_value(3)
         
         if skills_to_add := self.class_skills_dict.get(f"level {self.level}"):
             self.skills.update(skills_to_add)
@@ -90,7 +91,7 @@ class Character:
         return f"{self.name} has been resurrected by {who}."
 
     def __str__(self):
-        return f"{self.name} ({self.char_class}) Lvl {self.level} | HP: {self.hp}, FOR: {self.force}, END: {self.endurance}, Energie: {self.energie} | Skills: {', '.join(self.skills)}"
+        return f"{self.name} ({self.char_class}) Lvl {self.level} | {self.hp}, {self.force}, {self.endurance}, {self.energie} | Skills: {', '.join(self.skills)}"
 
     def __repr__(self):
         return f"<Character {self.name} {self.char_class}>"

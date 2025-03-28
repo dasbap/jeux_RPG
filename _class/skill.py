@@ -49,7 +49,6 @@ class Skill:
         Retourne la fonction d'action par défaut en fonction du type de sort.
         Cette méthode est appelée si aucune fonction personnalisée n'est fournie.
         """
-        print(f"default action call {self.skill_type}, {self.name}")
         if self.skill_type == "damage":
             return self.default_damage_action
         elif self.skill_type == "heal":
@@ -65,7 +64,7 @@ class Skill:
     def default_damage_action(self, caster, target):
         """Inflige des dégâts à la cible."""
         target.lose_hp(caster,self.value)
-        return f"{caster.name} inflige {self.value} dégâts à {target.name}!"
+        return f"{caster.name} inflige {self.value} dégâts à {target.name} !"
 
     def default_heal_action(self, caster, target):
         """Soigne la cible."""

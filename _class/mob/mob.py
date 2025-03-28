@@ -14,7 +14,7 @@ class Mob(Character):
             Skill("bite", "damage",40,10, "hp")
     }}
     
-    def __init__(self, user_id: str, name: str, xp_drop: int):
+    def __init__(self, user_id: str, name: str, xp_drop: int = 0):
         super().__init__(user_id, name, hp=250, force=17, endurance=12, inteligence=2, energie=14, skills=self.class_skills_dict["level 1"])
         self.energie = self.energie.change_type(Mana)
         if xp_drop > 0:
@@ -22,9 +22,4 @@ class Mob(Character):
     
     def exp_for_level_up(self):
         return self.level * 10
-    
-    def lose_hp(self, value: int):
-        value = super().lose_hp(value)
-        if not self.is_alive(): 
-            value = self.drop_xp(self)
-        return value
+

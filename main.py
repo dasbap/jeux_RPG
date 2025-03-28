@@ -12,7 +12,6 @@ print(goblin)
 
 
 
-skill = player.get_skill("Arrow Rain")
+goblin.lose_hp(player, 20)
 
-print(skill.default_damage_action(player, goblin))
 print(goblin)
