@@ -81,7 +81,7 @@ class Character:
         if skills_to_add := self.class_skills_dict.get(f"level {self.level}"):
             self.skills.update(skills_to_add)
     
-    def gain_energie(self, amount) -> None:
+    def gain_energie(self, amount : int) -> None:
         if amount < 0:
             raise ValueError("energie gain must be positive")
         self.energie = self.energie + amount

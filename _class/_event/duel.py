@@ -3,11 +3,9 @@ from _class._event.fight import Character, Fight
 class Duel(Fight):
     def __init__(self, player1: Character, player2: Character):
         super().__init__(team_1=[player1], team_2=[player2])
-        
-        self.team_active: int = 0 
         self.bot_entity = []
         self.playable_entity = []
-        
+        self.team_active : int = 0
         self.controlled_entities: dict[str, list[Character]] = {
             "controlled": self.playable_entity,
             "bot": self.bot_entity
@@ -22,6 +20,36 @@ class Duel(Fight):
     def start(self):
         while not self.end_fight():
             self.round()
+            self.team_active = (self.team_active + 1) %2
+    
+    def round(self):
+        for character in self.get_team():
+            if not isinstance(character, Character) : pass
+            print(f"{character.name} turn:")
+            if character in self.controlled_entities["controlled"]:
+                print(f"you can use {character.get_skill_dict()} or rest")
+                action_user = input("what do you do : ")
+                if action_user.lower() == "rest":
+                    character.gain_energie(5)
+                    continue
+                skill = character.get_skill(action_user)
+                target_list : list[Character] = self.get_team() + self.get_opposing_team()
+                
+                target_names = [t.name for t in target_list] 
+
+                target = input(f"You can target: {', '.join(target_names)}\nWho do you target: ")
+                selected_target = next((t for t in target_list if t.name == target), None)
+                
+                skill.action(character, selected_target)
+                continue
+            if character in self.controlled_entities["bot"]:
+                print(f"{character.name} turn:")
+                action_bot = any[self.get_opposing_team()]
+                print(action_bot)
+                skill = character.get_skill(action_bot["skill"])
+                selected_target = next((t for t in self.get_team() + self.get_opposing_team() if t.name == action_bot["target"]), None)
+                skill.action(character, selected_target)
+                continue
 
     def end_fight(self) -> bool:
         """Checks if one of the teams is completely defeated."""
@@ -66,3 +94,7 @@ class Duel(Fight):
     def get_opposing_team(self):
         """Returns the list of characters in the opposing team."""
         return self.team[f"team_{(self.team_active + 1) % 2 + 1}"]
+    
+    def get_team(self) -> dict[str,list[Character]]:
+        """Returns the list of characters in both teams."""
+        return self.team[f"team_{self.team_active + 1}"]

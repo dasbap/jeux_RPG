@@ -29,7 +29,7 @@ class DefaultStat:
     def __iadd__(self, value):
         if isinstance(value, int): 
             self._current_value += value
-            self.check_all()  # Recalculate value after addition
+            self.check_all()  
             return self
         raise TypeError("L'opération += nécessite un nombre int")
 
@@ -41,7 +41,7 @@ class DefaultStat:
     def __isub__(self, value):
         if isinstance(value, int):
             self._current_value = max(0, self._current_value - value)
-            self.check_all()  # Recalculate value after subtraction
+            self.check_all()  
             return self
         raise TypeError("L'opération -= nécessite un nombre int")
 
