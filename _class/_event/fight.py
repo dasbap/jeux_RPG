@@ -11,5 +11,5 @@ class Fight:
                 raise ValueError(f"Tous les membres de '{team_name}' doivent être des instances de Character.")
 
         self.fighter = fighters
-        self.team = fighters.copy()
+        self.teams = fighters.copy()
         self.round_number = 1

@@ -2,7 +2,7 @@ from .skill import Skill
 from .stats.basic_stat import HP, Energie, Endurance, Force, Sagesse, Intelligence
 
 class Character:
-    class_skills_dict = {}
+    class_skills_dict : dict[str,Skill]= {}
     
     def __init__(self, user_id: str, name: str, hp: int = 1, force: int = 1, endurance: int = 1, inteligence : int = 1, energie: int = 0, sagesse : int = 1, skills: dict = None):
         if not isinstance(user_id, str) or not user_id.strip():
