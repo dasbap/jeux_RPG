@@ -50,6 +50,18 @@ class Character:
         if skill := self.skills.get(name_skill):
             return skill
         raise KeyError(f"Skill '{name_skill}' not found for {self.name}")
+    
+    
+    def use_skill(self, name_skill: str, target : 'Character') -> tuple[bool, str]:
+        if name_skill in self.get_skill_dict():
+            try:
+                skill = self.get_skill(name_skill)
+                skill.action(self, target)
+                
+                return True,f"{self.name} uses {skill.name} on {target.name}"
+            except KeyError:
+                return False, f"Error in Skill '{name_skill}'. dev more for a valide skill."
+        return False, f"Skill '{name_skill}' not found. Use a valide skill : {self.get_skill_dict()}."
 
     def get_skill_dict(self) -> dict:
         return self.skills.copy()

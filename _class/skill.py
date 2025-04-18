@@ -1,5 +1,8 @@
+def Error_fun(caster, target):
+    raise AttributeError
+
 class Skill:
-    def __init__(self, name: str, skill_type: str, value: int, mana_cost: int, stats_target: str = None, fonction_disigned: callable = None):
+    def __init__(self, name: str, skill_type: str, value: int, mana_cost: int, stats_target: str = None, fonction_disigned: callable = Error_fun):
         """
         Classe représentant une compétence.
 
@@ -14,7 +17,7 @@ class Skill:
             raise ValueError("Le coût en mana ne peut pas être négatif.")
         if value < 0:
             raise ValueError("La valeur de l'effet ne peut pas être négative.")
-        if skill_type not in ["damage", "heal", "buff", "debuff", "resurrect"] and fonction_disigned is None:
+        if skill_type not in ["damage", "heal", "buff", "debuff", "resurrect"] and fonction_disigned is Error_fun:
             raise ValueError("Le type de sort doit être 'damage', 'heal', 'buff', 'debuff', ou doit avoir une fonction personnalisée.")
 
         self.name = name
@@ -22,7 +25,7 @@ class Skill:
         self.value = value
         self.mana_cost = mana_cost
         self.stats_target = stats_target
-        self.action = fonction_disigned or self.get_default_action()
+        self.action : callable = fonction_disigned or self.get_default_action()
 
     def __str__(self):
         return f"{self.name} ({self.skill_type}) - Valeur: {self.value}, Coût en mana: {self.mana_cost}"
@@ -59,7 +62,7 @@ class Skill:
             return self.default_debuff_action
         elif self.skill_type == "resurrect":
             return self.default_resurrect_action
-        return None
+        raise ValueError(f"error in the création of {self.name}")
 
     def default_damage_action(self, caster, target):
         """Inflige des dégâts à la cible."""
