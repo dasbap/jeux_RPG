@@ -1,92 +1,201 @@
-def Error_fun(caster, target):
-    raise AttributeError
+from typing import Callable, Optional, Dict, Any
+from dataclasses import dataclass
+from enum import Enum, auto
+
+from _class.stats.basic_stat import DefaultStat, Energie, Mana
+
+class SkillType(Enum):
+    DAMAGE = auto()
+    HEAL = auto()
+    BUFF = auto()
+    DEBUFF = auto()
+    RESURRECT = auto()
+    CUSTOM = auto()
+
+@dataclass
+class SkillEffect:
+    value: int
+    duration: int = 0
+    stat_target: Optional[str] = None
 
 class Skill:
-    def __init__(self, name: str, skill_type: str, value: int, mana_cost: int, stats_target: str = None, fonction_disigned: callable = Error_fun):
-        """
-        Classe représentant une compétence.
-
-        :param name: Nom du sort
-        :param skill_type: Type de sort (peut être défini librement)
-        :param value: Valeur de l'effet (dégâts, soin, boost, etc. Pour "resurrect", 1 = réanimation)
-        :param mana_cost: Coût en mana
-        :param stats_target: Stat à affecter pour les buff/debuff (ex: "attack", "defense")
-        :param fonction_disigned: Fonction personnalisée pour l'action du sort
-        """
-        if mana_cost < 0:
-            raise ValueError("Le coût en mana ne peut pas être négatif.")
-        if value < 0:
-            raise ValueError("La valeur de l'effet ne peut pas être négative.")
-        if skill_type not in ["damage", "heal", "buff", "debuff", "resurrect"] and fonction_disigned is Error_fun:
-            raise ValueError("Le type de sort doit être 'damage', 'heal', 'buff', 'debuff', ou doit avoir une fonction personnalisée.")
+    def __init__(
+        self,
+        name: str,
+        skill_type: SkillType,
+        effects: Dict[str, SkillEffect],
+        energie_cost: int = 0,
+        energie_target: type[Energie] = Mana,
+        custom_action: Optional[Callable] = None,
+        cooldown: int = 0,
+        description: str = ""
+    ):
+        if energie_cost < 0:
+            raise ValueError("Les coûts ne peuvent pas être négatifs")
+        if not isinstance(energie_target, type) or not issubclass(energie_target, Energie):
+            raise TypeError("`energie_target` doit être une sous-classe de `Energie`")
+        if cooldown < 0:
+            raise ValueError("Le cooldown ne peut pas être négatif")
+        for effect in effects.values():
+            if effect.duration < 0:
+                raise ValueError("La durée des effets ne peut pas être négative")
 
         self.name = name
-        self.skill_type = skill_type 
-        self.value = value
-        self.mana_cost = mana_cost
-        self.stats_target = stats_target
-        self.action : callable = fonction_disigned or self.get_default_action()
+        self.skill_type = skill_type
+        self.effects = effects
+        self.energie_cost = energie_cost
+        self.energie_target = energie_target
+        self.custom_action = custom_action
+        self.cooldown = cooldown
+        self.current_cooldown = 0
+        self.description = description or f"Compétence {name} de type {skill_type.name}"
 
-    def __str__(self):
-        return f"{self.name} ({self.skill_type}) - Valeur: {self.value}, Coût en mana: {self.mana_cost}"
+    def __str__(self) -> str:
+        costs = []
+        if self.energie_cost > 0:
+            costs.append(f"{self.energie_target.__name__}: {self.energie_cost}")
+        cost_str = ", ".join(costs) if costs else "Aucun coût"
+        return (f"{self.name} [{self.skill_type.name}] - {cost_str} - "
+                f"Cooldown: {self.cooldown} - {self.description}")
+    def __repr__(self):
+        return f"{self.name, self.energie_target, self.energie_cost, self.current_cooldown}"
 
-    def get_action(self, caster, target):
-        """
-        Applique l'effet du sort à la cible en appelant la méthode correspondante
-        selon l'action personnalisée définie ou une action par défaut.
+    def is_ready(self) -> bool:
+        return self.current_cooldown <= 0
 
-        :param caster: Le personnage qui lance le sort
-        :param target: La cible qui subira l'effet
-        :return: Description de l'action effectuée
-        """
-        if callable(self.action):
+    def can_afford(self, caster: Any) -> bool:
+        try :
+            act = caster.get_energie(self.energie_target)
+            if act.__class__ == self.energie_target:
+                return True
+        except :
+            return False
+        return False
+    
+
+    def setcooldown(self) -> None:
+        if self.current_cooldown > 0: raise RuntimeError(f"cooldown is not ready for : {self.name}")
+        self.current_cooldown = self.cooldown
+    def execute(self, caster: Any, target: Any) -> Dict[str, Any]:
+        if not self.is_ready():
+            raise RuntimeError(f"Compétence {self.name} en cooldown")
+        if not self.can_afford(caster):
+            return {
+                "success": False,
+                "message": f"{caster.name} n'a pas assez de {self.energie_target.__name__} pour utiliser {self.name}",
+                "effects": {}
+            }
+
+        result = {
+            "success": True,
+            "message": "",
+            "effects": {}
+        }
+
+        caster.consume_energie(self.energie_cost, self.energie_target)
+        self.setcooldown()
+
+        if self.custom_action:
             try:
-                
-                return self.action(caster, target)
-            except TypeError:
-                return f"L'action personnalisée de {self.name} est invalide."
-        return f"Aucune action définie pour {self.name}."
+                custom_result = self.custom_action(caster, target)
+                if isinstance(custom_result, str):
+                    result["message"] = custom_result
+                elif isinstance(custom_result, dict):
+                    result.update(custom_result)
+            except Exception as e:
+                result["success"] = False
+                result["message"] = f"Erreur dans l'action personnalisée: {str(e)}"
+        else:
+            result.update(self._execute_default_action(caster, target))
 
-    def get_default_action(self):
-        """
-        Retourne la fonction d'action par défaut en fonction du type de sort.
-        Cette méthode est appelée si aucune fonction personnalisée n'est fournie.
-        """
-        if self.skill_type == "damage":
-            return self.default_damage_action
-        elif self.skill_type == "heal":
-            return self.default_heal_action
-        elif self.skill_type == "buff":
-            return self.default_buff_action
-        elif self.skill_type == "debuff":
-            return self.default_debuff_action
-        elif self.skill_type == "resurrect":
-            return self.default_resurrect_action
-        raise ValueError(f"error in the création of {self.name}")
+        return result
 
-    def default_damage_action(self, caster, target):
-        """Inflige des dégâts à la cible."""
-        target.lose_hp(caster,self.value)
-        return f"{caster.name} inflige {self.value} dégâts à {target.name} !"
+    def _execute_default_action(self, caster: Any, target: Any) -> Dict[str, Any]:
+        results = {
+            "message": "",
+            "effects": {}
+        }
 
-    def default_heal_action(self, caster, target):
-        """Soigne la cible."""
-        target.gain_hp(self.value)
-        return f"{caster.name} soigne {target.name} de {self.value} HP!"
+        if self.skill_type == SkillType.DAMAGE:
+            damage = self.effects["damage"].value
+            target.lose_hp(caster, damage)
+            results["message"] = f"{caster.name} inflige {damage} dégâts à {target.name}!"
+            results["effects"]["damage"] = damage
 
-    def default_resurrect_action(self, caster, target):
-        """Ressuscite la cible si elle est morte."""
-        if not target.is_alive():
-            target.resurrected_by(caster)
-            return f"{caster.name} utilise {self.name} sur {target.name}!"
-        return f"{target.name} ne peux pas être ressuscité!"
+        elif self.skill_type == SkillType.HEAL:
+            heal = self.effects["heal"].value
+            target.gain_hp(heal)
+            results["message"] = f"{caster.name} soigne {target.name} de {heal} HP!"
+            results["effects"]["heal"] = heal
 
-    def default_buff_action(self, caster, target):
-        """Applique un buff (ex: augmentation des stats)."""
-        value = target.buff_stat(self.stats_target, self.value)
-        return f"{caster.name} augmente {self.stats_target} de {target.name} de {value}!"
+        elif self.skill_type == SkillType.RESURRECT:
+            if not target.is_alive():
+                target.resurrect(caster)
+                results["message"] = f"{caster.name} ressuscite {target.name}!"
+                results["effects"]["resurrect"] = True
+            else:
+                results["message"] = f"{target.name} ne peut pas être ressuscité!"
+                results["success"] = False
 
-    def default_debuff_action(self, caster, target):
-        """Applique un debuff (ex: diminution des stats)."""
-        value = target.debuff_stat(self.stats_target, self.value)
-        return f"{caster.name} réduit {self.stats_target} de {target.name} de {value}!"
+        elif self.skill_type in (SkillType.BUFF, SkillType.DEBUFF):
+            for effect_name, effect in self.effects.items():
+                if effect.stat_target:
+                    if self.skill_type == SkillType.BUFF:
+                        target.buff_stat(effect.stat_target, effect.value, effect.duration)
+                    else:
+                        target.debuff_stat(effect.stat_target, effect.value, effect.duration)
+                    results["effects"][effect_name] = {
+                        "stat": effect.stat_target,
+                        "value": effect.value,
+                        "duration": effect.duration
+                    }
+            action = "augmente" if self.skill_type == SkillType.BUFF else "réduit"
+            stats = ", ".join(e.stat_target for e in self.effects.values() if e.stat_target)
+            results["message"] = f"{caster.name} {action} {stats} de {target.name}!"
+
+        return results
+
+    def update_cooldown(self) -> None:
+        if self.current_cooldown > 0:
+            self.current_cooldown -= 1
+
+    def reset_cooldown(self) -> None:
+        self.current_cooldown = 0
+
+    @classmethod
+    def create_simple_damage_skill(
+        cls,
+        name: str,
+        damage: int,
+        energie_cost: int,
+        cooldown: int = 0
+    ) -> 'Skill':
+        return cls(
+            name=name,
+            skill_type=SkillType.DAMAGE,
+            effects={"damage": SkillEffect(value=damage)},
+            energie_cost=energie_cost,
+            cooldown=cooldown,
+            description=f"Inflige {damage} points de dégâts"
+        )
+
+    @classmethod
+    def create_stat_modifier_skill(
+        cls,
+        name: str,
+        stat_target: DefaultStat,
+        value: int,
+        duration: int,
+        is_buff: bool = True,
+        energie_cost: int = 0,
+        cooldown: int = 0
+    ) -> 'Skill':
+        skill_type = SkillType.BUFF if is_buff else SkillType.DEBUFF
+        return cls(
+            name=name,
+            skill_type=skill_type,
+            effects={"modifier": SkillEffect(value=value, duration=duration, stat_target=stat_target)},
+            energie_cost=energie_cost,
+            cooldown=cooldown,
+            description=f"{'Augmente' if is_buff else 'Réduit'} {stat_target} de {value} pendant {duration} tours"
+        )

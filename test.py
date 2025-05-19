@@ -1,12 +1,19 @@
-from _class.sub_character.chevalier import Chevalier
-from _class.mob.mob import Mob
-from _class._event.duel import Duel
-chevalier = Chevalier("12345678", "Bob")
-goblin = Mob("00001", "goblin")
+from _class import Mob, Character, Team, TeamBattle
+from _class._event.confrontation.encounter.fight import Fight
 
-combat = Duel(chevalier, goblin)
 
-combat.add_to_controlled_entities(chevalier, "controlled")
-combat.add_to_controlled_entities(goblin, "bot")
+# Création des personnages
+knight = Character.create("Knight", "the one", "bob")
+mage = Character.create("Mage", "the one", "lis")
+archer = Character.create("Archer", "the one", "arrow")
+priest = Character.create("Priest", "the goat", "saint")
 
-combat.start()
+orc = Character.create("Mob", "orc", "Gull")
+goblin = Character.create("Mob", "goblin", "knack")
+troll = Character.create("Mob", "troll", "slut")
+
+# Création des équipes
+equipe_joueurs = Team("Héros", [knight, mage, archer])
+equipe_monstres = Team("Monstres", [orc, goblin, troll])
+
+combat = Fight(equipe_joueurs, equipe_monstres)
