@@ -1,5 +1,6 @@
-from .knight import Knight
-from .archer import Archer
-from .mage import Mage
 from .priest import Priest
-__all__ = ['Knight', 'Archer', 'Mage', 'Priest']
+from .archer import Archer
+from .knight import Knight
+from .necromancien import Necromancien
+
+__all__ = ['Priest','Archer','Knight', 'Necromancien']

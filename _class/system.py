@@ -1,5 +1,4 @@
-from .character import Character, CharacterMeta
-from typing import Dict, Type
+
 
 class CharacterSystem:
     """Système central de gestion des personnages."""

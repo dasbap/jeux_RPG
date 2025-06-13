@@ -1,8 +1,10 @@
-from typing import List, Optional
-from ....character import Character
+
+from typing import List, Optional, Union
+
+from _class.character import Character
 
 
-class Team:
+class Team():
     """Represents a team of characters with alliance and enemy relationships.
     
     Attributes:
@@ -13,7 +15,7 @@ class Team:
     all_teams: List['Team'] = []
     DEFAULT_NAME_FORMAT: str = "Team {index}"
     
-    def __init__(self, name: str = "", Team_member : list[Character] = [] ) -> None:
+    def __init__(self, name: str = "", Team_member : Union[list[Character], Character] = [] ) -> None:
         """Initialize a new Team.
         
         Args:
@@ -24,13 +26,16 @@ class Team:
             ValueError: If the team name is already taken.
         """
         self._validate_name_uniqueness(name)
-        
+        self.leader : Character = None
         self.name = name or self._generate_default_name()
         self.fighters: List[Character] = []
         self.allies: List[Team] = []
         self.enemies: List[Team] = []
-        for member in Team_member:
-            self.add_fighter(member)
+        if not isinstance(Team_member, Character):
+            for member in Team_member:
+                self.add_fighter(member)
+        else:
+            self.change_leader(Team_member)
         Team.all_teams.append(self)
     
     def _validate_name_uniqueness(self, name: str) -> None:
@@ -57,6 +62,9 @@ class Team:
     def __repr__(self) -> str:
         """Return an unambiguous string representation of the team."""
         return f"<Team name='{self.name}' id={id(self)}>"
+    
+    def __contains__(self, fighter) -> bool:
+        return fighter in self.get_fighters()
     
     def destroy(self) -> None:
         """Completely destroy the team and clean up all relationships.
@@ -107,6 +115,24 @@ class Team:
         self.fighters.append(fighter)
         fighter.team = self
     
+    def change_leader(self, leader: Character) -> None:
+        if leader.team:
+            if leader.team != self:
+                raise RuntimeError("Can't be the leader of a team if his not in")
+            elif self.leader is leader:
+                raise RuntimeError(f"{leader.name} is already the leader of {self.name}")
+        else:
+            self.add_fighter(leader)
+        
+        self.leader = leader
+
+    
+    def remove_leader(self):
+        if self.leader:
+            self.leader = None
+        else:
+            raise RuntimeError(f"the team {self.name} as no leader")
+    
     def remove_fighter(self, fighter: Character) -> None:
         """Remove a fighter from the team.
         
@@ -118,7 +144,8 @@ class Team:
         """
         if fighter not in self.fighters:
             raise ValueError(f"{fighter.name} is not in this team")
-        
+        if fighter is self.leader:
+            self.remove_leader()
         self.fighters.remove(fighter)
         fighter.team = None
     
@@ -176,7 +203,7 @@ class Team:
             mutual: If True, the enmity will be reciprocal.
             
         Raises:
-            ValueError: If teams are already enemies or are allies.
+            ValueError: If teams are allies.
             TypeError: If enemy is not a Team instance.
         """
         if not isinstance(enemy, Team):
@@ -186,7 +213,7 @@ class Team:
             raise ValueError("Cannot declare oneself as enemy")
         
         if enemy in self.enemies:
-            raise ValueError(f"Already enemies with {enemy.name}")
+            return
         
         if enemy in self.allies:
             raise ValueError(f"Cannot declare ally {enemy.name} as enemy")
@@ -226,22 +253,24 @@ class Team:
         self._validate_name_uniqueness(new_name)
         self.name = new_name
     
-    def is_ally(self, fighter: Character) -> bool:
+    def is_ally(self, ally : Union[Character, 'Team']) -> bool:
         """Check if a fighter belongs to an allied team.
         
         Args:
-            fighter: The Character to check.
+            ally: The Character or Team to check.
             
         Returns:
-            bool: True if the fighter belongs to an allied team.
+            bool: True if ally belongs to an allied team.
             
         Raises:
-            TypeError: If fighter is not a Character instance.
+            TypeError: If ally is not a Character or a Team instance.
         """
-        if not isinstance(fighter, Character):
-            raise TypeError("Can only check Character instances")
-        
-        return (self == fighter.team or fighter.team in self.allies if fighter.team else False)
+            
+        if isinstance(ally, Character):
+            return (self == ally.team or ally.team in self.allies if ally.team else False)
+        if isinstance(ally, Team):
+            return ally in self.get_allies()
+        raise TypeError("Can only check Character or Team instances")
     
     def is_enemy(self, fighter: Character) -> bool:
         """Check if a fighter belongs to an enemy team.
@@ -285,6 +314,10 @@ class Team:
         """Get a copy of the list of enemy teams."""
         return self.enemies.copy()
     
+    def get_fighters(self) -> List[Character]:
+        """Get a copy of the list of the fighter in the Team."""
+        return self.fighters.copy()
+    
     def merge_with(self, other: 'Team') -> None:
         """Merge another team into this one.
         
@@ -317,6 +350,12 @@ class Team:
         
         # Clean up the merged team
         Team.remove_team(other)
+    
+    def any_alive(self) -> bool:
+        for fighter in self.get_fighters():
+            if fighter.is_alive() : return True
+        else:
+            return False
     
     @classmethod
     def remove_team(cls, team_to_remove: 'Team') -> None:

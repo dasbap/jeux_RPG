@@ -1,6 +1,3 @@
-from _class.character import Character
-from _class.skill import Skill, SkillEffect, SkillType
-
 
 class Mob(Character):
     class_skills_dict = {

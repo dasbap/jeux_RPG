@@ -1,5 +1,6 @@
-from __future__ import annotations
 from typing import List
+
+from _class.res.character.alteration.alteration import Buff, DeBuff
 
 
 class DefaultStat:
@@ -28,11 +29,13 @@ class DefaultStat:
             
         self.value = value
         self._current_value = value
-        self.buffs: List[object] = []
-        self.debuffs: List[object] = []
+        self.buffs: List[Buff] = []
+        self.debuffs: List[DeBuff] = []
         self.name = self.__class__.__name__
     
     # Magic methods ###########################################################
+    
+    
     
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, (int, DefaultStat)):
@@ -67,7 +70,7 @@ class DefaultStat:
         compare_val = other if isinstance(other, int) else other.current_value
         return self.current_value <= compare_val
     
-    def __iadd__(self, other: int) -> DefaultStat:
+    def __iadd__(self, other: int) -> 'DefaultStat':
         """Add to current value with += operator."""
         if not isinstance(other, int):
             raise TypeError("Can only add integers to stats")
@@ -75,7 +78,7 @@ class DefaultStat:
         self._clamp_current_value()
         return self
     
-    def __add__(self, other: int) -> DefaultStat:
+    def __add__(self, other: int) -> 'DefaultStat':
         """Create new stat with added base value using + operator."""
         if not isinstance(other, int):
             raise TypeError("Can only add integers to stats")
@@ -85,14 +88,14 @@ class DefaultStat:
         self._recalculate()
         return self
     
-    def __isub__(self, other: int) -> DefaultStat:
+    def __isub__(self, other: int) -> 'DefaultStat':
         """Subtract from current value with -= operator."""
         if not isinstance(other, int):
             raise TypeError("Can only subtract integers from stats")
         self._current_value = max(0, self._current_value - other)
         return self
     
-    def __sub__(self, other: int) -> DefaultStat:
+    def __sub__(self, other: int) -> 'DefaultStat':
         """Create new stat with subtracted base value using - operator."""
         if not isinstance(other, int):
             raise TypeError("Can only subtract integers from stats")
@@ -108,7 +111,7 @@ class DefaultStat:
     
     def __repr__(self) -> str:
         """Developer-friendly string representation."""
-        return f"{self.__class__.__name__}(value={self.value}, name='{self.name}')"
+        return f"{self.__class__.__name__} value={self.value}"
     
     # Property accessors ######################################################
     
@@ -141,17 +144,17 @@ class DefaultStat:
         self.__class__ = new_type
         self.name = self.__class__.__name__
     
-    def add_buff(self, buff: object) -> None:
+    def add_buff(self, buff: Buff) -> None:
         """Add a buff and recalculate current value.
         
         Args:
-            buff: The buff object to add
+            buff: The buff Buff to add
             
         Raises:
-            TypeError: If buff is not a object instance
+            TypeError: If buff is not a Buff instance
         """
-        if not isinstance(buff, object):
-            raise TypeError("Buffs must be object instances")
+        if not isinstance(buff, Buff):
+            raise TypeError("Buffs must be Buff instances")
         self.buffs.append(buff)
         self._recalculate()
     
@@ -187,6 +190,10 @@ class DefaultStat:
         if not isinstance(debuff, object):
             raise TypeError("Debuffs must be object instances")
         self.debuffs.append(debuff)
+        self._recalculate()
+    
+    def set_max(self) -> None:
+        self._current_value = self.value
         self._recalculate()
     
     def remove_debuff(self, debuff: object) -> bool:
@@ -229,23 +236,35 @@ class DefaultStat:
         self.value = new_value
         self._recalculate()
     
+    def upgrade_base_value(self, value : int) -> None:
+        if value <= 0 : raise ValueError("value must be positive")
+        self.value += value
+        self._recalculate()
+    
     def get_effect_value(self) -> int:
         """Get the total modified value from all effects."""
         return self.current_value - self.value
+    
+    def end_round(self) -> None:
+        for alteration in self.buffs + self.debuffs:
+            alteration.decrease()
+
+        self.buffs = [buff for buff in self.buffs if not buff.is_over()]
+        self.debuffs = [debuff for debuff in self.debuffs if not debuff.is_over()]
+
     
     # Private methods #########################################################
     
     def _recalculate(self) -> None:
         """Recalculate current value based on base value and effects."""
         total = self.value
-        
         # Apply buffs
         for buff in self.buffs:
-            total += buff.value
+            total += buff.get_value()
         
         # Apply debuffs
         for debuff in self.debuffs:
-            total = max(1, total - debuff.value)
+            total = max(1, total - debuff.get_value())
         
         self._current_value = total
         self._clamp_current_value()

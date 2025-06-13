@@ -1,9 +1,9 @@
-from _class.character import Character
-from _class.skill import Skill
-from ..stats.basic_stat import Mana
 from typing import Dict
-from _class.skill import Skill, SkillType, SkillEffect
-from ..stats.basic_stat import Mana, HP, Force, Endurance, Intelligence
+from _class.character import Character
+from _class.res.classType import ClassType, SkillType
+from _class.skills.skill import Skill
+from _class.skills.skillEffect import SkillEffect
+
 
 class Archer(Character):
     """Classe représentant un Archer, spécialisé dans les attaques à distance."""
@@ -68,19 +68,4 @@ class Archer(Character):
             energie=15,
             skills=self.class_skills_dict["level 1"].copy()
         )
-        self.base_evasion = 10
-        self.base_critical = 5
-
-    def get_evasion(self) -> int:
-        """Calcule la valeur d'évasion actuelle avec les buffs."""
-        evasion = self.base_evasion
-        if "evasion" in self.status:
-            evasion += self.status["evasion"]["value"]
-        return min(evasion, 80) 
-
-    def get_critical_chance(self) -> int:
-        """Calcule le taux critique actuel avec les buffs."""
-        critical = self.base_critical
-        if "critical" in self.status:
-            critical += self.status["critical"]["value"]
-        return critical
+        self.class_type = ClassType.DAMAGE

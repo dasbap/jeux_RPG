@@ -1,9 +1,12 @@
-from _class.character import Character
-from _class.skill import Skill
-from ..stats.basic_stat import Foie
+
 from typing import Dict
-from _class.skill import Skill, SkillType, SkillEffect
-from ..stats.basic_stat import Foie, Mana
+
+from _class.character import Character
+from _class.res.character.stats.basic_stat import HP, Endurance, Foie, Mana
+from _class.res.classType import ClassType, SkillType
+from _class.skills.skill import Skill
+from _class.skills.skillEffect import SkillEffect
+
 
 class Priest(Character):
     """Classe représentant un Prêtre, spécialisé dans les soins et soutien."""
@@ -13,7 +16,7 @@ class Priest(Character):
             "Heal": Skill(
                 name="Heal",
                 skill_type=SkillType.HEAL,
-                effects={"heal": SkillEffect(value=30)},
+                effects={"heal": SkillEffect(value=30, stat_target =HP)},
                 energie_cost=10,
                 energie_target = Foie,
                 description="Soigne un allié"
@@ -24,8 +27,7 @@ class Priest(Character):
                 name="Blessing",
                 skill_type=SkillType.BUFF,
                 effects={
-                    "defense": SkillEffect(value=10, duration=3, stat_target="defense"),
-                    "resistance": SkillEffect(value=10, duration=3, stat_target="resistance")
+                    "defense": SkillEffect(value=10, duration=3, stat_target=Endurance),
                 },
                 energie_cost=5,
                 energie_target = Foie,
@@ -37,7 +39,7 @@ class Priest(Character):
             "Divine Shield": Skill(
                 name="Divine Shield",
                 skill_type=SkillType.BUFF,
-                effects={"shield": SkillEffect(value=15, duration=2, stat_target="shield")},
+                effects={"shield": SkillEffect(value=15, duration=2, stat_target=HP)},
                 energie_cost=8,
                 energie_target = Foie,
                 cooldown=3,
@@ -69,4 +71,4 @@ class Priest(Character):
             skills=self.class_skills_dict["level 1"].copy()
         )
         self.change_energie(Mana,Foie)
-        self.healing_power = 1.2 
+        self.class_type = ClassType.HEAL

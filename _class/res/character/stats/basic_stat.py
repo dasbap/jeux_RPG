@@ -1,5 +1,5 @@
-from typing import Optional
-from .stat import DefaultStat
+from _class.res.character.stats.stat import DefaultStat
+
 
 class Energie(DefaultStat):
     """Classe de base pour les statistiques énergétiques.
@@ -10,7 +10,7 @@ class Energie(DefaultStat):
         regen_rate (float): Taux de régénération par tour
     """
     
-    def __init__(self, value: int, regen_rate: float = 0.1):
+    def __init__(self, value: int, regen_rate: float = 0.3):
         """Initialise une énergie avec son nom, sa valeur et son taux de régénération.
         
         Args:
@@ -19,7 +19,7 @@ class Energie(DefaultStat):
             regen_rate: Taux de régénération (fraction de max_value par tour)
         """
         super().__init__(value)
-        self._regen_rate = max(0.0, min(1.0, regen_rate))  # Clamp entre 0 et 1
+        self._regen_rate = regen_rate 
         
     @property
     def regen_rate(self) -> float:
@@ -27,7 +27,7 @@ class Energie(DefaultStat):
         
     @regen_rate.setter
     def regen_rate(self, value: float) -> None:
-        self._regen_rate = max(0.0, min(1.0, value))
+        self._regen_rate = max(0.0, min(0.1, value))
         
     def regenerate(self) -> None:
         """Régénère l'énergie selon le taux de régénération."""
@@ -54,6 +54,9 @@ class VitalStat(DefaultStat):
     def is_depleted(self) -> bool:
         """Vérifie si la statistique est épuisée."""
         return self.current_value <= 0
+    
+    def drain_all(self) -> None:
+        self._current_value = 0
     
     def change_type(self, new_type):
         if not issubclass(new_type, VitalStat) : raise TypeError("Can only convert to VitalStat subclasses")

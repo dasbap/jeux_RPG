@@ -1,10 +1,3 @@
-from _class.character import Character
-from _class.skill import Skill
-from ..stats.basic_stat import Mana
-from typing import Dict
-from _class.skill import Skill, SkillType, SkillEffect
-from ..stats.basic_stat import Mana, HP, Force, Endurance, Intelligence
-
 class Mage(Character):
     """Classe représentant un Mage, spécialisé dans les sorts offensifs et de contrôle."""
     
@@ -12,8 +5,8 @@ class Mage(Character):
         "level 1": {
             "Fire Ball": Skill(
                 name="Fire Ball",
-                skill_type=SkillType.DAMAGE,
-                effects={"damage": SkillEffect(value=10)},
+                skill_type=SkillType.INVOCATION,
+                effects={"invocation": SkillEffect(value=10)},
                 energie_cost=3,
                 description="Boule de feu élémentaire"
             ),
@@ -26,19 +19,6 @@ class Mage(Character):
                 energie_cost=5,
                 cooldown=1,
                 description="Décharge électrique frappant l'ennemi"
-            ),
-        },
-        "level 10": {
-            "Ice Trap": Skill(
-                name="Ice Trap",
-                skill_type=SkillType.DEBUFF,
-                effects={
-                    "slow": SkillEffect(value=30, duration=2, stat_target="speed"),
-                    "freeze": SkillEffect(value=1, duration=1, stat_target="freeze")
-                },
-                energie_cost=10,
-                cooldown=3,
-                description="Piège de glace ralentissant et immobilisant"
             ),
         },
         "level 20": {
@@ -64,5 +44,5 @@ class Mage(Character):
             energie=35,
             skills=self.class_skills_dict["level 1"].copy()
         )
-        self.spell_power = 1.1
+        self.class_type = ClassType.DAMAGE
 
