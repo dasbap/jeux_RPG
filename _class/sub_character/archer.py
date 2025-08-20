@@ -1,8 +1,8 @@
 from typing import Dict
-from _class.character import Character
-from _class.res.classType import ClassType, SkillType
-from _class.skills.skill import Skill
-from _class.skills.skillEffect import SkillEffect
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.classType import ClassType, SkillType
+from jeuxRPG._class.skills.skill import Skill
+from jeuxRPG._class.skills.skillEffect import SkillEffect
 
 
 class Archer(Character):

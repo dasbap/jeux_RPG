@@ -1,9 +1,9 @@
 import copy
 from typing import Any, Callable, Dict, Optional, Tuple, Union
-from _class.res.character.alteration.alteration import AlterationType
-from _class.res.character.stats.basic_stat import AttributeStat, Energie, Force, Intelligence, Mana, Sagesse
-from _class.res.classType import DamageType, SkillType
-from _class.skills.skillEffect import SkillEffect
+from jeuxRPG._class.res.character.alteration.alteration import AlterationType
+from jeuxRPG._class.res.character.stats.basic_stat import AttributeStat, Energie, Force, Intelligence, Mana, Sagesse
+from jeuxRPG._class.res.classType import DamageType, SkillType
+from jeuxRPG._class.skills.skillEffect import SkillEffect
 
 
 class Skill:
@@ -248,6 +248,7 @@ class Skill:
     def update_cooldown(self) -> None:
         if self.current_cooldown > 0:
             self.current_cooldown -= 1
+            raise MemoryError()
 
     def reset_cooldown(self) -> None:
         self.current_cooldown = 0

@@ -1,5 +1,5 @@
 from typing import Literal
-from _class.res.character.alteration.alteration import AlterationType
+from jeuxRPG._class.res.character.alteration.alteration import AlterationType
 
 
 class SkillEffect:

@@ -1,9 +1,9 @@
-from _class.character import Character
+from jeuxRPG._class.character import Character
 
-from _class.res.dictType import ClassSkills
-from _class.sub_character.invocations.invocation import Invocation
+from jeuxRPG._class.res.dictType import ClassSkills
+from jeuxRPG._class.sub_character.invocations.invocation import Invocation
 
-from _class.res.character.table_stat_subclass import squelette_table
+from jeuxRPG._class.res.character.table_stat_subclass import squelette_table
 
 class Squelette(Invocation):
     class_skills_dict : ClassSkills = squelette_table["class_skills_dict"]

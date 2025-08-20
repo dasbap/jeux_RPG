@@ -1,10 +1,10 @@
 
 from typing import Dict, Type, TypedDict, Union
 
-from _class.res.advantage import Advantage
-from _class.res.character.stats import basic_stat as stat_module
-from _class.res.classType import ClassType
-from _class.skills.skill import Skill
+from jeuxRPG._class.res.advantage import Advantage
+from jeuxRPG._class.res.character.stats import basic_stat as stat_module
+from jeuxRPG._class.res.classType import ClassType
+from jeuxRPG._class.skills.skill import Skill
 
 
 class BaseStats(TypedDict):

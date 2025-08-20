@@ -1,5 +1,5 @@
 from typing import Any, Callable, Union
-from _class.skills.skill import Skill
+from jeuxRPG._class.skills.skill import Skill
 
 def handle_damage_effect(caster, target, effect) -> dict[str, Union[bool,str,dict[str,int]]]:
     """Gère spécifiquement l'effet de dégâts"""

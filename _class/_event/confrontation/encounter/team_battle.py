@@ -3,10 +3,10 @@
 from random import shuffle
 from typing import List, Union
 
-from _class._event.confrontation.encounter.fight import Fight
-from _class.character import Character
-from _class.res.team.alliance import Alliance
-from _class.res.team.team import Team
+from jeuxRPG._class._event.confrontation.encounter.fight import Fight
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.team.alliance import Alliance
+from jeuxRPG._class.res.team.team import Team
 
 
 class TeamBattle:

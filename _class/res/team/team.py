@@ -1,7 +1,7 @@
 
 from typing import List, Optional, Union
 
-from _class.character import Character
+from jeuxRPG._class.character import Character
 
 
 class Team():

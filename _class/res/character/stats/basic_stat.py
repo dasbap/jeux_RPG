@@ -1,4 +1,4 @@
-from _class.res.character.stats.stat import DefaultStat
+from jeuxRPG._class.res.character.stats.stat import DefaultStat
 
 
 class Energie(DefaultStat):

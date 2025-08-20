@@ -2,10 +2,10 @@
 from random import choice, shuffle
 from typing import List, Optional, Union
 
-from _class.character import Character
-from _class.res.classType import SkillType
-from _class.res.team.alliance import Alliance
-from _class.res.team.team import Team
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.classType import SkillType
+from jeuxRPG._class.res.team.alliance import Alliance
+from jeuxRPG._class.res.team.team import Team
 
 
 class Fight:

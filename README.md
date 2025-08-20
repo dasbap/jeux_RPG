@@ -25,9 +25,9 @@ Ce projet est un prototype de jeu de rôle (RPG) textuel développé en Python. 
 ## ▶️ Exemple d'utilisation
 
 ```python
-from _class._event.confrontation.encounter.team_battle import TeamBattle
-from _class.character import Character
-from _class.res.team.team import Team
+from jeuxRPG._class._event.confrontation.encounter.team_battle import TeamBattle
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.team.team import Team
 
 knight = Character.create("Knight", "0000000", "Bob")
 bad_guy = Character.create("Knight", "1111111", "Bad Guy")

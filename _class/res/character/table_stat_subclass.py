@@ -1,17 +1,17 @@
 from copy import deepcopy
 
-from _class.res.advantage import Advantage
+from jeuxRPG._class.res.advantage import Advantage
 
-from _class.res.character.alteration.alteration import AlterationType
-from _class.res.character.stats.basic_stat import HP, Aura, Endurance, Foie, Force, Intelligence, Mana, Sagesse
+from jeuxRPG._class.res.character.alteration.alteration import AlterationType
+from jeuxRPG._class.res.character.stats.basic_stat import HP, Aura, Endurance, Foie, Force, Intelligence, Mana, Sagesse
 
-from _class.res.classType import ClassType, DamageType, SkillType
-from _class.res.dictType import ClassTable
+from jeuxRPG._class.res.classType import ClassType, DamageType, SkillType
+from jeuxRPG._class.res.dictType import ClassTable
 
-from _class.skills.skill import Skill
-from _class.skills.skillEffect import SkillEffect
+from jeuxRPG._class.skills.skill import Skill
+from jeuxRPG._class.skills.skillEffect import SkillEffect
 
-from _function.skill.custom import multy_action_skill
+from jeuxRPG._function.skill.custom import multy_action_skill
 
 
 knight_advantage = Advantage()

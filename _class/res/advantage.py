@@ -1,6 +1,6 @@
 
 from typing import Literal, Union
-from _class.res.classType import DamageType
+from jeuxRPG._class.res.classType import DamageType
 
 
 class Advantage():

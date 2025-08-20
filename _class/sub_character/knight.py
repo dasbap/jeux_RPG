@@ -1,7 +1,7 @@
-from _class.character import Character
-from _class.res.dictType import ClassSkills
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.dictType import ClassSkills
 
-from _class.res.character.table_stat_subclass import knight_table
+from jeuxRPG._class.res.character.table_stat_subclass import knight_table
 
 class Knight(Character):
     """Classe représentant un Knight, tank résistant avec des capacités défensives."""

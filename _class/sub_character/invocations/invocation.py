@@ -1,5 +1,5 @@
-from _class.character import Character
-from _class.res.dictType import ClassSkills, ClassTable
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.dictType import ClassSkills, ClassTable
 
 
 class Invocation(Character):

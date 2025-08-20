@@ -1,12 +1,12 @@
 from typing import Dict, List, Literal, TypedDict, Union
 
-from _class.res.advantage import Advantage
-from _class.res.character.alteration.alteration import Alteration, Buff, DeBuff, Resistance
+from jeuxRPG._class.res.advantage import Advantage
+from jeuxRPG._class.res.character.alteration.alteration import Alteration, Buff, DeBuff, Resistance
 
-from _class.res.character.stats.basic_stat import Energie
-from _class.res.character.stats.stat import DefaultStat
+from jeuxRPG._class.res.character.stats.basic_stat import Energie
+from jeuxRPG._class.res.character.stats.stat import DefaultStat
 
-from _class.res.classType import DamageType as DT
+from jeuxRPG._class.res.classType import DamageType as DT
 
 class DamageType(TypedDict):
     Incoming: List

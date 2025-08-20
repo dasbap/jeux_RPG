@@ -1,9 +1,9 @@
-from _class.character import Character
-from _class.sub_character.invocations.squelette import Squelette
+from jeuxRPG._class.character import Character
+from jeuxRPG._class.sub_character.invocations.squelette import Squelette
 
-from _class.res.dictType import ClassSkills
-from _class.res.classType import ClassType, SkillType
-from _class.res.character.table_stat_subclass import necromancien_table
+from jeuxRPG._class.res.dictType import ClassSkills
+from jeuxRPG._class.res.classType import ClassType, SkillType
+from jeuxRPG._class.res.character.table_stat_subclass import necromancien_table
 
 
 

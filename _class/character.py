@@ -13,16 +13,16 @@ import json
 import os
 from typing import Dict, List, Literal, Optional, Tuple, Type, Union
 
-from _class.res.character.alteration import alteration as alteration_file
-from _class.res.character.invocation.invocation_pocket import InvocationPocket
-from _class.res.character.stats.basic_stat import HP, AttributeStat, Endurance, Energie, Force, Intelligence, Sagesse, VitalStat
-from _class.res.character.stats.stat import DefaultStat
-from _class.res.classType import ClassType, SkillType
-from _class.res.dictType import ClassSkills, ClassTable
-from _class.skills.skill import Skill
+from jeuxRPG._class.res.character.alteration import alteration as alteration_file
+from jeuxRPG._class.res.character.invocation.invocation_pocket import InvocationPocket
+from jeuxRPG._class.res.character.stats.basic_stat import HP, AttributeStat, Endurance, Energie, Force, Intelligence, Sagesse, VitalStat
+from jeuxRPG._class.res.character.stats.stat import DefaultStat
+from jeuxRPG._class.res.classType import ClassType, SkillType
+from jeuxRPG._class.res.dictType import ClassSkills, ClassTable
+from jeuxRPG._class.skills.skill import Skill
 
-from _class.skills.skillEffect import SkillEffect
-from _class.stats.status_dict_type import Status_Dict_type
+from jeuxRPG._class.skills.skillEffect import SkillEffect
+from jeuxRPG._class.stats.status_dict_type import Status_Dict_type
 
 json_path = os.path.join(os.path.dirname(alteration_file.__file__), "alteration.json")
 

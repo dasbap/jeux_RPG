@@ -1,6 +1,6 @@
 from typing import List
 
-from _class.res.character.alteration.alteration import Buff, DeBuff
+from jeuxRPG._class.res.character.alteration.alteration import Buff, DeBuff
 
 
 class DefaultStat:
