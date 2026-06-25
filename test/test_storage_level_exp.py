@@ -249,6 +249,29 @@ class TestStorageSaveCharacterFunction:
         assert loaded["level"] == 1
         assert loaded["exp"] == 0
 
+    def test_tower_progress_uses_flat_max_stage_mapping(self):
+        """Normal tower progress is saved as {tower_name: max_cleared_floor}."""
+        from bot.game import storage
+
+        manager = SaveManager(self.temp_dir)
+        storage._save_manager = manager
+        storage._users.clear()
+        storage._persisted.clear()
+
+        char = Character.create("Knight", "user_tower_progress", "TowerKnight")
+        storage._users["user_tower_progress"] = char
+
+        assert storage.mark_tower_floor_cleared("user_tower_progress", "normal", 4) is True
+        assert storage.mark_tower_floor_cleared("user_tower_progress", "normal", 2) is True
+        assert storage.mark_tower_floor_cleared("user_tower_progress", "hard", 1) is True
+
+        loaded = manager.load(SaveCategory.PLAYERS, "user_tower_progress")
+        assert loaded["tower_progress"] == {"normal": 4, "hard": 1}
+        assert storage.get_tower_progress("user_tower_progress", "normal") == {
+            "last_cleared_floor": 4,
+            "next_floor": 5,
+        }
+
 
 class TestNpcAndMobSaves:
     """Tests for NPC and Mob saves with level/exp."""

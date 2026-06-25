@@ -103,3 +103,34 @@ def test_tower_boss_floor_interval_controls_boss_floors():
 
     assert reached == 5
     assert boss_floors == [3, 5]
+
+
+def test_tower_run_reports_only_cleared_floors():
+    from jeuxRPG.game_engine.tower import TowerRun
+
+    player = Character.create("Knight", user_id="tower_progress_player", name="Player")
+    cleared_floors = []
+    runner = TowerRun(RecordingEngine())
+
+    reached = runner.run_tour(
+        player,
+        start_floor=4,
+        max_floors=6,
+        enemies_before_boss_range=(1, 1),
+        boss_floor_interval=0,
+        on_floor_cleared=cleared_floors.append,
+    )
+
+    assert reached == 6
+    assert cleared_floors == [4, 5, 6]
+
+
+def test_tower_difficulty_scales_mob_level():
+    from jeuxRPG.game_engine.tower import TowerRun
+
+    runner = TowerRun(GameEngine())
+
+    easy_mob = runner._make_mob(floor=8, idx=1, difficulty="easy")
+    hard_mob = runner._make_mob(floor=8, idx=1, difficulty="hard")
+
+    assert hard_mob.level > easy_mob.level
