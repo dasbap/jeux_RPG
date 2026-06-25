@@ -1,0 +1,13 @@
+{
+  "Knight": {
+    "base_stats": {
+      "endurance": 10
+    }
+  },
+  "Goblin": {
+    "advantage": {
+      "weakness": ["SACRED"],
+      "resilience": ["PHYSICAL"]
+    }
+  }
+}

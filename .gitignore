@@ -1,6 +1,55 @@
-# .gitignore
+# Local configuration and secrets
 .env
-*.pyc
+.env.*
+!.env.example
+
+# Local agent instructions
+AGENTS.md
+**/AGENTS.md
+
+# Python caches and build artifacts
 __pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+/build/
+/dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Runtime data
+saves/
+.data/
+*.pid
+*.log
 *.sqlite3
-.bat
+*.db
+test/load/locust_results_*.txt
+
+# Generated documentation
+__doc__/mirror/
+__doc__/*.md
+
+# Editor, OS, and temporary files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+*.old
+*.backup
+*.orig

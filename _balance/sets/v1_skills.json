@@ -1,0 +1,75 @@
+{
+  "Knight": {
+    "level 1": {
+      "Sword Slash": {
+        "energie_cost": 7,
+        "cooldown": 1,
+        "effects": { "damage": { "value": 10 } }
+      }
+    },
+    "level 5": {
+      "Shield Bash": {
+        "energie_cost": 7,
+        "cooldown": 2,
+        "effects": { "damage": { "value": 5 }, "Stun": { "duration": 1 } }
+      }
+    },
+    "level 10": {
+      "Charge": {
+        "energie_cost": 5,
+        "cooldown": 3,
+        "effects": {
+          "Buff": { "value": 8, "duration": 3 },
+          "Debuff": { "value": 4, "duration": 3 }
+        }
+      }
+    },
+    "level 20": {
+      "Holy Strike": {
+        "energie_cost": 14,
+        "cooldown": 4,
+        "effects": { "damage": { "value": 36 } }
+      }
+    }
+  },
+  "Mage": {
+    "level 1": {
+      "Fire Ball": {
+        "energie_cost": 9,
+        "effects": { "damage": { "value": 14 } }
+      }
+    },
+    "level 5": {
+      "Thunder": {
+        "energie_cost": 12,
+        "cooldown": 1,
+        "effects": { "damage": { "value": 18 } }
+      }
+    },
+    "level 20": {
+      "Arcane Blast": {
+        "energie_cost": 28,
+        "cooldown": 5,
+        "effects": { "damage": { "value": 38 } }
+      }
+    }
+  },
+  "Goblin": {
+    "level 1": {
+      "Stab": { "effects": { "damage": { "value": 5 } } },
+      "Dirty Tricks": { "effects": { "Debuff": { "value": 2, "duration": 2 } } }
+    }
+  },
+  "Orc": {
+    "level 1": {
+      "Cleave": { "effects": { "damage": { "value": 11 } }, "energie_cost": 5 },
+      "Rally": { "effects": { "Buff": { "value": 2, "duration": 2 } }, "energie_cost": 4 }
+    }
+  },
+  "DragonWhelp": {
+    "level 1": {
+      "Small Breath": { "effects": { "damage": { "value": 12 } }, "cooldown": 1 },
+      "Wing Buffet": { "effects": { "damage": { "value": 3 }, "Stun": { "duration": 1 } }, "energie_cost": 6, "cooldown": 2 }
+    }
+  }
+}

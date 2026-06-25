@@ -1,0 +1,32 @@
+{
+  "Knight": {
+    "base_stats": {
+      "hp": 26,
+      "endurance": 8
+    }
+  },
+  "Mage": {
+    "base_stats": {
+      "hp": 17,
+      "intelligence": 17
+    }
+  },
+  "Goblin": {
+    "base_stats": {
+      "hp": 13,
+      "force": 6
+    }
+  },
+  "Orc": {
+    "base_stats": {
+      "hp": 29,
+      "force": 10
+    }
+  },
+  "DragonWhelp": {
+    "base_stats": {
+      "hp": 22,
+      "intelligence": 9
+    }
+  }
+}

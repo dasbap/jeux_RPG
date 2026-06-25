@@ -1,9 +1,11 @@
 import json
 import os
+import logging
 from .factory.Character_factory import Character_factory
 from .factory.factory import Factory
 from .object_creation import ObjectCreation
 
+logger = logging.getLogger(__name__)
 
 class GameController:
     allinstance = []
@@ -19,6 +21,8 @@ class GameController:
 
     def __init_factory(self):
         self.add_factory(Character_factory())
+
+    
 
     def set_save_path(self, path: str) -> bool:
         self.save_path = path
@@ -36,7 +40,7 @@ class GameController:
             self.memory["last creation"] = save
             return True
         except Exception as e:
-            print(f"Erreur sauvegarde : {e}")
+            logger.exception(f"Erreur sauvegarde : {e}")
             return False
 
     def load_save(self, id) -> dict | None:
@@ -50,7 +54,7 @@ class GameController:
                 save = json.load(f)
             return save
         except Exception as e:
-            print(f"Erreur lecture sauvegarde : {e}")
+            logger.exception(f"Erreur lecture sauvegarde : {e}")
             return None
     
     def del_save(self, id) -> bool:
@@ -65,7 +69,7 @@ class GameController:
                     self.memory["last creation"] = None
                 return True
             except Exception as e:
-                print(f"Erreur suppression sauvegarde : {e}")
+                logger.exception(f"Erreur suppression sauvegarde : {e}")
                 return False
         else:
             return False
@@ -74,7 +78,7 @@ class GameController:
         self.factory.add(factory)
     
     def get_factory(self, type : ObjectCreation):
-        self.factory.get(type)
+        return self.factory.get(type)
     
     def clear_memory(self):
         self.memory = {"creation":[],"last creation":None}
@@ -83,7 +87,12 @@ class GameController:
         self.factory.get(type).set_object_target(new_target)
     
     def update_factory_target(self,type : ObjectCreation, new_target : object):
-        self.factory.get(type).update_object_target(new_target)
+        # `ObjectCreation` définit `set_object_target`, not `update_object_target`.
+        # Use `set_object_target` to change the target class/type for the factory.
+        factory = self.factory.get(type)
+        if factory is None:
+            raise ValueError("Factory not found for given type")
+        return factory.set_object_target(new_target)
     
     def update_factory_attribute(self, type : ObjectCreation, attribute : dict):
         self.factory.get(type).update_attribute_required(**attribute)
@@ -92,12 +101,22 @@ class GameController:
         self.factory.get(type).set_attribute_required(**attribute)
     
     def factory_create(self, type : ObjectCreation | str, **arg) -> object:
-        if isinstance(type,str):
+        if isinstance(type, str):
             type = self.factory.get_by_name(type)
-        if type is None:raise ValueError("a unknow str for a reach factory")
-        last_create = self.factory.get(type).create_object(arg)
+        if type is None:
+            raise ValueError("a unknow str for a reach factory")
+        
+        # Extract to_level if provided, otherwise use default
+        to_level = arg.pop('to_level', {'to_level': 0})
+        
+        # Set the required attributes before creating
+        factory_instance = self.factory.get(type)
+        if arg:  # If there are remaining args (id, name, class_name)
+            factory_instance.set_attribute_required(**arg)
+        
+        last_create = factory_instance.create_object(to_level)
         self.memory["last creation"] = last_create
         self.memory["creation"].append(last_create)
-        return self.factory.get(type).create_object(arg)
+        return last_create
 
 gameController = GameController()

@@ -1,5 +1,7 @@
 from typing import List
 
+from jeuxRPG.i18n import t
+
 
 class InvocationPocket:
     def __init__(self, master, limit : int = 2):
@@ -51,4 +53,4 @@ class InvocationPocket:
     
     def __str__(self):
         noms_invocations = ", ".join(invoc.name for invoc in self.invocations)
-        return f"Invocation pocket of {self.master.name} : has {noms_invocations}"
+        return t("invocation_pocket.str", master=self.master.name, invocations=noms_invocations)

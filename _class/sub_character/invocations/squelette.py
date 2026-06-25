@@ -1,5 +1,6 @@
 from jeuxRPG._class.character import Character
 
+from jeuxRPG.i18n import t
 from jeuxRPG._class.res.dictType import ClassSkills
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
 
@@ -17,4 +18,4 @@ class Squelette(Invocation):
     def _required_exp_for_next_level(self):
         return 0
     def level_up(self):
-        return f"{self.name} can't level up"
+        return t("invocation.cannot_level_up", name=self.name)

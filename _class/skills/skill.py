@@ -1,5 +1,8 @@
 import copy
+import logging
 from typing import Any, Callable, Dict, Optional, Tuple, Union
+
+from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.alteration.alteration import AlterationType
 from jeuxRPG._class.res.character.stats.basic_stat import AttributeStat, Energie, Force, Intelligence, Mana, Sagesse
 from jeuxRPG._class.res.classType import DamageType, SkillType
@@ -43,18 +46,18 @@ class Skill:
         self.custom_action = custom_action
         self.cooldown = cooldown
         self.current_cooldown = 0
-        self.description = description or f"Compétence {name} de type {skill_type.name}"
+        self.description = description or t("skill.default_desc", name=name, skill_type=skill_type.name)
         self._register_skill()
         
     def __str__(self) -> str:
         costs = []
         if self.energie_cost > 0:
             costs.append(f"{self.energie_target.__name__}: {self.energie_cost}")
-        cost_str = ", ".join(costs) if costs else "Aucun coût"
-        return (f"{self.name} [{self.skill_type.name}] - {cost_str} - "
-                f"Cooldown: {self.cooldown} - {self.description}")
+        cost_str = ", ".join(costs) if costs else t("skill.no_cost")
+        return t("skill.str", name=self.name, skill_type=self.skill_type.name, 
+                 cost_str=cost_str, cooldown=self.cooldown, description=self.description)
     def __repr__(self):
-        return f"{self.name, self.energie_target.__name__, "cost : " + str(self.energie_cost),"cooldown : " +  str(self.current_cooldown)}"
+        return f"{self.name} (cost: {self.energie_cost} {self.energie_target.__name__}, cooldown: {self.current_cooldown})"
 
     def _register_skill(self):
         """Enregistre le sort s'il est unique"""
@@ -66,20 +69,18 @@ class Skill:
         return self.current_cooldown <= 0
 
     def can_afford(self, caster: Any) -> bool:
-        try :
+        try:
             act = caster.get_energie(self.energie_target)
-            if act.__class__ == self.energie_target:
-                return True
-        except :
+            return isinstance(act, self.energie_target) and act.current_value >= self.energie_cost
+        except (AttributeError, TypeError):
             return False
-        return False
     
     def get_true_damage(self, caster, target):
         copy_caster = copy.deepcopy(caster)
         copy_target = copy.deepcopy(target)
         copy_skill = copy.deepcopy(self)
-        result = copy_skill.execute(copy_caster,copy_target)
-        return result["effects"]["true_damage"] or 0
+        result = copy_skill.execute(copy_caster, copy_target)
+        return result.get("effects", {}).get("true_damage", 0) or 0
 
     def setcooldown(self) -> None:
         if self.current_cooldown > 0: raise RuntimeError(f"cooldown is not ready for : {self.name}")
@@ -119,7 +120,7 @@ class Skill:
         return result
 
     def special_action(self, caster, target) -> Dict[str, Any]:
-        self._execute_default_action(caster, target)
+        return self._execute_default_action(caster, target)
 
     def _execute_default_action(self, caster: Any, target: Any) -> Dict[str, Any]:
         """Exécute l'action par défaut en fonction du type de compétence"""
@@ -168,6 +169,32 @@ class Skill:
 
         caster_stat = caster.status["stats"][stat_target.__name__]
         damage = calculate_damage(caster_stat)
+
+        # Apply target advantage/resilience on damage type if available
+        modifier = 1.0
+        try:
+            adv = getattr(target, "class_table", {}).get("advantage", None)
+            if adv is not None and self.DamageType is not None:
+                weak_list = None
+                resi_list = None
+                # Support Advantage instance or dict forms
+                if hasattr(adv, "get_weakness"):
+                    weak_list = set(adv.get_weakness())
+                    resi_list = set(adv.get_resilience())
+                elif isinstance(adv, dict):
+                    weak_list = set(adv.get("weakness", adv.get("weak", [])))
+                    resi_list = set(adv.get("resilience", adv.get("resilient", [])))
+                if weak_list is not None and self.DamageType in weak_list:
+                    # Weakness factor tuned empirically
+                    modifier *= 1.8
+                if resi_list is not None and self.DamageType in resi_list:
+                    # Stronger resilience factor
+                    modifier *= 0.6
+        except Exception:
+            # If anything goes wrong, ignore advantage modifiers
+            pass
+
+        damage = int(max(1, damage * modifier))
         initial_hp = target.get_stat("HP").current_value
         
         results["message"] = target.lose_hp(caster, damage)
@@ -222,20 +249,18 @@ class Skill:
         all_message = ""
         effects_list = []
 
-        def process_effects(effect_list: Union[SkillEffect, list[SkillEffect]]):
+        def process_effects(effect_item: Union[SkillEffect, list[SkillEffect]]):
             nonlocal total_pass, total_success, all_message, effects_list
-            if isinstance(effect_list, SkillEffect):
-                effect_list = [effect_list]
-            for eff in effect_list:
-                success, message = target.add_alteration(eff)
+            items = [effect_item] if isinstance(effect_item, SkillEffect) else (effect_item or [])
+            for eff in items:
+                success, message, _ = target.add_alteration(caster, eff)
                 total_pass += 1
                 if success:
                     total_success += 1
                     effects_list.append(
                         f"{eff.stat_target.__name__} {'+' if eff.alterationtype == AlterationType.BUFFSTAT else '-'}{eff.value}"
                     )
-                messages = [f"n°{i} : {msg}" for i, msg in enumerate(all_message, start=1)]
-                all_message = ", ".join(messages)
+            all_message = ", ".join(effects_list)
 
         process_effects(effects.get("Buff", []))
         process_effects(effects.get("Debuff", []))
@@ -248,7 +273,6 @@ class Skill:
     def update_cooldown(self) -> None:
         if self.current_cooldown > 0:
             self.current_cooldown -= 1
-            raise MemoryError()
 
     def reset_cooldown(self) -> None:
         self.current_cooldown = 0
@@ -257,7 +281,8 @@ class Skill:
     def apply_alteration(cls,caster, target = None, skill_effect : SkillEffect = None) ->tuple[bool, str]:
         if not skill_effect: raise ValueError("skill_effect must be given")
         target = target if target else caster
-        return target.add_alteration(skill_effect)
+        ok, msg, _ = target.add_alteration(caster, skill_effect)
+        return ok, msg
     
     @classmethod
     def get_skill_by_name(cls, name: str) -> 'Skill':

@@ -6,6 +6,7 @@ from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.team.alliance import Alliance
 from jeuxRPG._class.res.team.team import Team
+from jeuxRPG.i18n import t
 
 
 class Fight:
@@ -143,6 +144,21 @@ class Fight:
                 self.log_message.append(f"{who_play.name} est mort et ne peut pas jouer.")
                 continue
 
+            # Skip turn if stunned, but still tick status so stun can expire
+            if who_play.is_stun():
+                try:
+                    updates = who_play._update_status()
+                    if isinstance(updates, list):
+                        extra_msgs = [m for m, _ in updates if m]
+                        if extra_msgs:
+                            self.log_message.append(" ".join(extra_msgs))
+                except Exception:
+                    pass
+                self.log_message.append(f"{who_play.name} est étourdi et saute son tour.")
+                if who_play in self.can_play:
+                    self.can_play.remove(who_play)
+                continue
+
             if who_play in self.attackers:
                 opponents = self.defenders.get_fighters()
                 allies = self.attackers.get_fighters()
@@ -169,13 +185,15 @@ class Fight:
                         if skill.skill_type == SkillType.RESURRECT and not ally.is_alive():
                             if self.play(who_play, ally, skill_name):
                                 self.log_message.append(f"{who_play.name} ressuscite {ally.name}")
-                                self.can_play.remove(who_play)
+                                if who_play in self.can_play:
+                                    self.can_play.remove(who_play)
                                 action_done = True
                                 break
                         elif skill.skill_type in (SkillType.HEAL, SkillType.BUFF) and ally.is_alive():
                             if self.play(who_play, ally, skill_name):
                                 self.log_message.append(f"{who_play.name} utilise {skill_name} sur {ally.name}")
-                                self.can_play.remove(who_play)
+                                if who_play in self.can_play:
+                                    self.can_play.remove(who_play)
                                 action_done = True
                                 break
                     if action_done:
@@ -183,7 +201,8 @@ class Fight:
 
                 if not action_done:
                     self.log_message.append(f"{who_play.name} ne peut rien faire ce tour-ci.")
-                    self.can_play.remove(who_play)
+                    if who_play in self.can_play:
+                        self.can_play.remove(who_play)
 
         self.end_round(rest)
 
@@ -199,12 +218,18 @@ class Fight:
 
                 
     def play(self, who_play : Character, target : Character, skill_name : str) -> bool:
-        if not who_play in self.can_play : raise RuntimeWarning(f"{who_play.name} can't play, already play")
-        if who_play.is_stun() : raise RuntimeWarning(f"{who_play.name} is stun, can't play")
-        
-        success, message = who_play.use_skill(skill_name,target)
+        # If the actor already played this round, treat as no-op (avoid raising during auto-battle loops)
+        if who_play not in self.can_play:
+            return False
+        if who_play.is_stun():
+            # Keep explicit signal for tests expecting a stun prevention behavior
+            raise RuntimeWarning(f"{who_play.name} is stun, can't play")
+
+        success, message = who_play.use_skill(skill_name, target)
         self.log_message.append(message)
-        if message == '' : input("here")
+        if message == '':
+            # Debug hook left from older flow; keep safe but non-blocking
+            pass
         self.can_play.remove(who_play)
         return success
     
@@ -216,15 +241,36 @@ class Fight:
         """String representation of the fight."""
         att_count = len(self.attackers.fighters)
         def_count = len(self.defenders.fighters)
-        status = "completed" if self._winner else "ongoing"
-        winner = f", winner: {self._winner.name}" if self._winner else ""
         
-        return (f"Fight ({status}): {att_count} attackers vs {def_count} defenders"
-                f"{winner}")
+        if self._winner:
+            return t("fight.str_completed", att_count=att_count, def_count=def_count, 
+                     winner=self._winner.name)
+        else:
+            return t("fight.str_ongoing", att_count=att_count, def_count=def_count)
 
     def end(self) -> None:
         """Clean up the fight alliances."""
         self.attackers.fighters.clear()
         self.defenders.fighters.clear()
         self.clear_log()
+
+    def is_over(self) -> bool:
+        """Determine whether the fight has ended and set the winner.
+
+        A fight is over when one side has no living fighters, or when both
+        sides have no living fighters.
+        """
+        attackers_alive = any(f.is_alive() for f in self.attackers.fighters)
+        defenders_alive = any(f.is_alive() for f in self.defenders.fighters)
+
+        if not attackers_alive and not defenders_alive:
+            self._winner = None
+            return True
+        if attackers_alive and not defenders_alive:
+            self._winner = self.attackers
+            return True
+        if defenders_alive and not attackers_alive:
+            self._winner = self.defenders
+            return True
+        return False
         

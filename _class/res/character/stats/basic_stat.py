@@ -1,3 +1,4 @@
+from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.stats.stat import DefaultStat
 
 
@@ -75,7 +76,14 @@ class AttributeStat(DefaultStat):
         if not issubclass(new_type, AttributeStat) : raise TypeError("Can only convert to AttributeStat subclasses")
         return super().change_type(new_type)
     def __str__(self) -> str:
-        return f"{self.name}: {self.current_value}"
+        return self.format()
+    
+    def format(self, lang: str = "en") -> str:
+        """Format attribute stat with translated name."""
+        translated_name = t(f"stat.{self.name}", lang)
+        if translated_name == f"stat.{self.name}":
+            translated_name = self.name
+        return t("stat.attr_str", lang, name=translated_name, current=self.current_value)
 
 # Statistiques vitales --------------------------------------------------------
 

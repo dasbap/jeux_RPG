@@ -1,6 +1,8 @@
 from enum import Enum
 from platform import node
 
+from jeuxRPG.i18n import t
+
 
 class AlterationType(Enum):
     INVINCIBILYTY = 0
@@ -53,7 +55,9 @@ class Alteration():
         return self.duration == 0
     
     def __str__(self) -> str:
-        return f"{self.name} : is a {self.type.name} and change {self.stat_target.__name__} of {self.target.name} by {self.value} for {self.duration} round"
+        return t("alteration.str", name=self.name, type=self.type.name, 
+                 stat=self.stat_target.__name__, target=self.target.name, 
+                 value=self.value, duration=self.duration)
     
     def __repr__(self) -> str:
         return self.__str__()

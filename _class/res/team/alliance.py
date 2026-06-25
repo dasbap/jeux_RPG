@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+from jeuxRPG.i18n import t
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.team.team import Team
 
@@ -51,4 +52,4 @@ class Alliance(Team):
         return is_in
     
     def __str__(self) -> str:
-        return f"Alliance '{self.name}' ({len(self.fighters)} members)"
+        return t("alliance.str", name=self.name, members=len(self.fighters))

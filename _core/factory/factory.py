@@ -11,7 +11,14 @@ class Factory:
             factory.group = self
     
     def get(self, type) -> ObjectCreation:
-        return next((f for f in self.factorys if isinstance(f, type)), None)
+        # Handle both class and instance as input
+        import inspect
+        if inspect.isclass(type):
+            # type is a class, find instance of that class
+            return next((f for f in self.factorys if f.__class__.__name__ == type.__name__), None)
+        else:
+            # type is an instance, find by class
+            return next((f for f in self.factorys if f.__class__.__name__ == type.__class__.__name__), None)
     
     def get_by_name(self, type : str) -> ObjectCreation:
         return next((f for f in self.factorys if f.__class__.__name__ == type), None)

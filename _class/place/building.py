@@ -29,6 +29,3 @@ class Building:
             "level": self.level,
             "status": self.status
         }
-build = Building("slt","tower",1)
-
-build.set_status(Build_state.UNDER_CONSTRUCTION)

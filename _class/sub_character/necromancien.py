@@ -8,6 +8,9 @@ from jeuxRPG._class.res.character.table_stat_subclass import necromancien_table
 
 
 class Necromancien(Character):
+    """Classe représentant un Nécromancien, spécialisé dans l'invocation de morts-vivants."""
+    
+    is_playable: bool = True
     class_skills_dict: ClassSkills = necromancien_table["class_skills_dict"]
     def __init__(self, user_id: str, name: str):
         super().__init__(

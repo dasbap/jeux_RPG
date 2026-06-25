@@ -101,19 +101,20 @@ class TeamBattle:
         raise ValueError(f"Team {team} not found in any alliance")
     
     def is_over(self) -> bool:
-        """Vérifie si la bataille est terminée"""
-        alliance_fighter_alive : list[Character] = []
+        """Vérifie si la bataille est terminée.
+        
+        La bataille est terminée quand une seule alliance a des combattants vivants,
+        ou quand toutes les alliances n'ont plus de combattants.
+        """
+        alliances_with_alive_fighters = 0
         for alliance in self.alliances:
             for fighter in alliance.get_fighters():
                 if fighter.is_alive():
-                    alliance_fighter_alive.append(fighter)
-                    
-        for fighter in alliance_fighter_alive:
-            for other_fighter in alliance_fighter_alive:
-                if fighter == other_fighter: continue
-                if fighter.team not in self.get_team_alliance(other_fighter.team).get_enemies():
-                    return False
-        return True
+                    alliances_with_alive_fighters += 1
+                    break  # Au moins un vivant dans cette alliance
+        
+        # Terminée si 0 ou 1 alliance a encore des combattants vivants
+        return alliances_with_alive_fighters <= 1
     
     def auto_battle(self):
         shuffle(self.fights)
@@ -122,4 +123,4 @@ class TeamBattle:
         if not self.is_over():
             for fight in self.fights:
                 fight.rest()
-                self.auto_battle()
+            self.auto_battle()

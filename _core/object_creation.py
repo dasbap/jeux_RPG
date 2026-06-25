@@ -40,6 +40,8 @@ class ObjectCreation:
 
     def reset_attribute_required(self) -> None:
         self.attribute_required = {}
+        
+    
     def _update_groupe(self,creation):
         if hasattr(self.group,"last_create"):
                 self.group.last_create = creation

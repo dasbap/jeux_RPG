@@ -1,6 +1,7 @@
 
 from typing import List, Optional, Union
 
+from jeuxRPG.i18n import t
 from jeuxRPG._class.character import Character
 
 
@@ -56,8 +57,8 @@ class Team():
     
     def __str__(self) -> str:
         """Return a string representation of the team."""
-        return (f"Team '{self.name}': {len(self.fighters)} fighters, "
-                f"{len(self.allies)} allies, {len(self.enemies)} enemies")
+        return t("team.str", name=self.name, fighters=len(self.fighters), 
+                 allies=len(self.allies), enemies=len(self.enemies))
     
     def __repr__(self) -> str:
         """Return an unambiguous string representation of the team."""

@@ -1,5 +1,6 @@
 from typing import List
 
+from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.alteration.alteration import Buff, DeBuff
 
 
@@ -106,8 +107,16 @@ class DefaultStat:
         return self
     
     def __str__(self) -> str:
-        """User-friendly string representation."""
-        return f"{self.name}: {self.current_value}/{self.value}"
+        """User-friendly string representation (uses default language)."""
+        return self.format()
+    
+    def format(self, lang: str = "en") -> str:
+        """Format stat with translated name in the specified language."""
+        translated_name = t(f"stat.{self.name}", lang)
+        # If no translation found, use original name
+        if translated_name == f"stat.{self.name}":
+            translated_name = self.name
+        return t("stat.str", lang, name=translated_name, current=self.current_value, max=self.value)
     
     def __repr__(self) -> str:
         """Developer-friendly string representation."""
