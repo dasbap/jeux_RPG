@@ -9,6 +9,7 @@ from .simulator import (
     run_matrix_to_file,
     simulate_one_vs_all,
     simulate_skill_duel,
+    simulate_tower,
     analyze_summary,
 )
 from .loader import apply_class_overrides, apply_skill_overrides
@@ -23,7 +24,7 @@ def _write(path: str, obj):
 
 def main():
     parser = argparse.ArgumentParser(description="Run balance simulations and write JSON reports")
-    parser.add_argument("--mode", choices=["matrix", "one_vs_all", "skill_duel"], default="matrix")
+    parser.add_argument("--mode", choices=["matrix", "one_vs_all", "skill_duel", "tower"], default="matrix")
     parser.add_argument("--matches", type=int, default=10)
     parser.add_argument("--out", default=".data/balance/report.json")
     parser.add_argument("--print-analysis", dest="print_analysis", action="store_true",
@@ -50,6 +51,20 @@ def main():
         help="Who to force to use the skill: A, B, both, or none (default: none)"
     )
     parser.add_argument("--seed", dest="seed", type=int, default=None)
+
+    # tower
+    parser.add_argument("--tower-class", dest="tower_class", default="Knight")
+    parser.add_argument("--difficulty", dest="difficulty", default="easy")
+    parser.add_argument("--floors", dest="floors", type=int, default=20)
+    parser.add_argument("--start-floor", dest="start_floor", type=int, default=1)
+    parser.add_argument("--enemies-per-floor", dest="enemies_per_floor", type=int, default=1)
+    parser.add_argument(
+        "--resolution",
+        dest="resolution",
+        default="combat",
+        choices=["combat", "reward_curve", "xp_curve", "forced"],
+        help="combat runs real fights; reward_curve forces clears while awarding XP for level-curve checks.",
+    )
 
     args = parser.parse_args()
 
@@ -95,6 +110,27 @@ def main():
                         print(f"- {h}")
             except Exception as e:
                 print(f"[warn] Could not print analysis: {e}")
+        return
+
+    if mode == "tower":
+        res = simulate_tower(
+            class_name=args.tower_class,
+            difficulty=args.difficulty,
+            floors=args.floors,
+            start_floor=args.start_floor,
+            enemies_per_floor=args.enemies_per_floor,
+            seed=args.seed,
+            resolution=args.resolution,
+        )
+        _write(out, res)
+        print(f"tower simulation complete -> {out}")
+        if args.print_analysis:
+            print("\n=== Tower Summary ===")
+            print(
+                f"- {res['class']} {res['difficulty']} {res['resolution']}: "
+                f"floor {res['start_floor']}->{res['target_floor']}, "
+                f"reached {res['reached_floor']}, level {res['start_level']}->{res['final_level']}"
+            )
         return
 
     if mode == "one_vs_all":

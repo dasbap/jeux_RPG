@@ -66,6 +66,22 @@ $env:BOTKIRITO_FORCE_SIDE="A"
 ```
 This writes a JSON report containing per-mode results (neutral/weak/resist) when `ADVANTAGE_MODE=all`.
 
+### Tower progression
+Run a deterministic XP curve for a class in a tower. This forces floor clears
+while still awarding mob XP, so it is stable for checking expected level ranges:
+```powershell
+.venv/Scripts/python.exe -m jeuxRPG._balance.run_simulation --mode tower --tower-class Knight --difficulty easy --floors 20 --resolution reward_curve --out .data/balance/report_tower_knight_easy_20.json --print-analysis
+```
+
+Run real combat resolution with the same tower defaults:
+```powershell
+.venv/Scripts/python.exe -m jeuxRPG._balance.run_simulation --mode tower --tower-class Knight --difficulty easy --floors 10 --resolution combat --seed 0 --out .data/balance/report_tower_knight_easy_combat.json --print-analysis
+```
+
+The easy tower balance target is: a fresh Knight can clear floor 10, should not
+clear floor 50 in one continuous combat run, and the forced floor 1->20 XP curve
+lands around level 10-15 instead of matching the floor number.
+
 ## Scope
 - Classes: base_stats, upgrade_stats, advantage, class_type (use existing enum names), and optionally class_skills_dict structure (with caution).
 - Skills: attributes like energie_cost, cooldown, description; per-effect fields: value, duration, name.

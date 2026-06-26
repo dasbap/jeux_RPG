@@ -11,6 +11,8 @@ from jeuxRPG._class._event.confrontation.encounter.fight import Fight
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.sub_character import __all__ as CLASS_NAMES
 from jeuxRPG._class.res.classType import SkillType
+from jeuxRPG.game_engine import GameEngine
+from jeuxRPG.game_engine.tower import TowerRun, normalize_tower_difficulty
 
 
 @dataclass
@@ -173,6 +175,74 @@ def simulate_duel(class_a: str, class_b: str, matches: int = 25, seed: int | Non
             stats.side_b.hp_lost += t.hp_lost["B"]
 
     return stats
+
+
+class _TowerRewardCurveEngine:
+    """Resolve tower fights as clears while still awarding XP.
+
+    This isolates the XP curve from hit/miss combat variance, which makes
+    balance reports reproducible for expected level progression.
+    """
+
+    def run_fights(self, fights, timeout=None):
+        for fight in fights:
+            attackers = fight.attackers.get_fighters()
+            if not attackers:
+                continue
+            killer = attackers[0]
+            for defender in fight.defenders.get_fighters():
+                if defender.is_alive():
+                    defender.drop_xp(killer)
+                    defender.hp.current_value = 0
+
+
+def simulate_tower(
+    class_name: str = "Knight",
+    difficulty: str = "easy",
+    floors: int = 20,
+    start_floor: int = 1,
+    enemies_per_floor: int = 1,
+    seed: int | None = 42,
+    resolution: str = "combat",
+) -> Dict[str, Any]:
+    """Run a reproducible tower balance simulation."""
+    if seed is not None:
+        random.seed(seed)
+
+    difficulty = normalize_tower_difficulty(difficulty)
+    floors = max(1, int(floors))
+    start_floor = max(1, int(start_floor))
+    enemies_per_floor = max(1, int(enemies_per_floor))
+    resolution = str(resolution or "combat").strip().lower()
+    engine = _TowerRewardCurveEngine() if resolution in {"reward_curve", "xp_curve", "forced"} else GameEngine()
+
+    player = Character.create(class_name, user_id=f"tower_balance_{class_name}_{difficulty}", name=class_name)
+    start_level = player.level
+    target_floor = start_floor + floors - 1
+    reached_floor = TowerRun(engine).run_tour(
+        player,
+        start_floor=start_floor,
+        max_floors=target_floor,
+        enemies_before_boss_range=(enemies_per_floor, enemies_per_floor),
+        difficulty=difficulty,
+    )
+
+    cleared_floors = max(0, reached_floor - start_floor + 1)
+    return {
+        "class": class_name,
+        "difficulty": difficulty,
+        "resolution": resolution,
+        "seed": seed,
+        "start_floor": start_floor,
+        "target_floor": target_floor,
+        "reached_floor": reached_floor,
+        "cleared_floors": cleared_floors,
+        "completed": reached_floor >= target_floor and player.is_alive(),
+        "start_level": start_level,
+        "final_level": player.level,
+        "final_exp": player.exp,
+        "enemies_per_floor": enemies_per_floor,
+    }
 
 
 def simulate_matrix(class_names: List[str] | None = None, matches_per_pair: int = 25, seed: int | None = 42) -> Dict[str, Any]:

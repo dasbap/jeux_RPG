@@ -307,7 +307,7 @@ goblin_table: ClassTable = {
         1: {HP: 2, Force: 1, "Energie": {Mana: 1}},
         5: {HP: 1, Force: 1},
     },
-    "advantage": {"weakness": [DamageType.SACRED], "resilience": [DamageType.PHYSICAL]},
+    "advantage": {"weakness": [], "resilience": []},
     "class_type": ClassType.DAMAGE,
     "class_skills_dict": {
         "level 1": {
@@ -350,7 +350,7 @@ orc_table: ClassTable = {
         1: {HP: 6, Force: 3, Endurance: 2, "Energie": {Aura: 2}},
         10: {HP: 3, Force: 2},
     },
-    "advantage": {"weakness": [DamageType.MAGIC], "resilience": [DamageType.PHYSICAL]},
+    "advantage": {"weakness": [], "resilience": []},
     "class_type": ClassType.SHIELD,
     "class_skills_dict": {
         "level 1": {
@@ -395,7 +395,7 @@ dragon_whelp_table: ClassTable = {
         1: {HP: 3, Intelligence: 2, Sagesse: 1, "Energie": {Mana: 3}},
         10: {HP: 2, Intelligence: 2},
     },
-    "advantage": {"weakness": [DamageType.SACRED], "resilience": [DamageType.MAGIC]},
+    "advantage": {"weakness": [], "resilience": []},
     "class_type": ClassType.DAMAGE,
     "class_skills_dict": {
         "level 1": {
@@ -421,6 +421,105 @@ dragon_whelp_table: ClassTable = {
                 energie_target=Mana,
                 cooldown=2,
                 description="Coup d'aile étourdissant",
+            ),
+        }
+    },
+}
+
+physical_resistant_mob_table: ClassTable = {
+    "base_stats": {
+        "hp": 24,
+        "force": 8,
+        "endurance": 8,
+        "intelligence": 2,
+        "sagesse": 3,
+        "energie": {
+            1: {"type": Aura, "value": 14, "regen_rate": 0.25}
+        },
+    },
+    "upgrade_stats": {
+        1: {HP: 5, Force: 2, Endurance: 3, "Energie": {Aura: 2}},
+        10: {HP: 3, Endurance: 2},
+    },
+    "advantage": {"weakness": [DamageType.MAGIC], "resilience": [DamageType.PHYSICAL]},
+    "class_type": ClassType.SHIELD,
+    "class_skills_dict": {
+        "level 1": {
+            "Crushing Blow": Skill(
+                name="Crushing Blow",
+                skill_type=SkillType.DAMAGE,
+                damage_type=DamageType.PHYSICAL,
+                effects={"damage": SkillEffect(value=9)},
+                energie_cost=4,
+                energie_target=Aura,
+                cooldown=1,
+                description="Frappe lourde d'un gardien cuirasse",
+            ),
+        }
+    },
+}
+
+magic_resistant_mob_table: ClassTable = {
+    "base_stats": {
+        "hp": 18,
+        "force": 3,
+        "endurance": 4,
+        "intelligence": 10,
+        "sagesse": 5,
+        "energie": {
+            1: {"type": Mana, "value": 22, "regen_rate": 0.35}
+        },
+    },
+    "upgrade_stats": {
+        1: {HP: 3, Intelligence: 3, Sagesse: 1, "Energie": {Mana: 3}},
+        10: {HP: 2, Intelligence: 2},
+    },
+    "advantage": {"weakness": [DamageType.SACRED], "resilience": [DamageType.MAGIC]},
+    "class_type": ClassType.DAMAGE,
+    "class_skills_dict": {
+        "level 1": {
+            "Arcane Spark": Skill(
+                name="Arcane Spark",
+                skill_type=SkillType.DAMAGE,
+                damage_type=DamageType.MAGIC,
+                effects={"damage": SkillEffect(value=10)},
+                energie_cost=5,
+                energie_target=Mana,
+                cooldown=1,
+                description="Eclat magique concentre",
+            ),
+        }
+    },
+}
+
+sacred_resistant_mob_table: ClassTable = {
+    "base_stats": {
+        "hp": 20,
+        "force": 4,
+        "endurance": 5,
+        "intelligence": 4,
+        "sagesse": 10,
+        "energie": {
+            1: {"type": Foie, "value": 20, "regen_rate": 0.3}
+        },
+    },
+    "upgrade_stats": {
+        1: {HP: 3, Endurance: 1, Sagesse: 3, "Energie": {Foie: 3}},
+        10: {HP: 2, Sagesse: 2},
+    },
+    "advantage": {"weakness": [DamageType.PHYSICAL], "resilience": [DamageType.SACRED]},
+    "class_type": ClassType.DAMAGE,
+    "class_skills_dict": {
+        "level 1": {
+            "Radiant Smite": Skill(
+                name="Radiant Smite",
+                skill_type=SkillType.DAMAGE,
+                damage_type=DamageType.SACRED,
+                effects={"damage": SkillEffect(value=10)},
+                energie_cost=5,
+                energie_target=Foie,
+                cooldown=1,
+                description="Impact sacre focalise",
             ),
         }
     },
