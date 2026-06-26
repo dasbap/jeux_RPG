@@ -366,6 +366,20 @@ class TestLevelUpEdgeCases:
         for skill in initial_skills:
             assert skill in char.skills
 
+    def test_level_up_skills_are_independent_instances(self):
+        """Level-up skills should not share cooldown state across characters."""
+        char1 = Character.create("Knight", "user_skill_1", "KnightOne")
+        char2 = Character.create("Knight", "user_skill_2", "KnightTwo")
+
+        char1.gain_exp(1000)
+        char2.gain_exp(1000)
+
+        assert char1.skills["Shield Bash"] is not char2.skills["Shield Bash"]
+
+        char1.skills["Shield Bash"].current_cooldown = 2
+
+        assert char2.skills["Shield Bash"].current_cooldown == 0
+
     def test_concurrent_level_calculations(self):
         """Multiple characters can level up independently."""
         char1 = Character.create("Knight", "user1", "Knight1")

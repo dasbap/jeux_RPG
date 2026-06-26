@@ -105,20 +105,19 @@ class TestMobXpReward:
     """Tests for get_xp_reward calculation."""
 
     def test_xp_reward_level_1(self):
-        """Level 1 mob with 0 exp gives 50 XP."""
+        """Level 1 mob with 0 exp gives reduced XP."""
         mob = Mob("mob_001", "Goblin")
-        assert mob.get_xp_reward() == 50  # 1 * 50 + 0
+        assert mob.get_xp_reward() == 25
 
     def test_xp_reward_level_5(self):
-        """Level 5 mob gives appropriate XP."""
+        """Level 5 mob gives reduced XP."""
         mob = Mob("mob_001", "Goblin")
         mob.level = 5
         mob.exp = 20
-        # 5 * 50 + 20 = 270
-        assert mob.get_xp_reward() == 270
+        assert mob.get_xp_reward() == 135
 
     def test_xp_reward_boss_double(self):
-        """Boss mobs give double XP."""
+        """Boss mobs give double reduced XP."""
         mob = Mob("mob_001", "Goblin")
         boss = Mob("boss_001", "Dragon", is_boss=True)
         
@@ -127,10 +126,8 @@ class TestMobXpReward:
         mob.exp = 0
         boss.exp = 0
         
-        # Normal: 5 * 50 = 250
-        # Boss: 250 * 2 = 500
-        assert mob.get_xp_reward() == 250
-        assert boss.get_xp_reward() == 500
+        assert mob.get_xp_reward() == 125
+        assert boss.get_xp_reward() == 250
 
     def test_boss_drop_xp_uses_double_reward(self):
         """Boss XP reward should apply when defeated."""
@@ -141,15 +138,14 @@ class TestMobXpReward:
 
         boss.drop_xp(killer)
 
-        assert killer.exp == 100
+        assert killer.exp == 50
 
     def test_xp_reward_with_exp(self):
-        """XP reward includes current exp."""
+        """XP reward includes current exp before reduction."""
         mob = Mob("mob_001", "Goblin")
         mob.level = 3
         mob.exp = 50
-        # 3 * 50 + 50 = 200
-        assert mob.get_xp_reward() == 200
+        assert mob.get_xp_reward() == 100
 
 
 class TestMobCombat:

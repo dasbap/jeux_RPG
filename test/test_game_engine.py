@@ -105,6 +105,30 @@ def test_tower_boss_floor_interval_controls_boss_floors():
     assert boss_floors == [3, 5]
 
 
+def test_tower_default_bosses_spawn_every_five_floors():
+    from jeuxRPG.game_engine.tower import TowerRun
+
+    player = Character.create("Knight", user_id="tower_default_boss_player", name="Player")
+    engine = RecordingEngine()
+    runner = TowerRun(engine)
+
+    reached = runner.run_tour(
+        player,
+        start_floor=1,
+        max_floors=10,
+        enemies_before_boss_range=(1, 1),
+    )
+
+    boss_floors = [
+        int(fight.defenders.fighters[0].name.split("L", 1)[1].split("#", 1)[0])
+        for fight in engine.fights
+        if fight.defenders.fighters and getattr(fight.defenders.fighters[0], "is_boss", False)
+    ]
+
+    assert reached == 10
+    assert boss_floors == [5, 10]
+
+
 def test_tower_run_reports_only_cleared_floors():
     from jeuxRPG.game_engine.tower import TowerRun
 
@@ -125,6 +149,19 @@ def test_tower_run_reports_only_cleared_floors():
     assert cleared_floors == [4, 5, 6]
 
 
+def test_tower_easy_restores_hp_after_floor():
+    from jeuxRPG.game_engine.tower import TowerRun
+
+    runner = TowerRun(GameEngine())
+    player = Character.create("Knight", user_id="tower_rest_player", name="Player")
+    player.lose_hp(Character.create("Mob", user_id="tower_rest_mob", name="Mob"), 10)
+    damaged_hp = player.hp.current_value
+
+    runner.rest_party_after_floor([player], "easy")
+
+    assert player.hp.current_value > damaged_hp
+
+
 def test_tower_difficulty_scales_mob_level():
     from jeuxRPG.game_engine.tower import TowerRun
 
@@ -134,3 +171,29 @@ def test_tower_difficulty_scales_mob_level():
     hard_mob = runner._make_mob(floor=8, idx=1, difficulty="hard")
 
     assert hard_mob.level > easy_mob.level
+
+
+def test_tower_easy_mobs_give_reduced_xp_reward():
+    from jeuxRPG.game_engine.tower import TowerRun
+
+    runner = TowerRun(GameEngine())
+    mob = runner._make_mob(floor=20, idx=1, difficulty="easy")
+
+    assert mob.get_xp_reward() < mob.level * 50
+
+
+def test_tower_easy_reward_curve_keeps_knight_below_floor_level():
+    from jeuxRPG._balance.simulator import simulate_tower
+
+    report = simulate_tower(
+        class_name="Knight",
+        difficulty="easy",
+        floors=20,
+        start_floor=1,
+        enemies_per_floor=1,
+        seed=42,
+        resolution="reward_curve",
+    )
+
+    assert report["completed"] is True
+    assert 10 <= report["final_level"] <= 15
