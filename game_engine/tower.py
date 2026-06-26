@@ -9,16 +9,22 @@ from jeuxRPG._class._event.confrontation.encounter.fight import Fight
 
 TOWER_DIFFICULTIES = {
     "easy": {
-        "level_multiplier": 0.75,
-        "boss_stat_multiplier": 0.8,
+        "level_multiplier": 0.5,
+        "boss_stat_multiplier": 0.5,
+        "xp_reward_multiplier": 1.15,
+        "floor_heal_ratio": 0.5,
     },
     "normal": {
         "level_multiplier": 1.0,
         "boss_stat_multiplier": 1.0,
+        "xp_reward_multiplier": 1.0,
+        "floor_heal_ratio": 0.25,
     },
     "hard": {
         "level_multiplier": 1.35,
         "boss_stat_multiplier": 1.4,
+        "xp_reward_multiplier": 1.0,
+        "floor_heal_ratio": 0.0,
     },
 }
 
@@ -43,9 +49,10 @@ class TowerRun:
 
     Behavior:
     - Each floor spawns N mobs (N random between `enemies_before_boss_range`).
-    - Boss floors spawn a tough mob after the regular encounters.
+    - Boss floors spawn a tough mob after the regular encounters, every 5 floors by default.
     - Every `special_boss_interval` boss floors spawn a stronger tough mob.
     - Mobs are scaled to the floor by granting XP to reach target level.
+    - Tower mobs inherit reduced mob XP rewards and may apply tower-specific reward tuning.
     """
 
     def __init__(self, engine: GameEngine):
@@ -73,6 +80,21 @@ class TowerRun:
     def _difficulty_multiplier(self, difficulty: str, setting: str) -> float:
         normalized = normalize_tower_difficulty(difficulty)
         return float(TOWER_DIFFICULTIES[normalized][setting])
+
+    def _apply_tower_xp_reward(self, mob: Mob, difficulty: str) -> None:
+        multiplier = self._difficulty_multiplier(difficulty, "xp_reward_multiplier")
+        reward = max(1, round(mob.get_xp_reward() * multiplier))
+        mob.get_xp_reward = lambda reward=reward: reward
+
+    def rest_party_after_floor(self, party: Iterable[Character], difficulty: str) -> None:
+        heal_ratio = self._difficulty_multiplier(difficulty, "floor_heal_ratio")
+        if heal_ratio <= 0:
+            return
+        for member in party:
+            if not member.is_alive():
+                continue
+            heal_amount = max(1, round(member.hp.value * heal_ratio))
+            member.gain_hp(heal_amount)
 
     def _apply_tough_boss_stats(
         self,
@@ -111,6 +133,7 @@ class TowerRun:
             mob.is_tough = True
             mob.boss_rank = max(1, boss_rank)
             self._apply_tough_boss_stats(mob, floor, mob.boss_rank, difficulty)
+        self._apply_tower_xp_reward(mob, difficulty)
         return mob
 
     def _is_boss_floor(self, floor: int, boss_start_floor: int, boss_floor_interval: int) -> bool:
@@ -124,8 +147,8 @@ class TowerRun:
         start_floor: int = 1,
         max_floors: int = 3,
         enemies_before_boss_range: Tuple[int, int] = (5, 8),
-        boss_start_floor: int = 1,
-        boss_floor_interval: int = 1,
+        boss_start_floor: int = 5,
+        boss_floor_interval: int = 5,
         special_boss_interval: int = 10,
         difficulty: str = "normal",
         on_floor_cleared: Callable[[int], None] | None = None,
@@ -165,6 +188,8 @@ class TowerRun:
 
             if on_floor_cleared is not None:
                 on_floor_cleared(floor)
+
+            self.rest_party_after_floor(party, difficulty)
 
             # Advance to next floor
             floor += 1

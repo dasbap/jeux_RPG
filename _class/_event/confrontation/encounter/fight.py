@@ -97,7 +97,15 @@ class Fight:
 
     def get_all_individuals(self) -> List[Character]:
         """Get all unique characters involved in the fight."""
-        return list(set(self.attackers.fighters + self.defenders.fighters))
+        individuals: List[Character] = []
+        seen: set[int] = set()
+        for fighter in self.attackers.fighters + self.defenders.fighters:
+            marker = id(fighter)
+            if marker in seen:
+                continue
+            seen.add(marker)
+            individuals.append(fighter)
+        return individuals
     
     def get_original_teams(self) -> List[Team]:
         """Get all original teams of participants (excluding alliances)."""
@@ -273,4 +281,3 @@ class Fight:
             self._winner = self.defenders
             return True
         return False
-        

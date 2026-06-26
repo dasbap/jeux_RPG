@@ -9,6 +9,9 @@ from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.character.table_stat_subclass import mob_table
 
 
+MOB_XP_REWARD_MULTIPLIER = 0.5
+
+
 class Mob(Character):
     """
     Enemy character class with XP drop mechanics.
@@ -63,5 +66,5 @@ class Mob(Character):
         Returns:
             XP reward value
         """
-        base_xp = self.level * 50 + self.exp
+        base_xp = max(1, round((self.level * 50 + self.exp) * MOB_XP_REWARD_MULTIPLIER))
         return base_xp * 2 if self.is_boss else base_xp

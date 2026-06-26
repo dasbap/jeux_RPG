@@ -5,6 +5,7 @@ Handles experience, leveling up, and stat upgrades.
 """
 
 from collections import defaultdict
+from copy import deepcopy
 from typing import TYPE_CHECKING, Dict
 
 from jeuxRPG.i18n import t
@@ -116,7 +117,7 @@ class ProgressionMixin:
         
         for level_skills_dict in self.class_skills_dict.keys():
             if level_skills_dict == "level " + str(self.level):
-                self.skills.update(self.class_skills_dict[level_skills_dict])
+                self.skills.update(deepcopy(self.class_skills_dict[level_skills_dict]))
         
         upgrades: Dict[int, Dict] = self.class_table["upgrade_stats"]
         for threshold in sorted(upgrades.keys()):
