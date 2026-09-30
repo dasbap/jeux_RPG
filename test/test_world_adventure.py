@@ -243,9 +243,9 @@ def test_invalid_geography_and_species_fail_before_save(tmp_path, mutation):
 def test_missing_saved_zone_does_not_rewrite_save(tmp_path):
     session = Adventure(tmp_path / "save.json")
     session.save()
-    data = json.loads(session.path.read_text())
+    data = json.loads(session.path.read_text(encoding="utf-8"))
     data["location"]["zone"] = "missing"
-    session.path.write_text(json.dumps(data))
+    session.path.write_text(json.dumps(data), encoding="utf-8")
     before = session.path.read_bytes()
     with pytest.raises(ValueError, match="Position"):
         Adventure(session.path)
@@ -255,9 +255,9 @@ def test_missing_saved_zone_does_not_rewrite_save(tmp_path):
 def test_old_save_migrates_to_capital_without_losing_progression(tmp_path):
     session = Adventure(tmp_path / "save.json")
     session.save()
-    data = json.loads(session.path.read_text())
+    data = json.loads(session.path.read_text(encoding="utf-8"))
     del data["location"]
-    session.path.write_text(json.dumps(data))
+    session.path.write_text(json.dumps(data), encoding="utf-8")
     restored = Adventure(session.path)
     assert restored.current_zone.kind == "capital"
     assert restored.snapshot().player == session.snapshot().player
