@@ -65,3 +65,5 @@ Voir [ADVENTURE.md](ADVENTURE.md) pour les commandes, recettes, règles de défa
 ## Catalogue de ressources
 
 Le lancement et le moteur utilisent les définitions livrées dans `jeuxRPG/resources/catalog.json`. Les nouveaux fichiers JSON ajoutés dans `jeuxRPG/resources/` sont chargés automatiquement au démarrage. Créatures, butins, matériaux, recettes, équipements, emplacements et panoplies sont extensibles sans modifier la boucle de jeu. `--resources` permet de choisir un catalogue séparé. Voir [RESOURCES.md](RESOURCES.md) et l'exemple d'araignée fourni.
+
+La carte en ligne de commande propose désormais trois mondes, des villages, villes, capitales, forteresses abandonnées, des chemins avec embuscades, des auberges et des plafonds de niveau par monde. Les sous-espèces et boss sont déclarés dans les ressources. Voir [WORLD.md](WORLD.md) pour explorer avec `python main.py --interactive`.

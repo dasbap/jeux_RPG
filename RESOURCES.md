@@ -52,3 +52,5 @@ Une panoplie peut contenir n'importe quel nombre de pièces sur des emplacements
 Les sauvegardes existantes gardent leurs identifiants et chargent les mêmes définitions. Il faut relancer une partie avec le catalogue contenant ses ressources : si une définition sauvegardée a été supprimée, le chargement échoue sans réinventer l'objet ni écraser la sauvegarde. Changer les bonus d'une définition applique le nouvel équilibrage lors du chargement ; les statistiques de base du personnage sont enregistrées séparément.
 
 Ajouter du contenu avec ces mécanismes nécessite seulement des données ou une nouvelle classe enregistrée. Une mécanique de jeu entièrement nouvelle, comme la durabilité ou une nouvelle famille d'effets, demande naturellement une implémentation du moteur.
+
+Les ressources comprennent désormais une carte multi-monde, les populations de zones, les chemins, les services, les sous-espèces et les boss. Leur schéma, les commandes et les plafonds de niveau sont décrits dans [WORLD.md](WORLD.md). Les nouvelles créatures peuvent déclarer `zones` pour rejoindre la population d'une zone existante via un fichier supplémentaire.

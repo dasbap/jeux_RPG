@@ -71,6 +71,10 @@ class Gear(BaseModel):
         return f"{self.family}:{self.tier}:{self.slot}"
 
     @property
+    def required_level(self):
+        return self._catalog.equipment[self.definition_id].minimum_level + (self.tier - 1) * self._catalog.rules.levels_per_tier
+
+    @property
     def name(self):
         return f"{self._catalog.equipment[self.definition_id].name} (rang {self.tier})"
 

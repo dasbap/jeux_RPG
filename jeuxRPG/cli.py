@@ -12,7 +12,7 @@ def show(value):
 def interactive(session):
     from jeuxRPG.adventure.equipment import material_name, parse_recipe
 
-    print("Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, quitter")
+    print("Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, carte, chemins, voyager <chemin>, auberge <jour|nuit>, quitter")
     while True:
         try:
             command = shlex.split(input("rpg> "))
@@ -29,6 +29,16 @@ def interactive(session):
                 return
             if action == "combat" and not arguments:
                 show(session.encounter())
+            elif action == "carte" and not arguments:
+                show(session.world_map())
+            elif action == "chemins" and not arguments:
+                show(session.available_paths())
+            elif action == "voyager" and len(arguments) == 1:
+                show(session.travel(arguments[0]))
+            elif action == "auberge" and len(arguments) == 1:
+                if arguments[0] not in {"jour", "nuit"}:
+                    raise ValueError("Choisissez jour ou nuit")
+                show(session.rest_at_inn({"jour": "day", "nuit": "night"}[arguments[0]]))
             elif action == "personnage" and not arguments:
                 show(session.status())
             elif action == "inventaire" and not arguments:

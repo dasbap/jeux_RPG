@@ -7,7 +7,7 @@ python -m pip install '.[test]'
 python main.py
 ```
 
-Le lancement enchaîne les combats sans limite, fabrique et équipe automatiquement les armures disponibles. `Ctrl+C` demande un arrêt après le combat en cours. Chaque combat est limité à 200 rounds : sans vainqueur, il devient un match nul plutôt qu'une boucle bloquée.
+Le lancement enchaîne les combats sans limite dans la zone actuelle ; dans les villes et capitales, il fabrique et équipe automatiquement les armures disponibles. `Ctrl+C` demande un arrêt après le combat en cours. Chaque combat est limité à 200 rounds : sans vainqueur, il devient un match nul plutôt qu'une boucle bloquée.
 
 La progression reprend automatiquement depuis `.data/adventure/player.json`. Le personnage, l'XP, les statistiques, les énergies, les matériaux, les objets, les pièces équipées, les compteurs et l'état aléatoire sont enregistrés ensemble. Une écriture temporaire puis un remplacement atomique évitent de tronquer la dernière sauvegarde valide. Une sauvegarde invalide provoque une erreur de chargement ; elle n'est pas remplacée par un nouveau personnage.
 
@@ -55,7 +55,7 @@ Chaque pièce améliore les HP, l'endurance et l'attribut de sa famille. Trois p
 
 ## Règles de l'arène
 
-Les ennemis sont ajustés au niveau du personnage (un niveau en dessous, minimum 1). Leur génération applique directement les mêmes gains de statistiques que la progression existante, sans rejouer des milliers de montées de niveau.
+Les ennemis sont choisis dans la population de la zone. Leur niveau vise un niveau en dessous de celui du personnage, borné par les niveaux de la zone et le plafond du monde. Leur génération applique directement les mêmes gains de statistiques que la progression existante, sans rejouer des milliers de montées de niveau.
 
 Après chaque combat, le personnage récupère ses HP/énergies, ses effets temporaires et cooldowns sont retirés. Une défaite conserve le niveau, l'XP et l'inventaire ; elle augmente le compteur de défaites et relance une rencontre. Le prêtre dispose d'une frappe de bâton spécifique à l'arène pour progresser en solo. Les victoires des invocations attribuent l'XP à leur maître.
 
@@ -66,3 +66,5 @@ L'arène est une application locale avec un seul processus par sauvegarde. Elle 
 ## Définitions de contenu
 
 Les règles et recettes décrites ci-dessus sont celles du catalogue livré par défaut. Elles proviennent désormais de `jeuxRPG/resources/catalog.json`. Le moteur ne crée aucune définition de contenu au lancement. Les matériaux, recettes, emplacements et compositions de panoplie peuvent être ajoutés dans un fichier JSON d'extension. Le mode interactif et le craft automatique les découvrent sans modification de la CLI. Voir [RESOURCES.md](RESOURCES.md).
+
+La carte, les sous-espèces, les boss, les auberges, les restrictions de craft et les plafonds des mondes sont décrits dans [WORLD.md](WORLD.md).
