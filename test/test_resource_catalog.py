@@ -30,8 +30,7 @@ def catalog_directory(tmp_path):
 def test_new_creature_material_slot_set_and_recipe_without_engine_changes(tmp_path, monkeypatch):
     directory = catalog_directory(tmp_path)
     session = Adventure(tmp_path / "player.json", resources=directory)
-    monkeypatch.setattr(session.rng, "choice", lambda sequence: "Spider")
-    result = session.encounter(auto_craft=True)
+    result = session.encounter(auto_craft=True, family="Spider")
     assert result["enemy"] == "Spider"
     assert result["outcome"] == "victory"
     assert result["loot"]["materials"] == {"Spider:1:silk": 2}

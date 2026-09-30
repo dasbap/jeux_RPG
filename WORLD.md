@@ -12,7 +12,7 @@ Lancer `python main.py --interactive` pour explorer en ligne de commande. Les d�
 
 Chaque monde comprend une capitale dans sa zone principale, un village dans les terres de bas niveau, une forêt, une ville dans les terres de niveau moyen, des montagnes et deux forteresses abandonnées aux extrémités des chemins. Les zones habitées et sauvages forment une toile avec des boucles et plusieurs itinéraires. Chaque monde possède son propre réseau. Les forteresses restent des destinations terminales aux frontières, accueillent des boss et n’offrent aucun service. Les capitales sont reliées par des chemins de portail, eux aussi soumis aux risques de voyage.
 
-Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'entrée. Les rencontres utilisent uniquement la population déclarée dans la zone. La commande `carte` affiche les mondes, les zones, leurs services, leurs niveaux, leurs populations et les chemins. `chemins` affiche les sorties accessibles depuis la position actuelle. La carte est un graphe maillé de 21 zones et 30 chemins, sans coordonnées ni interface graphique ; elle pilote les rencontres et les services de l'aventure. Les anciennes API de navigation entre bâtiments restent disponibles aux autres utilisateurs du paquet.
+Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'entrée. Les rencontres utilisent uniquement la population déclarée dans la zone. La commande `carte` affiche les mondes, les zones, leurs services, leurs niveaux, leurs populations et les chemins. `chemins` affiche les sorties accessibles depuis la position actuelle. La carte est un graphe maillé de 27 zones, 30 chemins routiers et 9 repères hors route, sans coordonnées ni interface graphique ; elle pilote les rencontres et les services de l'aventure. Les anciennes API de navigation entre bâtiments restent disponibles aux autres utilisateurs du paquet.
 
 ## Commandes
 
@@ -27,7 +27,7 @@ Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'e
 | `personnage` | Voir le niveau réel, le niveau effectif, l'heure et les services |
 | `craft Goblin:1:helmet` | Fabriquer dans l'atelier d'une ville ou capitale |
 
-Un voyage prend plusieurs heures. Une embuscade peut survenir à chaque heure : les chemins ordinaires ont 10 % de risque de jour et 30 % de nuit, les portails 5 % et 15 %. Le risque est réévalué à chaque heure, y compris après un combat. Une défaite ou un match nul interrompt le voyage et laisse le personnage dans sa zone de départ. Une victoire permet de poursuivre. Les combats consomment une heure. L'heure, la position, la progression et l'état aléatoire sont sauvegardés.
+Un voyage prend plusieurs heures. Les rencontres proviennent du croisement réel avec des PNJ ou des patrouilles suivant leurs itinéraires et horaires ; aucun tirage aléatoire ne déclenche un événement de voyage. Des patrouilles supplémentaires sont actives la nuit. Une défaite ou un match nul interrompt le voyage et laisse le personnage dans sa zone de départ. Une victoire permet de poursuivre. Les combats consomment une heure. L'heure, la position, les constructions, les découvertes et les itinéraires sont sauvegardés.
 
 Les auberges des villages, villes et capitales permettent d'attendre le prochain début de jour ou de nuit sans embuscade et restaurent la santé et les énergies. Si l'heure choisie est déjà atteinte, le séjour dure 24 heures. Le craft, y compris automatique, est réservé aux villes et capitales ; les villages proposent une auberge mais pas d'atelier. L'équipement et le retrait d'objets restent possibles partout.
 
@@ -52,3 +52,5 @@ Les sections `worlds`, `zones` et `paths` sont extensibles via des fichiers JSON
 Pour ajouter une sous-espèce à une zone existante sans remplacer celle-ci, ajouter sa définition dans un nouveau fichier avec une liste `zones`, par exemple `["aube-foret"]`. Sa population est ajoutée à celle de cette zone au chargement. Pour un nouveau monde, déclarer ses zones et au moins un chemin le reliant à la carte. La validation exige que le risque nocturne soit supérieur au risque diurne.
 
 Un catalogue historique sans géographie reste lisible pour compatibilité avec les intégrations existantes ; utiliser les sections de carte pour bénéficier des restrictions de lieux et des plafonds de monde. Les ajouts se prennent en compte au redémarrage. Voir aussi `RESOURCES.md`.
+
+Les sentes, les zones cachées, la création de villages, les relais et la simulation autonome sont détaillés dans [FRONTIER.md](FRONTIER.md). Les champs historiques `day_risk` et `night_risk` restent lisibles pour compatibilité ; le moteur de voyage ne les utilise plus pour tirer des événements.

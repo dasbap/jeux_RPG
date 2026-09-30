@@ -49,7 +49,6 @@ def test_subspecies_and_boss_stats_loot_and_parent(tmp_path, monkeypatch):
     assert base.hp.value < sub.hp.value < boss.hp.value
     assert session.catalog.creatures["RoiGobelin"].parent == "Goblin"
     at(session, "aube-fort-ouest", 16)
-    monkeypatch.setattr(session.rng, "choice", lambda pool: "RoiGobelin")
     monkeypatch.setattr(session.rng, "randint", lambda low, high: low)
     session.player.force.upgrade_base_value(100000)
     report = session.encounter()
@@ -60,10 +59,8 @@ def test_subspecies_and_boss_stats_loot_and_parent(tmp_path, monkeypatch):
 
 def test_combat_pool_and_levels_follow_zone(tmp_path, monkeypatch):
     session = at(Adventure(tmp_path / "save.json"), "aube-ville", 6)
-    pools = []
-    monkeypatch.setattr(session.rng, "choice", lambda pool: pools.append(list(pool)) or pool[0])
     report = session.encounter(max_rounds=1)
-    assert pools[0] == session.current_zone.creatures
+    assert report["enemy"] in session.current_zone.creatures
     assert report["enemy_level"] == 6
 
 
@@ -124,14 +121,14 @@ def test_rest_requires_inn_and_valid_phase(tmp_path):
     assert session.snapshot().model_dump() == before
 
 
-def test_night_has_more_ambushes_and_failed_fight_prevents_arrival(tmp_path, monkeypatch):
+def test_scheduled_night_patrol_and_failed_fight_prevent_arrival(tmp_path, monkeypatch):
     day = Adventure(tmp_path / "day.json")
     night = Adventure(tmp_path / "night.json")
     night.location.elapsed_hours = 18
     for session in [day, night]:
         monkeypatch.setattr(session.rng, "random", lambda: .2)
     assert day.travel("aube-capitale-village")["encounters"] == []
-    monkeypatch.setattr(night, "encounter", lambda: {"outcome": "defeat"})
+    monkeypatch.setattr(night, "encounter", lambda **kwargs: {"outcome": "defeat"})
     result = night.travel("aube-capitale-village")
     assert len(result["encounters"]) == 1
     assert not result["arrived"]
@@ -139,14 +136,15 @@ def test_night_has_more_ambushes_and_failed_fight_prevents_arrival(tmp_path, mon
     assert Adventure(night.path).location.elapsed_hours == 19
 
 
-def test_risk_changes_during_a_path_crossing_sunset(tmp_path, monkeypatch):
+def test_scheduled_patrols_start_at_sunset(tmp_path, monkeypatch):
     session = Adventure(tmp_path / "save.json")
     session.location.elapsed_hours = 17
     monkeypatch.setattr(session.rng, "random", lambda: .2)
-    monkeypatch.setattr(session, "encounter", lambda: {"outcome": "victory"})
+    monkeypatch.setattr(session, "encounter", lambda **kwargs: {"outcome": "victory"})
     result = session.travel("aube-capitale-village")
     assert result["arrived"]
-    assert len(result["encounters"]) == 1
+    assert len(result["encounters"]) >= 1
+    assert all("patrol" in encounter for encounter in result["encounters"])
 
 
 def test_world_cap_preserves_real_character_and_removes_overlevel_gear(tmp_path, monkeypatch):
@@ -299,8 +297,7 @@ def test_extra_resource_file_assigns_new_subspecies_to_existing_zone(tmp_path, m
     pool = session.catalog.zone_creatures("aube-foret")
     assert "GoblinDesMarais" in pool
     assert "GoblinDesMarais" not in session.catalog.zone_creatures("aube-capitale")
-    monkeypatch.setattr(session.rng, "choice", lambda choices: choices[-1])
-    assert session.encounter()["enemy"] == "GoblinDesMarais"
+    assert session.encounter(family="GoblinDesMarais")["enemy"] == "GoblinDesMarais"
     assert session.world_map()["zones"]["aube-foret"]["creatures"] == pool
 
 
@@ -369,7 +366,7 @@ def test_capped_combat_performance_and_stable_permanent_stats(tmp_path):
 @pytest.mark.parametrize("world", ["aube", "cendres", "confins"])
 def test_world_core_is_a_mesh_with_alternative_routes(world):
     catalog = default_catalog()
-    core = {key for key, zone in catalog.zones.items() if zone.world == world and zone.kind != "fortress"}
+    core = {key for key, zone in catalog.zones.items() if zone.world == world and zone.kind != "fortress" and not zone.hidden}
     adjacency = {key: set() for key in core}
     for path in catalog.paths.values():
         if path.source in core and path.destination in core:

@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from copy import deepcopy
 import json
 import os
@@ -17,6 +18,8 @@ from jeuxRPG._class.skills.skillEffect import SkillEffect
 from .equipment import Gear, Inventory, Positive, Quantity, value as resource_id
 from .catalog import default_catalog, load_catalog
 from .world import LocationState, WorldMixin
+from .frontier import FrontierState, FrontierMixin, WorldSimulation
+from .coordination import world_lock
 
 
 class EnergyState(BaseModel):
@@ -50,6 +53,7 @@ class SaveState(BaseModel):
     draws: Quantity = 0
     rng_state: list[Any]
     location: LocationState | None = None
+    frontier: FrontierState = Field(default_factory=FrontierState)
 
 
 STAT_NAMES = ("HP", "Force", "Endurance", "Intelligence", "Sagesse")
@@ -60,8 +64,8 @@ def as_tuple(value):
     return tuple(as_tuple(item) for item in value) if isinstance(value, list) else value
 
 
-class Adventure(WorldMixin):
-    def __init__(self, path: str | Path, class_name="Knight", name="Héros", seed=42, resources=None):
+class Adventure(FrontierMixin, WorldMixin):
+    def __init__(self, path: str | Path, class_name="Knight", name="Héros", seed=42, resources=None, world_save=None):
         self.path = Path(path)
         self.rng = random.Random(seed)
         self.catalog = load_catalog(resources) if resources is not None else default_catalog()
@@ -69,6 +73,8 @@ class Adventure(WorldMixin):
         self.battles = self.wins = self.losses = self.draws = 0
         self._bonuses = {}
         self.location = None
+        self.world_path = Path(world_save) if world_save is not None else None
+        self.frontier = FrontierState(clock=self.catalog.geography.start_hour if self.catalog.geography else 8)
         if self.path.exists():
             self._load()
         else:
@@ -76,7 +82,14 @@ class Adventure(WorldMixin):
             if cls is None or not cls.is_playable:
                 raise ValueError("Classe jouable inconnue")
             self.player = Character.create(class_name, "local-player", name)
+        if self.world_path is not None:
+            self.frontier = WorldSimulation.load(self.world_path, self.catalog).state
+        WorldSimulation(self.catalog, self.frontier)
         self.validate_location()
+        if self.location:
+            self.frontier.clock = max(self.frontier.clock, self.location.elapsed_hours)
+            self.location.elapsed_hours = self.frontier.clock
+            self.frontier.discovered = list(dict.fromkeys([*self.frontier.discovered, self.location.zone, *(key for key, zone in self.catalog.zones.items() if not zone.hidden)]))
         self._remove_overlevel_equipment()
         self._prepare_player()
 
@@ -92,6 +105,8 @@ class Adventure(WorldMixin):
         state = SaveState.model_validate_json(self.path.read_text(encoding="utf-8"), context={"catalog": self.catalog})
         if state.version != 1:
             raise ValueError("Version de sauvegarde non prise en charge")
+        self.frontier = state.frontier
+        WorldSimulation(self.catalog, self.frontier)
         self.location = state.location
         self.validate_location()
         p = state.player
@@ -152,10 +167,15 @@ class Adventure(WorldMixin):
                                                      current=energy.current_value, regen_rate=energy.regen_rate)
                                          for energy in p.energie]),
             inventory=self.inventory, battles=self.battles, wins=self.wins, losses=self.losses,
-            draws=self.draws, location=self.location, rng_state=json.loads(json.dumps(self.rng.getstate())),
+            draws=self.draws, location=self.location, frontier=self.frontier, rng_state=json.loads(json.dumps(self.rng.getstate())),
         )
 
     def save(self):
+        with world_lock(self.world_path) if self.world_path is not None else nullcontext():
+            self._sync_world()
+            self._save_player()
+
+    def _save_player(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = None
         try:
@@ -166,6 +186,8 @@ class Adventure(WorldMixin):
                 stream.flush()
                 os.fsync(stream.fileno())
             os.replace(temporary, self.path)
+            if self.world_path is not None:
+                self.simulation.save(self.world_path)
         finally:
             if temporary is not None and temporary.exists():
                 temporary.unlink()
@@ -249,7 +271,11 @@ class Adventure(WorldMixin):
         self.refresh_equipment()
         return crafted
 
-    def encounter(self, max_rounds=200, auto_craft=False):
+    def encounter(self, max_rounds=200, auto_craft=False, family=None, enemy_level=None):
+        if family is not None and family not in self.catalog.creatures:
+            raise ValueError("Créature inconnue")
+        if enemy_level is not None and (type(enemy_level) is not int or enemy_level < 1):
+            raise ValueError("Niveau de créature invalide")
         original = self.player
         combatant = self.combat_player()
         earned = []
@@ -259,7 +285,7 @@ class Adventure(WorldMixin):
         self.player = combatant
         try:
             self._prepare_player()
-            report = self._encounter(max_rounds, auto_craft)
+            report = self._encounter(max_rounds, auto_craft, family, enemy_level)
         finally:
             self.player = original
             if combatant is not original:
@@ -267,18 +293,19 @@ class Adventure(WorldMixin):
         if earned and report["outcome"] == "victory":
             original.gain_exp(sum(earned))
         if self.location:
-            self.location.elapsed_hours += self.catalog.geography.combat_hours
+            self._advance_hours(self.catalog.geography.combat_hours)
         self.refresh_equipment()
         self.save()
         report["level"] = original.level
         report["effective_level"] = self.effective_level
         return report
 
-    def _encounter(self, max_rounds=200, auto_craft=False):
+    def _encounter(self, max_rounds=200, auto_craft=False, family=None, enemy_level=None):
         if type(max_rounds) is not int or max_rounds < 1:
             raise ValueError("Nombre de rounds invalide")
-        family = self.rng.choice(self.catalog.zone_creatures(self.location.zone) if self.current_zone else list(self.catalog.creatures))
-        enemy_level = max(1, self.player.level - 1)
+        pool = self.catalog.zone_creatures(self.location.zone) if self.current_zone else list(self.catalog.creatures)
+        family = family or pool[self.battles % len(pool)]
+        enemy_level = enemy_level if enemy_level is not None else max(1, self.player.level - 1)
         if self.current_zone:
             enemy_level = min(self.current_zone.max_level, max(self.current_zone.min_level, enemy_level))
         enemy = self.create_enemy(family, enemy_level)

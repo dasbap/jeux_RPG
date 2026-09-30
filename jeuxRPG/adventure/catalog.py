@@ -90,14 +90,15 @@ class ZoneDefinition(Definition):
     kind: Literal["wilderness", "village", "city", "capital", "fortress"] = "wilderness"
     inn: bool = False
     craft: bool = False
+    hidden: bool = False
 
 
 class PathDefinition(Definition):
     source: str
     destination: str
     hours: Positive
-    day_risk: Annotated[float, Field(ge=0, le=1)]
-    night_risk: Annotated[float, Field(ge=0, le=1)]
+    day_risk: Annotated[float, Field(ge=0, le=1)] = .1
+    night_risk: Annotated[float, Field(ge=0, le=1)] = .3
     bidirectional: bool = True
 
 
@@ -108,6 +109,57 @@ class GeographyRules(Definition):
     day_start: Annotated[StrictInt, Field(ge=0, le=23)] = 6
     night_start: Annotated[StrictInt, Field(ge=0, le=23)] = 18
     combat_hours: Positive = 1
+
+
+class LandmarkDefinition(Definition):
+    name: str
+    description: str
+    direction: str
+    source: str
+    destination: str
+    hours: Positive
+    day_risk: Annotated[float, Field(ge=0, le=1)] = .1
+    night_risk: Annotated[float, Field(ge=0, le=1)] = .3
+    bidirectional: bool = True
+
+
+class SiteDefinition(Definition):
+    strategic: bool = False
+    reason: str
+    resources: list[Drop] = Field(default_factory=list)
+
+
+class ConstructionDefinition(Definition):
+    materials: dict[str, Positive]
+    workers: Positive
+    hours: Positive
+
+
+class NpcDefinition(Definition):
+    name: str
+    role: Literal["merchant", "worker", "guard"]
+    start_zone: str
+    itinerary: list[str]
+    stop_hours: Positive = 1
+    offset_hours: Quantity = 0
+    workforce: Quantity = 0
+
+
+class PatrolDefinition(NpcDefinition):
+    role: Literal["guard"] = "guard"
+    creature: str
+    level: Positive
+    active: Literal["always", "day", "night"] = "always"
+
+
+class FrontierRules(Definition):
+    camp: str
+    village: str
+    road: str
+    relay: str
+    gathering_hours: Positive = 1
+    road_hours: Positive = 3
+
 
 
 class Catalog(Definition):
@@ -125,6 +177,12 @@ class Catalog(Definition):
     zones: dict[str, ZoneDefinition] = Field(default_factory=dict)
     paths: dict[str, PathDefinition] = Field(default_factory=dict)
     geography: GeographyRules | None = None
+    landmarks: dict[str, LandmarkDefinition] = Field(default_factory=dict)
+    sites: dict[str, SiteDefinition] = Field(default_factory=dict)
+    constructions: dict[str, ConstructionDefinition] = Field(default_factory=dict)
+    npcs: dict[str, NpcDefinition] = Field(default_factory=dict)
+    frontier: FrontierRules | None = None
+    patrols: dict[str, PatrolDefinition] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_references(self):
@@ -177,6 +235,7 @@ class Catalog(Definition):
                     raise ValueError("Cycle d'espèces")
                 seen.add(parent)
                 parent = self.creatures[parent].parent
+        self.validate_frontier()
         self.validate_geography()
         for identifier, definition in self.equipment.items():
             if identifier != f"{definition.family}:{definition.slot}" or definition.family not in self.creatures or definition.slot not in self.slots:
@@ -238,8 +297,60 @@ class Catalog(Definition):
             if expanded == reachable:
                 break
             reachable = expanded
+        road_reachable = set(reachable)
+        for landmark in self.landmarks.values():
+            connections.add((landmark.source, landmark.destination))
+            if landmark.bidirectional:
+                connections.add((landmark.destination, landmark.source))
+        while True:
+            expanded = reachable | {b for a, b in connections if a in reachable}
+            if expanded == reachable:
+                break
+            reachable = expanded
+        if any(key not in road_reachable for key, zone in self.zones.items() if not zone.hidden):
+            raise ValueError("Zone routière inaccessible depuis le départ")
         if reachable != self.zones.keys():
             raise ValueError("Zone inaccessible depuis le départ")
+
+    def validate_frontier(self):
+        if (self.sites or self.constructions) and self.frontier is None:
+            raise ValueError("Règles de construction absentes")
+        if self.paths.keys() & self.landmarks.keys():
+            raise ValueError("Identifiant partagé par une route et un repère")
+        for key, landmark in self.landmarks.items():
+            if landmark.source not in self.zones or landmark.destination not in self.zones or landmark.source == landmark.destination:
+                raise ValueError(f"Repère invalide : {key}")
+            if self.zones[landmark.source].world != self.zones[landmark.destination].world or landmark.night_risk <= landmark.day_risk:
+                raise ValueError("Exploration hors route incompatible")
+        for key, site in self.sites.items():
+            if key not in self.zones or self.zones[key].kind != "wilderness" or any(drop.material not in self.materials for drop in site.resources):
+                raise ValueError("Site de camp ou de récolte invalide")
+        for construction in self.constructions.values():
+            if not construction.materials or not set(construction.materials) <= self.materials.keys():
+                raise ValueError("Matériaux de construction invalides")
+        if self.frontier and not {self.frontier.camp, self.frontier.village, self.frontier.road, self.frontier.relay} <= self.constructions.keys():
+            raise ValueError("Construction de frontière absente")
+        for npc in [*self.npcs.values(), *self.patrols.values()]:
+            if npc.start_zone not in self.zones or not npc.itinerary or (npc.role == "worker") != (npc.workforce > 0):
+                raise ValueError("PNJ invalide")
+            current = npc.start_zone
+            routes = {**self.paths, **self.landmarks} if isinstance(npc, PatrolDefinition) else self.paths
+            for key in npc.itinerary:
+                if key not in routes:
+                    raise ValueError("Itinéraire de PNJ absent")
+                path = routes[key]
+                if path.source == current:
+                    current = path.destination
+                elif path.bidirectional and path.destination == current:
+                    current = path.source
+                else:
+                    raise ValueError("Itinéraire de PNJ discontinu")
+            if current != npc.start_zone:
+                raise ValueError("L'itinéraire du PNJ doit former une boucle")
+
+        for patrol in self.patrols.values():
+            if patrol.creature not in self.creatures or patrol.level > self.worlds[self.zones[patrol.start_zone].world].max_level:
+                raise ValueError("Patrouille invalide")
 
     def zone_creatures(self, zone_id):
         result = list(self.zones[zone_id].creatures)
@@ -273,7 +384,7 @@ def load_catalog(path: str | Path | None = None):
     if not files:
         raise ValueError("Aucun fichier de ressources")
     merged = {}
-    sections = {"slots", "creatures", "materials", "equipment", "recipes", "sets", "skills", "worlds", "zones", "paths"}
+    sections = {"slots", "creatures", "materials", "equipment", "recipes", "sets", "skills", "worlds", "zones", "paths", "landmarks", "sites", "constructions", "npcs", "patrols"}
     for file in files:
         data = json.loads(file.read_text(encoding="utf-8"))
         if not isinstance(data, dict):

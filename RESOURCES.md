@@ -54,3 +54,5 @@ Les sauvegardes existantes gardent leurs identifiants et chargent les mêmes dé
 Ajouter du contenu avec ces mécanismes nécessite seulement des données ou une nouvelle classe enregistrée. Une mécanique de jeu entièrement nouvelle, comme la durabilité ou une nouvelle famille d'effets, demande naturellement une implémentation du moteur.
 
 Les ressources comprennent désormais une carte multi-monde, les populations de zones, les chemins, les services, les sous-espèces et les boss. Leur schéma, les commandes et les plafonds de niveau sont décrits dans [WORLD.md](WORLD.md). Les nouvelles créatures peuvent déclarer `zones` pour rejoindre la population d'une zone existante via un fichier supplémentaire.
+
+Les repères, sites stratégiques, chantiers, PNJ, patrouilles et programmes autonomes sont déclarés dans `frontier.json`. Voir [FRONTIER.md](FRONTIER.md) pour étendre l'exploration et la fondation de villages.

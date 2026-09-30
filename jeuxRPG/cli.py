@@ -12,7 +12,7 @@ def show(value):
 def interactive(session):
     from jeuxRPG.adventure.equipment import material_name, parse_recipe
 
-    print("Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, carte, chemins, voyager <chemin>, auberge <jour|nuit>, quitter")
+    print("Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, carte, chemins, voyager <chemin>, auberge <jour|nuit>, observer, explorer <repere>, recolter, dormir <jour|nuit>, recruter <pnj>, camp <nom>, fonder, relier <zone>, relais <chemin>, halte <chemin>, attendre <heures>, quitter")
     while True:
         try:
             command = shlex.split(input("rpg> "))
@@ -39,6 +39,31 @@ def interactive(session):
                 if arguments[0] not in {"jour", "nuit"}:
                     raise ValueError("Choisissez jour ou nuit")
                 show(session.rest_at_inn({"jour": "day", "nuit": "night"}[arguments[0]]))
+            elif action == "observer" and not arguments:
+                show(session.observe())
+                session.save()
+            elif action == "explorer" and len(arguments) == 1:
+                show(session.explore(arguments[0]))
+            elif action == "dormir" and len(arguments) == 1:
+                if arguments[0] not in {"jour", "nuit"}:
+                    raise ValueError("Choisissez jour ou nuit")
+                show(session.rest_at_camp({"jour": "day", "nuit": "night"}[arguments[0]]))
+            elif action == "recolter" and not arguments:
+                show(session.gather())
+            elif action == "recruter" and len(arguments) == 1:
+                show({"workers": session.hire(arguments[0])})
+            elif action == "camp" and arguments:
+                show(session.establish_camp(" ".join(arguments)))
+            elif action == "fonder" and not arguments:
+                show(session.upgrade_village())
+            elif action == "relier" and len(arguments) == 1:
+                show(session.connect_village(arguments[0]))
+            elif action == "relais" and len(arguments) == 1:
+                show(session.build_relay(arguments[0]))
+            elif action == "halte" and len(arguments) == 1:
+                show(session.travel(arguments[0], stop_at_relay=True))
+            elif action == "attendre" and len(arguments) == 1:
+                show(session.advance_world(int(arguments[0])))
             elif action == "personnage" and not arguments:
                 show(session.status())
             elif action == "inventaire" and not arguments:
@@ -69,8 +94,10 @@ def main():
     parser.add_argument("--class", dest="class_name", default="Knight")
     parser.add_argument("--name", default="Héros")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--mode", choices=["adventure", "simulation"])
+    parser.add_argument("--mode", choices=["adventure", "simulation", "world"])
     parser.add_argument("--floors", type=int)
+    parser.add_argument("--world-save", help="État partagé de la simulation du monde")
+    parser.add_argument("--ticks", type=int, help="Nombre d’heures à simuler sans joueur")
     parser.add_argument("--resources", help="Fichier ou dossier de ressources JSON")
     parser.add_argument("--save", default=".data/adventure/player.json")
     parser.add_argument("--battles", type=int)
@@ -79,6 +106,8 @@ def main():
     parser.add_argument("--no-auto-craft", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+    if args.ticks is not None and args.ticks < 1:
+        parser.error("--ticks doit être positif")
     if args.floors is not None and args.floors < 1:
         parser.error("--floors doit être positif")
     if args.battles is not None and args.battles < 1:
@@ -88,6 +117,24 @@ def main():
     if not args.name.strip():
         parser.error("--name ne peut pas être vide")
     mode = args.mode or ("simulation" if args.floors is not None else "adventure")
+    if mode == "world":
+        from jeuxRPG.adventure.catalog import load_catalog
+        from jeuxRPG.adventure.frontier import WorldSimulation
+
+        world_path = args.world_save or ".data/world/world.json"
+        try:
+            simulation = WorldSimulation.load(world_path, load_catalog(args.resources))
+            count = 0
+            while args.ticks is None or count < args.ticks:
+                show(WorldSimulation.tick_file(world_path, simulation.catalog, 1))
+                count += 1
+                if args.ticks is None or count < args.ticks:
+                    time.sleep(args.interval)
+        except KeyboardInterrupt:
+            print("Simulation interrompue ; état du monde sauvegardé.")
+        except (ValueError, OSError) as error:
+            parser.error(f"Simulation impossible : {error}")
+        return
     if mode == "simulation":
         from jeuxRPG._balance.simulator import simulate_tower
 
@@ -97,7 +144,7 @@ def main():
     from jeuxRPG.adventure import Adventure
 
     try:
-        session = Adventure(args.save, args.class_name, args.name, args.seed, resources=args.resources)
+        session = Adventure(args.save, args.class_name, args.name, args.seed, resources=args.resources, world_save=args.world_save)
     except (ValueError, OSError) as error:
         parser.error(f"Chargement impossible : {error}")
     session.save()
