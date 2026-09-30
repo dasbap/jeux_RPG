@@ -12,10 +12,6 @@ def world_lock(path):
             import msvcrt
 
             stream.seek(0)
-            if not stream.read(1):
-                stream.write(b'0')
-                stream.flush()
-            stream.seek(0)
             msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
             try:
                 yield
