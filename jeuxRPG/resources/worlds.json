@@ -468,6 +468,86 @@
       "day_risk": 0.05,
       "night_risk": 0.15,
       "bidirectional": true
+    },
+    "aube-capitale-foret": {
+      "source": "aube-capitale",
+      "destination": "aube-foret",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-foret-ville": {
+      "source": "aube-foret",
+      "destination": "aube-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-village-montagnes": {
+      "source": "aube-village",
+      "destination": "aube-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-capitale-montagnes": {
+      "source": "cendres-capitale",
+      "destination": "cendres-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-village-ville": {
+      "source": "cendres-village",
+      "destination": "cendres-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-foret-ville": {
+      "source": "cendres-foret",
+      "destination": "cendres-ville",
+      "hours": 4,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-foret": {
+      "source": "confins-capitale",
+      "destination": "confins-foret",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-village-ville": {
+      "source": "confins-village",
+      "destination": "confins-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-foret-montagnes": {
+      "source": "confins-foret",
+      "destination": "confins-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-montagnes": {
+      "source": "confins-capitale",
+      "destination": "confins-montagnes",
+      "hours": 6,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
     }
   },
   "creatures": {

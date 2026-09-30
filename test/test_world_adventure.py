@@ -225,7 +225,7 @@ def test_auto_craft_does_not_equip_above_world_cap(tmp_path):
     lambda d: d["zones"]["aube-fort-est"].update(inn=True),
     lambda d: d["paths"]["aube-capitale-village"].update(night_risk=.1),
     lambda d: d["paths"]["aube-capitale-village"].update(destination="missing"),
-    lambda d: d["paths"].pop("aube-village-foret"),
+    lambda d: d.update(paths={key: path for key, path in d["paths"].items() if "aube-foret" not in {path["source"], path["destination"]}}),
     lambda d: d["geography"].update(day_start=20),
     lambda d: d["geography"].update(start_world="missing"),
     lambda d: d["paths"].update(duplicate=dict(d["paths"]["aube-capitale-village"])),
@@ -364,3 +364,49 @@ def test_capped_combat_performance_and_stable_permanent_stats(tmp_path):
         assert report["effective_level"] == 80
     assert perf_counter() - start < 10
     assert session.snapshot().player == before
+
+
+@pytest.mark.parametrize("world", ["aube", "cendres", "confins"])
+def test_world_core_is_a_mesh_with_alternative_routes(world):
+    catalog = default_catalog()
+    core = {key for key, zone in catalog.zones.items() if zone.world == world and zone.kind != "fortress"}
+    adjacency = {key: set() for key in core}
+    for path in catalog.paths.values():
+        if path.source in core and path.destination in core:
+            assert path.bidirectional
+            adjacency[path.source].add(path.destination)
+            adjacency[path.destination].add(path.source)
+    assert all(len(neighbours) >= 2 for neighbours in adjacency.values())
+    for blocked in core:
+        remaining = core - {blocked}
+        visited = {next(iter(remaining))}
+        while True:
+            expanded = visited | {destination for source in visited for destination in adjacency[source] if destination in remaining}
+            if expanded == visited:
+                break
+            visited = expanded
+        assert visited == remaining
+    for key, zone in catalog.zones.items():
+        if zone.world == world and zone.kind == "fortress":
+            assert sum(key in {path.source, path.destination} for path in catalog.paths.values()) == 1
+
+
+def test_mesh_loop_is_playable_and_saved_without_teleportation(tmp_path, monkeypatch):
+    session = Adventure(tmp_path / "save.json")
+    monkeypatch.setattr(session.rng, "random", lambda: .99)
+    for path, destination in [("aube-capitale-foret", "aube-foret"), ("aube-village-foret", "aube-village"), ("aube-capitale-village", "aube-capitale")]:
+        assert path in session.available_paths()
+        assert session.travel(path)["arrived"]
+        assert session.location.zone == destination
+        assert Adventure(session.path).location.zone == destination
+    assert session.location.elapsed_hours == 15
+
+
+def test_new_mesh_shortcut_keeps_zone_level_requirement(tmp_path):
+    session = Adventure(tmp_path / "save.json")
+    session.location.zone = "aube-village"
+    before = session.snapshot().model_dump()
+    assert "aube-village-montagnes" in session.available_paths()
+    with pytest.raises(ValueError, match="Niveau insuffisant"):
+        session.travel("aube-village-montagnes")
+    assert session.snapshot().model_dump() == before

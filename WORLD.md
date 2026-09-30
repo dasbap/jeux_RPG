@@ -10,9 +10,9 @@ Lancer `python main.py --interactive` pour explorer en ligne de commande. Les d�
 | Empire des Cendres | 40 | Capitale des Cendres |
 | Confins oubliés | 80 | Capitale des Confins |
 
-Chaque monde comprend une capitale dans sa zone principale, un village dans les terres de bas niveau, une forêt, une ville dans les terres de niveau moyen, des montagnes et deux forteresses abandonnées aux extrémités des chemins. Les forteresses accueillent des boss et n'offrent aucun service. Les capitales sont reliées par des chemins de portail, eux aussi soumis aux risques de voyage.
+Chaque monde comprend une capitale dans sa zone principale, un village dans les terres de bas niveau, une forêt, une ville dans les terres de niveau moyen, des montagnes et deux forteresses abandonnées aux extrémités des chemins. Les zones habitées et sauvages forment une toile avec des boucles et plusieurs itinéraires. Chaque monde possède son propre réseau. Les forteresses restent des destinations terminales aux frontières, accueillent des boss et n’offrent aucun service. Les capitales sont reliées par des chemins de portail, eux aussi soumis aux risques de voyage.
 
-Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'entrée. Les rencontres utilisent uniquement la population déclarée dans la zone. La commande `carte` affiche les mondes, les zones, leurs services, leurs niveaux, leurs populations et les chemins. `chemins` affiche les sorties accessibles depuis la position actuelle. La carte est un graphe de lieux, sans coordonnées ni interface graphique ; elle pilote les rencontres et les services de l'aventure. Les anciennes API de navigation entre bâtiments restent disponibles aux autres utilisateurs du paquet.
+Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'entrée. Les rencontres utilisent uniquement la population déclarée dans la zone. La commande `carte` affiche les mondes, les zones, leurs services, leurs niveaux, leurs populations et les chemins. `chemins` affiche les sorties accessibles depuis la position actuelle. La carte est un graphe maillé de 21 zones et 30 chemins, sans coordonnées ni interface graphique ; elle pilote les rencontres et les services de l'aventure. Les anciennes API de navigation entre bâtiments restent disponibles aux autres utilisateurs du paquet.
 
 ## Commandes
 
