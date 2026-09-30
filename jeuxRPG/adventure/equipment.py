@@ -1,10 +1,8 @@
 from enum import Enum
-from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, model_validator
 
-Positive = Annotated[StrictInt, Field(ge=1)]
-Quantity = Annotated[StrictInt, Field(ge=0)]
+from .catalog import Catalog, Positive, Quantity, default_catalog
 
 
 class Family(str, Enum):
@@ -22,101 +20,121 @@ class Slot(str, Enum):
     BOOTS = "boots"
 
 
-PROFILES = {
-    Family.GOBLIN: ("gobelin", "cuir", "dent", "Force"),
-    Family.ORC: ("orc", "peau", "défense", "Endurance"),
-    Family.DRAGON: ("dragon", "écaille", "griffe", "Force"),
-    Family.PHYSICAL: ("gardien de pierre", "carapace", "noyau", "Endurance"),
-    Family.MAGIC: ("créature arcanique", "étoffe", "cristal", "Intelligence"),
-    Family.SACRED: ("créature sacrée", "plume", "relique", "Sagesse"),
-}
-SLOT_NAMES = {Slot.HELMET: "Casque", Slot.CHEST: "Plastron", Slot.BOOTS: "Bottes"}
+def value(identifier):
+    return identifier.value if isinstance(identifier, Enum) else identifier
 
 
-def parse_recipe(recipe_id: str):
+def parse_recipe(recipe_id: str, catalog: Catalog | None = None):
+    catalog = catalog or default_catalog()
     try:
-        family, tier, slot = recipe_id.split(":")
-        if not tier.isdecimal() or str(int(tier)) != tier or int(tier) < 1:
-            raise ValueError("Rang de recette invalide")
-        return Gear(family=Family(family), tier=int(tier), slot=Slot(slot))
+        key, tier = catalog.recipe(recipe_id)
+        return Gear.from_definition(key, tier, catalog)
     except (ValueError, AttributeError) as error:
         raise ValueError("Recette inconnue. Utilisez la commande recettes.") from error
 
 
-def material_id(family: Family, tier: int, kind: str) -> str:
-    return f"{family.value}:{tier}:{kind}"
+def material_id(family, tier: int, kind: str) -> str:
+    return f"{value(family)}:{tier}:{kind}"
 
 
-def material_name(identifier: str) -> str:
-    family, tier, kind = identifier.split(":")
-    profile = PROFILES[Family(family)]
-    if kind not in {"hide", "trophy"} or not tier.isdecimal() or int(tier) < 1 or str(int(tier)) != tier:
-        raise ValueError("Matériau invalide")
-    return f"{profile[1 if kind == 'hide' else 2]} de {profile[0]} (rang {tier})"
+def material_name(identifier: str, catalog: Catalog | None = None) -> str:
+    catalog = catalog or default_catalog()
+    key, tier = catalog.material(identifier)
+    return f"{catalog.materials[key].name} (rang {tier})"
 
 
 class Gear(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    family: Family
+    family: str
     tier: Positive
-    slot: Slot
+    slot: str
+    _catalog: Catalog = PrivateAttr(default_factory=default_catalog)
+
+    @model_validator(mode="after")
+    def validate_definition(self, info: ValidationInfo):
+        self._catalog = (info.context or {}).get("catalog", self._catalog)
+        if self.definition_id not in self._catalog.equipment:
+            raise ValueError("Équipement absent du catalogue")
+        return self
+
+    @classmethod
+    def from_definition(cls, identifier, tier, catalog):
+        definition = catalog.equipment[identifier]
+        return cls.model_validate({"family": definition.family, "slot": definition.slot, "tier": tier}, context={"catalog": catalog})
+
+    @property
+    def definition_id(self):
+        return f"{self.family}:{self.slot}"
 
     @property
     def recipe_id(self):
-        return f"{self.family.value}:{self.tier}:{self.slot.value}"
+        return f"{self.family}:{self.tier}:{self.slot}"
 
     @property
     def name(self):
-        return f"{SLOT_NAMES[self.slot]} de {PROFILES[self.family][0]} (rang {self.tier})"
+        return f"{self._catalog.equipment[self.definition_id].name} (rang {self.tier})"
 
     @property
     def bonuses(self):
-        weight = 2 if self.slot is Slot.CHEST else 1
-        result = {"HP": 5 * self.tier * weight, "Endurance": self.tier}
-        stat = PROFILES[self.family][3]
-        result[stat] = result.get(stat, 0) + self.tier * weight
-        return result
+        return {stat: amount * self.tier for stat, amount in self._catalog.equipment[self.definition_id].bonuses.items()}
 
     @property
     def ingredients(self):
-        return {material_id(self.family, self.tier, "hide"): 3 if self.slot is Slot.CHEST else 2,
-                material_id(self.family, self.tier, "trophy"): 1}
+        recipe = self._catalog.recipes[self.definition_id]
+        return {self._catalog.ranked_material(key, self.tier): amount for key, amount in recipe.ingredients.items()}
 
 
 class Inventory(BaseModel):
     model_config = ConfigDict(extra="forbid")
     materials: dict[str, Quantity] = Field(default_factory=dict)
     items: dict[str, Gear] = Field(default_factory=dict)
-    equipped: dict[Slot, str] = Field(default_factory=dict)
+    equipped: dict[str, str] = Field(default_factory=dict)
     next_id: Positive = 1
+    _catalog: Catalog = PrivateAttr(default_factory=default_catalog)
+
+    @classmethod
+    def for_catalog(cls, catalog):
+        return cls.model_validate({}, context={"catalog": catalog})
 
     @model_validator(mode="after")
-    def validate_inventory(self):
+    def validate_inventory(self, info: ValidationInfo):
+        self._catalog = (info.context or {}).get("catalog", self._catalog)
         for identifier in self.materials:
-            material_name(identifier)
-        for identifier in self.items:
+            self._catalog.material(identifier)
+        for identifier, gear in self.items.items():
             if not identifier.startswith("item-") or not identifier[5:].isdecimal() or int(identifier[5:]) >= self.next_id:
                 raise ValueError("Identifiant d'objet invalide")
+            if gear.definition_id not in self._catalog.equipment:
+                raise ValueError("Équipement absent du catalogue")
+            gear._catalog = self._catalog
         for slot, identifier in self.equipped.items():
             if identifier not in self.items or self.items[identifier].slot != slot:
                 raise ValueError("Équipement incompatible ou absent")
         return self
 
-    def add_loot(self, family: Family, tier: int, hide: int, trophy: int):
-        for kind, amount in (("hide", hide), ("trophy", trophy)):
+    def add_materials(self, materials):
+        for identifier, amount in materials.items():
+            self._catalog.material(identifier)
             if type(amount) is not int or amount < 0:
                 raise ValueError("Quantité de butin invalide")
-        for kind, amount in (("hide", hide), ("trophy", trophy)):
-            key = material_id(family, tier, kind)
-            material_name(key)
-            self.materials[key] = self.materials.get(key, 0) + amount
+        for identifier, amount in materials.items():
+            self.materials[identifier] = self.materials.get(identifier, 0) + amount
+
+    def add_loot(self, family, tier: int, hide: int, trophy: int):
+        self.add_materials({material_id(family, tier, "hide"): hide, material_id(family, tier, "trophy"): trophy})
 
     def recipes(self):
-        discovered = {":".join(identifier.split(":")[:2]) for identifier in self.materials}
-        return sorted(f"{prefix}:{slot.value}" for prefix in discovered for slot in Slot)
+        discovered = {self._catalog.material(identifier) for identifier in self.materials}
+        recipes = set()
+        for key, recipe in self._catalog.recipes.items():
+            gear = self._catalog.equipment[recipe.equipment]
+            for material, tier in discovered:
+                if material in recipe.ingredients:
+                    recipes.add(f"{gear.family}:{tier}:{gear.slot}")
+        return sorted(recipes)
 
     def craft(self, recipe_id: str):
-        gear = parse_recipe(recipe_id)
+        gear = parse_recipe(recipe_id, self._catalog)
         if any(self.materials.get(key, 0) < amount for key, amount in gear.ingredients.items()):
             raise ValueError("Matériaux insuffisants")
         identifier = f"item-{self.next_id:06d}"
@@ -131,17 +149,23 @@ class Inventory(BaseModel):
             raise ValueError("Objet absent de l'inventaire")
         self.equipped[self.items[identifier].slot] = identifier
 
-    def unequip(self, slot: Slot):
+    def unequip(self, slot):
+        slot = value(slot)
+        if slot not in self._catalog.slots:
+            raise ValueError("Emplacement inconnu")
         self.equipped.pop(slot, None)
 
     def bonuses(self):
         result = {}
         gears = [self.items[identifier] for identifier in self.equipped.values()]
         for gear in gears:
-            for stat, value in gear.bonuses.items():
-                result[stat] = result.get(stat, 0) + value
-        if len(gears) == len(Slot) and len({(gear.family, gear.tier) for gear in gears}) == 1:
-            tier = gears[0].tier
-            result["HP"] = result.get("HP", 0) + 20 * tier
-            result["Endurance"] = result.get("Endurance", 0) + 3 * tier
+            for stat, amount in gear.bonuses.items():
+                result[stat] = result.get(stat, 0) + amount
+        by_definition = {gear.definition_id: gear for gear in gears}
+        for definition in self._catalog.sets.values():
+            if all(identifier in by_definition for identifier in definition.equipment):
+                tiers = {by_definition[identifier].tier for identifier in definition.equipment}
+                if len(tiers) == 1:
+                    for stat, amount in definition.bonuses.items():
+                        result[stat] = result.get(stat, 0) + amount * next(iter(tiers))
         return result

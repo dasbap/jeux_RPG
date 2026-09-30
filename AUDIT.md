@@ -49,3 +49,13 @@ Régressions métier supplémentaires corrigées : l'XP des invocations revient 
 Validation locale après extension : **677 tests réussis, 6 ignorés ; couverture combinée 82,28 %**. Ruff, compilation, création du wheel, installation hors dépôt, trois combats suivis de deux combats repris réussis. Le benchmark de 100 combats persistants dure environ 0,167 s pour une sauvegarde de 23 172 octets. Une série manuelle de 1 000 combats s'est achevée sans blocage en environ 20,5 s, avec une sauvegarde de 127 218 octets. Ces mesures dépendent de cet environnement et ne constituent pas un test de charge multijoueur.
 
 Inventaire actualisé : 568 fonctions, dont 78 sans ligne de corps exécutée. Les six exclusions historiques restent inchangées. Les métriques et limites présentées au début de ce rapport décrivent l'audit initial ; cette section décrit l'état actuel.
+
+## Refactorisation : ressources déclarées et extensibilité
+
+Les définitions de contenu quittent la logique de lancement et les formules codées dans `equipment.py`. `jeuxRPG/resources/catalog.json` contient explicitement les créatures, butins, matériaux, équipements, recettes, emplacements, panoplies, compétence de base et règles de rang. Le moteur charge et valide leurs références ; seules les instances de partie sont créées pendant le jeu.
+
+Les fichiers JSON d'extension ajoutés directement au dossier de ressources sont fusionnés au démarrage. `--resources` accepte aussi un autre fichier ou dossier. Les anciennes enums sont conservées pour compatibilité mais ne limitent plus les identifiants chargés. Un module de nouvelle classe peut être déclaré dans les ressources et enregistré automatiquement. Le fichier `resources/examples/spider.json` fournit un exemple de créature, matériau, emplacement, équipement, recette et panoplie supplémentaires. Voir `RESOURCES.md`.
+
+Validation locale : **704 tests réussis, 6 ignorés ; couverture combinée 82,92 %**. L'ajout d'une araignée et d'épaulières, le craft, le bonus, la sauvegarde/reprise, ainsi que l'import d'une classe de créature et d'une classe jouable supplémentaires sont vérifiés sans modification du moteur. Les ressources incohérentes ou dupliquées sont refusées avant toute écriture de sauvegarde. Les anciennes sauvegardes de l'arène restent compatibles avec le catalogue par défaut.
+
+Ruff, compilation, packaging, installation hors dépôt, catalogue et extension embarqués, lancement et reprise réussis. La comparaison des empreintes de fichiers confirme que les ressources JSON restent intactes pendant les combats. Les deux tests de performance passent. Inventaire : 581 fonctions, dont 78 sans corps exécuté ; les exclusions historiques restent inchangées.

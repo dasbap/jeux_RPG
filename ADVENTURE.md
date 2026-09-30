@@ -62,3 +62,7 @@ Après chaque combat, le personnage récupère ses HP/énergies, ses effets temp
 La simulation courte précédente reste disponible avec `python main.py --mode simulation --floors 2`. Pour compatibilité, `--floors 2` seul sélectionne aussi la simulation.
 
 L'arène est une application locale avec un seul processus par sauvegarde. Elle n'est pas un serveur multijoueur ; ne lancer pas deux instances qui écrivent le même fichier. Les sauvegardes du bot externe ne sont pas converties automatiquement vers ce nouveau format.
+
+## Définitions de contenu
+
+Les règles et recettes décrites ci-dessus sont celles du catalogue livré par défaut. Elles proviennent désormais de `jeuxRPG/resources/catalog.json`. Le moteur ne crée aucune définition de contenu au lancement. Les matériaux, recettes, emplacements et compositions de panoplie peuvent être ajoutés dans un fichier JSON d'extension. Le mode interactif et le craft automatique les découvrent sans modification de la CLI. Voir [RESOURCES.md](RESOURCES.md).

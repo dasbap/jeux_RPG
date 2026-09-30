@@ -32,13 +32,13 @@ def interactive(session):
             elif action == "personnage" and not arguments:
                 show(session.status())
             elif action == "inventaire" and not arguments:
-                show({"materiaux": {material_name(key): count for key, count in session.inventory.materials.items()},
+                show({"materiaux": {material_name(key, session.catalog): count for key, count in session.inventory.materials.items()},
                       "objets": {key: gear.name for key, gear in session.inventory.items.items()},
                       "equipes": session.status()["equipped"]})
             elif action == "recettes" and not arguments:
-                show({key: {"nom": parse_recipe(key).name,
-                            "ingredients": {material_name(material): {"requis": amount, "disponible": session.inventory.materials.get(material, 0)}
-                                            for material, amount in parse_recipe(key).ingredients.items()}}
+                show({key: {"nom": parse_recipe(key, session.catalog).name,
+                            "ingredients": {material_name(material, session.catalog): {"requis": amount, "disponible": session.inventory.materials.get(material, 0)}
+                                            for material, amount in parse_recipe(key, session.catalog).ingredients.items()}}
                       for key in session.inventory.recipes()})
             elif action == "craft" and len(arguments) == 1:
                 print(f"Objet fabriqué : {session.craft(arguments[0])}")
@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--mode", choices=["adventure", "simulation"])
     parser.add_argument("--floors", type=int)
+    parser.add_argument("--resources", help="Fichier ou dossier de ressources JSON")
     parser.add_argument("--save", default=".data/adventure/player.json")
     parser.add_argument("--battles", type=int)
     parser.add_argument("--interval", type=float, default=0.5)
@@ -86,7 +87,7 @@ def main():
     from jeuxRPG.adventure import Adventure
 
     try:
-        session = Adventure(args.save, args.class_name, args.name, args.seed)
+        session = Adventure(args.save, args.class_name, args.name, args.seed, resources=args.resources)
     except (ValueError, OSError) as error:
         parser.error(f"Chargement impossible : {error}")
     session.save()
@@ -110,7 +111,9 @@ def main():
                 outcome = {"victory": "victoire", "defeat": "défaite", "draw": "match nul"}[result["outcome"]]
                 print(f"Combat {result['battle']} — {result['enemy']} niveau {result['enemy_level']} : {outcome}, {result['rounds']} rounds. Niveau {result['level']}.", flush=True)
                 if result["loot"]:
-                    print(f"Butin : {result['loot']['hide']} matériaux et {result['loot']['trophy']} trophées de rang {result['loot']['tier']}.", flush=True)
+                    from jeuxRPG.adventure.equipment import material_name
+                    for material, amount in result["loot"]["materials"].items():
+                        print(f"Butin : {amount} {material_name(material, session.catalog)}.", flush=True)
                 for identifier in result["crafted"]:
                     print(f"Fabriqué et équipé : {session.inventory.items[identifier].name} ({identifier}).", flush=True)
             count += 1

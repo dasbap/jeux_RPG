@@ -14,7 +14,8 @@ from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.classType import SkillType, DamageType
 from jeuxRPG._class.skills.skill import Skill
 from jeuxRPG._class.skills.skillEffect import SkillEffect
-from .equipment import Family, Gear, Inventory, Positive, Quantity, Slot
+from .equipment import Gear, Inventory, Positive, Quantity, value as resource_id
+from .catalog import default_catalog, load_catalog
 
 
 class EnergyState(BaseModel):
@@ -58,10 +59,11 @@ def as_tuple(value):
 
 
 class Adventure:
-    def __init__(self, path: str | Path, class_name="Knight", name="Héros", seed=42):
+    def __init__(self, path: str | Path, class_name="Knight", name="Héros", seed=42, resources=None):
         self.path = Path(path)
         self.rng = random.Random(seed)
-        self.inventory = Inventory()
+        self.catalog = load_catalog(resources) if resources is not None else default_catalog()
+        self.inventory = Inventory.for_catalog(self.catalog)
         self.battles = self.wins = self.losses = self.draws = 0
         self._bonuses = {}
         if self.path.exists():
@@ -75,13 +77,14 @@ class Adventure:
 
     def _prepare_player(self):
         if not any(skill.skill_type in {SkillType.DAMAGE, SkillType.INVOCATION} for skill in self.player.skills.values()):
-            self.player.skills["Frappe de bâton"] = Skill(name="Frappe de bâton", skill_type=SkillType.DAMAGE,
-                                                       damage_type=DamageType.PHYSICAL,
-                                                       effects={"damage": SkillEffect(value=6)}, energie_cost=0,
-                                                       energie_target=type(self.player.energie[0]), cooldown=0)
+            definition = self.catalog.skills[self.catalog.rules.fallback_skill]
+            self.player.skills[definition.name] = Skill(name=definition.name, skill_type=SkillType.DAMAGE,
+                                                       damage_type=DamageType[definition.damage_type],
+                                                       effects={"damage": SkillEffect(value=definition.damage)}, energie_cost=definition.energie_cost,
+                                                       energie_target=type(self.player.energie[0]), cooldown=definition.cooldown)
 
     def _load(self):
-        state = SaveState.model_validate_json(self.path.read_text(encoding="utf-8"))
+        state = SaveState.model_validate_json(self.path.read_text(encoding="utf-8"), context={"catalog": self.catalog})
         if state.version != 1:
             raise ValueError("Version de sauvegarde non prise en charge")
         p = state.player
@@ -171,41 +174,52 @@ class Adventure:
         self.save()
 
     def unequip(self, slot):
-        self.inventory.unequip(Slot(slot))
+        self.inventory.unequip(slot)
         self.refresh_equipment()
         self.save()
 
     def auto_craft(self):
         crafted = []
-        families = {":".join(recipe.split(":")[:2]) for recipe in self.inventory.recipes()}
-        for prefix in sorted(families, key=lambda value: int(value.split(":")[1]), reverse=True):
-            family, tier = prefix.split(":")
-            gears = [Gear(family=family, tier=int(tier), slot=slot) for slot in Slot]
-            owned = {gear.slot: identifier for identifier, gear in self.inventory.items.items()
-                     if gear.family.value == family and gear.tier == int(tier)}
-            required = {}
-            for gear in gears:
-                if gear.slot not in owned:
-                    for key, amount in gear.ingredients.items():
-                        required[key] = required.get(key, 0) + amount
-            prospective = Inventory(items={f"item-{index:06d}": gear for index, gear in enumerate(gears, 1)},
-                                    equipped={gear.slot: f"item-{index:06d}" for index, gear in enumerate(gears, 1)}, next_id=4)
-            if sum(prospective.bonuses().values()) <= sum(self.inventory.bonuses().values()):
-                continue
-            if any(self.inventory.materials.get(key, 0) < amount for key, amount in required.items()):
-                continue
-            for gear in gears:
-                identifier = owned.get(gear.slot)
-                if identifier is None:
-                    identifier = self.inventory.craft(gear.recipe_id)
-                    crafted.append(identifier)
-                self.inventory.equip(identifier)
-            self.refresh_equipment()
-            return crafted
+        tiers = sorted({self.catalog.material(identifier)[1] for identifier in self.inventory.materials}, reverse=True)
+        for tier in tiers:
+            for definition in self.catalog.sets.values():
+                owned = {gear.definition_id: identifier for identifier, gear in self.inventory.items.items() if gear.tier == tier}
+                required = {}
+                possible = True
+                for key in definition.equipment:
+                    if key in owned:
+                        continue
+                    if key not in self.catalog.recipes:
+                        possible = False
+                        break
+                    gear = Gear.from_definition(key, tier, self.catalog)
+                    for material, amount in gear.ingredients.items():
+                        required[material] = required.get(material, 0) + amount
+                if not possible or any(self.inventory.materials.get(key, 0) < amount for key, amount in required.items()):
+                    continue
+                prospective = Inventory.for_catalog(self.catalog)
+                prospective.items = dict(self.inventory.items)
+                prospective.equipped = dict(self.inventory.equipped)
+                for key in definition.equipment:
+                    gear = Gear.from_definition(key, tier, self.catalog)
+                    prospective.items[key] = gear
+                    prospective.equipped[gear.slot] = key
+                if sum(prospective.bonuses().values()) <= sum(self.inventory.bonuses().values()):
+                    continue
+                for key in definition.equipment:
+                    identifier = owned.get(key)
+                    if identifier is None:
+                        gear = Gear.from_definition(key, tier, self.catalog)
+                        identifier = self.inventory.craft(gear.recipe_id)
+                        crafted.append(identifier)
+                    self.inventory.equip(identifier)
+                self.refresh_equipment()
+                return crafted
         for recipe in self.inventory.recipes():
-            family, tier, slot = recipe.split(":")
-            existing = self.inventory.equipped.get(Slot(slot))
-            if existing and self.inventory.items[existing].tier >= int(tier):
+            gear = self.catalog.equipment[self.catalog.recipe(recipe)[0]]
+            tier = self.catalog.recipe(recipe)[1]
+            existing = self.inventory.equipped.get(gear.slot)
+            if existing and self.inventory.items[existing].tier >= tier:
                 continue
             try:
                 identifier = self.inventory.craft(recipe)
@@ -219,7 +233,7 @@ class Adventure:
     def encounter(self, max_rounds=200, auto_craft=False):
         if type(max_rounds) is not int or max_rounds < 1:
             raise ValueError("Nombre de rounds invalide")
-        family = self.rng.choice(list(Family))
+        family = self.rng.choice(list(self.catalog.creatures))
         enemy_level = max(1, self.player.level - 1)
         enemy = self.create_enemy(family, enemy_level)
         level, exp = self.player.level, self.player.exp
@@ -246,10 +260,13 @@ class Adventure:
         self.draws += int(not won and not lost)
         loot = {}
         if won:
-            tier = 1 + (enemy_level - 1) // 5
-            hide, trophy = self.rng.randint(2, 4), self.rng.randint(1, 2)
-            self.inventory.add_loot(family, tier, hide, trophy)
-            loot = {"family": family.value, "tier": tier, "hide": hide, "trophy": trophy}
+            tier = 1 + (enemy_level - 1) // self.catalog.rules.levels_per_tier
+            materials = {}
+            for drop in self.catalog.creatures[family].drops:
+                key = self.catalog.ranked_material(drop.material, tier)
+                materials[key] = materials.get(key, 0) + self.rng.randint(drop.minimum, drop.maximum)
+            self.inventory.add_materials(materials)
+            loot = {"family": family, "tier": tier, "materials": materials}
         elif lost:
             self.player.level, self.player.exp = level, exp
         self.player.invocations.kill_all()
@@ -265,14 +282,15 @@ class Adventure:
             values.clear()
         crafted = self.auto_craft() if auto_craft else []
         self.save()
-        return {"battle": self.battles, "enemy": family.value, "enemy_level": enemy_level,
+        return {"battle": self.battles, "enemy": family, "enemy_level": enemy_level,
                 "outcome": "victory" if won else "defeat" if lost else "draw", "rounds": rounds,
                 "loot": loot, "crafted": crafted, "level": self.player.level}
 
     def create_enemy(self, family, level):
         if type(level) is not int or level < 1:
             raise ValueError("Niveau de créature invalide")
-        enemy = Character.create(family.value, f"enemy-{self.battles + 1}", family.value)
+        definition = self.catalog.creatures[resource_id(family)]
+        enemy = Character.create(definition.character_class, f"enemy-{self.battles + 1}", definition.name)
         for threshold, upgrade in enemy.class_table["upgrade_stats"].items():
             count = max(0, level - max(2, threshold) + 1)
             if not count:
@@ -292,4 +310,4 @@ class Adventure:
         return {"name": self.player.name, "class": self.player.char_class, "level": self.player.level,
                 "exp": self.player.exp, "hp": self.player.hp.current_value, "hp_max": self.player.hp.value,
                 "battles": self.battles, "wins": self.wins, "losses": self.losses, "draws": self.draws,
-                "bonuses": self.inventory.bonuses(), "equipped": {slot.value: identifier for slot, identifier in self.inventory.equipped.items()}}
+                "bonuses": self.inventory.bonuses(), "equipped": dict(self.inventory.equipped)}

@@ -21,7 +21,7 @@ def test_generated_creature_set_and_recipe_consumption(family):
         recipe = f"{family.value}:2:{slot.value}"
         identifier = inventory.craft(recipe)
         inventory.equip(identifier)
-        assert inventory.items[identifier].family is family
+        assert inventory.items[identifier].family == family
         assert inventory.items[identifier].tier == 2
     assert all(count == 0 for count in inventory.materials.values())
     expected_hp = sum(gear.bonuses["HP"] for gear in inventory.items.values()) + 40

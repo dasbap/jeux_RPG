@@ -61,3 +61,7 @@ Les anciens scénarios Locust ont été retirés : ils visaient un serveur web a
 `python main.py` lance désormais une arène sans limite avec reprise automatique de sauvegarde, butin de créatures, armures, bonus de panoplie et craft automatique. `Ctrl+C` arrête après le combat en cours. `python main.py --interactive` permet de fabriquer et équiper les objets manuellement. Pour une exécution limitée : `python main.py --battles 10 --interval 0`.
 
 Voir [ADVENTURE.md](ADVENTURE.md) pour les commandes, recettes, règles de défaite, sauvegardes et critères des panoplies. Les commandes historiques utilisant `--floors` conservent la simulation courte.
+
+## Catalogue de ressources
+
+Le lancement et le moteur utilisent les définitions livrées dans `jeuxRPG/resources/catalog.json`. Les nouveaux fichiers JSON ajoutés dans `jeuxRPG/resources/` sont chargés automatiquement au démarrage. Créatures, butins, matériaux, recettes, équipements, emplacements et panoplies sont extensibles sans modifier la boucle de jeu. `--resources` permet de choisir un catalogue séparé. Voir [RESOURCES.md](RESOURCES.md) et l'exemple d'araignée fourni.
