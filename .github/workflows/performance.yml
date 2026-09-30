@@ -1,0 +1,23 @@
+name: Performance du moteur
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install '.[test]'
+      - run: python -m pytest test/performance -m performance --junitxml=performance.xml -o junit_family=legacy
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance
+          path: performance.xml
