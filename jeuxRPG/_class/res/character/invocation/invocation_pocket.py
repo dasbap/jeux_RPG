@@ -26,11 +26,15 @@ class InvocationPocket:
         self.limit = new_limit
     
     def lose_hp(self, source : object, amount : int) -> tuple[bool, str]:
+        if amount < 0:
+            raise ValueError("Damage cannot be negative")
         valide_invoc = [invoc for invoc in self.get_all() if invoc.is_alive()]
         if valide_invoc == [] : return False, ""
-        div = int(amount / len(valide_invoc))
-        for invoc in valide_invoc:
-            invoc.lose_hp(source, div)
+        div, remainder = divmod(amount, len(valide_invoc))
+        for index, invoc in enumerate(valide_invoc):
+            damage = div + int(index < remainder)
+            if damage:
+                invoc.lose_hp(source, damage)
         invoc_killed = [invoc for invoc in valide_invoc if not invoc.is_alive()]
         message = ""
         if invoc_killed:
@@ -40,6 +44,9 @@ class InvocationPocket:
         return True, f"{amount} dgt was take by {len(valide_invoc)} invoc" + message
     
     def kill_all(self):
+        from jeuxRPG._class.sub_character.invocations.invocation import Invocation
+        removed = {id(invocation) for invocation in self.invocations}
+        Invocation.all_invocation[:] = [invocation for invocation in Invocation.all_invocation if id(invocation) not in removed]
         self.invocations.clear()
     
     def get_all(self) -> List[object]:

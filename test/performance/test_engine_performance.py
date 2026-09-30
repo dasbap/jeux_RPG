@@ -33,3 +33,20 @@ def test_character_creation_and_duel_budget(record_property):
     assert statistics.median(samples) < 5
     assert peak < 64 * 1024 * 1024
     assert duration < 10
+
+
+@pytest.mark.performance
+def test_persistent_adventure_budget(tmp_path, record_property):
+    from jeuxRPG.adventure import Adventure
+    session = Adventure(tmp_path / "player.json", seed=42)
+    start = time.perf_counter()
+    for _ in range(100):
+        session.encounter(auto_craft=True)
+    duration = time.perf_counter() - start
+    restored = Adventure(session.path)
+    assert restored.status() == session.status()
+    assert restored.inventory == session.inventory
+    record_property("persistent_100_battles_seconds", duration)
+    record_property("save_bytes", session.path.stat().st_size)
+    assert duration < 10
+    assert session.path.stat().st_size < 1024 * 1024

@@ -55,3 +55,9 @@ La couverture mesure les lignes et branches, avec un minimum de 75 %. L'inventai
 Les tests marqués `external` nécessitent `bot.game.storage`, application absente de ce dépôt ; ils sont explicitement ignorés lorsqu'elle manque. Deux tests historiques sont également désactivés. Les benchmarks mesurent 500 créations de personnages et 100 duels ; les budgets (5 s/100 créations, 10 s/100 duels, 64 Mio de pic mémoire) détectent des dégradations importantes, pas une petite régression par rapport à une machine de référence.
 
 Les anciens scénarios Locust ont été retirés : ils visaient un serveur web absent et acceptaient des erreurs HTTP 500 comme des succès. Le benchmark exerce directement le moteur RPG.
+
+## Aventure continue et craft
+
+`python main.py` lance désormais une arène sans limite avec reprise automatique de sauvegarde, butin de créatures, armures, bonus de panoplie et craft automatique. `Ctrl+C` arrête après le combat en cours. `python main.py --interactive` permet de fabriquer et équiper les objets manuellement. Pour une exécution limitée : `python main.py --battles 10 --interval 0`.
+
+Voir [ADVENTURE.md](ADVENTURE.md) pour les commandes, recettes, règles de défaite, sauvegardes et critères des panoplies. Les commandes historiques utilisant `--floors` conservent la simulation courte.

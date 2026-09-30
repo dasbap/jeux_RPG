@@ -21,6 +21,8 @@ jobs:
         run: |
           /tmp/rpg-install/bin/python -m jeuxRPG --floors 2
           /tmp/rpg-install/bin/jeux-rpg --floors 2
+          /tmp/rpg-install/bin/jeux-rpg --battles 3 --interval 0 --save /tmp/rpg-player.json
+          /tmp/rpg-install/bin/jeux-rpg --battles 2 --interval 0 --save /tmp/rpg-player.json
       - uses: actions/upload-artifact@v4
         with:
           name: distribution

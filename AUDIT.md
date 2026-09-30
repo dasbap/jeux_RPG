@@ -39,3 +39,13 @@ L'inventaire reproductible `scripts/function_audit.py` recense 537 fonctions et 
 L'équilibrage conserve ses tests historiques ; aucun ajustement arbitraire des statistiques métier n'a été effectué. Les benchmarks vérifient un budget large ; ils ne constituent pas une étude comparative avant/après ni une mesure de charge réseau.
 
 Le moteur exécute les rounds en threads : un timeout ne peut pas interrompre instantanément un round Python déjà démarré. Les simulations d'équilibrage modifient certaines méthodes globales pendant leur collecte ; elles ne doivent pas être lancées en concurrence dans le même processus. Ces limites nécessitent une évolution dédiée avant un usage serveur concurrent.
+
+## Extension : aventure persistante, équipements et craft
+
+Le lancement par défaut enchaîne désormais des combats réels avec sauvegarde atomique et reprise. Le nouveau module `adventure` génère matériaux et recettes pour six familles de créatures, gère les pièces d'armure, le craft et les bonus de panoplie. Le mode interactif permet la gestion manuelle ; le mode automatique fabrique et équipe les améliorations. Voir `ADVENTURE.md`.
+
+Régressions métier supplémentaires corrigées : l'XP des invocations revient au maître ; les invocations supprimées quittent le registre global ; les petits dégâts répartis sur les invocations ne déclenchent plus de perte de HP nulle invalide ; la sérialisation existante des statistiques ne tente plus une conversion `int` inutile. Dans l'arène, le prêtre dispose d'une attaque de base. Les ennemis sont générés directement à leur niveau sans progression récursive, avec équivalence vérifiée aux statistiques historiques.
+
+Validation locale après extension : **677 tests réussis, 6 ignorés ; couverture combinée 82,28 %**. Ruff, compilation, création du wheel, installation hors dépôt, trois combats suivis de deux combats repris réussis. Le benchmark de 100 combats persistants dure environ 0,167 s pour une sauvegarde de 23 172 octets. Une série manuelle de 1 000 combats s'est achevée sans blocage en environ 20,5 s, avec une sauvegarde de 127 218 octets. Ces mesures dépendent de cet environnement et ne constituent pas un test de charge multijoueur.
+
+Inventaire actualisé : 568 fonctions, dont 78 sans ligne de corps exécutée. Les six exclusions historiques restent inchangées. Les métriques et limites présentées au début de ce rapport décrivent l'audit initial ; cette section décrit l'état actuel.

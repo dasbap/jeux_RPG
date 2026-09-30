@@ -89,7 +89,7 @@ class EntitySaveData:
         for stat_name in ["force", "endurance", "intelligence", "sagesse"]:
             stat = getattr(character, stat_name, None)
             if stat is not None:
-                stats[stat_name] = getattr(stat, "current_value", int(stat))
+                stats[stat_name] = stat.current_value if hasattr(stat, "current_value") else int(stat)
         
         # Extract energies
         energies = []

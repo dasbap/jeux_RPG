@@ -40,7 +40,8 @@ class ProgressionMixin:
         """
         get_xp_reward = getattr(self, "get_xp_reward", None)
         xp_given = get_xp_reward() if callable(get_xp_reward) else self.level * 50 + self.exp
-        killer.gain_exp(xp_given)
+        beneficiary = getattr(killer, "master", killer)
+        beneficiary.gain_exp(xp_given)
         self.exp = 0
         self.level = max(1, self.level - 5)
         return t("progression.defeated_xp", killer=killer.name, amount=xp_given, defeated=self.name)

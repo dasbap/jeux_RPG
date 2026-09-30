@@ -56,10 +56,12 @@ class Necromancien(Character):
         return success, message
 
     def lose_hp(self, source, amount):
+        if amount <= 0:
+            raise ValueError("HP loss must be positive")
         div = int(amount / 2)
         success, message = self.invocations.lose_hp(source,div)
         if not success : div = amount
-        return super().lose_hp(source, div)
+        return super().lose_hp(source, max(1, amount - div) if success else amount)
     
     def _invocation(self, skill_name : str = class_skills_dict["level 1"]["Low Skull"].name) -> tuple[bool,str]:
         skill = self.get_skill(skill_name)
