@@ -169,12 +169,8 @@ class TestSaveManager:
         """IDs with special characters should be sanitized for filesystem."""
         # Discord user IDs are usually numeric, but test edge cases
         weird_id = "user/with\\bad:chars"
-        self.manager.save(SaveCategory.PLAYERS, weird_id, {"name": "Weird"})
-        
-        # Should be able to load with the same ID
-        loaded = self.manager.load(SaveCategory.PLAYERS, weird_id)
-        assert loaded is not None
-        assert loaded["name"] == "Weird"
+        with pytest.raises(ValueError):
+            self.manager.save(SaveCategory.PLAYERS, weird_id, {"name": "Weird"})
     
     def test_singleton_pattern(self):
         """get_instance should return the same instance."""

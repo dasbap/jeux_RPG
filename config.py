@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    BASE_DIR = Path(os.getenv("BOTKIRITOGAME", Path(__file__).parent.parent))
+    BASE_DIR = Path(os.getenv("BOTKIRITOGAME", Path(__file__).parent))
     CLASS_DIR = BASE_DIR / "_class"
     SUBS_DIR = CLASS_DIR / "sub_character"
     

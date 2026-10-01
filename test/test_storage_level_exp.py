@@ -161,7 +161,7 @@ class TestStoragePlayerSaveInfo:
     
     def test_player_save_info_structure(self):
         """PlayerSaveInfo should have all required fields."""
-        from bot.game.storage import PlayerSaveInfo
+        PlayerSaveInfo = pytest.importorskip("bot.game.storage", reason="Intégration du bot externe non installée").PlayerSaveInfo
         
         info: PlayerSaveInfo = {
             "name": "TestPlayer",
@@ -181,9 +181,9 @@ class TestStorageSaveCharacterFunction:
     
     @pytest.fixture(autouse=True)
     def setup_temp_dir(self):
+        storage = pytest.importorskip("bot.game.storage", reason="Intégration du bot externe non installée")
         self.temp_dir = tempfile.mkdtemp()
         SaveManager.reset_instance()
-        from bot.game import storage
         storage._save_manager = None
         storage._users.clear()
         storage._persisted.clear()

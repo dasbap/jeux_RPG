@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RPG · Arène multijoueur</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="badge">POC MULTIJOUEUR</span><span id="connection">Connexion…</span></header>
+    <h1>Entrez dans l’arène.</h1>
+    <p class="intro">Deux joueurs, un monde partagé. Invitez un adversaire et jouez en temps réel.</p>
+    <div class="clock"><strong>×20</strong><div>1 seconde réelle = 20 secondes de jeu<br><span id="clock">Horloge du monde</span></div></div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="registration" class="panel">
+      <h2>Votre personnage</h2>
+      <p>Chaque onglet possède sa propre identité. Ouvrez un second onglet pour tester à deux.</p>
+      <form id="register-form">
+        <label for="name">Nom du personnage</label><input id="name" maxlength="32" required autocomplete="off" placeholder="Votre nom">
+        <label for="class-name">Classe</label><select id="class-name"><option value="Knight">Chevalier</option><option value="Mage">Mage</option><option value="Archer">Archer</option><option value="Priest">Prêtre</option><option value="Necromancien">Nécromancien</option></select>
+        <button type="submit">Créer mon personnage</button>
+      </form>
+      <details><summary>Retrouver mon personnage</summary><form id="restore-form"><label for="restore-token">Clé personnelle</label><input id="restore-token" type="password" autocomplete="off" required><button type="submit" class="secondary">Se connecter</button></form></details>
+    </section>
+    <section id="lobby" class="panel" hidden>
+      <div class="section-head"><h2 id="player-name">Votre personnage</h2><button id="logout" class="quiet">Se déconnecter</button></div>
+      <details><summary>Ma clé de reconnexion</summary><p>Conservez cette clé en privé : elle donne accès à votre personnage.</p><button id="copy-token" class="secondary">Copier ma clé</button><p id="token-output" hidden></p></details>
+      <div id="room-controls"><button id="create">Créer un salon</button><form id="join-form"><label for="invite-input">Invitation de votre adversaire</label><input id="invite-input" required autocomplete="off" maxlength="64"><button class="secondary" type="submit">Rejoindre</button></form></div>
+      <div id="invitation" hidden><p>Partagez cette invitation avec le second joueur :</p><code id="invite-code"></code><button id="copy-invite" class="quiet">Copier</button></div>
+    </section>
+    <section id="battle" class="panel" hidden>
+      <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" class="muted"></span></div>
+      <div id="fighters" class="fighters"></div>
+      <p id="result"></p>
+      <div class="actions"><button id="start">Démarrer le duel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
+      <p class="muted">Une attaque toutes les 3 secondes réelles · duel limité à 5 minutes</p>
+      <h3>Journal partagé</h3><ol id="events"></ol>
+    </section>
+    <footer>État calculé par le serveur · sauvegarde transactionnelle · identités distinctes</footer>
+  </main>
+</body>
+</html>
