@@ -25,11 +25,11 @@ Les niveaux des zones déterminent la plage des ennemis et le niveau minimal d'e
 | `auberge jour` | Passer la nuit jusqu'à 6 h |
 | `combat` | Affronter une créature de la zone actuelle |
 | `personnage` | Voir le niveau réel, le niveau effectif, l'heure et les services |
-| `craft Goblin:1:helmet` | Fabriquer dans l'atelier d'une ville ou capitale |
+| `craft Goblin:1:helmet` | Fabriquer dans un atelier, selon la limite du village |
 
 Un voyage prend plusieurs heures. Les rencontres proviennent du croisement réel avec des PNJ ou des patrouilles suivant leurs itinéraires et horaires ; aucun tirage aléatoire ne déclenche un événement de voyage. Des patrouilles supplémentaires sont actives la nuit. Une défaite ou un match nul interrompt le voyage et laisse le personnage dans sa zone de départ. Une victoire permet de poursuivre. Les combats consomment une heure. L'heure, la position, les constructions, les découvertes et les itinéraires sont sauvegardés.
 
-Les auberges des villages, villes et capitales permettent d'attendre le prochain début de jour ou de nuit sans embuscade et restaurent la santé et les énergies. Si l'heure choisie est déjà atteinte, le séjour dure 24 heures. Le craft, y compris automatique, est réservé aux villes et capitales ; les villages proposent une auberge mais pas d'atelier. L'équipement et le retrait d'objets restent possibles partout.
+Les auberges des villages, villes et capitales permettent d'attendre le prochain début de jour ou de nuit sans embuscade et restaurent la santé et les énergies. Si l'heure choisie est déjà atteinte, le séjour dure 24 heures. Les villages proposent une auberge et un atelier limité aux objets de niveau strictement inférieur à la moitié du niveau du village. Les villes et capitales conservent leurs ateliers habituels. Cette limite concerne aussi le craft automatique. L'équipement et le retrait d'objets restent possibles partout.
 
 ## Sous-espèces et boss
 

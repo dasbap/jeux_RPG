@@ -7,7 +7,7 @@ python -m pip install '.[test]'
 python main.py
 ```
 
-Le lancement enchaîne les combats sans limite dans la zone actuelle ; dans les villes et capitales, il fabrique et équipe automatiquement les armures disponibles. `Ctrl+C` demande un arrêt après le combat en cours. Chaque combat est limité à 200 rounds : sans vainqueur, il devient un match nul plutôt qu'une boucle bloquée.
+Le lancement enchaîne les combats sans limite dans la zone actuelle ; dans les agglomérations, il fabrique et équipe automatiquement les armures disponibles. `Ctrl+C` demande un arrêt après le combat en cours. Chaque combat est limité à 200 rounds : sans vainqueur, il devient un match nul plutôt qu'une boucle bloquée.
 
 La progression reprend automatiquement depuis `.data/adventure/player.json`. Le personnage, l'XP, les statistiques, les énergies, les matériaux, les objets, les pièces équipées, les compteurs et l'état aléatoire sont enregistrés ensemble. Une écriture temporaire puis un remplacement atomique évitent de tronquer la dernière sauvegarde valide. Une sauvegarde invalide provoque une erreur de chargement ; elle n'est pas remplacée par un nouveau personnage.
 
@@ -68,3 +68,5 @@ L'arène est une application locale avec un seul processus par sauvegarde. Elle 
 Les règles et recettes décrites ci-dessus sont celles du catalogue livré par défaut. Elles proviennent désormais de `jeuxRPG/resources/catalog.json`. Le moteur ne crée aucune définition de contenu au lancement. Les matériaux, recettes, emplacements et compositions de panoplie peuvent être ajoutés dans un fichier JSON d'extension. Le mode interactif et le craft automatique les découvrent sans modification de la CLI. Voir [RESOURCES.md](RESOURCES.md).
 
 La carte, les sous-espèces, les boss, les auberges, les restrictions de craft et les plafonds des mondes sont décrits dans [WORLD.md](WORLD.md).
+
+Les ateliers de village autorisent uniquement les objets dont le niveau requis est strictement inférieur à la moitié du niveau du village. Cette règle s’applique aussi au craft automatique et aux villages fondés. Voir FRONTIER.md pour les niveaux et les bornes.

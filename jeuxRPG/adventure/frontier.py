@@ -13,6 +13,7 @@ class Settlement(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     stage: Literal["camp", "village"] = "camp"
+    level: Positive | None = None
 
 
 class RoutingEpoch(BaseModel):
@@ -124,6 +125,9 @@ class WorldSimulation:
                         raise ValueError("Itinéraire sauvegardé discontinu")
                 if current != self.catalog.npcs[key].start_zone:
                     raise ValueError("Itinéraire sauvegardé non fermé")
+        for key, settlement in s.settlements.items():
+            if settlement.level is not None and settlement.level > self.catalog.worlds[self.catalog.zones[key].world].max_level:
+                raise ValueError("Niveau de village sauvegardé invalide")
         if s.next_road <= len(s.roads):
             raise ValueError("Compteur de route invalide")
 
@@ -240,7 +244,7 @@ class FrontierMixin:
         zone = self.catalog.zones[zone_id]
         settlement = self.frontier.settlements.get(zone_id)
         if settlement and settlement.stage == "village":
-            return zone.model_copy(update={"name": settlement.name, "kind": "village", "inn": True, "craft": False})
+            return zone.model_copy(update={"name": settlement.name, "kind": "village", "inn": True, "craft": True, "settlement_level": settlement.level or zone.settlement_level or zone.max_level})
         return zone
 
     def _sync_world(self):
@@ -354,7 +358,7 @@ class FrontierMixin:
         if self.location is None or self.location.route is not None or zone not in self.catalog.sites or zone in self.frontier.settlements or not isinstance(name, str) or not name.strip():
             raise ValueError("Emplacement de camp ou nom invalide")
         cost = self._construction("camp")
-        self.frontier.settlements[zone] = Settlement(name=name.strip())
+        self.frontier.settlements[zone] = Settlement(name=name.strip(), level=self.current_zone.settlement_level or self.current_zone.max_level)
         self.save()
         return {"zone": zone, "stage": "camp", "cost": cost}
 

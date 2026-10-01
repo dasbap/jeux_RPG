@@ -121,7 +121,7 @@ def test_complete_camp_village_road_relay_flow_and_persistence(tmp_path, monkeyp
     village = session.upgrade_village()
     assert village['cost']['workers'] == 4
     assert session.current_zone.kind == 'village' and session.current_zone.inn
-    assert not session.can_craft
+    assert session.can_craft
     road = session.connect_village('aube-capitale')['path']
     assert road in session.available_paths()
     assert session.build_relay(road)['path'] == road

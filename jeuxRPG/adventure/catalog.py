@@ -91,6 +91,7 @@ class ZoneDefinition(Definition):
     inn: bool = False
     craft: bool = False
     hidden: bool = False
+    settlement_level: Positive | None = None
 
 
 class PathDefinition(Definition):
@@ -276,9 +277,11 @@ class Catalog(Definition):
         for zone in self.zones.values():
             if zone.world not in self.worlds or zone.min_level > zone.max_level or zone.max_level > self.worlds[zone.world].max_level:
                 raise ValueError("Niveaux de zone invalides")
+            if zone.settlement_level is not None and zone.settlement_level > self.worlds[zone.world].max_level:
+                raise ValueError("Niveau d’agglomération supérieur au plafond du monde")
             if not zone.creatures or len(set(zone.creatures)) != len(zone.creatures) or not set(zone.creatures) <= self.creatures.keys():
                 raise ValueError("Créatures de zone invalides")
-            if (zone.craft and zone.kind not in {"city", "capital"}) or (zone.inn and zone.kind not in {"village", "city", "capital"}):
+            if (zone.craft and zone.kind not in {"village", "city", "capital"}) or (zone.inn and zone.kind not in {"village", "city", "capital"}):
                 raise ValueError("Service réservé aux agglomérations")
         connections = set()
         for path in self.paths.values():

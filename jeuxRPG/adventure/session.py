@@ -15,7 +15,7 @@ from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.classType import SkillType, DamageType
 from jeuxRPG._class.skills.skill import Skill
 from jeuxRPG._class.skills.skillEffect import SkillEffect
-from .equipment import Gear, Inventory, Positive, Quantity, value as resource_id
+from .equipment import Gear, Inventory, Positive, Quantity, parse_recipe, value as resource_id
 from .catalog import default_catalog, load_catalog
 from .world import LocationState, WorldMixin
 from .frontier import FrontierState, FrontierMixin, WorldSimulation
@@ -194,7 +194,9 @@ class Adventure(FrontierMixin, WorldMixin):
 
     def craft(self, recipe_id):
         if not self.can_craft:
-            raise ValueError("Le craft est réservé aux ateliers des villes et capitales")
+            raise ValueError("Le craft est réservé aux ateliers des villages, villes et capitales")
+        if not self.can_craft_gear(parse_recipe(recipe_id, self.catalog)):
+            raise ValueError("Le niveau de l’objet doit être strictement inférieur à la moitié du niveau du village")
         identifier = self.inventory.craft(recipe_id)
         self.save()
         return identifier
@@ -234,7 +236,8 @@ class Adventure(FrontierMixin, WorldMixin):
                         required[material] = required.get(material, 0) + amount
                 if not possible or any(self.inventory.materials.get(key, 0) < amount for key, amount in required.items()):
                     continue
-                if self.location and any(Gear.from_definition(key, tier, self.catalog).required_level > self.level_cap for key in definition.equipment):
+                candidates = [Gear.from_definition(key, tier, self.catalog) for key in definition.equipment]
+                if any(not self.can_craft_gear(candidate) or (self.location and candidate.required_level > self.level_cap) for candidate in candidates):
                     continue
                 prospective = Inventory.for_catalog(self.catalog)
                 prospective.items = dict(self.inventory.items)
@@ -257,7 +260,8 @@ class Adventure(FrontierMixin, WorldMixin):
         for recipe in self.inventory.recipes():
             gear = self.catalog.equipment[self.catalog.recipe(recipe)[0]]
             tier = self.catalog.recipe(recipe)[1]
-            if self.location and Gear.from_definition(self.catalog.recipe(recipe)[0], tier, self.catalog).required_level > self.level_cap:
+            candidate = Gear.from_definition(self.catalog.recipe(recipe)[0], tier, self.catalog)
+            if not self.can_craft_gear(candidate) or (self.location and candidate.required_level > self.level_cap):
                 continue
             existing = self.inventory.equipped.get(gear.slot)
             if existing and self.inventory.items[existing].tier >= tier:
@@ -386,7 +390,7 @@ class Adventure(FrontierMixin, WorldMixin):
     def status(self):
         return {"location": self.location.model_dump() if self.location else None,
                 "effective_level": self.effective_level, "world_max_level": self.level_cap,
-                "can_craft": self.can_craft, "hour": self.location.elapsed_hours % 24 if self.location else None,
+                "can_craft": self.can_craft, "village_level": self.village_level, "craft_max_level": self.craft_max_level, "hour": self.location.elapsed_hours % 24 if self.location else None,
                 "night": self.is_night if self.location else None,
                 "name": self.player.name, "class": self.player.char_class, "level": self.player.level,
                 "exp": self.player.exp, "hp": self.player.hp.current_value, "hp_max": self.player.hp.value,

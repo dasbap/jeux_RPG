@@ -39,7 +39,7 @@ Ces coûts proviennent du catalogue. Les travailleurs fournissent l'effort penda
 
 `camp "Passage des Sources"` installe un camp sur un site autorisé. `dormir jour` ou `dormir nuit` permet d'y attendre et récupérer. `fonder` transforme le camp en village uniquement si le site est stratégique. `observer` indique le motif : carrefour, eau douce et passage naturel, ou col contrôlant les accès. Les grottes encaissées ne permettent pas cette transformation.
 
-Le village prend le nom du camp et dispose d'une auberge. Comme les villages existants, il n'a pas d'atelier : le craft reste réservé aux villes et capitales. Un camp ou village occupe sa zone existante ; la population de créatures décrit les environs. Il ne modifie pas le catalogue statique.
+Le village prend le nom du camp et dispose d'une auberge. Comme les villages existants, il permet le craft d’objets dont le niveau requis est strictement inférieur à la moitié de son niveau. Un camp ou village occupe sa zone existante ; la population de créatures décrit les environs. Il ne modifie pas le catalogue statique.
 
 ## Raccordements et relais
 
@@ -76,3 +76,9 @@ Sans `--world-save`, l'état du monde reste inclus dans la sauvegarde du personn
 ## Ajouter des ressources
 
 Ajouter des entrées dans `landmarks`, `sites`, `constructions`, `npcs` et `patrols`, ainsi que les zones nécessaires, dans un fichier JSON supplémentaire. Les repères référencent les zones, les sites les matériaux et les programmes de PNJ des chemins existants. Les patrouilles peuvent aussi parcourir les sentes hors route. Les programmes doivent être continus et revenir à leur point de départ. La validation contrôle les références, les niveaux, les populations, les coûts, les sites, les historiques d'itinéraires et les états sauvegardés. Les zones visibles restent accessibles par route ; les zones cachées peuvent dépendre uniquement des repères.
+
+## Niveau des ateliers de village
+
+Un village de niveau 10 autorise les objets de niveaux 1 à 4, et refuse le niveau 5. Un village de niveau 11 autorise le niveau 5. Cette règle s’applique au craft manuel et automatique, sans consommer de matériaux pour une recette refusée. Le niveau de l’objet est son niveau requis, calculé à partir du modèle et du rang.
+
+Le niveau d’un village existant est déclaré par `settlement_level`, avec la borne supérieure de niveau de sa zone comme valeur de compatibilité si ce champ est absent. Les villages livrés sont de niveaux 5, 10 et 20. Un camp mémorise le niveau d’agglomération de son site ; son village conserve ce niveau après fondation et sauvegarde. Les anciens villages fondés sans champ `level` héritent du niveau d’agglomération de leur site. `personnage` affiche `village_level` et `craft_max_level`. Les villes et capitales gardent leurs ateliers habituels.

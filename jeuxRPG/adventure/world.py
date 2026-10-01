@@ -34,7 +34,20 @@ class WorldMixin:
 
     @property
     def can_craft(self):
-        return self.location is None or (self.location.route is None and self.current_zone.craft)
+        return self.location is None or (self.location.route is None and (self.current_zone.craft or self.current_zone.kind == "village"))
+
+    @property
+    def village_level(self):
+        if self.current_zone is None or self.current_zone.kind != "village":
+            return None
+        return self.current_zone.settlement_level or self.current_zone.max_level
+
+    @property
+    def craft_max_level(self):
+        return (self.village_level - 1) // 2 if self.village_level is not None else None
+
+    def can_craft_gear(self, gear):
+        return self.can_craft and (self.village_level is None or gear.required_level * 2 < self.village_level)
 
     def validate_location(self):
         if self.location is None:

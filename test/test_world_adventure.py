@@ -74,7 +74,7 @@ def test_craft_only_in_settlements_and_no_mutation_outside(tmp_path):
     assert session.auto_craft() == []
     assert session.inventory.model_dump() == before
     at(session, "aube-village")
-    assert not session.can_craft
+    assert session.can_craft
     for key in ["aube-ville", "aube-capitale"]:
         at(session, key)
         assert session.can_craft
