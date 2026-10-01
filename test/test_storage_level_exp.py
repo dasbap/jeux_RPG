@@ -156,12 +156,13 @@ class TestStorageSaveLoad:
         assert exp == 0
 
 
+@pytest.mark.external
 class TestStoragePlayerSaveInfo:
     """Tests for PlayerSaveInfo TypedDict structure."""
     
     def test_player_save_info_structure(self):
         """PlayerSaveInfo should have all required fields."""
-        from bot.game.storage import PlayerSaveInfo
+        PlayerSaveInfo = pytest.importorskip("bot.game.storage", reason="External bot application is not included").PlayerSaveInfo
         
         info: PlayerSaveInfo = {
             "name": "TestPlayer",
@@ -176,11 +177,13 @@ class TestStoragePlayerSaveInfo:
         assert info["exp"] == 500
 
 
+@pytest.mark.external
 class TestStorageSaveCharacterFunction:
     """Tests for save_character function."""
     
     @pytest.fixture(autouse=True)
     def setup_temp_dir(self):
+        storage = pytest.importorskip("bot.game.storage", reason="External bot application is not included")
         self.temp_dir = tempfile.mkdtemp()
         SaveManager.reset_instance()
         from bot.game import storage

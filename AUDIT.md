@@ -1,0 +1,91 @@
+# Audit du moteur RPG — 30 septembre 2026
+
+Révision de départ : `21e8d2be74b1fc3d5490a946878ce7d2ded57378`.
+
+## Résultats locaux
+
+- Python 3.12.14 sur Linux : 608 tests réussis, 6 ignorés, aucune erreur ni avertissement.
+- Couverture des lignes : 83,77 %. Branches : 66,24 %. Score combiné : 79,60 %.
+- Ruff : contrôles de syntaxe, variables indéfinies et comparaisons incorrectes réussis. Cette configuration cible les erreurs ; elle n'impose pas encore toutes les règles stylistiques de Ruff.
+- Compilation Python réussie ; wheel construit, installé et lancé hors du dossier source.
+- Benchmark indépendant : médiane de 0,085 s pour 100 créations de personnages, pic mémoire de 658 069 octets ; 100 duels en 0,036 s. Mesures indicatives sur cet environnement, avec seed fixe et maximum de 100 rounds par duel.
+
+Les six exclusions comprennent quatre tests de l'application externe `bot.game.storage` absente et deux modules historiques de carte/POI déjà désactivés. Ces exclusions ne constituent pas une validation de ces fonctionnalités.
+
+## Corrections
+
+- Regroupement dans un paquet installable `jeuxRPG` : les imports restent identiques, les chemins physiques racine changent.
+- Lancement réel via `python -m jeuxRPG`, `jeux-rpg` et `python main.py` ; commande et installation documentées.
+- Préservation des fichiers JSON dans la distribution ; correction du chemin de configuration.
+- Correction d'une f-string incompatible avec Python 3.10/3.11.
+- Refus de consommation d'énergie négative.
+- Suppression des récompenses répétées lorsque des dégâts sont appliqués à un personnage déjà mort.
+- Transfert des membres lors d'une fusion d'équipes et nettoyage du chef lors de la destruction.
+- Refus d'ajout d'un combattant adverse avant mutation du combat.
+- Réservation atomique des participants dans le moteur concurrent.
+- Suppression des effets expirés sans sauter les effets adjacents ; classification correcte des dégâts périodiques.
+- Correction de la création des quartiers de la ville de base.
+- Suppression du faux message de mort d'invocation provoqué par une comparaison d'identité avec une liste vide.
+- Remplacement des scénarios HTTP Locust sans serveur correspondant par un benchmark du moteur.
+
+## Automatisation
+
+Quatre workflows : lint/syntaxe, tests/couverture sur Linux et Windows avec Python 3.10/3.12/3.13, packaging/lancement hors dépôt, performance. Les résultats locaux ne prouvent pas que les six environnements CI ont réussi ; seuls leurs runs GitHub Actions peuvent le confirmer.
+
+## Limites et suites
+
+L'inventaire reproductible `scripts/function_audit.py` recense 537 fonctions et 83 sans ligne de corps exécutée. Il associe le rôle documenté et les lignes manquantes ; il ne prouve pas la qualité des assertions. Le rapport JSON est publié comme artefact CI. La couverture doit encore progresser, notamment pour les actions de soin/résurrection, certains wrappers de navigation et de sauvegarde, et les erreurs des modes avancés.
+
+L'équilibrage conserve ses tests historiques ; aucun ajustement arbitraire des statistiques métier n'a été effectué. Les benchmarks vérifient un budget large ; ils ne constituent pas une étude comparative avant/après ni une mesure de charge réseau.
+
+Le moteur exécute les rounds en threads : un timeout ne peut pas interrompre instantanément un round Python déjà démarré. Les simulations d'équilibrage modifient certaines méthodes globales pendant leur collecte ; elles ne doivent pas être lancées en concurrence dans le même processus. Ces limites nécessitent une évolution dédiée avant un usage serveur concurrent.
+
+## Extension : aventure persistante, équipements et craft
+
+Le lancement par défaut enchaîne désormais des combats réels avec sauvegarde atomique et reprise. Le nouveau module `adventure` génère matériaux et recettes pour six familles de créatures, gère les pièces d'armure, le craft et les bonus de panoplie. Le mode interactif permet la gestion manuelle ; le mode automatique fabrique et équipe les améliorations. Voir `ADVENTURE.md`.
+
+Régressions métier supplémentaires corrigées : l'XP des invocations revient au maître ; les invocations supprimées quittent le registre global ; les petits dégâts répartis sur les invocations ne déclenchent plus de perte de HP nulle invalide ; la sérialisation existante des statistiques ne tente plus une conversion `int` inutile. Dans l'arène, le prêtre dispose d'une attaque de base. Les ennemis sont générés directement à leur niveau sans progression récursive, avec équivalence vérifiée aux statistiques historiques.
+
+Validation locale après extension : **677 tests réussis, 6 ignorés ; couverture combinée 82,28 %**. Ruff, compilation, création du wheel, installation hors dépôt, trois combats suivis de deux combats repris réussis. Le benchmark de 100 combats persistants dure environ 0,167 s pour une sauvegarde de 23 172 octets. Une série manuelle de 1 000 combats s'est achevée sans blocage en environ 20,5 s, avec une sauvegarde de 127 218 octets. Ces mesures dépendent de cet environnement et ne constituent pas un test de charge multijoueur.
+
+Inventaire actualisé : 568 fonctions, dont 78 sans ligne de corps exécutée. Les six exclusions historiques restent inchangées. Les métriques et limites présentées au début de ce rapport décrivent l'audit initial ; cette section décrit l'état actuel.
+
+## Refactorisation : ressources déclarées et extensibilité
+
+Les définitions de contenu quittent la logique de lancement et les formules codées dans `equipment.py`. `jeuxRPG/resources/catalog.json` contient explicitement les créatures, butins, matériaux, équipements, recettes, emplacements, panoplies, compétence de base et règles de rang. Le moteur charge et valide leurs références ; seules les instances de partie sont créées pendant le jeu.
+
+Les fichiers JSON d'extension ajoutés directement au dossier de ressources sont fusionnés au démarrage. `--resources` accepte aussi un autre fichier ou dossier. Les anciennes enums sont conservées pour compatibilité mais ne limitent plus les identifiants chargés. Un module de nouvelle classe peut être déclaré dans les ressources et enregistré automatiquement. Le fichier `resources/examples/spider.json` fournit un exemple de créature, matériau, emplacement, équipement, recette et panoplie supplémentaires. Voir `RESOURCES.md`.
+
+Validation locale : **704 tests réussis, 6 ignorés ; couverture combinée 82,92 %**. L'ajout d'une araignée et d'épaulières, le craft, le bonus, la sauvegarde/reprise, ainsi que l'import d'une classe de créature et d'une classe jouable supplémentaires sont vérifiés sans modification du moteur. Les ressources incohérentes ou dupliquées sont refusées avant toute écriture de sauvegarde. Les anciennes sauvegardes de l'arène restent compatibles avec le catalogue par défaut.
+
+Ruff, compilation, packaging, installation hors dépôt, catalogue et extension embarqués, lancement et reprise réussis. La comparaison des empreintes de fichiers confirme que les ressources JSON restent intactes pendant les combats. Les deux tests de performance passent. Inventaire : 581 fonctions, dont 78 sans corps exécuté ; les exclusions historiques restent inchangées.
+
+## Carte, variantes et mondes plafonnés
+
+Les définitions statiques de `worlds.json` ajoutent trois mondes plafonnés à 20, 40 et 80, 21 zones et 20 chemins. Les sous-espèces et boss possèdent des parentés validées, des multiplicateurs de statistiques et de butin. Les populations, niveaux, ateliers, auberges et risques de voyage proviennent du catalogue. Les nouveaux fichiers peuvent étendre les populations d'une zone existante ou connecter un nouveau monde sans modifier le moteur.
+
+Validation locale : 744 tests réussis, 6 ignorés ; couverture combinée 83,63 %. Les tests couvrent les chemins et niveaux d'entrée, le changement de risque au coucher du soleil, les voyages interrompus, la reprise de position/heure, les auberges, les restrictions de craft, les références et cycles invalides, les boss, les statistiques/compétences plafonnées, les objets retirés sans destruction, les anciennes sauvegardes, les ajouts de monde et de sous-espèce, l'absence de cumul des bonus et le rétablissement du personnage après une exception. Un contrôle de performance exerce 30 combats au plafond 80. Le workflow performance collecte tous les tests marqués, et le workflow d'installation vérifie également la carte et l'auberge du paquet distribué.
+
+Le paquet installé hors du dépôt a été vérifié sur un parcours carte → voyage → auberge → combat → sauvegarde → reprise. Les fichiers JSON de ressources restent identiques après ce parcours. Les ajouts nouveaux ont une couverture élevée, mais la couverture globale ne prouve pas l'absence de tous les bugs historiques. La sauvegarde reste limitée à un processus écrivain ; les transactions interrompues brutalement pendant un voyage reprennent au dernier point sauvegardé, avant l'arrivée finale si celle-ci n'a pas été enregistrée.
+
+## Réseau de zones en toile
+
+La carte comprend désormais 30 chemins pour 21 zones. Dix liaisons croisées complètent les trois réseaux avec des boucles et plusieurs itinéraires, sans reproduire la disposition de l'image de référence. Dans chaque monde, retirer une zone centrale ne déconnecte pas les autres zones centrales ; les forteresses restent des destinations terminales. Les niveaux requis, durées, embuscades et sauvegardes s'appliquent aussi aux nouveaux chemins. Le contrôle d'une carte inaccessible isole maintenant une zone en retirant toutes ses liaisons, puisque retirer une seule liaison laisse désormais un itinéraire alternatif.
+
+Validation locale : 749 tests réussis, 6 ignorés, couverture combinée 83,63 %, Ruff réussi. Les tests supplémentaires vérifient les réseaux maillés des trois mondes, un trajet complet en boucle avec reprise de sauvegarde et le refus d'un raccourci vers une zone de niveau supérieur.
+
+## Exploration, fondation et simulation autonome
+
+Les ressources comprennent désormais 27 zones, dont 6 cachées sans route initiale, 30 chemins routiers et 9 repères hors route. Douze sites décrivent les ressources récoltables et leur aptitude stratégique. Quatre plans définissent les coûts matériels, la main-d'œuvre et les durées de camp, village, route et relais. Neuf PNJ et neuf patrouilles suivent des itinéraires et horaires déclarés.
+
+Les déplacements ne tirent plus d'événement aléatoire. Les rencontres reposent sur le croisement temporel des positions. Les nouveaux villages peuvent être raccordés ; les PNJ adoptent la desserte au prochain retour au départ de leur circuit, sans téléportation. La simulation autonome fait avancer l'horloge sans personnage, conserve les réalisations, et peut partager un état avec la partie via des écritures verrouillées Linux/Windows et des remplacements atomiques. Les états antérieurs migrent à leur heure sauvegardée. Le moteur de combat et le butin gardent leur RNG propre ; il ne déclenche pas les événements du monde.
+
+Validation locale : 795 tests réussis, 6 ignorés, couverture combinée 84,20 %, Ruff et compilation réussis. Les tests supplémentaires couvrent les découvertes, les repères inaccessibles, les programmes sans joueur, les avances par lots, les collisions temporelles, les recrutements, les coûts atomiques, les sites non stratégiques, les raccordements refusés, les relais et reprises, la desserte sans téléportation, les références et sauvegardes invalides, le pilote CLI autonome, la compatibilité des anciens états et les ticks concurrents. Un contrôle de performance avance dix millions d'heures sans rejouer chaque heure.
+
+Le paquet installé hors du dépôt a passé le parcours pilote du monde → recrutement → exploration → récolte → camp → village → route → relais → repos → reprise. Les fichiers de ressources n'ont pas été modifiés. Le workflow d'installation exerce désormais aussi le pilote sans joueur. FRONTIER.md décrit les commandes et règles. Le fichier de personnage garde un processus écrivain ; la coordination du fichier de monde avec son pilote ne constitue pas un serveur multijoueur avec comptes et permissions.
+
+## Craft des villages
+
+Les villages autorisent désormais les objets dont le niveau requis est strictement inférieur à la moitié du niveau du village. La comparaison entière `2 * niveau_objet < niveau_village` évite les ambiguïtés sur les niveaux pairs et impairs. Les villages existants déclarent leur `settlement_level` ; les camps mémorisent le niveau de leur site pour le village fondé, avec compatibilité des anciennes sauvegardes sans niveau. Le statut affiche le niveau du village et le niveau maximal fabricable.
+
+Le craft manuel valide la règle avant consommation ; le craft automatique filtre aussi bien les panoplies complètes que les recettes individuelles. Villes et capitales conservent leur fonctionnement. Validation locale : 806 tests réussis, 6 ignorés ; tests dédiés aux bornes strictes, niveaux impairs, absence de consommation, craft automatique, villages fondés, reprise d'ancien état et plafond du monde. Ruff réussi.

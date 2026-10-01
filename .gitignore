@@ -53,3 +53,16 @@ Thumbs.db
 *.old
 *.backup
 *.orig
+
+pip-*/
+pytest-of-root/
+tmp*/
+coverage.json
+coverage.xml
+function-audit.json
+tests.xml
+performance.xml
+results.txt
+baseline*.txt
+
+install-check/
