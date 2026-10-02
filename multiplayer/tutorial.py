@@ -99,22 +99,49 @@ def npc(now):
     return {"name": "Léon, marchand itinérant", "location": "Rosée" if now % 600 < 300 else "Brume"}
 
 
+def can_target(actor, skill, target, mob):
+    if target is None or not actor.is_alive() or actor.is_stunned() or not skill.is_ready() or not skill.can_afford(actor):
+        return False
+    if skill.skill_type in (SkillType.DAMAGE, SkillType.DEBUFF):
+        return target is mob and target.is_alive()
+    if skill.skill_type == SkillType.INVOCATION:
+        return target is actor and actor.invocations.can_summon()
+    if target is mob or target is not actor and not skill.can_target_others:
+        return False
+    if skill.skill_type == SkillType.RESURRECT:
+        return not target.is_alive()
+    if not target.is_alive():
+        return False
+    if skill.skill_type == SkillType.HEAL:
+        return target.hp.current_value < target.hp.value
+    return skill.skill_type == SkillType.BUFF
+
+
 def view(party, me, now):
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["traveller"] = npc(now)
     result["players"] = []
+    characters = {key: unpack(value) for key, value in party["characters"].items()}
+    mob = unpack(party["mob"]) if party["mob"] else None
+    targets = {**characters, **({"mob": mob} if mob else {})}
     for player_id, data in party["characters"].items():
-        character = unpack(data)
+        character = characters[player_id]
+        actionable = bool(mob and character.is_alive() and not character.is_stunned() and party["ready"][player_id] <= now)
         result["players"].append({"id": player_id, "name": character.name, "class_name": character.char_class,
                                   "level": character.level, "exp": character.exp, "next_level_exp": character.level * 100,
                                   "hp": character.hp.current_value, "max_hp": character.hp.value,
+                                  "stats": {key: getattr(character, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
+                                  "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
+                                  "can_attack": actionable,
                                   "energies": data["energies"], "inventory": party["inventory"][player_id],
                                   "equipment": party["equipment"].get(player_id),
                                   "cooldown_real_seconds": max(0, party["ready"][player_id] - now) / 20,
                                   "skills": [{"name": s.name, "description": s.description, "type": s.skill_type.name,
                                               "cost": s.energie_cost, "energy": s.energie_target.__name__,
                                               "cooldown": s.current_cooldown,
+                                              "can_target_others": s.can_target_others,
+                                              "targets": [key for key, target in targets.items() if actionable and can_target(character, s, target, mob)],
                                               "available": s.is_ready() and s.can_afford(character)}
                                              for s in character.skills.values()],
                                   "upcoming_skills": [{"level": int(level.split()[1]), "name": s.name}
@@ -162,6 +189,8 @@ def execute(party, player_id, action, params, now, error):
         if actor.is_stunned() and action != "rest":
             raise error("stunned", "Votre personnage est étourdi.", 409)
         if action == "strike":
+            if params["target"] != "mob" or not mob.is_alive():
+                raise error("invalid_target", "L'attaque simple doit viser un ennemi vivant de ce combat.")
             mob.lose_hp(actor, max(4, actor.force.current_value + 3))
             messages.append(f"{actor.name} porte une attaque simple.")
         elif action == "skill":
@@ -179,6 +208,10 @@ def execute(party, player_id, action, params, now, error):
                 target = characters.get(target_id)
             if target is None:
                 raise error("invalid_target", "Cette compétence ne peut pas viser cette cible.")
+            if not skill.is_ready() or not skill.can_afford(actor):
+                raise error("skill_unavailable", "Compétence indisponible : énergie ou délai insuffisant.", 409)
+            if not can_target(actor, skill, target, mob):
+                raise error("invalid_target", "Aucune action utile de cette compétence n'est possible sur cette cible.")
             try:
                 success, message = actor.use_skill(skill.name, target)
             finally:

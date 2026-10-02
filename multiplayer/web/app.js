@@ -5,6 +5,9 @@ let session = null;
 let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
 let polling = false;
+let currentView = "standby";
+let viewContext = "";
+let combatTarget = "";
 const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
 function message(text, error = false) {
   $("message").textContent = text;
@@ -36,10 +39,12 @@ function render(state) {
   $("battle").hidden = !session;
   $("invitation").hidden = !(session && session.state === "lobby" && session.owner === session.me && sessionStorage.getItem("rpg-invite-session") === session.id);
   $("tutorial-panel").hidden = !(session && session.tutorial);
+  $("duel-target-controls").hidden = true;
   if (!session) return;
   $("battle-title").textContent = {lobby: "En attente du second joueur", running: "Duel en cours", finished: "Duel terminé"}[session.state];
   $("version").textContent = `État ${session.revision}`;
   $("fighters").replaceChildren();
+  $("fighters").hidden = Boolean(session.tutorial);
   for (const player of session.tutorial ? session.tutorial.players : session.players) {
     const article = document.createElement("article");
     article.className = `fighter${player.id === session.me ? " mine" : ""}`;
@@ -71,6 +76,16 @@ function render(state) {
   $("party-tutorial").disabled = busy;
   $("attack").hidden = session.state !== "running";
   $("attack").disabled = busy || me.cooldown_real_seconds > 0;
+  $("duel-target").replaceChildren();
+  if (!session.tutorial && session.state === "running" && me.hp > 0 && me.cooldown_real_seconds <= 0) {
+    for (const opponent of session.players.filter(p => p.id !== session.me && p.hp > 0)) {
+      const option = document.createElement("option");
+      option.value = opponent.id;
+      option.textContent = opponent.name;
+      $("duel-target").append(option);
+    }
+    $("duel-target-controls").hidden = $("duel-target").options.length === 0;
+  }
   $("attack").textContent = me.cooldown_real_seconds > 0 ? `Attaque dans ${me.cooldown_real_seconds.toFixed(1)} s` : "Attaquer";
   $("leave").hidden = session.state === "finished";
   $("leave").disabled = busy;
@@ -88,7 +103,41 @@ function render(state) {
 function tutorialCommand(action, params = {}) {
   if (session) return command(action, {session_id: session.id, revision: session.revision, ...params});
 }
+function showView(view) {
+  currentView = view;
+  if (session && session.tutorial) renderTutorial(session.tutorial);
+}
+function skillAllowed(me, skill, target, mob) {
+  if (!mob || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0 || !skill.available || skill.cooldown > 0) return false;
+  const energy = me.energies.find(e => e.type === skill.energy);
+  if (!energy || energy.current < skill.cost || !skill.targets.includes(target.id)) return false;
+  if (["DAMAGE", "DEBUFF"].includes(skill.type)) return target.id === "mob" && target.hp > 0;
+  if (skill.type === "INVOCATION") return target.id === me.id && me.invocations.length < me.invocation_limit;
+  if (target.id === "mob" || target.id !== me.id && !skill.can_target_others) return false;
+  if (skill.type === "RESURRECT") return target.hp <= 0;
+  if (target.hp <= 0) return false;
+  if (skill.type === "HEAL") return target.hp < target.max_hp;
+  return skill.type === "BUFF";
+}
 function renderTutorial(adventure) {
+  const fighting = Boolean(adventure.mob);
+  const context = `${session.id}:${adventure.step}:${fighting}`;
+  if (context !== viewContext) {
+    currentView = fighting ? "combat" : "standby";
+    combatTarget = "";
+    viewContext = context;
+  }
+  const me = adventure.players.find(player => player.id === session.me);
+  const canTalk = !fighting && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3);
+  const canCraft = !fighting && adventure.step === "craft" && !me.equipment;
+  const hasQuest = adventure.quest !== "unaccepted";
+  if (currentView === "npc" && !canTalk || currentView === "craft" && !canCraft || currentView === "quest" && (!hasQuest || fighting)) currentView = fighting ? "combat" : "standby";
+  for (const view of ["standby", "npc", "quest", "stats", "craft", "combat"]) $(`${view}-view`).hidden = currentView !== view;
+  $("fighters").hidden = currentView !== "combat";
+  $("show-quest").hidden = fighting || !hasQuest || currentView === "quest";
+  $("show-stats").hidden = currentView === "stats";
+  $("back-view").hidden = currentView === (fighting ? "combat" : "standby");
+  $("back-view").textContent = fighting ? "Retour au combat" : "Retour à l'exploration";
   $("battle-title").textContent = adventure.step === "complete" ? "Aventure accomplie" : "Votre tutoriel";
   $("attack").hidden = true;
   $("leave").hidden = true;
@@ -96,70 +145,78 @@ function renderTutorial(adventure) {
   $("location").textContent = adventure.location;
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = `Quête de Mira : ${{unaccepted: "à accepter", active: `${adventure.kills}/3 gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
-  $("traveller").textContent = `${adventure.traveller.name} est actuellement au village de ${adventure.traveller.location}.`;
-  const me = adventure.players.find(player => player.id === session.me);
+  $("quest-description").textContent = adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
   $("character-details").replaceChildren();
   for (const text of [
     `Expérience : ${me.exp}/${me.next_level_exp} · niveau ${me.level}`,
+    `PV : ${me.hp}/${me.max_hp} · Force ${me.stats.force} · Endurance ${me.stats.endurance} · Intelligence ${me.stats.intelligence} · Sagesse ${me.stats.sagesse}`,
     `Énergie : ${me.energies.map(e => `${e.type} ${e.current}/${e.max}`).join(" · ")}`,
     `Sac : ${Object.entries(me.inventory).map(([item, amount]) => `${amount} ${item}`).join(", ") || "vide"}`,
     `Équipement : ${me.equipment || "aucun"}`,
     `Invocations : ${me.invocations.map(i => `${i.name} (${i.hp} PV)`).join(", ") || "aucune"}`,
+    `Compétences acquises : ${me.skills.map(s => `${s.name} (${s.cost} ${s.energy})`).join(", ")}`,
     `Prochaines compétences : ${me.upcoming_skills.map(s => `${s.name} au niveau ${s.level}`).join(", ") || "toutes acquises"}`,
   ]) {
     const p = document.createElement("p");
     p.textContent = text;
     $("character-details").append(p);
   }
-  $("mob-name").textContent = adventure.mob ? adventure.mob.name : "";
-  $("mob-hp").textContent = adventure.mob ? `${adventure.mob.stats.hp.current}/${adventure.mob.stats.hp.max} PV` : "";
-  $("tutorial-actions").replaceChildren();
-  function button(label, action, params = {}, disabled = false) {
+  for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions", "combat-actions", "skills"]) $(id).replaceChildren();
+  function button(container, label, handler, disabled = false) {
     const element = document.createElement("button");
     element.textContent = label;
     element.disabled = busy || disabled;
-    element.addEventListener("click", () => tutorialCommand(action, params));
-    $("tutorial-actions").append(element);
+    element.addEventListener("click", handler);
+    $(container).append(element);
+    return element;
   }
-  const unavailable = me.cooldown_real_seconds > 0 || me.hp <= 0;
-  if (adventure.mob) {
-    button("Attaque simple", "strike", {}, unavailable);
-    button("Récupérer de l'énergie", "rest", {}, unavailable);
-  } else if (adventure.step !== "complete") {
-    button("Se reposer", "rest");
-    if (adventure.step === "clearing" || adventure.step === "hunt" && adventure.kills < 3) button("Explorer : chercher un gobelin", "explore");
-    if (adventure.step === "road") button("Rejoindre Rosée", "travel", {destination: "rosee"});
-    if (adventure.step === "village") button("Parler à Mira : accepter la quête", "talk", {npc: "mira"});
-    if (adventure.step === "hunt" && adventure.kills === 3) button("Revenir à Rosée : rendre la quête", "talk", {npc: "mira"});
-    if (adventure.step === "craft") button(me.equipment ? "Votre veste est prête · votre compagnon doit fabriquer la sienne" : "Fabriquer et équiper la veste · 2 peaux, 3 crocs", "craft", {recipe: "veste"}, Boolean(me.equipment));
-    if (["craft", "travel"].includes(adventure.step)) button("Essayer mes nouvelles compétences · entraînement sans butin", "explore");
-    if (adventure.step === "travel") button("Rejoindre Brume", "travel", {destination: "brume"});
+  function action(container, label, name, params = {}, disabled = false) {
+    return button(container, label, () => tutorialCommand(name, params), disabled);
   }
-  const selected = $("skill-target").value;
-  $("skill-target").replaceChildren();
-  for (const target of [{id: "mob", name: "Gobelin"}, ...adventure.players]) {
+  if (!fighting && adventure.step !== "complete") {
+    action("tutorial-actions", "Se reposer", "rest");
+    if (adventure.step === "clearing" || adventure.step === "hunt" && adventure.kills < 3) action("tutorial-actions", "Explorer : chercher un gobelin", "explore");
+    if (adventure.step === "road") action("tutorial-actions", "Rejoindre Rosée", "travel", {destination: "rosee"});
+    if (canTalk) button("tutorial-actions", adventure.step === "village" ? "Parler à Mira" : "Revenir à Rosée : parler à Mira", () => showView("npc"));
+    if (canCraft) button("tutorial-actions", "Entrer dans la forge", () => showView("craft"));
+    if (adventure.step === "craft" && me.equipment) {
+      const p = document.createElement("p");
+      p.textContent = "Votre veste est équipée. Votre compagnon doit fabriquer la sienne avant le départ.";
+      $("tutorial-actions").append(p);
+    }
+    if (["craft", "travel"].includes(adventure.step)) action("tutorial-actions", "Essayer mes nouvelles compétences · entraînement sans butin", "explore");
+    if (adventure.step === "travel") action("tutorial-actions", "Rejoindre Brume", "travel", {destination: "brume"});
+  }
+  $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
+  if (canTalk) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
+  if (canTalk && hasQuest) button("quest-actions", "Parler à Mira", () => showView("npc"));
+  $("craft-materials").textContent = `Votre sac : ${me.inventory.peau || 0} peau(s), ${me.inventory.croc || 0} croc(s).`;
+  if (canCraft) action("craft-actions", "Fabriquer et équiper la veste", "craft", {recipe: "veste"}, (me.inventory.peau || 0) < 2 || (me.inventory.croc || 0) < 3);
+  $("mob-name").textContent = fighting ? adventure.mob.name : "";
+  $("mob-hp").textContent = fighting ? `${adventure.mob.stats.hp.current}/${adventure.mob.stats.hp.max} PV` : "";
+  const mob = fighting ? {id: "mob", name: adventure.mob.name, hp: adventure.mob.stats.hp.current, max_hp: adventure.mob.stats.hp.max} : null;
+  const canAttack = target => Boolean(mob && target.id === "mob" && mob.hp > 0 && me.hp > 0 && !me.stunned && me.cooldown_real_seconds <= 0 && me.can_attack);
+  const possibleTargets = fighting ? [mob, ...adventure.players].filter(target => canAttack(target) || me.skills.some(skill => skillAllowed(me, skill, target, mob))) : [];
+  $("combat-target").replaceChildren();
+  for (const target of possibleTargets) {
     const option = document.createElement("option");
     option.value = target.id;
-    option.textContent = target.name;
-    $("skill-target").append(option);
+    option.textContent = `${target.name}${target.id === me.id ? " · vous" : ""}`;
+    $("combat-target").append(option);
   }
-  if (["mob", ...adventure.players.map(p => p.id)].includes(selected)) $("skill-target").value = selected;
-  $("skills").replaceChildren();
-  for (const skill of me.skills) {
-    const element = document.createElement("button");
-    element.className = "secondary";
-    element.textContent = `${skill.name} · ${skill.cost} ${skill.energy}${skill.cooldown ? ` · récupération ${skill.cooldown} tour(s)` : ""}`;
-    element.title = skill.description;
-    element.disabled = busy || unavailable || !skill.available || !adventure.mob;
-    element.addEventListener("click", () => {
-      const target = ["DAMAGE", "DEBUFF"].includes(skill.type) ? "mob" : skill.type === "INVOCATION" ? session.me : $("skill-target").value;
-      if (!["DAMAGE", "DEBUFF", "INVOCATION"].includes(skill.type) && target === "mob") {
-        message("Sélectionnez votre personnage ou un allié pour cette compétence.", true);
-        return;
-      }
-      tutorialCommand("skill", {skill_name: skill.name, target});
-    });
-    $("skills").append(element);
+  if (possibleTargets.length && !possibleTargets.some(target => target.id === combatTarget)) combatTarget = possibleTargets[0].id;
+  $("combat-target").value = possibleTargets.length ? combatTarget : "";
+  $("target-controls").hidden = !fighting || possibleTargets.length === 0;
+  const selected = possibleTargets.find(target => target.id === combatTarget);
+  $("combat-status").textContent = !fighting ? "" : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi. Récupérez pour laisser passer le tour." : selected ? "Choisissez une action pour cette cible." : "Aucune cible disponible. Vous pouvez récupérer de l'énergie.";
+  if (fighting && me.hp > 0) {
+    if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
+    action("combat-actions", "Récupérer de l'énergie", "rest", {}, me.cooldown_real_seconds > 0);
+    if (selected) for (const skill of me.skills.filter(s => skillAllowed(me, s, selected, mob))) {
+      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy}`, "skill", {skill_name: skill.name, target: selected.id});
+      element.className = "secondary";
+      element.title = skill.description;
+    }
   }
 }
 async function refresh() {
@@ -199,6 +256,7 @@ async function refresh() {
 async function command(action, params = {}) {
   if (busy) return;
   busy = true;
+  if (session?.tutorial) renderTutorial(session.tutorial);
   message("");
   $("attack").disabled = true;
   try {
@@ -238,6 +296,13 @@ $("restore-form").addEventListener("submit", async event => {
   $("restore-token").value = "";
   await refresh();
 });
+$("show-stats").addEventListener("click", () => showView("stats"));
+$("show-quest").addEventListener("click", () => showView("quest"));
+$("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ? "combat" : "standby"));
+$("combat-target").addEventListener("change", () => {
+  combatTarget = $("combat-target").value;
+  if (session?.tutorial) renderTutorial(session.tutorial);
+});
 $("create").addEventListener("click", () => command("create"));
 $("tutorial").addEventListener("click", () => command("tutorial"));
 $("party-tutorial").addEventListener("click", () => command("tutorial"));
@@ -246,7 +311,7 @@ $("join-form").addEventListener("submit", event => {
   command("join", {invite: $("invite-input").value.trim()});
 });
 for (const action of ["start", "attack", "leave"]) $(action).addEventListener("click", () => {
-  if (session) command(action, {session_id: session.id, revision: session.revision});
+  if (session) command(action, {session_id: session.id, revision: session.revision, ...(action === "attack" ? {target: $("duel-target").value} : {})});
 });
 $("new-room").addEventListener("click", () => command("create"));
 $("logout").addEventListener("click", () => {

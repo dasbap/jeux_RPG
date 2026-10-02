@@ -33,15 +33,22 @@
       <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" hidden></span></div>
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
-        <h3 id="location"></h3><p id="objective"></p><p id="quest-progress"></p><p id="traveller"></p>
-        <div id="character-details"></div>
-        <h3 id="mob-name"></h3><p id="mob-hp"></p>
-        <div id="tutorial-actions" class="actions"></div>
-        <label for="skill-target">Cible de la compétence</label><select id="skill-target"></select>
-        <div id="skills" class="actions"></div>
-        <p class="muted">L'attaque simple ne coûte pas d'énergie. Se reposer en combat régénère l'énergie et réduit les délais des compétences, mais le gobelin peut riposter. Les invocations attaquent après votre action. Hors combat, le repos restaure vos PV et votre énergie.</p>
+        <h3 id="location"></h3><p id="objective"></p>
+        <nav class="actions" aria-label="Écrans du personnage"><button id="show-stats" class="secondary">Mes statistiques</button><button id="show-quest" class="secondary">Ma quête</button><button id="back-view" class="quiet" hidden>Retour</button></nav>
+        <section id="standby-view"><h3>Exploration</h3><div id="tutorial-actions" class="actions"></div></section>
+        <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
+        <section id="quest-view" hidden><h3>Journal de quête</h3><p id="quest-progress"></p><p id="quest-description"></p><div id="quest-actions" class="actions"></div></section>
+        <section id="stats-view" hidden><h3>Statistiques, sac et équipement</h3><div id="character-details"></div></section>
+        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Veste de la lisière : deux peaux et trois crocs. Une fois équipée, elle donne +10 PV et +3 endurance.</p><p id="craft-materials"></p><div id="craft-actions" class="actions"></div></section>
+        <section id="combat-view" hidden>
+          <h3 id="mob-name"></h3><p id="mob-hp"></p><p id="combat-status" role="status"></p>
+          <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
+          <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
+          <p class="muted">Choisissez une cible pour afficher vos actions disponibles. Le repos régénère votre énergie, mais l'ennemi peut riposter.</p>
+        </section>
       </section>
       <p id="result"></p>
+      <div id="duel-target-controls" hidden><label for="duel-target">Choisir votre adversaire</label><select id="duel-target"></select></div>
       <div class="actions"><button id="party-tutorial">Commencer le tutoriel du groupe</button><button id="start" class="secondary">Duel optionnel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
       <h3>Journal partagé</h3><ol id="events"></ol>
     </section>

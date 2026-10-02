@@ -26,6 +26,8 @@ def game(tmp_path):
 
 
 def command(game, token, action, **params):
+    if action == "strike":
+        params.setdefault("target", "mob")
     game.clock.value += 61
     state = game.state(token)["session"]
     if action not in ("tutorial", "create", "join"):
@@ -79,6 +81,8 @@ def test_level_one_skill_uses_real_engine_and_survives_restart(game, class_name,
     state = command(game, player["token"], "tutorial")
     command(game, player["token"], "explore")
     skill = state["tutorial"]["players"][0]["skills"][0]
+    if class_name == "Priest":
+        command(game, player["token"], "strike")
     target = player["player"]["id"] if class_name in ("Priest", "Necromancien") else "mob"
     result = command(game, player["token"], "skill", skill_name=skill["name"], target=target)
     if result["tutorial"]["mob"]:
@@ -212,3 +216,68 @@ def test_completed_adventure_is_restored_without_client_session_id(game):
     restored = game.state(player["token"])
     assert restored["session"]["id"] == result["id"]
     assert restored["session"]["tutorial"]["players"][0]["level"] == 5
+
+
+def test_no_combat_targets_when_spawning_or_recovering(game):
+    player = game.register("Chevalier", "Knight")
+    state = command(game, player["token"], "tutorial")
+    me = state["tutorial"]["players"][0]
+    assert not me["can_attack"]
+    assert all(not skill["targets"] for skill in me["skills"])
+    state = command(game, player["token"], "explore")
+    assert state["tutorial"]["players"][0]["skills"][0]["targets"] == ["mob"]
+    state = command(game, player["token"], "skill", skill_name="Sword Slash", target="mob")
+    me = state["tutorial"]["players"][0]
+    assert not me["can_attack"]
+    assert all(not skill["targets"] for skill in me["skills"])
+    with pytest.raises(GameError) as failure:
+        game.command(player["token"], "double000", "skill", session_id=state["id"], revision=state["revision"], skill_name="Sword Slash", target="mob")
+    assert failure.value.code == "cooldown"
+
+
+def test_strike_requires_explicit_enemy_target(game):
+    player = game.register("Chevalier", "Knight")
+    command(game, player["token"], "tutorial")
+    state = command(game, player["token"], "explore")
+    for target in (player["player"]["id"], "unknown", None, []):
+        with pytest.raises(GameError) as failure:
+            command(game, player["token"], "strike", target=target)
+        assert failure.value.code == "invalid_target"
+        assert game.state(player["token"])["session"]["revision"] == state["revision"]
+    with pytest.raises(GameError) as failure:
+        game.command(player["token"], "missing00", "strike", session_id=state["id"], revision=state["revision"])
+    assert failure.value.code == "invalid_command"
+
+
+def test_heal_targets_only_injured_group_members(game):
+    priest = game.register("Soigneur", "Priest")
+    knight = game.register("Chevalier", "Knight")
+    created = game.command(priest["token"], "create000", "create")
+    command(game, knight["token"], "join", invite=created["invite"])
+    command(game, priest["token"], "tutorial")
+    state = command(game, priest["token"], "explore")
+    healer = next(p for p in state["tutorial"]["players"] if p["id"] == priest["player"]["id"])
+    assert healer["skills"][0]["targets"] == []
+    with pytest.raises(GameError) as failure:
+        command(game, priest["token"], "skill", skill_name="Heal", target=knight["player"]["id"])
+    assert failure.value.code == "invalid_target"
+    state = command(game, knight["token"], "strike")
+    healer = next(p for p in state["tutorial"]["players"] if p["id"] == priest["player"]["id"])
+    assert healer["skills"][0]["targets"] == [knight["player"]["id"]]
+    state = command(game, priest["token"], "skill", skill_name="Heal", target=knight["player"]["id"])
+    healed = next(p for p in state["tutorial"]["players"] if p["id"] == knight["player"]["id"])
+    assert healed["hp"] == healed["max_hp"]
+
+
+def test_duel_rechecks_selected_opponent(game):
+    first = game.register("Chevalier", "Knight")
+    second = game.register("Mage", "Mage")
+    created = game.command(first["token"], "create000", "create")
+    command(game, second["token"], "join", invite=created["invite"])
+    state = command(game, first["token"], "start")
+    with pytest.raises(GameError) as failure:
+        command(game, first["token"], "attack", target=first["player"]["id"])
+    assert failure.value.code == "invalid_target"
+    assert game.state(first["token"])["session"]["revision"] == state["revision"]
+    state = command(game, first["token"], "attack", target=second["player"]["id"])
+    assert next(p for p in state["players"] if p["id"] == second["player"]["id"])["hp"] < second["player"]["max_hp"]

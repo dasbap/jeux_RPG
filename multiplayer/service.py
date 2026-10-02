@@ -208,12 +208,12 @@ class GameService:
         allowed = {"create": set(), "join": {"invite"}, "start": {"session_id", "revision"},
                    "attack": {"session_id", "revision"}, "leave": {"session_id", "revision"},
                    "tutorial": set(), "explore": {"session_id", "revision"},
-                   "strike": {"session_id", "revision"}, "rest": {"session_id", "revision"},
+                   "strike": {"session_id", "revision", "target"}, "rest": {"session_id", "revision"},
                    "skill": {"session_id", "revision", "skill_name", "target"},
                    "travel": {"session_id", "revision", "destination"},
                    "talk": {"session_id", "revision", "npc"},
                    "craft": {"session_id", "revision", "recipe"}}
-        if not isinstance(action, str) or action not in allowed or set(params) != allowed[action]:
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "revision" in params and (type(params["revision"]) is not int or params["revision"] < 0):
             raise GameError("invalid_revision", "Version invalide.")
@@ -332,6 +332,8 @@ class GameService:
                 target = self.db.execute("SELECT * FROM members WHERE session_id=? AND player_id<>?", (session["id"], player_id)).fetchone()
                 if actor["hp"] <= 0 or not target or target["hp"] <= 0:
                     raise GameError("invalid_target", "Aucune cible vivante.", 409)
+                if "target" in params and params["target"] != target["player_id"]:
+                    raise GameError("invalid_target", "Cet adversaire n'est pas une cible valide de votre duel.")
                 if actor["ready_at"] > now:
                     raise GameError("cooldown", "Votre attaque n'est pas encore disponible.", 409)
                 hp = max(0, target["hp"] - player["damage"])

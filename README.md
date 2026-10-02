@@ -26,6 +26,10 @@ Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusi
 
 Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. Le repos régénère l'énergie et réduit les délais exprimés en tours ; le gobelin peut riposter. Hors combat, le repos restaure complètement PV et énergie. Une victoire soigne le groupe. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
 
+L'interface sépare exploration, dialogue PNJ, journal de quête, combat, forge et statistiques. Un seul écran de situation est affiché à la fois. Les statistiques donnent les PV, la force, l'endurance, l'intelligence, la sagesse, les énergies, les compétences, le sac et l'équipement. Le combat apparaît à la rencontre d'un ennemi ; les cibles sont absentes à l'apparition du personnage et hors combat.
+
+En combat, choisir d'abord une cible : seules l'attaque simple et les compétences utilisables sur elle apparaissent. Un personnage à pleine vie n'est pas proposé pour un soin, une invocation doit viser son propriétaire et une attaque doit viser l'ennemi vivant du combat. Une cible sans action disponible est masquée, notamment pendant le délai global. Le client filtre les choix à partir de l'état reçu et des règles de ciblage ; le serveur recalcule les conditions lors de chaque commande. Les actions refusées ne consomment ni énergie ni objets.
+
 Le monde possède un marchand itinérant entre Rosée et Brume. Son passage est déterminé par l'horloge interne au ratio 1:20, sans afficher le ratio ni le temps écoulé dans l'interface. Mira reste disponible pour éviter de bloquer le tutoriel. Le marchand est pour l'instant un PNJ de passage, sans boutique.
 
 L'identité est conservée dans l'onglet pendant sa session. Pour retrouver un personnage après fermeture de l'onglet, conserver sa **clé de reconnexion** en privé et la saisir dans « Retrouver mon personnage ». Se déconnecter conserve la progression du tutoriel. En revenant avec sa clé, le joueur retrouve son groupe et ses compétences, son inventaire et son équipement.
@@ -105,10 +109,11 @@ Actions prises en charge :
 | `create` | Aucun |
 | `join` | `invite` |
 | `start` | `session_id`, `revision` |
-| `attack` | `session_id`, `revision` |
+| `attack` | `session_id`, `revision`, et `target` optionnel pour les anciens clients |
 | `leave` | `session_id`, `revision` |
 | `tutorial` | Aucun ; démarre un tutoriel solo ou le salon du créateur |
-| `explore`, `strike`, `rest` | `session_id`, `revision` |
+| `explore`, `rest` | `session_id`, `revision` |
+| `strike` | `session_id`, `revision`, `target` (`mob`) |
 | `skill` | `session_id`, `revision`, `skill_name`, `target` |
 | `talk` | `session_id`, `revision`, `npc` (`mira`) |
 | `craft` | `session_id`, `revision`, `recipe` (`veste`) |

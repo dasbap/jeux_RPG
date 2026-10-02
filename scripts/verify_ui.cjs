@@ -47,6 +47,7 @@ async function main() {
   const app = await (await fetch(new URL("/app.js", origin))).text();
   const first = await client(html, app);
   const second = await client(html, app);
+  const third = await client(html, app);
   try {
     assert.equal(element(first, "connection").textContent, "Prêt · créez votre personnage");
     element(first, "name").value = "Alice <script>";
@@ -86,13 +87,22 @@ async function main() {
     element(first, "party-tutorial").click();
     stage = "Démarrer le tutoriel";
     await waitFor(() => !element(first, "tutorial-panel").hidden && !element(second, "tutorial-panel").hidden);
+    assert(!element(first, "standby-view").hidden);
+    assert(element(first, "combat-view").hidden);
+    assert(element(first, "target-controls").hidden);
+    assert.equal(element(first, "combat-target").options.length, 0);
+    element(first, "show-stats").click();
+    assert(!element(first, "stats-view").hidden);
+    assert(element(first, "standby-view").hidden);
+    assert(element(first, "character-details").textContent.includes("Force"));
+    element(first, "back-view").click();
     assert.equal(first.window.document.querySelector(".clock"), null);
     assert(!first.window.document.body.textContent.includes("×20"));
     async function tutorialAction(dom, label, expected) {
       stage = `${label} · ${element(dom, "location").textContent}`;
       let button;
       await waitFor(() => {
-        button = [...element(dom, "tutorial-actions").querySelectorAll("button"), ...element(dom, "skills").querySelectorAll("button")].find(b => b.textContent.includes(label));
+        button = [...element(dom, "tutorial-panel").querySelectorAll("button")].find(b => !b.closest("[hidden]") && b.textContent.toLowerCase().includes(label.toLowerCase()));
         return button && !button.disabled;
       });
       button.click();
@@ -103,6 +113,9 @@ async function main() {
     await tutorialAction(first, "Sword Slash", () => element(second, "events").textContent.includes("utilise Sword Slash"));
     await tutorialAction(second, "Fire Ball", () => element(first, "location").textContent === "Sentier de Rosée");
     await tutorialAction(first, "Rejoindre Rosée", () => element(second, "location").textContent === "Village de Rosée");
+    await tutorialAction(first, "Parler à Mira", () => !element(first, "npc-view").hidden);
+    assert(element(first, "combat-view").hidden);
+    assert(element(first, "standby-view").hidden);
     await tutorialAction(first, "accepter la quête", () => element(second, "quest-progress").textContent.includes("0/3"));
     for (let count = 1; count <= 3; count++) {
       await tutorialAction(first, "Explorer", () => element(second, "mob-name").textContent.includes("Gobelin"));
@@ -112,9 +125,12 @@ async function main() {
       }
       await waitFor(() => element(first, "quest-progress").textContent.includes(`${count}/3`));
     }
+    element(first, "show-quest").click();
+    assert(!element(first, "quest-view").hidden);
+    await tutorialAction(first, "Parler à Mira", () => !element(first, "npc-view").hidden);
     await tutorialAction(first, "rendre la quête", () => element(first, "character-details").children[0].textContent.includes("niveau 5") && element(second, "character-details").children[0].textContent.includes("niveau 5"));
-    assert(element(first, "skills").textContent.includes("Shield Bash"));
-    assert(element(second, "skills").textContent.includes("Thunder"));
+    assert(element(first, "character-details").textContent.includes("Shield Bash"));
+    assert(element(second, "character-details").textContent.includes("Thunder"));
     await tutorialAction(first, "Essayer mes nouvelles", () => element(second, "mob-name").textContent.includes("Gobelin"));
     const previous = element(second, "version").textContent;
     await tutorialAction(second, "Thunder", () => element(second, "version").textContent !== previous);
@@ -123,21 +139,49 @@ async function main() {
       await tutorialAction(second, "Attaque simple", () => element(second, "version").textContent !== revision);
     }
     await waitFor(() => element(first, "events").textContent.includes("Entraînement terminé"));
+    await tutorialAction(first, "Entrer dans la forge", () => !element(first, "craft-view").hidden);
     await tutorialAction(first, "Fabriquer et équiper", () => element(second, "events").textContent.includes("Alice <script> fabrique"));
+    await tutorialAction(second, "Entrer dans la forge", () => !element(second, "craft-view").hidden);
     await tutorialAction(second, "Fabriquer et équiper", () => element(first, "location").textContent === "Route des Deux Villages");
     await tutorialAction(first, "Rejoindre Brume", () => element(first, "location").textContent === "Village de Brume" && element(second, "battle-title").textContent === "Aventure accomplie");
     assert.equal(element(first, "location").textContent, "Village de Brume");
     assert.equal(element(second, "location").textContent, "Village de Brume");
     assert(element(first, "character-details").textContent.includes("2 peau, 1 croc"));
     assert.equal(element(first, "events").querySelector("script"), null);
+    stage = "Cibles du prêtre";
+    element(third, "name").value = "Soigneur";
+    element(third, "class-name").value = "Priest";
+    submit(third, "register-form");
+    await waitFor(() => !element(third, "lobby").hidden);
+    element(third, "tutorial").click();
+    await waitFor(() => !element(third, "tutorial-panel").hidden);
+    assert(element(third, "target-controls").hidden);
+    assert.equal(element(third, "combat-target").options.length, 0);
+    await tutorialAction(third, "Explorer", () => !element(third, "combat-view").hidden);
+    assert.deepEqual([...element(third, "combat-target").options].map(o => o.value), ["mob"]);
+    assert(!element(third, "skills").textContent.includes("Heal"));
+    const priestVersion = element(third, "version").textContent;
+    await tutorialAction(third, "Attaque simple", () => element(third, "version").textContent !== priestVersion);
+    assert(element(third, "target-controls").hidden);
+    await waitFor(() => [...element(third, "combat-target").options].some(o => o.value !== "mob"));
+    element(third, "combat-target").value = [...element(third, "combat-target").options].find(o => o.value !== "mob").value;
+    element(third, "combat-target").dispatchEvent(new third.window.Event("change", {bubbles: true}));
+    assert(element(third, "skills").textContent.includes("Heal"));
+    assert(!element(third, "combat-actions").textContent.includes("Attaque simple"));
+    element(third, "show-stats").click();
+    assert(element(third, "combat-view").hidden);
+    assert(!element(third, "stats-view").hidden);
+    element(third, "back-view").click();
+    await tutorialAction(third, "Heal", () => element(third, "events").textContent.includes("utilise Heal"));
     assert.equal(errors.length, 0, errors.join("\n"));
-    console.log("UI validée : duel, tutoriel coopératif complet, compétences de classe, niveau 5, quête, craft, Brume et rendu sûr du texte utilisateur.");
+    console.log("UI validée : écrans contextuels, cibles utiles, attaque ciblée, soins, statistiques, dialogue, quête, craft et tutoriel coopératif complet.");
   } finally {
-    for (const dom of [first, second]) for (const timer of dom.intervals) dom.window.clearInterval(timer);
-    await waitFor(() => first.pending === 0 && second.pending === 0);
+    for (const dom of [first, second, third]) for (const timer of dom.intervals) dom.window.clearInterval(timer);
+    await waitFor(() => first.pending === 0 && second.pending === 0 && third.pending === 0);
     await new Promise(resolve => setTimeout(resolve, 50));
     first.window.close();
     second.window.close();
+    third.window.close();
   }
 }
 
