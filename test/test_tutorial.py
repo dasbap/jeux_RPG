@@ -296,3 +296,78 @@ def test_no_ally_target_without_learned_support_skill(game, class_name):
     with pytest.raises(GameError) as failure:
         command(game, player["token"], "skill", skill_name=me["skills"][0]["name"], target=ally["player"]["id"])
     assert failure.value.code == "invalid_target"
+
+
+def test_map_and_bestiary_discoveries_are_progressive(game):
+    player = game.register("Voyageur", "Mage")
+    state = command(game, player["token"], "tutorial")
+    world = state["tutorial"]["world"]
+    assert [p["id"] for p in world["places"]] == ["clearing"]
+    assert world["routes"] == []
+    assert world["bestiary"] == []
+    state = command(game, player["token"], "explore")
+    assert state["tutorial"]["world"]["bestiary"][0]["name"] == "Gobelin des bois"
+    assert all(point["action"] is None for place in state["tutorial"]["world"]["places"] for point in place["points"])
+    state = win(game, player["token"])
+    rosee = next(place for place in state["tutorial"]["world"]["places"] if place["id"] == "rosee")
+    assert not rosee["visited"]
+    assert rosee["points"] == []
+    assert "forge" not in rosee["description"]
+    assert state["tutorial"]["world"]["routes"][0]["destination"] == "rosee"
+    state = command(game, player["token"], "travel", destination="rosee")
+    rosee = next(place for place in state["tutorial"]["world"]["places"] if place["id"] == "rosee")
+    assert rosee["visited"]
+    assert next(point for point in rosee["points"] if point["id"] == "mira")["action"] == "dialogue"
+    assert next(point for point in rosee["points"] if point["id"] == "forge")["action"] is None
+
+
+def test_visited_villages_and_codex_survive_restart(game, tmp_path):
+    player = game.register("Voyageur", "Mage")
+    state = reach_forge(game, player["token"])
+    before = state["tutorial"]["world"]
+    assert next(p for p in before["places"] if p["id"] == "brume")["points"] == []
+    command(game, player["token"], "craft", recipe="veste")
+    state = command(game, player["token"], "travel", destination="brume")
+    reopened = GameService(tmp_path / "tutorial.sqlite3", game.clock)
+    try:
+        world = reopened.state(player["token"])["session"]["tutorial"]["world"]
+        assert all(place["visited"] for place in world["places"])
+        assert next(p for p in world["places"] if p["id"] == "rosee")["points"]
+        assert world["bestiary"][0]["loot"] == [{"item": "peau", "quantity": 1}, {"item": "croc", "quantity": 1}]
+        assert world == state["tutorial"]["world"]
+    finally:
+        reopened.close()
+
+
+def test_bestiary_matches_combat_rules_and_old_saves_are_supported(game):
+    from jeuxRPG.multiplayer.world import GOBLIN
+    from jeuxRPG._class.res.character.table_stat_subclass import goblin_table
+    player = game.register("Voyageur", "Knight")
+    command(game, player["token"], "tutorial")
+    state = command(game, player["token"], "explore")
+    creature = state["tutorial"]["world"]["bestiary"][0]
+    assert creature["hp"]["first_encounter"] == state["tutorial"]["mob"]["stats"]["hp"]["max"]
+    assert creature["xp"]["hunt"] == GOBLIN["xp_hunt"]
+    assert creature["weaknesses"] == [v.name for v in goblin_table["advantage"]["weakness"]]
+    assert creature["resistances"] == [v.name for v in goblin_table["advantage"]["resilience"]]
+    row = game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state["id"],)).fetchone()
+    data = json.loads(row[0])
+    data.pop("visited")
+    data.pop("seen_mobs")
+    game.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(data), state["id"]))
+    assert game.state(player["token"])["session"]["tutorial"]["world"] == state["tutorial"]["world"]
+
+
+def test_travelling_npc_appears_only_in_visited_current_village(game):
+    player = game.register("Voyageur", "Mage")
+    command(game, player["token"], "tutorial")
+    command(game, player["token"], "explore")
+    win(game, player["token"])
+    command(game, player["token"], "travel", destination="rosee")
+    game.clock.value = 600
+    places = game.state(player["token"])["session"]["tutorial"]["world"]["places"]
+    rosee = next(place for place in places if place["id"] == "rosee")
+    assert any(point["id"] == "leon" for point in rosee["points"])
+    game.clock.value = 950
+    places = game.state(player["token"])["session"]["tutorial"]["world"]["places"]
+    assert not any(point["id"] == "leon" for place in places for point in place["points"])

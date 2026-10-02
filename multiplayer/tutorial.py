@@ -5,6 +5,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
+from . import world
 
 
 STEPS = {
@@ -92,7 +93,7 @@ def new_party(players):
     return {"step": "clearing", "kills": 0, "quest": "unaccepted", "mob": None,
             "characters": {p["id"]: pack(create_character(p)) for p in players},
             "inventory": {p["id"]: {} for p in players}, "equipment": {},
-            "ready": {p["id"]: 0 for p in players}}
+            "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": []}
 
 
 def npc(now):
@@ -121,6 +122,7 @@ def view(party, me, now):
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["traveller"] = npc(now)
+    result["world"] = world.view(party, me, result["traveller"])
     result["players"] = []
     characters = {key: unpack(value) for key, value in party["characters"].items()}
     mob = unpack(party["mob"]) if party["mob"] else None
@@ -166,7 +168,7 @@ def execute(party, player_id, action, params, now, error):
         if party["mob"] or step not in ("clearing", "hunt", "craft", "travel") or step == "hunt" and party["kills"] >= 3:
             raise error("invalid_step", "Aucun nouveau combat ici.", 409)
         mob = Character.create("Goblin", "tutorial-mob", "Gobelin des bois")
-        mob.hp.value = 18 if step == "clearing" else 24
+        mob.hp.value = world.GOBLIN["hp_first"] if step == "clearing" else world.GOBLIN["hp_hunt"]
         mob.hp.current_value = mob.hp.value
         party["mob"] = pack(mob)
         party["training"] = step in ("craft", "travel")
@@ -240,13 +242,13 @@ def execute(party, player_id, action, params, now, error):
                 party["mob"] = pack(mob)
             else:
                 party["mob"] = None
-                reward = 0 if party.get("training") else 100 if step == "first_fight" else 200
+                reward = 0 if party.get("training") else world.GOBLIN["xp_first"] if step == "first_fight" else world.GOBLIN["xp_hunt"]
                 for key, character in characters.items():
                     if reward:
                         character.gain_exp(reward)
                         inventory = party["inventory"][key]
-                        inventory["peau"] = inventory.get("peau", 0) + 1
-                        inventory["croc"] = inventory.get("croc", 0) + 1
+                        for item, quantity in world.GOBLIN["loot"].items():
+                            inventory[item] = inventory.get(item, 0) + quantity
                     recover(character)
                 if step == "first_fight":
                     party["step"] = "road"
@@ -315,4 +317,5 @@ def execute(party, player_id, action, params, now, error):
     else:
         raise error("invalid_command", "Action de tutoriel inconnue.")
     party["characters"] = {key: pack(character) for key, character in characters.items()}
+    world.record(party)
     return messages, finished

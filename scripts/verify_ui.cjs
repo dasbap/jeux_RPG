@@ -91,6 +91,13 @@ async function main() {
     assert(element(first, "combat-view").hidden);
     assert(element(first, "target-controls").hidden);
     assert.equal(element(first, "combat-target").options.length, 0);
+    assert.equal(first.window.document.querySelectorAll("#tutorial-actions button").length, 1);
+    assert(!element(first, "tutorial-actions").textContent.includes("Mira"));
+    element(first, "show-map").click();
+    assert.equal(element(first, "map-place").options.length, 1);
+    assert.equal(element(first, "world-map").querySelectorAll("g.map-node").length, 1);
+    element(first, "show-bestiary").click();
+    assert(element(first, "bestiary-details").textContent.includes("Aucun monstre rencontré"));
     element(first, "show-stats").click();
     assert(!element(first, "stats-view").hidden);
     assert(element(first, "standby-view").hidden);
@@ -100,9 +107,24 @@ async function main() {
     assert(!first.window.document.body.textContent.includes("×20"));
     async function tutorialAction(dom, label, expected) {
       stage = `${label} · ${element(dom, "location").textContent}`;
+      let actualLabel = label;
+      if (label.includes("Explorer") || label.includes("Essayer mes nouvelles") || label.includes("Parler à Mira") || label.includes("Entrer dans la forge") || label.includes("Rejoindre")) {
+        element(dom, "show-map").click();
+        const place = label.includes("Parler à Mira") || label.includes("Entrer dans la forge") || label.includes("Essayer mes nouvelles") || label.includes("Brume") ? "rosee" : label.includes("Rejoindre Rosée") ? "clearing" : element(dom, "map-place").value;
+        element(dom, "map-place").value = place;
+        element(dom, "map-place").dispatchEvent(new dom.window.Event("change", {bubbles: true}));
+        if (label.includes("Rejoindre")) actualLabel = label.includes("Brume") ? "Prendre le chemin vers Village de Brume" : "Prendre le chemin vers Village de Rosée";
+        else {
+          const pointLabel = label.includes("Parler à Mira") ? "Mira" : label.includes("Entrer dans la forge") ? "Forge" : label.includes("Essayer mes nouvelles") ? "Terrain" : place === "clearing" ? "Sous-bois" : "Campement";
+          const point = [...element(dom, "map-points").querySelectorAll("button")].find(b => b.textContent.includes(pointLabel));
+          assert(point, `Point absent : ${pointLabel}`);
+          point.click();
+          actualLabel = label.includes("Parler à Mira") || label.includes("Entrer dans la forge") ? "Interagir avec ce point" : "Explorer ce point";
+        }
+      }
       let button;
       await waitFor(() => {
-        button = [...element(dom, "tutorial-panel").querySelectorAll("button")].find(b => !b.closest("[hidden]") && b.textContent.toLowerCase().includes(label.toLowerCase()));
+        button = [...element(dom, "tutorial-panel").querySelectorAll("button")].find(b => !b.closest("[hidden]") && b.textContent.toLowerCase().includes(actualLabel.toLowerCase()));
         return button && !button.disabled;
       });
       button.click();
@@ -115,6 +137,11 @@ async function main() {
     assert(!element(first, "combat-actions").textContent.includes("Récupérer"));
     await tutorialAction(first, "Sword Slash", () => element(second, "events").textContent.includes("utilise Sword Slash"));
     await tutorialAction(second, "Fire Ball", () => element(first, "location").textContent === "Sentier de Rosée");
+    element(first, "show-map").click();
+    element(first, "map-place").value = "rosee";
+    element(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
+    assert(element(first, "place-details").textContent.includes("encore non visité"));
+    assert.equal(element(first, "map-points").children.length, 0);
     await tutorialAction(first, "Rejoindre Rosée", () => element(second, "location").textContent === "Village de Rosée");
     await tutorialAction(first, "Parler à Mira", () => !element(first, "npc-view").hidden);
     assert(element(first, "combat-view").hidden);
@@ -149,7 +176,21 @@ async function main() {
     await tutorialAction(first, "Rejoindre Brume", () => element(first, "location").textContent === "Village de Brume" && element(second, "battle-title").textContent === "Aventure accomplie");
     assert.equal(element(first, "location").textContent, "Village de Brume");
     assert.equal(element(second, "location").textContent, "Village de Brume");
-    assert(element(first, "character-details").textContent.includes("2 peau, 1 croc"));
+    element(first, "show-inventory").click();
+    assert(element(first, "inventory-details").textContent.includes("2 peau"));
+    assert(element(first, "inventory-details").textContent.includes("1 croc"));
+    element(first, "show-equipment").click();
+    assert(element(first, "equipment-details").textContent.includes("Veste"));
+    element(first, "show-map").click();
+    assert([...element(first, "map-place").options].every(option => option.textContent.includes("visité")));
+    element(first, "map-place").value = "rosee";
+    element(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
+    assert(element(first, "place-details").textContent.includes("déjà visité"));
+    assert(element(first, "map-points").textContent.includes("Forge"));
+    element(first, "show-bestiary").click();
+    assert(element(first, "bestiary-details").textContent.includes("Gobelin"));
+    assert(element(first, "bestiary-details").textContent.includes("Faiblesses : aucune"));
+    assert(element(first, "bestiary-details").textContent.includes("1 peau, 1 croc"));
     assert.equal(element(first, "events").querySelector("script"), null);
     stage = "Cibles du prêtre";
     element(third, "name").value = "Soigneur";
@@ -177,7 +218,7 @@ async function main() {
     element(third, "back-view").click();
     await tutorialAction(third, "Heal", () => element(third, "events").textContent.includes("utilise Heal"));
     assert.equal(errors.length, 0, errors.join("\n"));
-    console.log("UI validée : écrans contextuels, cibles utiles, attaque ciblée, soins, statistiques, dialogue, quête, craft et tutoriel coopératif complet.");
+    console.log("UI validée : menu, caractéristiques, inventaire, équipement, carte découverte, villages visités, points stratégiques, bestiaire et tutoriel coopératif complet.");
   } finally {
     for (const dom of [first, second, third]) for (const timer of dom.intervals) dom.window.clearInterval(timer);
     await waitFor(() => first.pending === 0 && second.pending === 0 && third.pending === 0);

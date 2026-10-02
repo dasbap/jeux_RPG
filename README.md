@@ -18,15 +18,15 @@ Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusi
 
 1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
 2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
-3. Explorer la clairière, battre le premier gobelin avec une attaque simple ou une compétence, puis rejoindre Rosée.
-4. Parler à Mira et battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
+3. Ouvrir **Carte**, sélectionner le point **Sous-bois** de la clairière et l’explorer. Battre le premier gobelin, puis prendre le chemin de Rosée depuis la carte.
+4. Dans les détails de Rosée sur la carte, sélectionner la **Place du village · Mira**, puis **Interagir avec ce point**. Accepter la quête et explorer le campement de la lisière pour battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
 5. Rendre la quête : les personnages atteignent le niveau 5 et acquièrent les compétences correspondantes de leur classe. Un entraînement sans récompenses permet de les essayer.
 6. À la forge, chaque joueur fabrique et équipe sa veste avec deux peaux et trois crocs. La veste donne 10 PV supplémentaires et 3 points d'endurance.
 7. Une fois chaque aventurier équipé, rejoindre Brume pour terminer le tutoriel.
 
 Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. L'énergie se régénère et les délais exprimés en tours diminuent après une action ; le gobelin peut riposter. L'interface ne propose que l'attaque simple et les compétences acquises, sans action générique de soin ou de récupération. Une victoire soigne le groupe. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
 
-L'interface sépare exploration, dialogue PNJ, journal de quête, combat, forge et statistiques. Un seul écran de situation est affiché à la fois. Les statistiques donnent les PV, la force, l'endurance, l'intelligence, la sagesse, les énergies, les compétences, le sac et l'équipement. Le combat apparaît à la rencontre d'un ennemi ; les cibles sont absentes à l'apparition du personnage et hors combat.
+Le menu situé en haut sépare caractéristiques, équipement équipé, inventaire, journal de quêtes, carte et bestiaire. Les PNJ et la forge sont accessibles en sélectionnant leurs points sur la carte, puis une interaction disponible. L'interface conserve des écrans distincts pour le dialogue, le combat et la fabrication. Un seul écran de situation est affiché à la fois. Les statistiques donnent les PV, la force, l'endurance, l'intelligence, la sagesse, les énergies, les compétences, le sac et l'équipement. Le combat apparaît à la rencontre d'un ennemi ; les cibles sont absentes à l'apparition du personnage et hors combat.
 
 En combat, choisir d'abord une cible : seules l'attaque simple et les compétences utilisables sur elle apparaissent. Un allié n'est proposé que si une compétence de soin ou de buff acquise permet une action sur lui. Un personnage à pleine vie n'est pas proposé pour un soin, une invocation doit viser son propriétaire et une attaque doit viser l'ennemi vivant du combat. Une cible sans action disponible est masquée, notamment pendant le délai global. Le client filtre les choix à partir de l'état reçu et des règles de ciblage ; le serveur recalcule les conditions lors de chaque commande. Les actions refusées ne consomment ni énergie ni objets.
 
@@ -140,3 +140,9 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 | `test/` | Tests du moteur et du POC |
 
 Les anciennes sauvegardes JSON restent accessibles au moteur historique, mais ne sont pas importées automatiquement dans le POC SQLite. Les identifiants invalides sont maintenant rejetés, plutôt que transformés silencieusement en noms de fichiers susceptibles de se collisionner.
+
+## Carte et bestiaire
+
+La carte affiche les lieux et chemins connus dans le parcours du tutoriel. Les lieux connus mais non visités restent sans détails ni points stratégiques. Les descriptions et points des villages déjà visités restent consultables, même après le départ. Les points incluent la place de Mira, la forge, le terrain d'entraînement et les rencontres de la clairière et de la lisière. Les routes ne permettent de voyager que lorsque les conditions du parcours sont satisfaites. La carte reste consultable pendant un combat, avec les interactions de voyage et des points désactivées. Le passage du marchand itinérant est indiqué dans les villages visités où il est présent.
+
+Le bestiaire ne révèle que les monstres rencontrés. Le tutoriel contient actuellement le gobelin des bois : sa fiche donne les PV des rencontres, caractéristiques, matériaux et quantités, expérience, lieux observés, faiblesses et résistances. Le gobelin actuel n'a aucune faiblesse ni résistance particulière définie. Les PV, matériaux et récompenses utilisent les mêmes règles que les combats. Les découvertes sont partagées dans le groupe, sauvegardées avec l'aventure et compatibles avec les sauvegardes antérieures, sans suppression des données.
