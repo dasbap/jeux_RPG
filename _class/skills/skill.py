@@ -262,8 +262,8 @@ class Skill:
                     )
             all_message = ", ".join(effects_list)
 
-        process_effects(effects.get("Buff", []))
-        process_effects(effects.get("Debuff", []))
+        for effect in effects.values():
+            process_effects(effect)
 
         results["effects"] = ", ".join(effects_list)
         results["message"] = f"Altérations appliquées sur {target.name} par {caster.name} : {total_success}/{total_pass} {all_message}"

@@ -2,14 +2,14 @@
 
 ## Périmètre
 
-Le POC permet des duels entre joueurs dans un environnement contrôlé. Il ne constitue pas une certification de sécurité ni une infrastructure de production publique.
+Le POC permet un tutoriel coopératif et des duels entre joueurs dans un environnement contrôlé. Il ne constitue pas une certification de sécurité ni une infrastructure de production publique.
 
 Le serveur HTTP est limité à la boucle locale. Toute exposition distante doit passer par un proxy HTTPS sur la même machine. Ne pas transmettre les clés personnelles en URL, dans un journal ou dans un canal Discord public.
 
 ## Protections mises en place
 
 - Identifiants de personnages et invitations générés par le serveur avec un générateur cryptographique. Les secrets d'authentification et de recherche d'invitation sont stockés sous forme de SHA-256 ; le reçu privé de création de salon contient l'invitation pour assurer sa déduplication.
-- Toutes les mutations requièrent une identité authentifiée. Un joueur ne peut pas fournir l'identifiant d'un autre acteur ni une cible extérieure au duel.
+- Toutes les mutations requièrent une identité authentifiée. Un joueur ne peut pas fournir l'identifiant d'un autre acteur ni une cible extérieure à son groupe ou à son combat.
 - Accès aux sessions limité aux membres de la même portée. Un code d'invitation est requis pour rejoindre ; au maximum deux joueurs sont acceptés.
 - Démarrage réservé au créateur, réservation unique des joueurs, délai d'attaque calculé par le serveur, fin de duel et version d'état contrôlés.
 - Transactions SQLite, requêtes paramétrées, reçus persistés et contrôle des versions pour les actions concurrentes ou retransmises.
@@ -35,3 +35,5 @@ La reprise compte le temps hors ligne à partir de l'horloge système UTC et emp
 Pour signaler une vulnérabilité, privilégier le signalement privé GitHub si activé, ou contacter le propriétaire du dépôt sans publier de secret exploitable.
 
 Les tests de sécurité se trouvent dans `test/test_multiplayer.py` et `test/test_security_regressions.py`. Les tests d'intégration liés à un bot externe absent sont ignorés explicitement et ne constituent pas une validation d'un bot Discord déployé.
+
+Le tutoriel conserve ses personnages et leurs effets dans des données JSON internes, sans pickle ni exécution de code fourni par le client. La compétence doit appartenir aux compétences acquises de la classe, la cible doit être autorisée par son type, et l'énergie et les délais sont contrôlés par le moteur. Les étapes, récompenses, recettes et coûts sont définis côté serveur. La validation d'une quête et la fabrication avec consommation des matériaux sont atomiques et dédupliquées. Les membres reçoivent chacun leur butin, mais doivent fabriquer chacun leur équipement avant de voyager. Les tutoriels sont persistants et ne sont pas soumis à l'expiration des duels.

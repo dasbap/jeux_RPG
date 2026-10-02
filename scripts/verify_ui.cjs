@@ -4,13 +4,14 @@ const {JSDOM, VirtualConsole} = require("jsdom");
 
 const origin = process.env.RPG_TEST_ORIGIN || "http://127.0.0.1:8080";
 const errors = [];
+let stage = "Duel";
 const waitFor = async condition => {
   const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
     if (condition()) return;
     await new Promise(resolve => setTimeout(resolve, 30));
   }
-  throw new Error("L'interface n'a pas atteint l'état attendu.");
+  throw new Error(`L'interface n'a pas atteint l'état attendu : ${stage}.`);
 };
 
 async function client(html, app) {
@@ -75,8 +76,62 @@ async function main() {
     element(second, "leave").click();
     await waitFor(() => element(first, "battle-title").textContent === "Duel terminé");
     assert.equal(element(first, "result").textContent, "Alice <script> remporte le duel.");
+    stage = "Nouveau salon";
+    element(first, "new-room").click();
+    await waitFor(() => !element(first, "invitation").hidden);
+    element(second, "invite-input").value = element(first, "invite-code").textContent;
+    submit(second, "join-form");
+    stage = "Rejoindre le tutoriel";
+    await waitFor(() => element(first, "fighters").children.length === 2 && !element(first, "party-tutorial").hidden);
+    element(first, "party-tutorial").click();
+    stage = "Démarrer le tutoriel";
+    await waitFor(() => !element(first, "tutorial-panel").hidden && !element(second, "tutorial-panel").hidden);
+    assert.equal(first.window.document.querySelector(".clock"), null);
+    assert(!first.window.document.body.textContent.includes("×20"));
+    async function tutorialAction(dom, label, expected) {
+      stage = `${label} · ${element(dom, "location").textContent}`;
+      let button;
+      await waitFor(() => {
+        button = [...element(dom, "tutorial-actions").querySelectorAll("button"), ...element(dom, "skills").querySelectorAll("button")].find(b => b.textContent.includes(label));
+        return button && !button.disabled;
+      });
+      button.click();
+      try { await waitFor(expected); }
+      catch (error) { throw new Error(`${error.message} ${element(dom, "message").textContent} ${element(dom, "quest-progress").textContent} ${element(dom, "mob-hp").textContent}`); }
+    }
+    await tutorialAction(first, "Explorer", () => element(second, "mob-name").textContent.includes("Gobelin"));
+    await tutorialAction(first, "Sword Slash", () => element(second, "events").textContent.includes("utilise Sword Slash"));
+    await tutorialAction(second, "Fire Ball", () => element(first, "location").textContent === "Sentier de Rosée");
+    await tutorialAction(first, "Rejoindre Rosée", () => element(second, "location").textContent === "Village de Rosée");
+    await tutorialAction(first, "accepter la quête", () => element(second, "quest-progress").textContent.includes("0/3"));
+    for (let count = 1; count <= 3; count++) {
+      await tutorialAction(first, "Explorer", () => element(second, "mob-name").textContent.includes("Gobelin"));
+      for (let hit = 0; hit < 5 && element(second, "mob-name").textContent; hit++) {
+        const previous = element(second, "version").textContent;
+        await tutorialAction(second, "Fire Ball", () => element(second, "version").textContent !== previous);
+      }
+      await waitFor(() => element(first, "quest-progress").textContent.includes(`${count}/3`));
+    }
+    await tutorialAction(first, "rendre la quête", () => element(first, "character-details").children[0].textContent.includes("niveau 5") && element(second, "character-details").children[0].textContent.includes("niveau 5"));
+    assert(element(first, "skills").textContent.includes("Shield Bash"));
+    assert(element(second, "skills").textContent.includes("Thunder"));
+    await tutorialAction(first, "Essayer mes nouvelles", () => element(second, "mob-name").textContent.includes("Gobelin"));
+    const previous = element(second, "version").textContent;
+    await tutorialAction(second, "Thunder", () => element(second, "version").textContent !== previous);
+    for (let hit = 0; hit < 5 && element(second, "mob-name").textContent; hit++) {
+      const revision = element(second, "version").textContent;
+      await tutorialAction(second, "Attaque simple", () => element(second, "version").textContent !== revision);
+    }
+    await waitFor(() => element(first, "events").textContent.includes("Entraînement terminé"));
+    await tutorialAction(first, "Fabriquer et équiper", () => element(second, "events").textContent.includes("Alice <script> fabrique"));
+    await tutorialAction(second, "Fabriquer et équiper", () => element(first, "location").textContent === "Route des Deux Villages");
+    await tutorialAction(first, "Rejoindre Brume", () => element(first, "location").textContent === "Village de Brume" && element(second, "battle-title").textContent === "Aventure accomplie");
+    assert.equal(element(first, "location").textContent, "Village de Brume");
+    assert.equal(element(second, "location").textContent, "Village de Brume");
+    assert(element(first, "character-details").textContent.includes("2 peau, 1 croc"));
+    assert.equal(element(first, "events").querySelector("script"), null);
     assert.equal(errors.length, 0, errors.join("\n"));
-    console.log("UI fonctionnelle validée : deux identités, invitation, duel, état partagé, cooldown, abandon et rendu du texte utilisateur.");
+    console.log("UI validée : duel, tutoriel coopératif complet, compétences de classe, niveau 5, quête, craft, Brume et rendu sûr du texte utilisateur.");
   } finally {
     for (const dom of [first, second]) for (const timer of dom.intervals) dom.window.clearInterval(timer);
     await waitFor(() => first.pending === 0 && second.pending === 0);

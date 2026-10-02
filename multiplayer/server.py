@@ -204,14 +204,14 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="POC multijoueur RPG, horloge ×20")
+    parser = argparse.ArgumentParser(description="RPG multijoueur : tutoriel de la clairière à Brume")
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--database", default=".data/multiplayer.sqlite3")
     parser.add_argument("--public-origin", help="Origine HTTPS du proxy, par exemple https://rpg.example.com")
     args = parser.parse_args()
     service = GameService(args.database)
     server = RPGServer(("127.0.0.1", args.port), service, args.public_origin)
-    print(f"RPG multijoueur : http://127.0.0.1:{server.server_address[1]} — 1 seconde réelle = 20 secondes de jeu", flush=True)
+    print(f"RPG multijoueur : http://127.0.0.1:{server.server_address[1]}", flush=True)
     try:
         server.serve_forever(poll_interval=0.1)
     except KeyboardInterrupt:

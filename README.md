@@ -1,31 +1,36 @@
 # RPG Python — POC multijoueur autonome
 
-Un duel à deux joueurs dans le navigateur, avec identités distinctes, invitations privées, état partagé et sauvegarde SQLite. Le serveur calcule les actions et le temps : **1 seconde réelle = 20 secondes de jeu**.
+Un tutoriel RPG jouable seul ou en coopération à deux dans le navigateur, avec identités distinctes, invitations privées, état partagé et sauvegarde SQLite.
 
-Le moteur RPG historique est conservé. Le POC réutilise ses cinq classes jouables pour créer les personnages et applique des règles de duel simples, séparées des combats historiques par tours.
+Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Un duel simplifié reste disponible comme démonstration optionnelle.
 
 ## Démarrer en local
 
 Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou service de base de données n'est nécessaire.
 
 ```bash
-git clone https://github.com/dasbap/jeux_RPG.git
+git clone --branch codex/secure-multiplayer-poc https://github.com/dasbap/jeux_RPG.git
 cd jeux_RPG
 python main.py
 ```
 
 Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusionnée, utiliser la branche `codex/secure-multiplayer-poc`.
 
-1. Créer un personnage dans un premier onglet.
-2. Cliquer sur **Créer un salon** et copier l'invitation.
-3. Ouvrir manuellement un nouvel onglet à la même adresse, créer un second personnage et rejoindre avec l'invitation. Éviter « Dupliquer l'onglet », qui peut recopier son identité. Un autre navigateur convient également.
-4. Le créateur démarre le duel lorsque les deux joueurs sont présents.
-5. Chaque joueur peut attaquer toutes les **3 secondes réelles**, soit 60 secondes de jeu. Les points de vie et le journal se mettent à jour automatiquement.
-6. Le duel se termine à la défaite d'un joueur, à l'abandon ou après 5 minutes réelles. Un salon en attente expire après 10 minutes réelles.
+1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
+2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
+3. Explorer la clairière, battre le premier gobelin avec une attaque simple ou une compétence, puis rejoindre Rosée.
+4. Parler à Mira et battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
+5. Rendre la quête : les personnages atteignent le niveau 5 et acquièrent les compétences correspondantes de leur classe. Un entraînement sans récompenses permet de les essayer.
+6. À la forge, chaque joueur fabrique et équipe sa veste avec deux peaux et trois crocs. La veste donne 10 PV supplémentaires et 3 points d'endurance.
+7. Une fois chaque aventurier équipé, rejoindre Brume pour terminer le tutoriel.
 
-L'identité est conservée dans l'onglet pendant sa session. Pour retrouver un personnage après fermeture de l'onglet, conserver sa **clé de reconnexion** en privé et la saisir dans « Retrouver mon personnage ». Se déconnecter ne quitte pas automatiquement un duel : utiliser **Quitter la session** avant de se déconnecter si nécessaire.
+Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. Le repos régénère l'énergie et réduit les délais exprimés en tours ; le gobelin peut riposter. Hors combat, le repos restaure complètement PV et énergie. Une victoire soigne le groupe. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
 
-Les données sont conservées dans `.data/multiplayer.sqlite3`. Redémarrer avec le même fichier restaure personnages, sessions, dégâts et commandes déjà exécutées. Le temps hors ligne est pris en compte ; aucun dégât automatique n'est infligé pendant l'arrêt, mais les sessions peuvent expirer.
+Le monde possède un marchand itinérant entre Rosée et Brume. Son passage est déterminé par l'horloge interne au ratio 1:20, sans afficher le ratio ni le temps écoulé dans l'interface. Mira reste disponible pour éviter de bloquer le tutoriel. Le marchand est pour l'instant un PNJ de passage, sans boutique.
+
+L'identité est conservée dans l'onglet pendant sa session. Pour retrouver un personnage après fermeture de l'onglet, conserver sa **clé de reconnexion** en privé et la saisir dans « Retrouver mon personnage ». Se déconnecter conserve la progression du tutoriel. En revenant avec sa clé, le joueur retrouve son groupe et ses compétences, son inventaire et son équipement.
+
+Les données sont conservées dans `.data/multiplayer.sqlite3`. Redémarrer avec le même fichier restaure personnages, sessions, dégâts et commandes déjà exécutées. Le temps hors ligne est pris en compte pour les passages des PNJ. Le tutoriel n'expire pas et aucun dégât automatique n'est infligé pendant l'arrêt. Les anciens salons et duels conservent leurs échéances.
 
 ```bash
 python main.py --port 8090 --database .data/mon-monde.sqlite3
@@ -102,6 +107,12 @@ Actions prises en charge :
 | `start` | `session_id`, `revision` |
 | `attack` | `session_id`, `revision` |
 | `leave` | `session_id`, `revision` |
+| `tutorial` | Aucun ; démarre un tutoriel solo ou le salon du créateur |
+| `explore`, `strike`, `rest` | `session_id`, `revision` |
+| `skill` | `session_id`, `revision`, `skill_name`, `target` |
+| `talk` | `session_id`, `revision`, `npc` (`mira`) |
+| `craft` | `session_id`, `revision`, `recipe` (`veste`) |
+| `travel` | `session_id`, `revision`, `destination` (`rosee`, `brume`) |
 
 Le bot doit afficher les résultats, désactiver les mentions, répondre aux interactions et organiser ses notifications. Le SDK, le token Discord et les commandes slash ne sont pas inclus dans ce POC. Pour piloter l'expiration hors requêtes, le bot peut appeler `service.tick()` régulièrement depuis un thread ou une tâche asynchrone. L'adaptateur réutilise l'identifiant d'interaction pour empêcher une exécution en double.
 
@@ -110,15 +121,15 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 - SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une version d'état obsolète est refusée avec `stale_revision` ; actualiser avant une nouvelle action.
 - Une commande rejouée avec le même identifiant et le même contenu retourne son résultat initial. Un contenu différent avec cet identifiant est refusé. Les identifiants et reçus sont persistés.
 - L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur réconcilie les échéances toutes les 100 ms ; l'interface interroge l'état toutes les 500 ms. Ce n'est pas un système temps réel dur.
-- Un personnage ne peut participer qu'à une session active à la fois. Le POC est un duel PvP à deux joueurs : les compétences complètes, les combats coopératifs, la navigation partagée, les quêtes et l'économie ne sont pas branchés dans cette interface.
+- Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats sont des échanges action/riposte avec un délai serveur ; les ennemis n'attaquent pas les joueurs déconnectés. Le monde ouvert, les échanges, les boutiques et les quêtes génériques ne sont pas encore implémentés.
 - La clé personnelle est un secret d'accès, pas une authentification par mot de passe ou OAuth. Aucune récupération par email ni révocation de compte n'est fournie. Le POC est destiné à un environnement de démonstration contrôlé.
-- Le fichier SQLite utilise un schéma de POC initial ; il n'existe pas encore de mécanisme de migration pour de futures versions. Sauvegarder la base après arrêt du serveur avant une mise à jour.
+- La nouvelle table des tutoriels est créée automatiquement sans modifier les données des anciens duels. Sauvegarder la base après arrêt du serveur avant une mise à jour. Un nouveau tutoriel recommence au niveau 1 ; la progression reste attachée à son aventure sauvegardée.
 
 ## Organisation
 
 | Répertoire | Rôle |
 | --- | --- |
-| `multiplayer/` | Horloge, service transactionnel, serveur HTTP et adaptateur Discord |
+| `multiplayer/` | Horloge PNJ, tutoriel, service transactionnel, serveur HTTP et adaptateur Discord |
 | `multiplayer/web/` | Interface navigateur autonome en français |
 | `_class/`, `_core/`, `game_engine/` | Moteur RPG historique et sauvegardes sécurisées |
 | `test/` | Tests du moteur et du POC |

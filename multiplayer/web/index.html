@@ -3,16 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RPG · Arène multijoueur</title>
+  <title>RPG · De la clairière à Brume</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <main>
     <header><span class="badge">POC MULTIJOUEUR</span><span id="connection">Connexion…</span></header>
-    <h1>Entrez dans l’arène.</h1>
-    <p class="intro">Deux joueurs, un monde partagé. Invitez un adversaire et jouez en temps réel.</p>
-    <div class="clock"><strong>×20</strong><div>1 seconde réelle = 20 secondes de jeu<br><span id="clock">Horloge du monde</span></div></div>
+    <h1>Votre aventure commence.</h1>
+    <p class="intro">Découvrez votre classe, remportez votre premier combat et rejoignez les villages de Rosée et de Brume. Jouez seul ou invitez un compagnon avant de commencer.</p>
     <p id="message" role="status" aria-live="polite"></p>
     <section id="registration" class="panel">
       <h2>Votre personnage</h2>
@@ -27,18 +26,26 @@
     <section id="lobby" class="panel" hidden>
       <div class="section-head"><h2 id="player-name">Votre personnage</h2><button id="logout" class="quiet">Se déconnecter</button></div>
       <details><summary>Ma clé de reconnexion</summary><p>Conservez cette clé en privé : elle donne accès à votre personnage.</p><button id="copy-token" class="secondary">Copier ma clé</button><p id="token-output" hidden></p></details>
-      <div id="room-controls"><button id="create">Créer un salon</button><form id="join-form"><label for="invite-input">Invitation de votre adversaire</label><input id="invite-input" required autocomplete="off" maxlength="64"><button class="secondary" type="submit">Rejoindre</button></form></div>
+      <div id="room-controls"><button id="tutorial">Commencer le tutoriel en solo</button><button id="create" class="secondary">Inviter un compagnon</button><form id="join-form"><label for="invite-input">Invitation de votre compagnon</label><input id="invite-input" required autocomplete="off" maxlength="64"><button class="secondary" type="submit">Rejoindre</button></form></div>
       <div id="invitation" hidden><p>Partagez cette invitation avec le second joueur :</p><code id="invite-code"></code><button id="copy-invite" class="quiet">Copier</button></div>
     </section>
     <section id="battle" class="panel" hidden>
-      <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" class="muted"></span></div>
+      <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" hidden></span></div>
       <div id="fighters" class="fighters"></div>
+      <section id="tutorial-panel" hidden>
+        <h3 id="location"></h3><p id="objective"></p><p id="quest-progress"></p><p id="traveller"></p>
+        <div id="character-details"></div>
+        <h3 id="mob-name"></h3><p id="mob-hp"></p>
+        <div id="tutorial-actions" class="actions"></div>
+        <label for="skill-target">Cible de la compétence</label><select id="skill-target"></select>
+        <div id="skills" class="actions"></div>
+        <p class="muted">L'attaque simple ne coûte pas d'énergie. Se reposer en combat régénère l'énergie et réduit les délais des compétences, mais le gobelin peut riposter. Les invocations attaquent après votre action. Hors combat, le repos restaure vos PV et votre énergie.</p>
+      </section>
       <p id="result"></p>
-      <div class="actions"><button id="start">Démarrer le duel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
-      <p class="muted">Une attaque toutes les 3 secondes réelles · duel limité à 5 minutes</p>
+      <div class="actions"><button id="party-tutorial">Commencer le tutoriel du groupe</button><button id="start" class="secondary">Duel optionnel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
       <h3>Journal partagé</h3><ol id="events"></ol>
     </section>
-    <footer>État calculé par le serveur · sauvegarde transactionnelle · identités distinctes</footer>
+    <footer>De la clairière à Brume · votre aventure est sauvegardée</footer>
   </main>
 </body>
 </html>
