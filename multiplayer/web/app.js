@@ -174,7 +174,6 @@ function renderTutorial(adventure) {
     return button(container, label, () => tutorialCommand(name, params), disabled);
   }
   if (!fighting && adventure.step !== "complete") {
-    action("tutorial-actions", "Se reposer", "rest");
     if (adventure.step === "clearing" || adventure.step === "hunt" && adventure.kills < 3) action("tutorial-actions", "Explorer : chercher un gobelin", "explore");
     if (adventure.step === "road") action("tutorial-actions", "Rejoindre Rosée", "travel", {destination: "rosee"});
     if (canTalk) button("tutorial-actions", adventure.step === "village" ? "Parler à Mira" : "Revenir à Rosée : parler à Mira", () => showView("npc"));
@@ -208,10 +207,9 @@ function renderTutorial(adventure) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = !fighting || possibleTargets.length === 0;
   const selected = possibleTargets.find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi. Récupérez pour laisser passer le tour." : selected ? "Choisissez une action pour cette cible." : "Aucune cible disponible. Vous pouvez récupérer de l'énergie.";
+  $("combat-status").textContent = !fighting ? "" : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
-    action("combat-actions", "Récupérer de l'énergie", "rest", {}, me.cooldown_real_seconds > 0);
     if (selected) for (const skill of me.skills.filter(s => skillAllowed(me, s, selected, mob))) {
       const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy}`, "skill", {skill_name: skill.name, target: selected.id});
       element.className = "secondary";

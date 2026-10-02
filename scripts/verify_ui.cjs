@@ -110,6 +110,9 @@ async function main() {
       catch (error) { throw new Error(`${error.message} ${element(dom, "message").textContent} ${element(dom, "quest-progress").textContent} ${element(dom, "mob-hp").textContent}`); }
     }
     await tutorialAction(first, "Explorer", () => element(second, "mob-name").textContent.includes("Gobelin"));
+    assert.deepEqual([...element(first, "combat-target").options].map(o => o.value), ["mob"]);
+    assert.deepEqual([...element(second, "combat-target").options].map(o => o.value), ["mob"]);
+    assert(!element(first, "combat-actions").textContent.includes("Récupérer"));
     await tutorialAction(first, "Sword Slash", () => element(second, "events").textContent.includes("utilise Sword Slash"));
     await tutorialAction(second, "Fire Ball", () => element(first, "location").textContent === "Sentier de Rosée");
     await tutorialAction(first, "Rejoindre Rosée", () => element(second, "location").textContent === "Village de Rosée");

@@ -281,3 +281,18 @@ def test_duel_rechecks_selected_opponent(game):
     assert game.state(first["token"])["session"]["revision"] == state["revision"]
     state = command(game, first["token"], "attack", target=second["player"]["id"])
     assert next(p for p in state["players"] if p["id"] == second["player"]["id"])["hp"] < second["player"]["max_hp"]
+
+
+@pytest.mark.parametrize("class_name", ["Knight", "Mage", "Archer", "Necromancien"])
+def test_no_ally_target_without_learned_support_skill(game, class_name):
+    player = game.register("Aventurier", class_name)
+    ally = game.register("Allié", "Knight")
+    created = game.command(player["token"], "create000", "create")
+    command(game, ally["token"], "join", invite=created["invite"])
+    command(game, player["token"], "tutorial")
+    state = command(game, player["token"], "explore")
+    me = next(p for p in state["tutorial"]["players"] if p["id"] == player["player"]["id"])
+    assert all(ally["player"]["id"] not in skill["targets"] for skill in me["skills"])
+    with pytest.raises(GameError) as failure:
+        command(game, player["token"], "skill", skill_name=me["skills"][0]["name"], target=ally["player"]["id"])
+    assert failure.value.code == "invalid_target"
