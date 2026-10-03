@@ -618,7 +618,7 @@ def test_manual_attack_requires_shared_visibility_and_executes_without_player_hi
     before = data["mobs"][0]["stats"]["hp"]["current"]
     tactics.advance(data, 6, lambda: .5)
     assert data["mobs"][0]["stats"]["hp"]["current"] < before
-    data["mobs"][0]["position"] = [0, 0]
+    data["mobs"][0]["position"] = [13, 0]
     with pytest.raises(GameError) as failure:
         control_action(data, "unit_order", now=10, units=[key], order="attack", target="mob", paths={})
     assert failure.value.code == "invisible_target"

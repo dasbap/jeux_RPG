@@ -217,6 +217,31 @@ try {
   render(invisible);
   assert.equal(el("cell-entities").querySelectorAll("[data-target=mob]").length, 0);
   assert([...el("combat-actions").children].every(button => button.disabled));
+  render(fixture);
+  const legacyBox = el("world-map").querySelector("svg").getAttribute("viewBox");
+  el("field-zoom-in").click();
+  const legacyZoom = el("world-map").querySelector("svg").getAttribute("viewBox");
+  assert.notEqual(legacyZoom, legacyBox);
+  render(fixture);
+  assert.equal(el("world-map").querySelector("svg").getAttribute("viewBox"), legacyZoom);
+  const peaceful = JSON.parse(JSON.stringify(fixture));
+  peaceful.battle = null; peaceful.mobs = []; peaceful.mob = null;
+  render(peaceful);
+  const general = el("world-map").querySelector('[data-map="general"]');
+  const generalBox = general.getAttribute("viewBox");
+  event(general, "click");
+  el("field-zoom-in").click();
+  const generalZoom = general.getAttribute("viewBox");
+  assert.notEqual(generalZoom, generalBox);
+  peaceful.players[0].hp -= 1;
+  render(peaceful);
+  assert.equal(el("world-map").querySelector('[data-map="general"]').getAttribute("viewBox"), generalZoom);
+  const detail = el("world-map").querySelector('[data-map^="detail:"]');
+  if (detail) {
+    const detailBox = detail.getAttribute("viewBox");
+    event(detail, "click"); el("field-zoom-in").click();
+    assert.notEqual(detail.getAttribute("viewBox"), detailBox);
+  }
   if (fixtures.field_village) {
     render(fixtures.field_village);
     assert.equal(el("field-camera").hidden, false);

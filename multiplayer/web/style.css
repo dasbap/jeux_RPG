@@ -37,3 +37,7 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 #combat-action-panel #self-skills,#combat-action-panel #combat-actions,#combat-action-panel #skills{grid-row:2}#combat-action-panel #corpse-actions,#combat-action-panel #tactical-actions{grid-row:3}@media(max-width:750px){#combat-action-panel #self-skills,#combat-action-panel #combat-actions,#combat-action-panel #skills,#combat-action-panel #corpse-actions,#combat-action-panel #tactical-actions{grid-row:auto}}
 
 .unexplored-cell{fill:#101715;stroke:#1a2520}.unexplored-cell:hover{fill:#26352b}
+
+.map-strip .zone-map{height:280px;touch-action:manipulation}#combat-map-panel .battle-map{min-height:330px;height:55vh;max-height:60vh}#combat-map-panel{min-height:420px}#field-camera{position:sticky;top:0;z-index:1;background:#17202b;padding:6px}#field-camera button{min-height:42px;min-width:42px}@media(max-width:750px){.map-strip .zone-map{height:260px}#combat-map-panel .battle-map{min-height:300px;height:48vh;max-height:55vh}.combat-mode #combat-layout{grid-template-rows:auto 250px auto}}
+
+@media(min-width:751px){.combat-mode #combat-layout{grid-template-rows:minmax(500px,66vh) auto}#combat-map-panel .battle-map{height:42vh;max-height:48vh}}

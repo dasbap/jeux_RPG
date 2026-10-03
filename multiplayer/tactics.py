@@ -15,6 +15,8 @@ PRESETS = {f"{zone}_{index + 1}": {"id": f"{zone}_{index + 1}", "name": f"{name}
            "width": 14, "height": 10, "cell_metres": 2, "cover": [list(p) for p in layout]}
            for zone, name in (("clearing", "Clairière"), ("lisiere", "Lisière"), ("road", "Sentier"), ("rosee", "Entraînement"), ("brume", "Bois de Brume"))
            for index, layout in enumerate(LAYOUTS)}
+PLAYER_VISION = 12
+SUMMON_VISION = 6
 CALL_TIME = 6.0
 SEARCH_TIME = 10 * progression.RATIO
 MOVE_TIME = 1.2
@@ -422,9 +424,9 @@ def visible(party, player, mob):
     battle = party.get("battle")
     if not battle or player not in battle["players"]:
         return False
-    observers = [unit for key, unit in battle["players"].items() if party["characters"][key]["stats"]["hp"]["current"] > 0]
-    observers.extend(unit for unit in battle.get("summons", {}).values() if unit["hp"] > 0 and party["characters"][unit["owner"]]["stats"]["hp"]["current"] > 0)
-    return any(distance(unit["position"], mob["position"]) <= 6 and sight(PRESETS[battle["preset"]], unit["position"], mob["position"]) for unit in observers)
+    observers = [(unit, PLAYER_VISION) for key, unit in battle["players"].items() if party["characters"][key]["stats"]["hp"]["current"] > 0]
+    observers.extend((unit, SUMMON_VISION) for unit in battle.get("summons", {}).values() if unit["hp"] > 0 and party["characters"][unit["owner"]]["stats"]["hp"]["current"] > 0)
+    return any(distance(unit["position"], mob["position"]) <= radius and sight(PRESETS[battle["preset"]], unit["position"], mob["position"]) for unit, radius in observers)
 
 
 def unalerted_allies(party, mob):

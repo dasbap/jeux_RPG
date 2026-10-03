@@ -1,4 +1,5 @@
 from copy import deepcopy
+import uuid
 
 from . import tactics, world, progression
 
@@ -87,6 +88,9 @@ def enter(party, identifier, entry, now, pursuers=()):
         tactics.begin(party, now, "explore")
         for mob, position in zip(party["mobs"], definition["spawns"]):
             mob.update(position=position[:], home=position[:], patrol_route=[tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], patrol_index=0)
+    if saved and now - saved["saved_at"] >= 180:
+        progression.health_resources(party, now)
+        repop(party, identifier, now, pursuers)
     occupied = []
     party["battle"]["players"] = {}
     for key in party["characters"]:
@@ -181,16 +185,17 @@ def reveal(party):
     if not party.get("field_map") or not party.get("battle"):
         return
     battle = party["battle"]
-    units = {**battle["players"], **battle.get("summons", {})}
-    positions = [unit["position"] for unit in units.values()]
+    observers = [(unit, tactics.PLAYER_VISION) for key, unit in battle["players"].items() if party["characters"][key]["stats"]["hp"]["current"] > 0]
+    observers.extend((unit, tactics.SUMMON_VISION) for unit in battle.get("summons", {}).values() if unit["hp"] > 0 and party["characters"][unit["owner"]]["stats"]["hp"]["current"] > 0)
+    positions = [[unit["position"], radius] for unit, radius in observers]
     if positions == battle.get("explored_positions"):
         return
     definition = MAPS[party["field_map"]]
     explored = {tuple(point) for point in battle.get("explored", [])}
-    for x, y in positions:
-        for dx in range(-6, 7):
-            for dy in range(-6, 7):
-                if dx * dx + dy * dy <= 36 and 0 <= x + dx < definition["width"] and 0 <= y + dy < definition["height"]:
+    for (x, y), radius in positions:
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                if dx * dx + dy * dy <= radius * radius and 0 <= x + dx < definition["width"] and 0 <= y + dy < definition["height"]:
                     explored.add((x + dx, y + dy))
     battle["explored"] = [list(point) for point in sorted(explored)]
     battle["explored_positions"] = deepcopy(positions)
@@ -228,3 +233,32 @@ def snapshot(party, now, mobs=None):
     prefix = f"mob:{battle['started_at']}:"
     return {"battle": deepcopy(battle), "mobs": deepcopy(party["mobs"] if mobs is None else mobs), "saved_at": now,
             "hp_regen": {key: deepcopy(value) for key, value in party.get("hp_regen", {}).items() if key.startswith(prefix)}}
+
+
+def repop(party, identifier, now, pursuers=()):
+    from . import tutorial
+    from jeuxRPG._class.character import Character
+    definition = MAPS[identifier]
+    existing = list(party["mobs"]) + list(pursuers)
+    existing.extend(arrival["mob"] for arrival in party["battle"].get("arrivals", []))
+    for saved in party.get("fields", {}).values():
+        existing.extend(saved["mobs"])
+        existing.extend(arrival["mob"] for arrival in saved["battle"].get("arrivals", []))
+    origins = {mob["combat_id"].split(":repop:")[0] for mob in existing}
+    count = 0
+    for index, position in enumerate(definition["spawns"]):
+        origin = f"{identifier}-mob-{index}"
+        if origin in origins:
+            continue
+        actor = Character.create("Goblin", "tutorial-mob", f"Gobelin des bois {index + 1}")
+        actor.hp.value = world.GOBLIN["hp_first"] if identifier == "clearing" else world.GOBLIN["hp_hunt"]
+        actor.hp.current_value = actor.hp.value
+        party["mobs"].append({**tutorial.pack(actor), "combat_id": origin + ":repop:" + uuid.uuid4().hex, "rank": "D", "next_attack": now + 6,
+            "position": tactics.free_position(definition, position, [mob["position"] for mob in party["mobs"]]), "home": position[:], "state": "patrol", "target": None, "last_known": None, "search_until": None,
+            "next_move": now + tactics.GOBLIN_MOVE_TIME, "next_call": now, "calling_until": None, "windup_until": None,
+            "known_dead": [], "allies": [], "intent": "Patrouille", "stunned_until": 0,
+            "patrol_route": [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], "patrol_index": 0})
+        count += 1
+    if count:
+        party["battle"].update(initial_mobs=len(party["mobs"]), awarded=False, started_at=now, combat_step=party["step"],
+                              higher_level=any(mob["level"] > max(c["level"] for c in party["characters"].values()) for mob in party["mobs"]))

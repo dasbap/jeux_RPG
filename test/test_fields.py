@@ -177,3 +177,68 @@ def test_fixed_zone_quest_counts_prior_kills_so_cleared_maps_cannot_block_it():
     assert data["kills"] == 3
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 2, GameError, lambda: .5)
     assert data["quest"] == "completed"
+
+
+def test_repop_requires_three_full_game_minutes_without_players():
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    gate = fields.MAPS["clearing"]["exits"][0]
+    fields.transition(data, gate, "p", 2)
+    fields.enter(data, "clearing", [1, 10], 181)
+    assert data["mobs"] == []
+    fields.transition(data, gate, "p", 182)
+    fields.enter(data, "clearing", [1, 10], 362)
+    assert len(data["mobs"]) == 1
+    assert data["mobs"][0]["combat_id"] != enemy["combat_id"]
+    assert data["mobs"][0]["stats"]["hp"]["current"] == data["mobs"][0]["stats"]["hp"]["max"]
+    assert data["battle"]["corpses"][0]["id"] == enemy["combat_id"]
+    assert data["mobs"][0]["position"] == fields.MAPS["clearing"]["spawns"][0]
+
+
+def test_no_repop_while_players_remain_in_zone():
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    tutorial.sync_mobs(data)
+    tutorial.advance(data, 1000, lambda: .5)
+    assert data["field_map"] == "clearing"
+    assert data["mobs"] == []
+
+
+def test_repop_keeps_survivors_and_does_not_duplicate_a_pursuer():
+    data = party()
+    fields.enter(data, "hunt", [1, 10], 0)
+    gate = fields.MAPS["hunt"]["exits"][1]
+    data["battle"]["players"]["p"]["position"] = gate["position"][:]
+    follower, survivor, dead = data["mobs"]
+    follower.update(position=[28, 10], alerted=True)
+    survivor.update(position=[2, 2], alerted=False)
+    survivor["stats"]["hp"]["current"] = 10
+    data["mobs"].remove(dead)
+    tactics.defeated(data, dead, 1, lambda: .99, [])
+    fields.transition(data, gate, "p", 2)
+    fields.advance(data, 20)
+    fields.transition(data, fields.MAPS["forest"]["exits"][-1], "p", 21)
+    fields.enter(data, "hunt", [1, 10], 182)
+    origins = [mob["combat_id"].split(":repop:")[0] for mob in data["mobs"]]
+    assert follower["combat_id"] not in origins
+    assert origins.count(survivor["combat_id"]) == 1
+    assert origins.count(dead["combat_id"]) == 1
+
+
+def test_player_vision_is_twelve_cells_and_does_not_increase_mob_detection():
+    data = party()
+    definition = fields.MAPS["clearing"]
+    data["battle"]["players"]["p"]["position"] = [1, 10]
+    enemy = data["mobs"][0]
+    enemy["position"] = [13, 10]
+    assert tactics.visible(data, "p", enemy)
+    assert not tactics.sees(definition, enemy, data["battle"]["players"]["p"])
+    enemy["position"] = [14, 10]
+    assert not tactics.visible(data, "p", enemy)
+    fields.reveal(data)
+    assert [13, 10] in data["battle"]["explored"]
+    assert [14, 10] not in data["battle"]["explored"]
+    enemy["position"] = [5, 2]
+    assert not tactics.visible(data, "p", enemy)

@@ -140,10 +140,10 @@ async function main() {
     const group = await client(html, app, "Groupe", "Knight");
     await command(group, "tutorial");
     await command(group, "explore");
-    await waitFor(() => el(group, "battle").classList.contains("combat-mode"), "combat actif sans ennemis visibles");
-    assert.equal(el(group, "mob-cards").children.length, 0);
-    assert.equal(el(group, "enemy-intents").querySelectorAll("tr").length, 0);
-    assert.equal(el(group, "combat-target").options.length, 0);
+    await waitFor(() => el(group, "battle").classList.contains("combat-mode"), "combat actif avec vision étendue");
+    assert(el(group, "mob-cards").children.length <= 5);
+    assert(el(group, "enemy-intents").querySelectorAll("tr").length <= 5);
+    assert([...el(group, "combat-target").options].every(option => !option.value || option.value.startsWith("mob")));
     assert(!el(group, "tactical-actions").textContent.includes("Quitter le champ de bataille"));
     el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("dblclick", {bubbles: true}));
     await waitFor(async () => (await request(group, "/api/state")).session.tutorial.battle.players[(await request(group, "/api/state")).session.me].position[1] === 5, "clic sur case de combat");

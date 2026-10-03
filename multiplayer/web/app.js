@@ -25,6 +25,8 @@ function sectionChanged(name, value) {
 }
 let pendingBattleMove = null;
 let fieldCamera = null;
+const worldCameras = new Map();
+let activeWorldMap = "general";
 let currentView = "map";
 let viewContext = "";
 let combatTarget = "";
@@ -260,7 +262,7 @@ function paragraphs(container, texts) {
 function mountWorldMap(source) {
   const container = $("world-map");
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
-  if (!retained) { container.append(source); return source; }
+  if (!retained) { container.append(source); installWorldCamera(source); return source; }
   function update(target, fresh) {
     for (const attr of [...target.attributes]) target.removeAttribute(attr.name);
     for (const attr of fresh.attributes) target.setAttribute(attr.name, attr.value);
@@ -277,6 +279,7 @@ function mountWorldMap(source) {
     for (const child of kept) if (child.parentElement !== target) target.append(child);
   }
   update(retained, source);
+  installWorldCamera(retained);
   return retained;
 }
 function equipmentBonuses(piece) {
@@ -503,8 +506,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
   $("combat-layout").hidden = !fighting;
-  $("field-camera").hidden = !adventure.field_map;
-  if (adventure.field_map) $("field-location").textContent = adventure.battle.map.name;
+  $("field-camera").hidden = false;
+  $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
   if (fighting) {
     for (const [parent, child] of [["combat-action-panel", "combat-view"], ["combat-player-panel", "combat-allies"], ["combat-player-panel", "unit-controls"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
       if ($(child).parentElement !== $(parent)) $(parent).append($(child));
@@ -884,14 +887,14 @@ function renderBattle(adventure, me) {
   const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
-  if (adventure.field_map && fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: 24, x: unit.position[0], y: unit.position[1], follow: true};
-  if (adventure.field_map && fieldCamera.follow) { fieldCamera.x = unit.position[0]; fieldCamera.y = unit.position[1]; }
-  const width = adventure.field_map ? Math.min(map.width, fieldCamera.span) : map.width;
-  const height = adventure.field_map ? Math.min(map.height, Math.ceil(width * .67)) : map.height;
-  const left = adventure.field_map ? Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2))) : 0;
-  const top = adventure.field_map ? Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2))) : 0;
+  if (fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: Math.min(map.width, 24), x: unit.position[0], y: unit.position[1], follow: true};
+  if (fieldCamera.follow) { fieldCamera.x = unit.position[0]; fieldCamera.y = unit.position[1]; }
+  const width = Math.min(map.width, fieldCamera.span);
+  const height = Math.min(map.height, Math.ceil(width * .67));
+  const left = Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2)));
+  const top = Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2)));
   svg.setAttribute("viewBox", `${left * 40} ${top * 40} ${width * 40} ${height * 40}`);
-  if (adventure.field_map) svg.onwheel = event => { event.preventDefault(); adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
+  svg.onwheel = event => { event.preventDefault(); adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
   svg.setAttribute("class", "battle-map");
   svg.setAttribute("role", "group");
   svg.setAttribute("aria-label", map.name);
@@ -1196,8 +1199,20 @@ refresh();
 for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });
 
 function adjustFieldCamera(action) {
-  if (!session?.tutorial?.field_map || !fieldCamera) return;
-  if (action === "in") fieldCamera.span = Math.max(10, fieldCamera.span - 4);
+  if (!session?.tutorial) return;
+  if (!session.tutorial.battle) {
+    const node = [...$("world-map").children].find(node => node.dataset.map === activeWorldMap) || $("world-map").querySelector("svg");
+    if (!node) return;
+    const camera = worldCameras.get(node.dataset.map);
+    if (action === "in") camera.zoom = Math.min(6, camera.zoom * 1.3);
+    else if (action === "out") camera.zoom = Math.max(1, camera.zoom / 1.3);
+    else if (action === "center") { camera.zoom = 1; camera.x = camera.width / 2; camera.y = camera.height / 2; }
+    else { camera.x += action === "left" ? -camera.width / camera.zoom / 5 : action === "right" ? camera.width / camera.zoom / 5 : 0; camera.y += action === "up" ? -camera.height / camera.zoom / 5 : action === "down" ? camera.height / camera.zoom / 5 : 0; }
+    installWorldCamera(node);
+    return;
+  }
+  if (!fieldCamera) return;
+  if (action === "in") fieldCamera.span = Math.max(4, fieldCamera.span - 4);
   else if (action === "out") fieldCamera.span = Math.min(64, fieldCamera.span + 4);
   else if (action === "center") fieldCamera.follow = true;
   else { fieldCamera.follow = false; fieldCamera.x += action === "left" ? -5 : action === "right" ? 5 : 0; fieldCamera.y += action === "up" ? -5 : action === "down" ? 5 : 0; }
@@ -1207,3 +1222,18 @@ function adjustFieldCamera(action) {
   renderTutorial(session.tutorial);
 }
 for (const action of ["in", "out", "center", "left", "up", "down", "right"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
+
+function installWorldCamera(node) {
+  const key = node.dataset.map;
+  if (!worldCameras.has(key)) {
+    const [, , width, height] = node.getAttribute("viewBox").split(" ").map(Number);
+    worldCameras.set(key, {width, height, zoom: 1, x: width / 2, y: height / 2});
+  }
+  const camera = worldCameras.get(key);
+  const width = camera.width / camera.zoom, height = camera.height / camera.zoom;
+  camera.x = Math.max(width / 2, Math.min(camera.width - width / 2, camera.x));
+  camera.y = Math.max(height / 2, Math.min(camera.height - height / 2, camera.y));
+  node.setAttribute("viewBox", `${camera.x - width / 2} ${camera.y - height / 2} ${width} ${height}`);
+  node.onclick = () => { activeWorldMap = key; };
+  node.onwheel = event => { event.preventDefault(); activeWorldMap = key; adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
+}
