@@ -137,6 +137,8 @@ def view(party, me, now):
     party = deepcopy(party)
     migrate(party, now)
     progression.resources(party, now)
+    if party.get("battle"):
+        tactics.sync_summons(party, now)
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
@@ -186,7 +188,10 @@ def view(party, me, now):
                                                       for level, skills in character.class_skills_dict.items()
                                                       if level.startswith("level ") and int(level.split()[1]) > character.level
                                                       for s in skills.values()],
-                                  "invocations": [{"name": i.name, "hp": i.hp.current_value} for i in character.invocations.get_all()]})
+                                  "invocations": [{"id": i.user_id, "name": i.name, "hp": i.hp.current_value, "max_hp": i.hp.value,
+                                                   "stats": {key: getattr(i, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
+                                                   "energies": pack(i)["energies"], "control_cost": deepcopy(tactics.CONTROL_RULES.get(i.char_class, {"energy": None, "per_second": 0}))}
+                                                  for i in character.invocations.get_all()]})
     for key in ("characters", "ready"):
         del result[key]
     result["me"] = me
@@ -422,6 +427,8 @@ def execute(party, player_id, action, params, now, error, random):
         party["journey"] = path
         continue_journey(party, now, random, messages)
         return messages, party["step"] == "complete"
+    if action in ("control_units", "unit_order"):
+        return tactics.control(party, player_id, action, params, now, error), False
     if action in ("battle_move", "hide", "harvest", "leave_battle"):
         messages = tactics.execute(party, player_id, action, params, now, error)
         if action == "leave_battle":

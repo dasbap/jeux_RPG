@@ -14,6 +14,7 @@ let mapMarker = null;
 let focusedMob = "";
 let pendingTravel = null;
 let tacticalInteractionUntil = 0;
+let inspectedCell = null;
 const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
 function message(text, error = false) {
   $("message").textContent = text;
@@ -326,7 +327,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
-  $("map-help").textContent = fighting ? "Cliquez sur une case pour marcher. Les blocs bruns servent de couverture. Cliquez sur les PV d’un mob pour le localiser." : "Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.";
+  $("map-help").textContent = fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.";
   $("character-menu").hidden = fighting;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
@@ -334,6 +335,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     if (!["stats", "equipment", "inventory", "map", "bestiary"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
+    inspectedCell = null;
     mapPlace = "";
     mapPoint = "";
     viewContext = context;
@@ -378,8 +380,9 @@ function renderTutorial(adventure, preserveBattle = false) {
     p.textContent = text;
     $("character-details").append(p);
   }
+  for (const invocation of me.invocations) { const text = document.createElement("p"); text.textContent = statsText(invocation); $("character-details").append(text); }
   for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions"]) $(id).replaceChildren();
-  const stableActions = new Map(["combat-actions", "skills", "self-skills"].map(id => [id, new Set()]));
+  const stableActions = new Map(["combat-actions", "skills", "self-skills", "unit-control-actions"].map(id => [id, new Set()]));
   function button(container, label, handler, disabled = false) {
     const retained = stableActions.get(container);
     const existing = retained && [...$(container).children].find(child => child.dataset.actionLabel === label);
@@ -425,7 +428,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
-  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (canAttack(target) || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
+  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (canAttack(target) || target.enemy && controlledUnits(adventure, me.id).length > 0 || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
   $("combat-target").replaceChildren();
   for (const target of possibleTargets) {
     const option = document.createElement("option");
@@ -441,6 +444,12 @@ function renderTutorial(adventure, preserveBattle = false) {
   const selected = possibleTargets.find(target => target.id === combatTarget);
   $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting && !preserveBattle) renderBattle(adventure, me);
+  if (fighting) {
+    renderUnitControls(adventure, me, action);
+    renderSelection(adventure, me);
+    const controlled = controlledUnits(adventure, me.id);
+    if (controlled.length && selected?.enemy) action("combat-actions", "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected.id, paths: {}}, me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0);
+  }
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
     for (const skill of me.skills.filter(s => s.type === "INVOCATION")) {
@@ -453,6 +462,7 @@ function renderTutorial(adventure, preserveBattle = false) {
       element.title = skill.description;
     }
   }
+  if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
 }
 function requestTravel(destination, name, zone) {
@@ -475,6 +485,10 @@ function selectEntity(id) {
   tacticalInteractionUntil = Date.now() + 500;
   focusedMob = focusedMob === id ? "" : id;
   combatTarget = focusedMob;
+  const adventure = session.tutorial, position = entityPosition(adventure, id);
+  inspectedCell = position ? [...position] : null;
+  const summon = adventure.battle?.summons?.[id], actor = adventure.players.find(p => p.id === session.me);
+  if (focusedMob && summon?.owner === session.me && !summon.controlled && !busy && actor.hp > 0 && !actor.stunned && !actor.casting && actor.cooldown_real_seconds <= 0 && canPayControl(adventure, actor, summon)) tutorialCommand("control_units", {units: [id]});
   renderTutorial(session.tutorial, true);
   const ns = "http://www.w3.org/2000/svg";
   for (const card of $("mob-cards").querySelectorAll("[data-mob]")) card.classList.toggle("selected", card.dataset.mob === focusedMob);
@@ -489,14 +503,79 @@ function selectEntity(id) {
 }
 function approachEntity(position) {
   const adventure = session.tutorial, me = adventure.players.find(p => p.id === session.me);
-  if (busy || me.casting || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0) return;
-  const unit = adventure.battle.players[me.id], map = adventure.battle.map;
+  if (busy || me.casting || me.hp <= 0 || me.stunned || (me.cooldown_real_seconds > 0 && !adventure.battle.players[me.id].route.length)) return;
+  const unit = controlledUnits(adventure, me.id)[0]?.[1] || adventure.battle.players[me.id], map = adventure.battle.map;
   if (Math.hypot(unit.position[0] - position[0], unit.position[1] - position[1]) <= 1.5) return;
   const candidates = [[position[0] - 1, position[1]], [position[0] + 1, position[1]], [position[0], position[1] - 1], [position[0], position[1] + 1]];
   const paths = candidates.map(p => gridPath(map, unit.position, p)).filter(p => p !== null).sort((a,b) => a.length - b.length);
   if (!paths.length || !paths[0].length) return;
   const path = paths[0], [x,y] = path[path.length - 1];
-  tutorialCommand("battle_move", {x, y, path});
+  moveControlled(adventure, me, [x, y]);
+}
+function entityPosition(adventure, id) {
+  return adventure.battle.players[id]?.position || adventure.battle.summons?.[id]?.position || adventure.mobs.find(m => m.combat_id === id)?.position || adventure.battle.corpses.find(c => c.id === id)?.position;
+}
+function controlledUnits(adventure, owner) {
+  return Object.entries(adventure.battle?.summons || {}).filter(([,unit]) => unit.owner === owner && unit.controlled && unit.hp > 0);
+}
+function unitName(unit) {
+  const number = unit.id?.match(/:summon:(\d+)$/);
+  return number ? `${unit.name} · #${Number(number[1]) + 1}` : unit.name;
+}
+function statsText(unit) {
+  const stats = unit.stats || {};
+  const value = key => typeof stats[key] === "object" ? stats[key].current : stats[key] ?? "?";
+  return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV · Force ${value("force")} · Endurance ${value("endurance")} · Intelligence ${value("intelligence")} · Sagesse ${value("sagesse")}${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""}`;
+}
+function moveControlled(adventure, me, destination) {
+  const controlled = controlledUnits(adventure, me.id);
+  const [x,y] = destination;
+  if (controlled.length) {
+    const paths = Object.fromEntries(controlled.map(([id,unit]) => [id, gridPath(adventure.battle.map, unit.position, destination)]));
+    if (Object.values(paths).some(path => path === null)) return message("Ce chemin est bloqué pour un allié.");
+    return tutorialCommand("unit_order", {units: controlled.map(([id]) => id), order: "move", target: destination, paths});
+  }
+  const path = gridPath(adventure.battle.map, adventure.battle.players[me.id].position, destination);
+  if (path?.length) return tutorialCommand("battle_move", {x, y, path});
+}
+function canPayControl(adventure, me, unit) {
+  const cost = unit.control_cost;
+  return !cost?.per_second || me.energies.some(e => e.type === cost.energy && e.current > 0) || (adventure.control_credit?.[me.id]?.[cost.energy] || 0) > 0;
+}
+function renderUnitControls(adventure, me, action) {
+  const units = Object.entries(adventure.battle.summons || {}).filter(([,unit]) => unit.owner === me.id);
+  $("unit-controls").hidden = !units.length;
+  const controlled = controlledUnits(adventure, me.id);
+  $("control-status").textContent = `${controlled.length} allié(s) contrôlé(s). Un double clic donne un ordre de déplacement ; sélectionnez un ennemi pour ordonner l’attaque.`;
+  const retained = new Set();
+  for (const [id,unit] of units) {
+    let row = [...$("unit-control-list").children].find(child => child.dataset.unit === id);
+    if (!row) { row = document.createElement("label"); row.dataset.unit = id; row.append(document.createElement("input"), document.createElement("span")); $("unit-control-list").append(row); }
+    retained.add(row);
+    const checkbox = row.querySelector("input"); checkbox.type = "checkbox"; checkbox.checked = Boolean(unit.controlled); checkbox.disabled = busy || !unit.controlled && (!canPayControl(adventure, me, unit) || me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0);
+    checkbox.onchange = () => { const ids = controlled.map(([key]) => key).filter(key => key !== id); if (checkbox.checked) ids.push(id); tutorialCommand("control_units", {units: ids}); };
+    row.querySelector("span").textContent = `${unitName({...unit,id})} · ${unit.hp}/${unit.max_hp} PV · ${unit.control_cost?.per_second || 0} ${unit.control_cost?.energy || "énergie"}/s`;
+  }
+  for (const row of [...$("unit-control-list").children]) if (!retained.has(row)) row.remove();
+  if (!units.length) return;
+  action("unit-control-actions", "Tout contrôler", "control_units", {units: units.map(([id]) => id)}, me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0 || units.some(([,unit]) => !canPayControl(adventure, me, unit)));
+  action("unit-control-actions", "Rendre autonomes", "control_units", {units: []}, !controlled.length);
+  if (controlled.length) action("unit-control-actions", "Maintenir la position", "unit_order", {units: controlled.map(([id]) => id), order: "hold", target: null, paths: {}}, me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0);
+}
+function renderSelection(adventure, me) {
+  const battle = adventure.battle;
+  const entries = [...adventure.players.map(player => ({...player, position: battle.players[player.id].position})), ...Object.entries(battle.summons || {}).map(([id,unit]) => ({...unit,id})), ...adventure.mobs.map(mob => ({id: mob.combat_id, name: mob.name, position: mob.position})), ...battle.corpses.map(c => ({...c,name: c.name + " · corps"}))];
+  const visible = inspectedCell ? entries.filter(e => e.position[0] === inspectedCell[0] && e.position[1] === inspectedCell[1]) : [];
+  $("cell-selection-status").textContent = !inspectedCell ? "Cliquez sur une case ou une entité de la carte." : visible.length ? `Case ${inspectedCell.join(",")} · ${visible.length} entité(s) visible(s)` : "Aucune entité visible sur cette case.";
+  const retained = new Set();
+  for (const entity of visible) {
+    let button = [...$("cell-entities").children].find(child => child.dataset.target === entity.id);
+    if (!button) { button = document.createElement("button"); button.dataset.target = entity.id; $("cell-entities").append(button); }
+    retained.add(button); button.textContent = unitName(entity); button.setAttribute("aria-pressed", String(focusedMob === entity.id)); button.onclick = () => selectEntity(entity.id);
+  }
+  for (const button of [...$("cell-entities").children]) if (!retained.has(button)) button.remove();
+  const selected = battle.summons?.[focusedMob];
+  paragraphs("selected-unit-stats", selected ? [statsText({...selected,id:focusedMob}), selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
   let [x, y] = source;
@@ -540,7 +619,7 @@ function gridPath(map, source, destination) {
 function renderBattle(adventure, me) {
   const battle = adventure.battle, map = battle.map;
   const unit = battle.players[me.id];
-  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0;
+  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned || (me.cooldown_real_seconds > 0 && !unit.route.length);
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);
@@ -558,14 +637,15 @@ function renderBattle(adventure, me) {
     const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
-      const path = gridPath(map, unit.position, [x, y]);
-      if (!path?.length) return message("Cette case est occupée par une couverture ou correspond à votre position.");
-      tutorialCommand("battle_move", {x, y, path});
+      if (cover) return message("Cette case est occupée par une couverture.");
+      moveControlled(adventure, me, [x, y]);
     };
-    cell.addEventListener("click", move);
+    cell.addEventListener("click", () => { tacticalInteractionUntil = Date.now() + 500; inspectedCell = [x, y]; focusedMob = ""; combatTarget = ""; renderTutorial(session.tutorial, true); });
+    cell.addEventListener("dblclick", move);
     cell.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } });
     svg.append(cell);
   }
+  for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   for (const step of unit.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   const draw = (id, position, label, className) => {
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
@@ -579,7 +659,9 @@ function renderBattle(adventure, me) {
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
   for (const mob of adventure.mobs) draw(mob.combat_id, mob.position, mob.combat_id === "mob" ? "G1" : `G${mob.combat_id.split("-")[1]}`, "enemy-unit");
   for (const [id, summon] of Object.entries(battle.summons || {})) {
-    draw(id, summon.position, "S", "summon-unit");
+    const number = id.match(/:summon:(\d+)$/);
+    const label = number ? `S${Number(number[1]) + 1}` : "S";
+    draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
     svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
@@ -595,6 +677,7 @@ function renderBattle(adventure, me) {
     card.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(mob.position); });
     $("mob-cards").append(card);
   }
+  paragraphs("combat-stats-details", [statsText(me), ...me.invocations.map(statsText)]);
   paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
   const table = document.createElement("table");
   for (const intent of battle.intents) {
@@ -670,7 +753,16 @@ async function command(action, params = {}) {
         if (error.code !== "stale_revision" || !currentParams.session_id || attempt === 4) throw error;
         const state = await api("/api/state");
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
+        session = state.session;
         currentParams = {...currentParams, revision: state.session.revision};
+        if (action === "battle_move" && session.tutorial?.battle) {
+          const battle = session.tutorial.battle;
+          currentParams.path = gridPath(battle.map, battle.players[session.me].position, [currentParams.x, currentParams.y]);
+        }
+        if (action === "unit_order" && currentParams.order === "move" && session.tutorial?.battle) {
+          const battle = session.tutorial.battle;
+          currentParams.paths = Object.fromEntries(currentParams.units.map(id => [id, gridPath(battle.map, battle.summons[id].position, currentParams.target)]));
+        }
       }
     }
     session = data.session;
@@ -685,7 +777,7 @@ async function command(action, params = {}) {
     if (session.state !== "lobby") $("invitation").hidden = true;
   } catch (error) {
     message(error.message, true);
-  } finally { busy = false; await refresh(); }
+  } finally { busy = false; if (session?.tutorial) renderTutorial(session.tutorial); await refresh(); }
 }
 $("register-form").addEventListener("submit", async event => {
   event.preventDefault();

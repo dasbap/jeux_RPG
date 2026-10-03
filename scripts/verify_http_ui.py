@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import jeuxRPG
 from jeuxRPG.multiplayer import server as server_module, tutorial
-from jeuxRPG.multiplayer.service import GameService
+from jeuxRPG.multiplayer.service import GameService, GameError
 from jeuxRPG.multiplayer.server import RPGServer
 
 
@@ -50,7 +50,16 @@ def main():
                 necromancer = tutorial.new_party([{"id": "p0", "name": "Nécromancien", "class_name": "Necromancien"}])
                 tutorial.migrate(necromancer, 0)
                 tutorial.spawn(necromancer, 0, lambda: .5, [], origin="explore")
-                fixture_path.write_text(json.dumps({"combat": tutorial.view(fixture, "p0", 0), "necromancer": tutorial.view(necromancer, "p0", 0)}), encoding="utf-8")
+                initial_necromancer = tutorial.view(necromancer, "p0", 0)
+                tutorial.execute(necromancer, "p0", "skill", {"skill_name": "Low Skull", "target": "p0"}, 0, GameError, lambda: .5)
+                tutorial.tactics.complete_casts(necromancer, 6, lambda: .5)
+                for energy in necromancer["characters"]["p0"]["energies"]:
+                    energy["current"] = energy["max"]
+                necromancer["battle"]["players"]["p0"]["position"] = [0, 9]
+                necromancer["mobs"][0]["position"] = [12, 1]
+                next(iter(necromancer["battle"]["summons"].values()))["position"] = [10, 1]
+                fixture_path.write_text(json.dumps({"combat": tutorial.view(fixture, "p0", 0), "necromancer": initial_necromancer,
+                                                  "control": tutorial.view(necromancer, "p0", 6)}), encoding="utf-8")
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_tactical_ui.cjs"), str(fixture_path)],
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:

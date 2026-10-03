@@ -109,7 +109,7 @@ async function finishCombat(dom) {
         const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, corpse.position);
         const position = unit.position.join(",");
         await waitFor(() => [...el(dom, "tactical-actions").querySelectorAll("button")].some(button => button.textContent === "Quitter le champ de bataille" && !button.disabled), "déplacement après victoire disponible");
-        el(dom, "world-map").querySelector(`[data-cell="${corpse.position.join(",")}"]`).dispatchEvent(new dom.window.Event("click", {bubbles: true}));
+        el(dom, "world-map").querySelector(`[data-cell="${corpse.position.join(",")}"]`).dispatchEvent(new dom.window.Event("dblclick", {bubbles: true}));
         await waitFor(async () => {
           const moved = (await request(dom, "/api/state")).session.tutorial.battle.players[me.id];
           return moved.route.length > 0 || moved.position.join(",") !== position;
@@ -136,7 +136,7 @@ async function main() {
     assert.equal(el(group, "enemy-intents").querySelectorAll("tr").length, 0);
     assert.equal(el(group, "combat-target").options.length, 0);
     assert(!el(group, "tactical-actions").textContent.includes("Quitter le champ de bataille"));
-    el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("click", {bubbles: true}));
+    el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("dblclick", {bubbles: true}));
     await waitFor(async () => (await request(group, "/api/state")).session.tutorial.battle.players[(await request(group, "/api/state")).session.me].position[1] === 5, "clic sur case de combat");
     await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
     group.window.close();
@@ -152,6 +152,24 @@ async function main() {
       return Object.keys(adventure.battle?.summons || {}).length > 0;
     }, "squelette créé par le bouton personnel");
     await waitFor(() => el(necromancer, "world-map").querySelector(".summon-unit"), "squelette affiché après invocation personnelle");
+    await waitFor(async () => {
+      const state = (await request(necromancer, "/api/state")).session;
+      const me = state.tutorial.players.find(p => p.id === state.me);
+      return me.energies.some(e => e.type === "Mana" && e.current >= 8) && el(necromancer, "unit-control-list").querySelector("input:not(:disabled)");
+    }, "énergie disponible pour le contrôle du squelette");
+    el(necromancer, "unit-control-list").querySelector("input").click();
+    await waitFor(async () => Object.values((await request(necromancer, "/api/state")).session.tutorial.battle.summons).some(u => u.controlled), "contrôle effectif du squelette");
+    const controlledState = (await request(necromancer, "/api/state")).session;
+    const controlledId = Object.keys(controlledState.tutorial.battle.summons)[0];
+    const originalPosition = controlledState.tutorial.battle.players[controlledState.me].position.join(",");
+    el(necromancer, "world-map").querySelector('[data-cell="1,4"]').dispatchEvent(new necromancer.window.MouseEvent("dblclick", {bubbles: true}));
+    await waitFor(async () => {
+      const state = (await request(necromancer, "/api/state")).session.tutorial;
+      return state.battle.summons[controlledId].route.length > 0 || state.battle.summons[controlledId].position.join(",") === "1,4";
+    }, "ordre de déplacement du squelette par la carte");
+    assert.equal((await request(necromancer, "/api/state")).session.tutorial.battle.players[controlledState.me].position.join(","), originalPosition);
+    await command(necromancer, "control_units", {units: []});
+    assert(!Object.values((await request(necromancer, "/api/state")).session.tutorial.battle.summons).some(u => u.controlled));
     necromancer.window.close();
     clients.splice(clients.indexOf(necromancer), 1);
     const first = await client(html, app, "Alice <script>", "Mage");

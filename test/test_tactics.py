@@ -494,3 +494,148 @@ def test_restored_necromancer_with_two_skeletons_survives_small_goblin_hit():
     character.lose_hp(tutorial.unpack(restored["mobs"][0]), 1)
     assert character.is_alive()
     assert len(character.invocations.get_all()) == 2
+
+
+
+def summoned_party(count=1, mobs=1):
+    data = party(count=count, mobs=mobs, class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    tactics.complete_casts(data, 6, lambda: .5)
+    for energy in data["characters"]["p0"]["energies"]:
+        energy["current"] = energy["max"]
+    return data
+
+
+def control_action(data, action, now=6, player="p0", **params):
+    return tutorial.execute(data, player, action, params, now, GameError, lambda: .5)
+
+
+def test_shared_vision_uses_living_allies_and_summons_but_range_stays_personal():
+    data = summoned_party(count=2)
+    unit = next(iter(data["battle"]["summons"].values()))
+    data["battle"]["players"]["p0"]["position"] = [0, 9]
+    data["battle"]["players"]["p1"]["position"] = [0, 8]
+    data["mobs"][0]["position"] = [12, 1]
+    unit["position"] = [10, 1]
+    assert len(tutorial.view(data, "p0", 6)["mobs"]) == 1
+    assert len(tutorial.view(data, "p1", 6)["mobs"]) == 1
+    assert not tactics.allowed(data, "p0", "mob", 6)
+    data["characters"]["p0"]["invocations"] = []
+    tactics.sync_summons(data, 6)
+    data["battle"]["players"]["p1"]["position"] = [10, 1]
+    assert len(tutorial.view(data, "p0", 6)["mobs"]) == 1
+    data["characters"]["p1"]["stats"]["hp"]["current"] = 0
+    assert tutorial.view(data, "p0", 6)["mobs"] == []
+
+
+def test_control_owned_units_charges_with_time_and_release_charges_remaining_time():
+    data = summoned_party()
+    key = next(iter(data["battle"]["summons"]))
+    control_action(data, "control_units", units=[key])
+    actor = tutorial.unpack(data["characters"]["p0"])
+    energy = actor.get_energie(type(actor.energie[0]))
+    before = energy.current_value
+    characters = {"p0": actor}
+    tactics.charge_control(data, characters, 9, [])
+    assert energy.current_value == before - 1
+    assert data["control_credit"]["p0"]["Mana"] == pytest.approx(.6)
+    data["characters"]["p0"] = tutorial.pack(actor)
+    control_action(data, "control_units", now=10.5, units=[])
+    assert data["characters"]["p0"]["energies"][0]["current"] == before - 1
+    assert data["control_credit"]["p0"]["Mana"] == pytest.approx(.4)
+    assert not data["battle"]["summons"][key]["controlled"]
+
+
+def test_control_exhaustion_and_zero_cost_rules(monkeypatch):
+    data = summoned_party()
+    key = next(iter(data["battle"]["summons"]))
+    control_action(data, "control_units", units=[key])
+    actor = tutorial.unpack(data["characters"]["p0"])
+    actor.energie[0].current_value = 0
+    messages = []
+    tactics.charge_control(data, {"p0": actor}, 9, messages)
+    assert not data["battle"]["summons"][key]["controlled"]
+    assert actor.energie[0].current_value == 0
+    assert messages
+    monkeypatch.setitem(tactics.CONTROL_RULES, "Squelette", {"energy": None, "per_second": 0})
+    data["characters"]["p0"] = tutorial.pack(actor)
+    control_action(data, "control_units", now=9, units=[key])
+    tactics.charge_control(data, {"p0": actor}, 1000, [])
+    assert data["battle"]["summons"][key]["controlled"]
+    assert actor.energie[0].current_value == 0
+
+
+@pytest.mark.parametrize("ids", [["missing"], [None], "bad", ["p0:summon:0", "p0:summon:0"]])
+def test_forged_control_selection_is_rejected(ids):
+    data = summoned_party()
+    with pytest.raises(GameError):
+        control_action(data, "control_units", units=ids)
+    assert not any(unit.get("controlled") for unit in data["battle"]["summons"].values())
+
+
+def test_player_cannot_control_companions_invocation():
+    data = summoned_party(count=2)
+    key = next(iter(data["battle"]["summons"]))
+    with pytest.raises(GameError) as failure:
+        control_action(data, "control_units", player="p1", units=[key])
+    assert failure.value.code == "forbidden_unit"
+
+
+def test_manual_move_paths_are_verified_and_group_orders_are_atomic():
+    data = summoned_party()
+    second = deepcopy(data["characters"]["p0"]["invocations"][0])
+    second["id"] = "-1"
+    data["characters"]["p0"]["invocations"].append(second)
+    tactics.sync_summons(data, 6)
+    keys = list(data["battle"]["summons"])
+    for key in keys:
+        data["battle"]["summons"][key]["position"] = [9, 5]
+    control_action(data, "control_units", units=keys)
+    with pytest.raises(GameError):
+        control_action(data, "unit_order", units=keys, order="move", target=[8, 5], paths={keys[0]: [[8, 5]], keys[1]: [[0, 0], [8, 5]]})
+    assert all(unit["order"]["type"] == "hold" for unit in data["battle"]["summons"].values())
+    control_action(data, "unit_order", units=keys, order="move", target=[8, 5], paths={key: [[8, 5]] for key in keys})
+    tactics.advance(data, 7.2, lambda: .5)
+    assert all(unit["position"] == [8, 5] for unit in data["battle"]["summons"].values())
+    assert data["battle"]["players"]["p0"]["position"] == [9, 5]
+
+
+def test_manual_attack_requires_shared_visibility_and_executes_without_player_hit():
+    data = summoned_party()
+    key, unit = next(iter(data["battle"]["summons"].items()))
+    data["battle"]["players"]["p0"]["position"] = [0, 9]
+    unit["position"] = [9, 5]
+    data["mobs"][0]["position"] = [9, 4]
+    control_action(data, "control_units", units=[key])
+    control_action(data, "unit_order", units=[key], order="attack", target="mob", paths={})
+    before = data["mobs"][0]["stats"]["hp"]["current"]
+    tactics.advance(data, 6, lambda: .5)
+    assert data["mobs"][0]["stats"]["hp"]["current"] < before
+    data["mobs"][0]["position"] = [0, 0]
+    with pytest.raises(GameError) as failure:
+        control_action(data, "unit_order", now=10, units=[key], order="attack", target="mob", paths={})
+    assert failure.value.code == "invisible_target"
+
+
+def test_snapshot_exposes_invocation_stats_and_control_cost():
+    data = summoned_party()
+    snapshot = tutorial.view(data, "p0", 6)
+    invocation = snapshot["players"][0]["invocations"][0]
+    assert set(invocation["stats"]) == {"force", "endurance", "intelligence", "sagesse"}
+    assert invocation["max_hp"] >= invocation["hp"]
+    assert invocation["control_cost"] == {"energy": "Mana", "per_second": .4}
+    assert snapshot["battle"]["summons"][invocation["id"]]["stats"]
+
+
+def test_redirect_movement_preserves_position_and_step_timer_during_cooldown():
+    data = party()
+    act(data, "battle_move", x=1, y=4, path=[[1, 5], [1, 4]])
+    unit = data["battle"]["players"]["p0"]
+    timer = unit["next_move"]
+    act(data, "battle_move", now=.3, x=0, y=5, path=[[0, 6], [0, 5]])
+    assert unit["position"] == [1, 6]
+    assert unit["next_move"] == timer
+    tactics.advance(data, timer, lambda: .5)
+    assert unit["position"] == [0, 6]
+    assert unit["route"] == [[0, 5]]

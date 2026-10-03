@@ -18,6 +18,7 @@ CALL_TIME = 6.0
 SEARCH_TIME = 10 * progression.RATIO
 MOVE_TIME = 1.2
 GOBLIN_MOVE_TIME = 2.4
+CONTROL_RULES = {"Squelette": {"energy": "Mana", "per_second": .4}}
 
 
 def distance(a, b):
@@ -162,7 +163,9 @@ def sync_summons(party, now):
                 summons[key] = {"owner": owner, "index": index, "position": free_position(PRESETS[battle["preset"]], battle["players"][owner]["position"], occupied),
                                 "next_move": now, "next_attack": now, "hidden": False, "route": []}
                 occupied.append(summons[key]["position"])
-            summons[key].update(index=index, name=invocation["name"], hp=invocation["stats"]["hp"]["current"], max_hp=invocation["stats"]["hp"]["max"])
+            summons[key].update(index=index, name=invocation["name"], hp=invocation["stats"]["hp"]["current"], max_hp=invocation["stats"]["hp"]["max"],
+                                stats=deepcopy(invocation["stats"]), energies=deepcopy(invocation["energies"]),
+                                control_cost=deepcopy(CONTROL_RULES.get(invocation["class_name"], {"energy": None, "per_second": 0})))
     battle["summons"] = {key: unit for key, unit in summons.items() if key in active}
 
 
@@ -171,15 +174,28 @@ def advance_summons(party, characters, now, random, messages):
     battle = party["battle"]
     preset = PRESETS[battle["preset"]]
     for summon_id, unit in battle.get("summons", {}).items():
+        if not characters[unit["owner"]].is_alive():
+            continue
         invocations = characters[unit["owner"]].invocations.get_all()
-        if unit["index"] >= len(invocations) or not invocations[unit["index"]].is_alive():
+        if unit["index"] >= len(invocations) or not invocations[unit["index"]].is_alive() or invocations[unit["index"]].is_stunned():
             continue
         invocation = invocations[unit["index"]]
-        candidates = [mob for mob in party["mobs"] if distance(unit["position"], mob["position"]) <= 6 and sight(preset, unit["position"], mob["position"])]
+        if unit.get("controlled"):
+            order = unit.get("order", {"type": "hold"})
+            if order["type"] == "move":
+                if unit["route"] and unit["next_move"] <= now:
+                    unit["position"] = unit["route"].pop(0)
+                    unit["next_move"] = now + MOVE_TIME
+                continue
+            if order["type"] != "attack":
+                continue
+            candidates = [mob for mob in party["mobs"] if mob["combat_id"] == order["target"] and visible(party, unit["owner"], mob)]
+        else:
+            candidates = [mob for mob in party["mobs"] if distance(unit["position"], mob["position"]) <= 6 and sight(preset, unit["position"], mob["position"])]
         if not candidates:
             continue
         target = min(candidates, key=lambda m: (distance(unit["position"], m["position"]), m["stats"]["hp"]["current"], m["combat_id"]))
-        if distance(unit["position"], target["position"]) <= 1.5:
+        if distance(unit["position"], target["position"]) <= 1.5 and sight(preset, unit["position"], target["position"]):
             if unit["next_attack"] > now:
                 continue
             enemy = unpack(target)
@@ -203,10 +219,113 @@ def advance_summons(party, characters, now, random, messages):
                 unit["next_move"] = now + MOVE_TIME
 
 
+def release_control(unit):
+    unit.update(controlled=False, order=None, route=[])
+
+
+def charge_control(party, characters, now, messages):
+    for owner, character in characters.items():
+        units = [u for u in party["battle"].get("summons", {}).values() if u["owner"] == owner and u.get("controlled")]
+        if not units:
+            continue
+        totals = {}
+        for unit in units:
+            cost = unit["control_cost"]
+            if cost["per_second"]:
+                elapsed = max(0, now - unit.get("control_at", now)) / progression.RATIO
+                totals[cost["energy"]] = totals.get(cost["energy"], 0) + elapsed * cost["per_second"]
+            unit["control_at"] = now
+        energies = {type(e).__name__: e for e in character.energie}
+        credits = party.setdefault("control_credit", {}).setdefault(owner, {})
+        fees = {key: max(0, math.ceil(amount - credits.get(key, 0) - 1e-9)) for key, amount in totals.items()}
+        exhausted = not character.is_alive() or character.is_stunned() or any(key not in energies or energies[key].current_value < fee for key, fee in fees.items())
+        for key, amount in totals.items():
+            if key in energies:
+                paid = min(energies[key].current_value, fees[key])
+                energies[key].current_value -= paid
+                credits[key] = max(0, round(credits.get(key, 0) + paid - amount, 6))
+        if exhausted:
+            for unit in units:
+                release_control(unit)
+            messages.append(f"{character.name} : contrôle interrompu, les alliés reprennent leur autonomie.")
+
+
+def control(party, player, action, params, now, error):
+    from .tutorial import unpack, pack
+    battle = party.get("battle")
+    if not battle:
+        raise error("not_fighting", "Aucun champ de bataille actif.", 409)
+    sync_summons(party, now)
+    ids = params["units"]
+    if not isinstance(ids, list) or len(ids) > len(battle["summons"]) or any(not isinstance(key, str) for key in ids) or len(set(ids)) != len(ids):
+        raise error("invalid_units", "Sélection d’alliés invalide.")
+    units = [battle["summons"].get(key) for key in ids]
+    if any(not unit or unit["owner"] != player or unit["hp"] <= 0 for unit in units):
+        raise error("forbidden_unit", "Vous ne pouvez contrôler que vos alliés vivants.", 403)
+    actor = unpack(party["characters"][player])
+    if ids:
+        ready(party, player, now, error)
+    characters = {key: unpack(data) for key, data in party["characters"].items()}
+    if action == "control_units":
+        charge_control(party, characters, now, [])
+        energy = {type(e).__name__: e.current_value for e in characters[player].energie}
+        if any(u["control_cost"]["per_second"] and energy.get(u["control_cost"]["energy"], 0) <= 0 and party.get("control_credit", {}).get(player, {}).get(u["control_cost"]["energy"], 0) <= 0 for u in units):
+            raise error("control_energy", "Énergie insuffisante pour prendre le contrôle.", 409)
+        for key, unit in battle["summons"].items():
+            if unit["owner"] != player:
+                continue
+            if key in ids:
+                if not unit.get("controlled"):
+                    unit.update(controlled=True, order={"type": "hold"}, route=[], control_at=now)
+            else:
+                release_control(unit)
+        party["characters"] = {key: pack(c) for key, c in characters.items()}
+        return ["Contrôle des alliés mis à jour."]
+    if not ids or any(not u.get("controlled") for u in units):
+        raise error("not_controlled", "Prenez le contrôle des alliés avant de leur donner un ordre.", 409)
+    order, target, routes = params["order"], params["target"], params["paths"]
+    if not isinstance(order, str) or order not in ("move", "attack", "hold") or not isinstance(routes, dict):
+        raise error("invalid_order", "Ordre invalide.")
+    if order == "move":
+        preset = PRESETS[battle["preset"]]
+        if not walkable(preset, target) or set(routes) != set(ids):
+            raise error("invalid_path", "Destination ou chemins invalides.")
+        for key, unit in zip(ids, units):
+            route = routes[key]
+            if not isinstance(route, list) or len(route) > preset["width"] * preset["height"] or (route[-1] if route else unit["position"]) != target:
+                raise error("invalid_path", "Chemin d’allié invalide.")
+            previous = unit["position"]
+            for point in route:
+                if not walkable(preset, point) or abs(previous[0] - point[0]) + abs(previous[1] - point[1]) != 1:
+                    raise error("invalid_path", "Chemin d’allié bloqué ou vitesse impossible.")
+                previous = point
+    elif order == "attack":
+        enemy = next((m for m in party["mobs"] if m["combat_id"] == target), None) if isinstance(target, str) else None
+        if not enemy or not visible(party, player, enemy):
+            raise error("invisible_target", "Cet ennemi n’est pas visible pour votre groupe.", 409)
+        if routes:
+            raise error("invalid_order", "L’attaque ne reçoit pas de chemins du client.")
+    elif target is not None or routes:
+        raise error("invalid_order", "L’attente ne reçoit pas de cible ni de chemins.")
+    charge_control(party, characters, now, [])
+    if any(not unit.get("controlled") for unit in units):
+        raise error("control_energy", "Le contrôle a expiré faute d’énergie.", 409)
+    party["characters"] = {key: pack(c) for key, c in characters.items()}
+    for key, unit in zip(ids, units):
+        unit["order"] = {"type": order, "target": deepcopy(target)}
+        unit["route"] = deepcopy(routes.get(key, []))
+        unit["next_move"] = max(unit["next_move"], now)
+    party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
+    return [f"Ordre {order} transmis à {len(ids)} allié(s)."]
+
+
 def visible(party, player, mob):
     battle = party.get("battle")
-    unit = battle and battle["players"].get(player)
-    return bool(unit and distance(unit["position"], mob["position"]) <= 6 and sight(PRESETS[battle["preset"]], unit["position"], mob["position"]))
+    if not battle or player not in battle["players"]:
+        return False
+    observers = [unit for key, unit in battle["players"].items() if party["characters"][key]["stats"]["hp"]["current"] > 0]
+    observers.extend(unit for unit in battle.get("summons", {}).values() if unit["hp"] > 0 and party["characters"][unit["owner"]]["stats"]["hp"]["current"] > 0)
+    return any(distance(unit["position"], mob["position"]) <= 6 and sight(PRESETS[battle["preset"]], unit["position"], mob["position"]) for unit in observers)
 
 
 def unalerted_allies(party, mob):
@@ -235,12 +354,12 @@ def allowed(party, player, target, attack_range):
     return bool(other and (enemy is None or visible(party, player, enemy)) and distance(unit["position"], other["position"]) <= attack_range and sight(PRESETS[battle["preset"]], unit["position"], other["position"]))
 
 
-def ready(party, player, now, error):
+def ready(party, player, now, error, redirect=False):
     from .tutorial import unpack
     actor = unpack(party["characters"][player])
     if not actor.is_alive() or actor.is_stunned():
         raise error("stunned" if actor.is_stunned() else "defeated", "Votre personnage ne peut pas agir.", 409)
-    if party["ready"][player] > now:
+    if party["ready"][player] > now and not redirect:
         raise error("cooldown", "Attendez la fin du délai de 1,2 seconde.", 409)
     if party.get("battle") and party["battle"]["players"][player].get("casting"):
         raise error("casting", "Votre incantation vous immobilise jusqu’à sa fin.", 409)
@@ -251,7 +370,7 @@ def execute(party, player, action, params, now, error):
     battle = party.get("battle")
     if not battle:
         raise error("not_fighting", "Aucun champ de bataille actif.", 409)
-    actor = ready(party, player, now, error)
+    actor = ready(party, player, now, error, redirect=action == "battle_move" and bool(battle["players"][player]["route"]))
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]
     if action == "battle_move":
@@ -264,8 +383,10 @@ def execute(party, player, action, params, now, error):
             if not walkable(preset, point) or abs(point[0] - previous[0]) + abs(point[1] - previous[1]) != 1:
                 raise error("invalid_path", "Trajet bloqué ou vitesse impossible.")
             previous = point
+        moving = bool(unit["route"])
         unit["route"] = deepcopy(route)
-        unit["next_move"] = now + MOVE_TIME
+        if not moving:
+            unit["next_move"] = now + MOVE_TIME
         unit["hidden"] = False
         messages = [f"{actor.name} se déplace sur le champ de bataille."]
     elif action == "hide":
@@ -359,6 +480,7 @@ def advance(party, now, random):
         if unit["route"] and actor.is_alive() and not actor.is_stunned() and unit["next_move"] <= now:
             unit["position"] = unit["route"].pop(0)
             unit["next_move"] = now + MOVE_TIME
+    charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}
     for key, unit in battle.get("summons", {}).items():

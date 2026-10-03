@@ -16,3 +16,6 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 
 .summon-unit circle { fill: #cbd5e1; stroke: #4338ca; stroke-width: 3; }
 .mob-card.selected { outline: 3px solid #b45309; }
+
+#unit-control-list label { display: flex; align-items: center; gap: .5rem; margin: .5rem 0; }
+#unit-control-list input { width: auto; }
