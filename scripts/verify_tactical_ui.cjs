@@ -28,11 +28,11 @@ try {
   el("combat-actions").querySelector("button").click();
   assert.equal(dom.window.uiTest.calls.at(-1).params.target, "mob");
   event(unit("mob"), "click");
-  assert.equal(el("combat-actions").children.length, 0);
+  assert([...el("combat-actions").children].every(button => button.disabled));
   assert.equal(el("combat-target").value, "");
   assert(!el("world-map").querySelector(".objective-ring"));
   event(unit("mob-3"), "click");
-  assert.equal(el("combat-actions").children.length, 0);
+  assert([...el("combat-actions").children].every(button => button.disabled));
   assert.equal(el("combat-target").options.length, 0);
   event(unit("mob-3"), "dblclick");
   const movement = dom.window.uiTest.calls.at(-1);
@@ -48,6 +48,17 @@ try {
   assert.equal(dom.window.uiTest.calls.length, beforeRedirect + 1);
   assert.equal(dom.window.uiTest.calls.at(-1).action, "battle_move");
   assert(unit("p0"));
+  assert.equal(el("combat-allies").parentElement.id, "combat-player-panel");
+  assert.equal(el("unit-controls").parentElement.id, "combat-player-panel");
+  assert.equal(el("combat-view").parentElement.id, "combat-action-panel");
+  assert.equal(el("combat-enemies").parentElement.id, "combat-enemy-panel");
+  const attackSlot = el("combat-actions").querySelector("button");
+  const recoveringKnight = JSON.parse(JSON.stringify(moving));
+  recoveringKnight.players[0].cooldown_real_seconds = .5;
+  render(recoveringKnight);
+  assert.equal(el("combat-actions").querySelector("button"), attackSlot);
+  assert(attackSlot.disabled);
+  assert(el("skills").children.length > 0);
   const near = JSON.parse(JSON.stringify(fixture));
   near.battle.corpses = [{id: "dead", name: "Gobelin mort", position: [9, 4], harvested: ["p0"]}];
   near.battle.summons = {"p0:summon:0": {position: [8, 4], name: "Squelette", hp: 10, max_hp: 10}};
@@ -144,7 +155,7 @@ try {
   invisible.mobs = []; invisible.mob = null; invisible.battle.intents = [];
   render(invisible);
   assert.equal(el("cell-entities").querySelectorAll("[data-target=mob]").length, 0);
-  assert.equal(el("combat-actions").children.length, 0);
+  assert([...el("combat-actions").children].every(button => button.disabled));
   assert.equal(errors.length, 0, errors.join(" · "));
   console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
 } finally {

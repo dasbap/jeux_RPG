@@ -316,7 +316,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const fighting = Boolean(adventure.battle);
   $("combat-layout").hidden = !fighting;
   if (fighting) {
-    for (const [parent, child] of [["combat-player-panel", "combat-view"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
+    for (const [parent, child] of [["combat-action-panel", "combat-view"], ["combat-player-panel", "combat-allies"], ["combat-player-panel", "unit-controls"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
       if ($(child).parentElement !== $(parent)) $(parent).append($(child));
     }
   } else {
@@ -440,8 +440,8 @@ function renderTutorial(adventure, preserveBattle = false) {
     const placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = "Sélectionnez une entité sur la carte"; $("combat-target").prepend(placeholder);
   }
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
-  $("target-controls").hidden = !fighting || possibleTargets.length === 0;
-  const selected = possibleTargets.find(target => target.id === combatTarget);
+  $("target-controls").hidden = !fighting;
+  const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
   $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting && !preserveBattle) renderBattle(adventure, me);
   if (fighting) {
@@ -450,14 +450,14 @@ function renderTutorial(adventure, preserveBattle = false) {
     const controlled = controlledUnits(adventure, me.id);
     if (controlled.length && selected?.enemy) action("combat-actions", "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected.id, paths: {}}, me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0);
   }
-  if (fighting && me.hp > 0) {
-    if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
+  if (fighting) {
+    action("combat-actions", "Attaque simple", "strike", {target: selected?.id}, !selected || !canAttack(selected));
     for (const skill of me.skills.filter(s => s.type === "INVOCATION")) {
       const element = action("self-skills", `Invoquer · ${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "skill", {skill_name: skill.name, target: me.id}, !skillAllowed(me, skill, me, mob));
       element.title = me.casting ? "Incantation en cours." : me.invocations.length >= me.invocation_limit ? "Limite d’invocations atteinte." : "Invoquer sur soi, sans changer la cible sélectionnée.";
     }
-    if (selected) for (const skill of me.skills.filter(s => s.type !== "INVOCATION" && skillAllowed(me, s, selected, mob))) {
-      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: selected.id});
+    for (const skill of me.skills.filter(s => s.type !== "INVOCATION")) {
+      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: selected?.id}, !selected || !skillAllowed(me, skill, selected, mob));
       element.className = "secondary";
       element.title = skill.description;
     }
@@ -677,7 +677,7 @@ function renderBattle(adventure, me) {
     card.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(mob.position); });
     $("mob-cards").append(card);
   }
-  paragraphs("combat-stats-details", [statsText(me), ...me.invocations.map(statsText)]);
+  paragraphs("combat-stats-details", adventure.players.flatMap(player => [statsText(player), ...player.invocations.map(statsText)]));
   paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
   const table = document.createElement("table");
   for (const intent of battle.intents) {
