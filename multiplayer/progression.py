@@ -21,6 +21,8 @@ def configure(character):
 
 def simple_damage(character):
     stat = character.intelligence if character.char_class in ("Mage", "Necromancien", "Priest") else character.force
+    if character.char_class == "Knight":
+        return max(3, int(3 + stat.current_value * .3))
     return max(2, int(2 + stat.current_value * .2))
 
 
@@ -34,7 +36,10 @@ def scale_skill(character, skill):
     stat = character.force if skill.DamageType and skill.DamageType.name == "PHYSICAL" else character.sagesse if skill.DamageType and skill.DamageType.name == "SACRED" or skill.skill_type.name == "HEAL" else character.intelligence
     for name, effect in skill.effects.items():
         if effect.value and name.lower() in ("damage", "heal"):
-            effect.value = max(1, int(effect.value * .55 + stat.current_value * .25))
+            if character.char_class == "Knight" and skill.name == "Sword Slash" and name.lower() == "damage":
+                effect.value = max(1, int(effect.value * .8 + stat.current_value * .45))
+            else:
+                effect.value = max(1, int(effect.value * .55 + stat.current_value * .25))
 
 
 def health_resources(party, now):

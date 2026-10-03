@@ -6,7 +6,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics, achievements
+from . import world, encounters, progression, forge, tactics, achievements, bleeding
 
 TRAVEL_ENCOUNTER_CHANCE = .25
 
@@ -83,6 +83,8 @@ def unpack(data, master=None):
         if name in character.skills:
             character.skills[name].current_cooldown = cooldown
     for value in data["effects"]:
+        if value.get("synthetic"):
+            continue
         stat = getattr(basic_stat, value["stat"]) if value["stat"] else None
         effect = alteration.Alteration(value["name"], character, value["value"], value["duration"],
                                        character, stat, alteration.AlterationType[value["type"]])
@@ -159,7 +161,7 @@ def view(party, me, now):
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
-        enemy["effects"] = status_view(party, enemy["combat_id"], enemy["effects"], now)
+        enemy["effects"] = status_view(party, enemy["combat_id"], enemy["effects"], now) + bleeding.status(enemy, now)
         enemy["stunned"] = enemy.get("stunned_until", 0) > now
     result["mob"] = result["mobs"][0] if result["mobs"] else None
     result["players"] = []
@@ -285,6 +287,9 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             enemy = enemies[data["combat_id"]]
             data.update(pack(enemy))
             if data["combat_id"] == target_id:
+                if action == "skill" and resolved and actor.char_class == "Knight" and skill.name == "Sword Slash" and enemy.is_alive():
+                    bleeding.apply(data, player_id, actor.force.current_value, now)
+                    messages.append(f"{enemy.name} saigne : {len(data['bleeding'])} cumul(s).")
                 tactics.damaged(party, data, player_id, now)
             if enemy.is_alive():
                 survivors.append(data)
@@ -524,6 +529,7 @@ def advance(party, now, random):
     migrate(party, now)
     progression.resources(party, now)
     messages = tactics.complete_casts(party, now, random)
+    messages.extend(bleeding.advance(party, now, random))
     messages.extend(tactics.advance(party, now, random))
     timed_units = [*((invocation["id"], invocation) for character in party["characters"].values() for invocation in character["invocations"]), *party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
     for key, data in timed_units:

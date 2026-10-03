@@ -59,7 +59,7 @@ def test_attack_and_skill_scale_without_excessive_knight_damage():
     character.force.current_value = 100
     high_skill = deepcopy(character.skills["Sword Slash"])
     progression.scale_skill(character, high_skill)
-    assert low < progression.simple_damage(character) <= 22
+    assert low < progression.simple_damage(character) <= 33
     assert low_skill < high_skill.effects["damage"].value
     assert progression.required(1) == 500
     assert progression.required(10) > progression.required(5) > progression.required(2)
@@ -920,3 +920,69 @@ def test_achievement_training_damage_alert_and_higher_level_duel():
     tactics.defeated(training, last, 10, lambda: .5, [])
     assert achievements.view(training)["kills"] == 0
     assert achievements.view(training)["titles"] == []
+
+
+def test_knight_simple_attack_is_stronger_and_slash_has_larger_damage_bonus():
+    character = tutorial.create_character({"id": "p", "name": "Knight", "class_name": "Knight"})
+    force = character.force.current_value
+    assert progression.simple_damage(character) > int(2 + force * .2)
+    skill = deepcopy(character.skills["Sword Slash"])
+    base = skill.effects["damage"].value
+    progression.scale_skill(character, skill)
+    assert skill.effects["damage"].value > int(base * .55 + force * .25)
+    assert skill.effects["damage"].value > progression.simple_damage(character)
+    assert skill.energie_cost == 10
+    data = party()
+    near(data)
+    before = data["mobs"][0]["stats"]["hp"]["current"]
+    act(data, "strike", target="mob")
+    simple = before - data["mobs"][0]["stats"]["hp"]["current"]
+    other = party()
+    near(other)
+    before = other["mobs"][0]["stats"]["hp"]["current"]
+    act(other, "skill", skill_name="Sword Slash", target="mob")
+    tactics.complete_casts(other, 1.21, lambda: .5)
+    slash = before - other["mobs"][0]["stats"]["hp"]["current"] if other["mobs"] else before
+    assert slash > simple > 0
+
+
+def test_slash_bleeding_stacks_persists_and_ticks_without_commands():
+    from jeuxRPG.multiplayer import bleeding
+    import json
+    data = party()
+    near(data)
+    enemy = data["mobs"][0]
+    enemy["stats"]["hp"].update(max=100, current=100)
+    act(data, "skill", skill_name="Sword Slash", target="mob")
+    tactics.complete_casts(data, 1.21, lambda: .5)
+    assert len(enemy["bleeding"]) == 1
+    bleeding.apply(enemy, "p0", 30, 2)
+    restored = json.loads(json.dumps(data))
+    before = restored["mobs"][0]["stats"]["hp"]["current"]
+    bleeding.advance(restored, 7, lambda: .5)
+    assert restored["mobs"][0]["stats"]["hp"]["current"] == before
+    bleeding.advance(restored, 8, lambda: .5)
+    assert restored["mobs"][0]["stats"]["hp"]["current"] < before
+    assert len(restored["mobs"][0]["bleeding"]) == 2
+    assert bleeding.status(restored["mobs"][0], 8)[0]["name"] == "Saignement ×2"
+    viewed = tutorial.view(restored, "p0", 8)
+    assert any(effect["name"] == "Saignement ×2" and effect["remaining_seconds"] > 0 for effect in viewed["mobs"][0]["effects"])
+    bleeding.advance(restored, 14, lambda: .5)
+    bleeding.advance(restored, 20, lambda: .5)
+    assert not restored["mobs"][0]["bleeding"]
+
+
+def test_bleeding_death_awards_once_and_leaves_harvestable_corpse():
+    from jeuxRPG.multiplayer import bleeding
+    data = party()
+    mob = data["mobs"][0]
+    mob["stats"]["hp"]["current"] = 1
+    bleeding.apply(mob, "p0", 100, 0)
+    messages = bleeding.advance(data, 6, lambda: .5)
+    assert not data["mobs"]
+    assert len(data["battle"]["corpses"]) == 1
+    assert data["step"] == "road"
+    xp = data["characters"]["p0"]["exp"]
+    bleeding.advance(data, 12, lambda: .5)
+    assert data["characters"]["p0"]["exp"] == xp
+    assert any("saignement" in message for message in messages)
