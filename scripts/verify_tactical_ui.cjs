@@ -3,7 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {JSDOM, VirtualConsole} = require("jsdom");
 const root = path.resolve(__dirname, "..");
-const fixture = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const fixtures = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const fixture = fixtures.combat;
 const errors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on("jsdomError", error => errors.push(error.message));
@@ -59,8 +60,39 @@ try {
   const previous = dom.window.uiTest.calls.length;
   event(unit("mob-3"), "dblclick");
   assert.equal(dom.window.uiTest.calls.length, previous);
+  const necromancer = fixtures.necromancer;
+  render(necromancer);
+  const summon = el("self-skills").querySelector("button");
+  assert(summon && !summon.disabled);
+  assert.equal(el("combat-target").value, "");
+  event(unit("p0"), "click");
+  summon.focus();
+  for (let refresh = 0; refresh < 12; refresh++) {
+    render(necromancer);
+    assert.equal(el("self-skills").querySelector("button"), summon);
+    assert.equal(dom.window.document.activeElement, summon);
+    assert.equal(el("combat-target").value, "p0");
+  }
+  event(summon, "mousedown");
+  render(necromancer);
+  event(summon, "mouseup");
+  summon.click();
+  assert.equal(dom.window.uiTest.calls.at(-1).action, "skill");
+  assert.equal(dom.window.uiTest.calls.at(-1).params.skill_name, "Low Skull");
+  assert.equal(dom.window.uiTest.calls.at(-1).params.target, "p0");
+  event(unit("p0"), "click");
+  summon.click();
+  assert.equal(dom.window.uiTest.calls.at(-1).params.target, "p0");
+  const recovering = JSON.parse(JSON.stringify(necromancer));
+  recovering.players[0].cooldown_real_seconds = .5;
+  recovering.players[0].skills[0].targets = [];
+  render(recovering);
+  assert.equal(el("self-skills").querySelector("button"), summon);
+  assert(summon.disabled);
+  render(necromancer);
+  assert(!summon.disabled);
   assert.equal(errors.length, 0, errors.join(" · "));
-  console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation et squelette vérifiés.");
+  console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
 } finally {
   dom.window.close();
 }

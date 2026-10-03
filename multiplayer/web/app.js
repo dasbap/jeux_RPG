@@ -311,17 +311,18 @@ function skillAllowed(me, skill, target, mob) {
   return skill.type === "BUFF";
 }
 function renderTutorial(adventure, preserveBattle = false) {
-  $("combat-view").prepend($("fighters"));
+  if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
   $("combat-layout").hidden = !fighting;
   if (fighting) {
-    $("combat-player-panel").append($("combat-view"));
-    $("combat-map-panel").append($("map-strip"));
-    $("combat-enemy-panel").append($("combat-enemies"));
+    for (const [parent, child] of [["combat-player-panel", "combat-view"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
+      if ($(child).parentElement !== $(parent)) $(parent).append($(child));
+    }
   } else {
-    document.querySelector(".zone-actions").append($("combat-view"));
-    $("tutorial-panel").insertBefore($("map-strip"), document.querySelector(".adventure-grid"));
-    $("combat-view").append($("combat-enemies"));
+    const actions = document.querySelector(".zone-actions"), grid = document.querySelector(".adventure-grid");
+    if ($("combat-view").parentElement !== actions) actions.append($("combat-view"));
+    if ($("map-strip").nextElementSibling !== grid) $("tutorial-panel").insertBefore($("map-strip"), grid);
+    if ($("combat-enemies").parentElement !== $("combat-view")) $("combat-view").append($("combat-enemies"));
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
@@ -377,13 +378,18 @@ function renderTutorial(adventure, preserveBattle = false) {
     p.textContent = text;
     $("character-details").append(p);
   }
-  for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions", "combat-actions", "skills"]) $(id).replaceChildren();
+  for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions"]) $(id).replaceChildren();
+  const stableActions = new Map(["combat-actions", "skills", "self-skills"].map(id => [id, new Set()]));
   function button(container, label, handler, disabled = false) {
-    const element = document.createElement("button");
+    const retained = stableActions.get(container);
+    const existing = retained && [...$(container).children].find(child => child.dataset.actionLabel === label);
+    const element = existing || document.createElement("button");
+    element.dataset.actionLabel = label;
     element.textContent = label;
     element.disabled = busy || disabled;
-    element.addEventListener("click", handler);
-    $(container).append(element);
+    element.onclick = handler;
+    if (!existing) $(container).append(element);
+    if (retained) retained.add(element);
     return element;
   }
   function action(container, label, name, params = {}, disabled = false) {
@@ -437,12 +443,17 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (fighting && !preserveBattle) renderBattle(adventure, me);
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
-    if (selected) for (const skill of me.skills.filter(s => skillAllowed(me, s, selected, mob))) {
+    for (const skill of me.skills.filter(s => s.type === "INVOCATION")) {
+      const element = action("self-skills", `Invoquer · ${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "skill", {skill_name: skill.name, target: me.id}, !skillAllowed(me, skill, me, mob));
+      element.title = me.casting ? "Incantation en cours." : me.invocations.length >= me.invocation_limit ? "Limite d’invocations atteinte." : "Invoquer sur soi, sans changer la cible sélectionnée.";
+    }
+    if (selected) for (const skill of me.skills.filter(s => s.type !== "INVOCATION" && skillAllowed(me, s, selected, mob))) {
       const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: selected.id});
       element.className = "secondary";
       element.title = skill.description;
     }
   }
+  for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
 }
 function requestTravel(destination, name, zone) {
   if (zone === session.tutorial.world.current) return tutorialCommand("move", {destination});

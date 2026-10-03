@@ -47,7 +47,10 @@ def main():
                 for mob, position in zip(fixture["mobs"], ([9, 4], [10, 5], [12, 5])):
                     mob["position"] = position
                 fixture_path = Path(directory) / "ui-fixture.json"
-                fixture_path.write_text(json.dumps(tutorial.view(fixture, "p0", 0)), encoding="utf-8")
+                necromancer = tutorial.new_party([{"id": "p0", "name": "Nécromancien", "class_name": "Necromancien"}])
+                tutorial.migrate(necromancer, 0)
+                tutorial.spawn(necromancer, 0, lambda: .5, [], origin="explore")
+                fixture_path.write_text(json.dumps({"combat": tutorial.view(fixture, "p0", 0), "necromancer": tutorial.view(necromancer, "p0", 0)}), encoding="utf-8")
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_tactical_ui.cjs"), str(fixture_path)],
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:

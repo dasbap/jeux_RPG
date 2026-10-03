@@ -141,6 +141,19 @@ async function main() {
     await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
     group.window.close();
     clients.splice(clients.indexOf(group), 1);
+    const necromancer = await client(html, app, "Invocateur", "Necromancien");
+    await command(necromancer, "tutorial");
+    await command(necromancer, "explore");
+    await waitFor(() => el(necromancer, "self-skills").querySelector("button:not(:disabled)"), "invocation accessible sans sélectionner le personnage");
+    assert.equal(el(necromancer, "combat-target").value, "");
+    el(necromancer, "self-skills").querySelector("button").click();
+    await waitFor(async () => {
+      const adventure = (await request(necromancer, "/api/state")).session.tutorial;
+      return Object.keys(adventure.battle?.summons || {}).length > 0;
+    }, "squelette créé par le bouton personnel");
+    await waitFor(() => el(necromancer, "world-map").querySelector(".summon-unit"), "squelette affiché après invocation personnelle");
+    necromancer.window.close();
+    clients.splice(clients.indexOf(necromancer), 1);
     const first = await client(html, app, "Alice <script>", "Mage");
     const second = await client(html, app, "Bob", "Priest");
     assert.notEqual(first.window.sessionStorage.getItem("rpg-token"), second.window.sessionStorage.getItem("rpg-token"));
