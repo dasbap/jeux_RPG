@@ -1,4 +1,4 @@
-# RPG Python — POC multijoueur autonome
+# RPG Python — Alpha multijoueur autonome
 
 Un tutoriel RPG jouable seul ou en coopération à deux dans le navigateur, avec identités distinctes, invitations privées, état partagé et sauvegarde SQLite.
 
@@ -340,3 +340,9 @@ La version 0.10.26 fait réapparaître les ennemis tués lorsque leur zone est r
 Le zoom 0.10.26 fonctionne également dans les anciens combats, sur la carte générale et sur les cartes détaillées. Cliquez sur une carte pour la choisir, puis utilisez +/− ou la molette ; les flèches déplacent la vue. Le zoom est conservé lors des actualisations. Les cartes occupent davantage de hauteur et les commandes sont utilisables sur mobile.
 
 La vision des personnages joueurs passe à 12 cases, contre 6 pour les invocations et la détection normale des monstres. La vision partagée respecte toujours les obstacles et ne permet pas d’attaquer au-delà de la portée propre à l’action. La découverte du terrain utilise également ce rayon de 12 cases pour les joueurs vivants.
+
+## Alpha 0.11.0a1 — cartes et passages
+
+Les déplacements rapides ouvrent la carte locale uniquement à la destination finale : les villages intermédiaires ne détournent plus le trajet vers le campement. Les arrivées utilisent le passage correspondant à la provenance ; quitter puis rejoindre une zone conserve son passage de retour.
+
+Les cartes fixes et les terrains de rencontre disposent de décors de forêt, de village ou de grotte, de chemins, de cours d’eau et de ponts. L’eau bloque les déplacements, y compris ceux des ennemis, mais reste transparente à la ligne de vue. Les ponts sont praticables. Les positions des anciennes sauvegardes sont replacées sur une case praticable lorsque le nouveau terrain les recouvre.

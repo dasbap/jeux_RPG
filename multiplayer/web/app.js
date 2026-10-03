@@ -858,7 +858,7 @@ function battleAllowed(adventure, player, target, range) {
   return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
 }
 function gridPath(map, source, destination) {
-  const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || map.cover.some(p => p[0] === x && p[1] === y);
+  const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || map.cover.some(p => p[0] === x && p[1] === y) || (map.blocked || []).some(p => p[0] === x && p[1] === y);
   if (blocked(...destination)) return null;
   const key = p => p.join(",");
   const queue = [{point: source, cost: 0}];
@@ -904,15 +904,25 @@ function renderBattle(adventure, me) {
     node.textContent = text;
     return node;
   };
+  const defs = element("defs", {});
+  const waterPattern = element("pattern", {id: "river-water", width: 40, height: 40, patternUnits: "userSpaceOnUse"});
+  waterPattern.append(element("rect", {width: 40, height: 40, fill: "#285e70"}), element("path", {d: "M0 10 Q10 4 20 10 T40 10 M0 29 Q10 23 20 29 T40 29", fill: "none", stroke: "#61aabb", "stroke-width": 2, opacity: .6}));
+  const bridgePattern = element("pattern", {id: "river-bridge", width: 40, height: 40, patternUnits: "userSpaceOnUse"});
+  bridgePattern.append(element("rect", {width: 40, height: 40, fill: "#b39365"}), element("path", {d: "M0 8 H40 M0 19 H40 M0 30 H40 M4 0 V40 M36 0 V40", stroke: "#624a30", "stroke-width": 2, fill: "none"}));
+  defs.append(waterPattern, bridgePattern); svg.append(defs);
   const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
   for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
     const discovered = !explored || explored.has(`${x},${y}`);
     const cover = map.cover.some(p => p[0] === x && p[1] === y);
+    const water = (map.water || []).some(p => p[0] === x && p[1] === y);
+    const bridge = (map.bridges || []).some(p => p[0] === x && p[1] === y);
+    const road = (map.paths || []).some(p => p[0] === x && p[1] === y);
     const gate = map.exits?.find(gate => gate.position[0] === x && gate.position[1] === y);
     const exit = adventure.field_map ? Boolean(gate) && discovered : (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
-    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
+    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : bridge ? "battle-cell terrain-bridge" : water ? "battle-cell terrain-water" : road ? "battle-cell terrain-path" : `battle-cell terrain-${map.biome || "forest"}`, role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
+      if (water && !bridge) return message("La rivière est infranchissable : rejoignez un pont.");
       if (cover) return message("Cette case est occupée par une couverture.");
       moveControlled(adventure, me, [x, y]);
     };
@@ -921,6 +931,22 @@ function renderBattle(adventure, me) {
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
     if (exit) svg.append(element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle"}, gate?.name || "Sortie"));
+  }
+  for (const decoration of map.decorations || []) {
+    const [x, y] = decoration.position;
+    if (x < left || x >= left + width || y < top || y >= top + height || explored && !explored.has(`${x},${y}`)) continue;
+    const group = element("g", {class: `terrain-decoration decor-${decoration.kind}`, "pointer-events": "none", transform: `translate(${x * 40},${y * 40})`});
+    if (decoration.kind === "tree") {
+      group.append(element("ellipse", {cx: 22, cy: 34, rx: 15, ry: 4, fill: "#102f23", opacity: .55}), element("rect", {x: 17, y: 17, width: 7, height: 18, fill: "#856342"}), element("circle", {cx: 13, cy: 17, r: 11, fill: "#335d3b"}), element("circle", {cx: 26, cy: 17, r: 12, fill: "#497e4d"}), element("circle", {cx: 20, cy: 10, r: 10, fill: "#76a867"}));
+    } else if (decoration.kind === "house") {
+      group.append(element("rect", {x: 4, y: 16, width: 32, height: 21, fill: "#c0a27b"}), element("path", {d: "M1 18 L20 2 L39 18 Z", fill: "#9a5645", stroke: "#5f3733", "stroke-width": 2}), element("rect", {x: 17, y: 25, width: 8, height: 12, fill: "#493d35"}));
+    } else if (decoration.kind === "rock") {
+      group.append(element("path", {d: "M3 29 L9 10 L26 5 L37 20 L32 34 L13 36 Z", fill: "#808a94", stroke: "#485561", "stroke-width": 2}), element("path", {d: "M9 10 L26 5 L23 20 L3 29 Z", fill: "#a8b1b5"}));
+    } else {
+      const icons = {flowers: "✿", grass: "⁙", crystal: "✦", camp: "▲"};
+      group.append(element("text", {x: 20, y: 29, "text-anchor": "middle"}, icons[decoration.kind] || ""));
+    }
+    svg.append(group);
   }
   for (const site of map.sites || []) {
     if (explored && !explored.has(site.position.join(","))) continue;

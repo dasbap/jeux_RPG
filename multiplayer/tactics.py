@@ -31,7 +31,7 @@ def distance(a, b):
 
 def walkable(preset, position):
     return (isinstance(position, (list, tuple)) and len(position) == 2 and all(type(v) is int for v in position)
-            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"] and list(position) not in preset["cover"])
+            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"] and list(position) not in preset["cover"] and list(position) not in preset.get("blocked", []))
 
 
 def valid_step(preset, source, destination):
@@ -50,7 +50,7 @@ def step_time(source, destination, duration=MOVE_TIME):
 def path(preset, source, destination):
     if not walkable(preset, destination):
         return None
-    result = cached_path(preset["width"], preset["height"], tuple(tuple(point) for point in preset["cover"]), tuple(source), tuple(destination))
+    result = cached_path(preset["width"], preset["height"], tuple(tuple(point) for point in preset["cover"] + preset.get("blocked", [])), tuple(source), tuple(destination))
     return None if result is None else [list(point) for point in result]
 
 
@@ -103,7 +103,7 @@ def begin(party, now, origin):
     preset = PRESETS["field_" + party["field_map"]] if party.get("field_map") else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
-    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now}
+    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now, "terrain_version": 1}
     party["battle"].update(initial_mobs=len(party["mobs"]), initial_players=sum(c["stats"]["hp"]["current"] > 0 for c in party["characters"].values()), higher_level=any(m["level"] > max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), enemy_alerted=False, damage_received=False)
     party["battle"]["level_difference"] = max((m["level"] - max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), default=0)
     occupied = [u["position"] for u in players.values()]

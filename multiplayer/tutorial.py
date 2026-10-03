@@ -351,6 +351,7 @@ def migrate(party, now):
 
     if "hp_regen" not in party:
         progression.health_resources(party, now)
+    fields.migrate_terrain(party)
 
 
 def sync_mobs(party):
@@ -396,9 +397,9 @@ def arrive(party, destination, messages):
         party["step"] = "complete"
         party["journey"] = []
     world.record(party)
-    if party.get("field_mode") and destination in fields.MAPS and destination in ("rosee", "brume", "lisiere", "clearing", "hunt", "forest", "cave_1", "cave_2", "cave_3"):
+    if party.get("field_mode") and not party.get("journey") and destination in fields.MAPS and destination in ("rosee", "brume", "lisiere", "clearing", "hunt", "forest", "cave_1", "cave_2", "cave_3"):
         party["journey"] = []
-        messages.extend(fields.enter(party, destination, [1, 16] if destination == "brume" else [1, 20] if destination == "rosee" else [1, 10], party.get("field_now", 0)))
+        messages.extend(fields.enter(party, destination, fields.arrival_point(destination, party.get("transit", {}).get("source") if party.get("transit") else None), party.get("field_now", 0)))
 
 
 def continue_journey(party, now, random, messages):
@@ -509,7 +510,7 @@ def execute(party, player_id, action, params, now, error, random):
             raise error("wrong_location", "Ce chemin rapide n’est pas une entrée de zone.", 409)
         party["field_mode"] = True
         party.setdefault("fields", {})
-        return fields.enter(party, identifier, [1, 20] if identifier == "rosee" else [1, 16] if identifier == "brume" else [1, 10], now), False
+        return fields.enter(party, identifier, party["field_return_entry"] if party.get("field_return_from") == identifier and party.get("field_return_entry") else fields.arrival_point(identifier), now), False
     if party.get("field_map") and action in ("talk", "craft", "upgrade"):
         return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):

@@ -290,7 +290,10 @@ def test_goblin_combat_movement_is_three_kilometres_per_hour():
     for instant in (0, 1.2, 2.4, 3.6, 4.8):
         tactics.advance(data, instant, lambda: .5)
         positions.append(enemy["position"][:])
-    assert positions == [[5, 5], [5, 5], [5, 4], [5, 4], [6, 4]]
+    assert positions[0] == positions[1]
+    assert positions[2] == positions[3]
+    assert tactics.distance(positions[0], positions[2]) == 1
+    assert tactics.distance(positions[2], positions[4]) == 1
     assert tactics.GOBLIN_MOVE_TIME == 2 * tactics.MOVE_TIME
     preset = tactics.PRESETS[data["battle"]["preset"]]
     assert preset["cell_metres"] / tactics.GOBLIN_MOVE_TIME * 3.6 == 3

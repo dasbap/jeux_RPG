@@ -242,3 +242,55 @@ def test_player_vision_is_twelve_cells_and_does_not_increase_mob_detection():
     assert [14, 10] not in data["battle"]["explored"]
     enemy["position"] = [5, 2]
     assert not tactics.visible(data, "p", enemy)
+
+
+def test_fast_travel_reaches_camp_without_entering_intermediate_village():
+    data = party()
+    fields.transition(data, fields.MAPS["clearing"]["exits"][0], "p", 1)
+    data.update(step="hunt", quest="active", visited=["clearing", "rosee", "lisiere"])
+    tutorial.execute(data, "p", "travel", {"destination": "hunt"}, 2, GameError, lambda: .99)
+    for instant in range(1000, 31000, 1000):
+        tutorial.advance(data, instant, lambda: .99)
+        if data.get("field_map"):
+            break
+    assert data["field_map"] == "hunt"
+    assert data["battle"]["preset"] == "field_hunt"
+
+
+def test_complete_exit_and_reentry_return_through_the_same_gate():
+    data = party()
+    fields.enter(data, "rosee", [62, 30], 0)
+    passage = fields.MAPS["rosee"]["exits"][-1]
+    fields.transition(data, passage, "p", 1)
+    tutorial.execute(data, "p", "enter_zone", {}, 2, GameError, lambda: .5)
+    assert data["battle"]["players"]["p"]["position"] == [62, 30]
+    assert fields.arrival_point("rosee", "rosee_lisiere") == [62, 20]
+    assert fields.arrival_point("clearing", "clearing_rosee") == [28, 10]
+
+
+def test_river_blocks_player_and_mob_routes_but_not_line_of_sight():
+    definition = fields.MAPS["clearing"]
+    river = next(point for point in definition["blocked"] if point[1] == 8)
+    source = [river[0] - 1, river[1]]
+    target = [river[0] + 1, river[1]]
+    assert not tactics.walkable(definition, river)
+    assert tactics.sight(definition, source, target)
+    route = tactics.path(definition, source, target)
+    assert route and river not in route
+    assert all(tactics.walkable(definition, point) for point in route)
+    bridge = next(point for point in definition["bridges"] if point[1] == 10)
+    assert tactics.walkable(definition, bridge)
+    data = party()
+    data["battle"]["players"]["p"]["position"] = source
+    with pytest.raises(GameError):
+        tactics.execute(data, "p", "battle_move", {"x": river[0], "y": river[1], "path": [river]}, 1, GameError)
+
+
+def test_existing_save_migrates_entities_off_new_water_and_clears_old_routes():
+    data = party()
+    river = fields.MAPS["clearing"]["blocked"][0]
+    data["battle"].pop("terrain_version", None)
+    data["battle"]["players"]["p"].update(position=river[:], route=[river[:]])
+    tutorial.migrate(data, 1)
+    assert tactics.walkable(fields.MAPS["clearing"], data["battle"]["players"]["p"]["position"])
+    assert data["battle"]["players"]["p"]["route"] == []

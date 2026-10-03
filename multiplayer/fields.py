@@ -44,6 +44,48 @@ MAPS = {
         [gate(0, 16, None, None, "Chemins rapides")]),
 }
 
+MAPS["rosee"]["exits"].append(gate(63, 30, None, None, "Route rapide vers Brume"))
+MAPS["rosee"]["exits"][-1]["fast_destination"] = "brume"
+MAPS["rosee"]["exits"][0]["fast_destination"] = "clearing"
+
+
+def arrival_point(identifier, source=None):
+    definition = MAPS[identifier]
+    origin = world.zone_of(source)
+    if source in world.ROAD_POINTS:
+        route = next(route for route in world.ROUTES if route["id"] == source)
+        origin = route["to"] if route["from"] == world.zone_of(identifier) else route["from"]
+    passage = next((item for item in definition["exits"] if item["destination"] == origin or item.get("fast_destination") == origin), definition["exits"][0])
+    x, y = passage["position"]
+    return [1 if x == 0 else definition["width"] - 2 if x == definition["width"] - 1 else x,
+            1 if y == 0 else definition["height"] - 2 if y == definition["height"] - 1 else y]
+
+
+def decorate(definition):
+    width, height = definition["width"], definition["height"]
+    village = "Village" in definition["name"] or definition["id"].startswith("rosee_")
+    cave = "cave" in definition["id"]
+    crossing = width - 10 if village else width // 2
+    bridges = {height // 2, 5, 6, 1, height - 2, *[item["position"][1] for item in definition.get("exits", [])], *[item[1] for item in definition.get("spawns", [])]}
+    cover = {tuple(point) for point in definition["cover"]}
+    water = [[crossing, y] for y in range(height) if (crossing, y) not in cover]
+    definition.update(water=water, bridges=[point for point in water if point[1] in bridges],
+                      blocked=[point for point in water if point[1] not in bridges], biome="village" if village else "cave" if cave else "forest",
+                      paths=[[x, height // 2] for x in range(width)] + ([[width // 2, y] for y in range(height)] if village else []),
+                      decorations=[{"position": point, "kind": "house" if village else "rock" if cave else "tree"} for point in definition["cover"]])
+    occupied = cover | {tuple(point) for point in water} | {tuple(point) for point in definition["paths"]}
+    for y in range(1, height - 1):
+        for x in range(1, width - 1):
+            if (x, y) not in occupied and (x * 17 + y * 11) % 29 == 0:
+                definition["decorations"].append({"position": [x, y], "kind": "crystal" if cave else "flowers" if village else "grass"})
+    for position in definition.get("spawns", []):
+        if "hunt" in definition["id"]:
+            definition["decorations"].append({"position": [position[0], max(0, position[1] - 1)], "kind": "camp"})
+
+
+for definition in [*tactics.PRESETS.values(), *MAPS.values()]:
+    decorate(definition)
+
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
 
 
@@ -145,6 +187,9 @@ def transition(party, gate, player, now):
         if pursuers:
             messages.append(f"{len(pursuers)} ennemi(s) vous poursuivent dans cette zone.")
         return messages
+    party["field_return_from"] = party["field_map"]
+    x, y = gate["position"]
+    party["field_return_entry"] = [1 if x == 0 else definition["width"] - 2 if x == definition["width"] - 1 else x, 1 if y == 0 else definition["height"] - 2 if y == definition["height"] - 1 else y]
     party.update(battle=None, mobs=[], mob=None)
     party.pop("field_map", None)
     if party["position"] == "clearing" and party["step"] in ("clearing", "first_fight"):
@@ -262,3 +307,21 @@ def repop(party, identifier, now, pursuers=()):
     if count:
         party["battle"].update(initial_mobs=len(party["mobs"]), awarded=False, started_at=now, combat_step=party["step"],
                               higher_level=any(mob["level"] > max(c["level"] for c in party["characters"].values()) for mob in party["mobs"]))
+
+
+def migrate_terrain(party):
+    battle = party.get("battle")
+    if not battle or battle.get("terrain_version") == 1:
+        return
+    definition = tactics.PRESETS[battle["preset"]]
+    occupied = []
+    for unit in [*battle["players"].values(), *battle.get("summons", {}).values(), *party["mobs"]]:
+        unit["position"] = tactics.free_position(definition, unit["position"], occupied)
+        occupied.append(unit["position"])
+        if "route" in unit:
+            unit["route"] = []
+        if "home" in unit:
+            unit["home"] = tactics.free_position(definition, unit["home"])
+        if "patrol_route" in unit:
+            unit["patrol_route"] = [tactics.free_position(definition, point) for point in unit["patrol_route"]]
+    battle["terrain_version"] = 1
