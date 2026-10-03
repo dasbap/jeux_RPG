@@ -171,6 +171,12 @@ async function main() {
     assert(el(first, "battle").classList.contains("combat-mode"));
     assert(el(first, "character-menu").hidden);
     assert(el(first, "world-map").querySelector(".battle-map"));
+    assert(!el(first, "combat-layout").hidden);
+    assert(el(first, "combat-view").closest("#combat-player-panel"));
+    assert(el(first, "map-view").closest("#combat-map-panel"));
+    assert(el(first, "mob-cards").closest("#combat-enemy-panel"));
+    assert(el(first, "enemy-intents").closest("#combat-enemy-panel"));
+    assert.deepEqual([...el(first, "combat-layout").children].map(panel => panel.id), ["combat-player-panel", "combat-map-panel", "combat-enemy-panel"]);
     await finishCombat(first);
     await move(first, "rosee");
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");
@@ -207,6 +213,9 @@ async function main() {
     await command(second, "craft", {recipe: "veste"});
     await move(first, "brume");
     await waitFor(() => el(first, "battle-title").textContent === "Aventure accomplie" && el(second, "battle-title").textContent === "Aventure accomplie", "fin coopérative");
+    assert(el(first, "combat-layout").hidden);
+    assert(el(first, "map-view").closest(".map-strip"));
+    assert(el(first, "combat-view").closest(".zone-actions"));
     el(first, "show-inventory").click();
     assert(!el(first, "inventory-view").hidden && !el(first, "quest-view").hidden);
     el(first, "show-bestiary").click();

@@ -37,7 +37,8 @@
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
         <h3 id="location"></h3><p id="objective"></p>
-        <section class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted" id="map-help">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
+        <div id="combat-layout" hidden><aside id="combat-player-panel" class="dashboard-box"><h2>Actions du joueur</h2></aside><div id="combat-map-panel"></div><aside id="combat-enemy-panel" class="dashboard-box"><h2>Ennemis et intentions</h2></aside></div>
+        <section id="map-strip" class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted" id="map-help">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
         <div class="adventure-grid">
           <section class="dashboard-box consultation"><h2>Personnage</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
         <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
@@ -50,7 +51,7 @@
 
         <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Fabriquez six pièces indépendantes et améliorez-les jusqu’à +10. Les coûts et les matériaux rares requis figurent dans le catalogue.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="forge-catalogue"></div><div id="craft-actions" class="actions"></div></section>
         <section id="combat-view" hidden>
-          <div id="combat-resources"></div><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div><div id="tactical-actions" class="actions"></div><div id="corpse-actions" class="actions"></div><p id="combat-status" role="status"></p>
+          <div id="combat-resources"></div><section id="combat-enemies"><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div></section><div id="tactical-actions" class="actions"></div><div id="corpse-actions" class="actions"></div><p id="combat-status" role="status"></p>
           <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
           <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
           <p class="muted">Choisissez une cible pour afficher votre attaque et vos compétences disponibles. Un allié est proposé uniquement si une compétence de votre classe peut le soigner ou l'améliorer.</p>

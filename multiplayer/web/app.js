@@ -310,6 +310,16 @@ function skillAllowed(me, skill, target, mob) {
 function renderTutorial(adventure) {
   $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
+  $("combat-layout").hidden = !fighting;
+  if (fighting) {
+    $("combat-player-panel").append($("combat-view"));
+    $("combat-map-panel").append($("map-strip"));
+    $("combat-enemy-panel").append($("combat-enemies"));
+  } else {
+    document.querySelector(".zone-actions").append($("combat-view"));
+    $("tutorial-panel").insertBefore($("map-strip"), document.querySelector(".adventure-grid"));
+    $("combat-view").append($("combat-enemies"));
+  }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
   $("map-help").textContent = fighting ? "Cliquez sur une case pour marcher. Les blocs bruns servent de couverture. Cliquez sur les PV d’un mob pour le localiser." : "Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.";
