@@ -887,3 +887,36 @@ def test_existing_equipment_receives_new_stats_once():
     snapshot = deepcopy(data)
     forge.migrate(data)
     assert data == snapshot
+
+
+def test_achievement_victory_awards_only_complete_real_battle():
+    from jeuxRPG.multiplayer import achievements
+    data = party(mobs=2)
+    assert achievements.view(data)["kills"] == 0
+    first = data["mobs"].pop()
+    tactics.defeated(data, first, 9, lambda: .5, [])
+    assert achievements.view(data)["kills"] == 1
+    assert not achievements.view(data)["titles"]
+    last = data["mobs"].pop()
+    tactics.defeated(data, last, 30, lambda: .5, [])
+    stats = achievements.view(data)
+    assert stats["kills"] == 2
+    assert stats["best_seconds"] == 10
+    assert {"Ombre silencieuse", "Intouchable", "Éclair de la lisière", "Contre toute attente"} <= set(stats["titles"])
+    achievements.victory(data, 90)
+    assert achievements.view(data) == stats
+
+
+def test_achievement_training_damage_alert_and_higher_level_duel():
+    from jeuxRPG.multiplayer import achievements
+    data = party()
+    data["battle"].update(enemy_alerted=True, damage_received=True, higher_level=True)
+    last = data["mobs"].pop()
+    tactics.defeated(data, last, 120, lambda: .5, [])
+    assert achievements.view(data)["titles"] == ["Briseur de limites"]
+    training = party()
+    training["training"] = True
+    last = training["mobs"].pop()
+    tactics.defeated(training, last, 10, lambda: .5, [])
+    assert achievements.view(training)["kills"] == 0
+    assert achievements.view(training)["titles"] == []

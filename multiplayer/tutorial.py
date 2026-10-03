@@ -6,7 +6,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics
+from . import world, encounters, progression, forge, tactics, achievements
 
 TRAVEL_ENCOUNTER_CHANCE = .25
 
@@ -148,6 +148,7 @@ def view(party, me, now):
     if party.get("battle"):
         tactics.sync_summons(party, now)
     result = deepcopy(party)
+    result["achievements"] = achievements.view(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
@@ -535,4 +536,5 @@ def advance(party, now, random):
             party["effect_at"][key] = now + progression.ACTION_SECONDS * progression.RATIO
     sync_mobs(party)
     continue_journey(party, now, random, messages)
+    achievements.record(party)
     return messages

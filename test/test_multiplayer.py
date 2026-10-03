@@ -462,3 +462,31 @@ def test_http_network_logs_actions_failures_and_omits_combat_secrets(game, http_
     assert "action=strike" not in contents
     assert token not in contents
     assert created["invite"] not in contents
+
+
+def test_chat_global_presence_group_privacy_and_rate_limit(game):
+    alice = player(game)
+    bob = player(game, "Bob")
+    outsider = player(game, "Eve")
+    created = command(game, alice, "create")
+    room = created["session"]["id"]
+    command(game, bob, "join", invite=created["invite"])
+    game.state(alice)
+    game.state(bob)
+    game.send_chat(alice, "group", "Bonjour <script>", room)
+    state = game.state(bob)
+    assert state["chat"]["group"][0]["message"] == "Bonjour <script>"
+    assert len(state["chat"]["online"]) == 2
+    assert game.state(outsider)["chat"]["group"] == []
+    with pytest.raises(GameError):
+        game.send_chat(outsider, "group", "intrus", room)
+    with pytest.raises(GameError) as failure:
+        game.send_chat(alice, "global", "spam")
+    assert failure.value.code == "chat_rate_limit"
+    game.clock.advance(2)
+    game.send_chat(alice, "global", "Bienvenue")
+    assert game.state(outsider)["chat"]["global"][0]["message"] == "Bienvenue"
+    with pytest.raises(GameError):
+        game.send_chat(alice, "global", "a" * 401)
+    game.clock.advance(61)
+    assert len(game.state(outsider)["chat"]["online"]) == 1

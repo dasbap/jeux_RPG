@@ -52,6 +52,9 @@ class GameService:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript("""
+            CREATE TABLE IF NOT EXISTS presence (player_id TEXT PRIMARY KEY, seen REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session_id TEXT, player_id TEXT NOT NULL, name TEXT NOT NULL, message TEXT NOT NULL, sent REAL NOT NULL);
+
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS players (
                 id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
@@ -231,6 +234,7 @@ class GameService:
             player = self._authenticate(token)
             now = self._now()
             self._expire(now)
+            self.db.execute("INSERT INTO presence VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET seen=excluded.seen", (player["id"], now))
             if session_id is not None:
                 return self._snapshot(player, self._session(player, session_id), now)
             session = self._active(player["id"])
@@ -240,7 +244,35 @@ class GameService:
                     ORDER BY s.created DESC LIMIT 1""", (player["id"],)).fetchone()
             return {"player": {"id": player["id"], "name": player["name"], "class_name": player["class_name"]},
                     "game_time": now, "ratio": GameClock.ratio,
+                    "chat": self.chat_view(player, now, session["id"] if session else None),
                     "session": self._snapshot(player, session, now) if session else None}
+
+    def chat_view(self, player, now, session_id=None):
+        online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON o.player_id=p.id WHERE p.scope=? AND o.seen>=? ORDER BY p.name", (player["scope"], now - 60 * GameClock.ratio))]
+        def messages(group):
+            condition = "session_id=?" if group else "session_id IS NULL"
+            args = (player["scope"], session_id) if group else (player["scope"],)
+            return [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND " + condition + " ORDER BY id DESC LIMIT 50", args).fetchall())]
+        return {"online": online, "global": messages(False), "group": messages(True) if session_id else []}
+
+    def send_chat(self, token, channel, message, session_id=None):
+        if channel not in ("global", "group") or not isinstance(message, str) or not 1 <= len(message.strip()) <= 400 or any(ord(c) < 32 and c not in "\n\t" for c in message):
+            raise GameError("invalid_chat", "Message invalide (1 à 400 caractères).")
+        with self._transaction():
+            player = self._authenticate(token)
+            now = self._now()
+            if channel == "group":
+                if not isinstance(session_id, str):
+                    raise GameError("not_in_group", "Rejoignez un groupe avant de discuter.", 409)
+                self._session(player, session_id)
+            else:
+                session_id = None
+            last = self.db.execute("SELECT sent FROM chat WHERE player_id=? ORDER BY id DESC LIMIT 1", (player["id"],)).fetchone()
+            if last and now - last[0] < GameClock.ratio:
+                raise GameError("chat_rate_limit", "Attendez une seconde entre deux messages.", 429)
+            self.db.execute("INSERT INTO chat(scope,session_id,player_id,name,message,sent) VALUES(?,?,?,?,?,?)", (player["scope"], session_id, player["id"], player["name"], message.strip(), now))
+            self.db.execute("DELETE FROM chat WHERE id NOT IN (SELECT id FROM chat WHERE scope=? AND session_id IS ? ORDER BY id DESC LIMIT 200) AND scope=? AND session_id IS ?", (player["scope"], session_id, player["scope"], session_id))
+            return self.chat_view(player, now, session_id)
 
     def command(self, token, request_id, action, **params):
         if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", request_id):

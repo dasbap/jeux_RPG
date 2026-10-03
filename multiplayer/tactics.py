@@ -2,7 +2,7 @@ import math
 from heapq import heappop, heappush
 from copy import deepcopy
 
-from . import forge, progression
+from . import forge, progression, achievements
 
 
 LAYOUTS = (
@@ -94,6 +94,7 @@ def begin(party, now, origin):
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
     party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now}
+    party["battle"].update(initial_mobs=len(party["mobs"]), initial_players=sum(c["stats"]["hp"]["current"] > 0 for c in party["characters"].values()), higher_level=any(m["level"] > max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), enemy_alerted=False, damage_received=False)
     occupied = [u["position"] for u in players.values()]
     identifiers = [m["combat_id"] for m in party["mobs"]]
     for index, mob in enumerate(party["mobs"]):
@@ -536,6 +537,8 @@ def damaged(party, mob, actor, now):
     was_calling = mob["calling_until"] is not None
     mob["calling_until"] = None
     mob["next_call"] = now + CALL_TIME if was_calling else mob["next_call"]
+    if mob["stats"]["hp"]["current"] > 0:
+        battle["enemy_alerted"] = True
     mob["alerted"] = True
     mob["needs_call"] = True
     if sees(PRESETS[battle["preset"]], mob, unit):
@@ -570,6 +573,9 @@ def defeated(party, mob, now, random, messages):
     party["battle"]["corpses"].append({"id": mob["combat_id"], "name": mob["name"], "position": mob["position"][:], "loot": loot, "harvested": []})
     if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere":
         party["kills"] = min(3, party["kills"] + 1)
+    if not party.get("training"):
+        achievements.record(party)["kills"] += 1
+    achievements.victory(party, now)
     messages.append(f"{mob['name']} vaincu : {reward} XP. Approchez-vous pour le dépecer.")
     if not party["mobs"] and party["combat_step"] == "first_fight":
         party["step"] = "road"
@@ -603,6 +609,7 @@ def advance(party, now, random):
             characters[key] = invocations[unit["index"]]
     for mob in party["mobs"]:
         if any(characters[key].is_alive() and sees(preset, mob, unit) for key, unit in units.items()):
+            battle["enemy_alerted"] = True
             mob["alerted"] = True
     for mob in party["mobs"]:
         if not walkable(preset, mob["position"]):
@@ -625,6 +632,7 @@ def advance(party, now, random):
         visible.sort()
         target = visible[0][1] if visible else None
         if target:
+            battle["enemy_alerted"] = True
             mob["alerted"] = True
             previous = mob.get("target")
             if previous != target:
@@ -673,6 +681,8 @@ def advance(party, now, random):
                 before_hp = actor.hp.current_value
                 before_invocations_hp = sum(invocation.hp.current_value for invocation in actor.invocations.get_all())
                 actor.lose_hp(enemy, 3)
+                if actor.hp.current_value < before_hp or sum(i.hp.current_value for i in actor.invocations.get_all()) < before_invocations_hp:
+                    battle["damage_received"] = True
                 cast = units[target].get("casting")
                 if cast and cast["concentration"] and actor.hp.current_value < before_hp:
                     units[target].pop("casting", None)

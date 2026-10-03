@@ -217,6 +217,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not self.server.limiter.accept(("register", self.client_address[0]), 10):
                     raise GameError("rate_limit", "Trop de créations de personnages.", 429)
                 self._respond(201, self.server.service.register(body["name"], body["class_name"]))
+            elif path == "/api/chat":
+                if set(body) != {"channel", "message", "session_id"}:
+                    raise GameError("invalid_chat", "Paramètres de chat invalides.")
+                self._respond(200, self.server.service.send_chat(self._token(), body["channel"], body["message"], body["session_id"]))
             elif path == "/api/commands":
                 token = self._token()
                 if not self.server.limiter.accept(("command", digest(token)), 60):

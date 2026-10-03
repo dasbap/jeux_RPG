@@ -72,8 +72,38 @@ function remember() {
   sessionStorage.setItem("rpg-token", token);
   sessionStorage.setItem("rpg-session", sessionId);
 }
+function renderChat(chat) {
+  $("chat-panel").hidden = !token;
+  if (!chat) return;
+  $("online-players").textContent = `En ligne : ${chat.online.map(player => player.name).join(", ") || "personne"}`;
+  $("chat-channel").querySelector('[value="group"]').disabled = !session;
+  if (!session && $("chat-channel").value === "group") $("chat-channel").value = "global";
+  for (const channel of ["global", "group"]) {
+    const list = $(`chat-${channel}`), follow = list.scrollTop + list.clientHeight >= list.scrollHeight - 20;
+    const messages = chat[channel] || [];
+    const retained = new Set(messages.map(item => String(item.id)));
+    for (const child of [...list.children]) if (!retained.has(child.dataset.id)) child.remove();
+    for (const item of messages) {
+      if ([...list.children].some(child => child.dataset.id === String(item.id))) continue;
+      const row = document.createElement("li"); row.dataset.id = item.id; row.textContent = `${item.name} : ${item.message}`; list.append(row);
+    }
+    if (follow) list.scrollTop = list.scrollHeight;
+  }
+}
+function renderAchievements(data) {
+  if (!data) return;
+  $("achievement-summary").textContent = `Niveau maximum ${data.max_level} · ${data.kills} créature(s) vaincue(s) · meilleur temps ${data.best_seconds === null ? "—" : data.best_seconds.toFixed(1) + " s"}`;
+  $("achievement-rows").replaceChildren();
+  for (const item of data.rows) {
+    const row = document.createElement("tr"); row.className = item.unlocked ? "achievement-unlocked" : "";
+    for (const text of [item.name, item.progress, item.title]) { const cell = document.createElement("td"); cell.textContent = text; row.append(cell); }
+    $("achievement-rows").append(row);
+  }
+  $("achievement-titles").textContent = `Titres obtenus : ${data.unlocked_titles.join(" · ") || "aucun"}`;
+}
 function render(state) {
   lastPlayer = state.player;
+  renderChat(state.chat);
   $("registration").hidden = Boolean(token);
   $("lobby").hidden = !token;
   $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name]}`;
@@ -365,7 +395,7 @@ function renderWorld(adventure, me) {
   }
 }
 function showView(view) {
-  if (["stats", "equipment", "inventory", "map", "bestiary"].includes(view)) currentView = view;
+  if (["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   if (session && session.tutorial) renderTutorial(session.tutorial);
 }
 function skillAllowed(me, skill, target, mob) {
@@ -422,7 +452,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
-    if (!["stats", "equipment", "inventory", "map", "bestiary"].includes(currentView)) currentView = "map";
+    if (!["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
     inspectedCell = null;
@@ -436,14 +466,14 @@ function renderTutorial(adventure, preserveBattle = false) {
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
-  for (const view of ["stats", "equipment", "inventory", "bestiary"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
+  for (const view of ["stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
   $("quest-view").hidden = false;
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
-  for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary"]) {
+  for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
   }
   $("back-view").hidden = true;
@@ -458,6 +488,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("quest-progress").textContent = !hasQuest ? "Aucune quête acceptée." : `Quête de Mira : ${{unaccepted: "à accepter", active: `${adventure.kills}/3 gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
   const vest = me.gear.find(piece => piece.slot === "torso");
   $("quest-description").textContent = vest && adventure.quest === "completed" ? adventure.step === "craft" ? "Veste fabriquée et équipée : votre objectif de forge est accompli. Attendez que votre compagnon fabrique sa veste." : adventure.step === "complete" ? "Veste fabriquée et équipée. Vous avez rejoint Brume : tutoriel terminé." : "Veste fabriquée et équipée : objectif accompli. Prochaine étape : rejoindre le village de Brume." : !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
+  $("quest-progress").textContent += ` · ${adventure.achievements?.kills || 0} créature(s) vaincue(s) dans cette aventure`;
   renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
   for (const text of [
@@ -499,7 +530,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  if (!fighting) renderWorld(adventure, me);
+  if (!fighting) { renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
@@ -517,7 +548,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     if (recipe.cost) { const craft = document.createElement("button"); craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);
   }
-  $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} ennemi(s) visible(s)` : "";
+  $("mob-name").textContent = fighting ? `${(adventure.mobs || []).length} ennemi(s) visible(s)` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
@@ -1005,13 +1036,23 @@ $("restore-form").addEventListener("submit", async event => {
   $("restore-token").value = "";
   await refresh();
 });
-for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary"]) $(`show-${view}`).addEventListener("click", () => showView(view));
+for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
 $("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ? "combat" : "standby"));
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
   if (session?.tutorial) renderTutorial(session.tutorial);
+});
+$("chat-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if ($("send-chat").disabled) return;
+  $("send-chat").disabled = true;
+  try {
+    const chat = await api("/api/chat", {channel: $("chat-channel").value, message: $("chat-message").value, session_id: session?.id || null});
+    $("chat-message").value = ""; $("chat-status").textContent = "Message envoyé."; renderChat(chat);
+  } catch (error) { $("chat-status").textContent = error.message; }
+  finally { $("send-chat").disabled = false; }
 });
 $("create").addEventListener("click", () => command("create"));
 $("tutorial").addEventListener("click", () => command("tutorial"));
@@ -1025,6 +1066,7 @@ for (const action of ["start", "attack", "leave"]) $(action).addEventListener("c
 });
 $("new-room").addEventListener("click", () => command("create"));
 $("logout").addEventListener("click", () => {
+  $("chat-panel").hidden = true;
   token = "";
   session = null;
   sessionId = "";

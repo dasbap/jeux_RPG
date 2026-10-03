@@ -198,6 +198,15 @@ async function main() {
     el(first, "party-tutorial").click();
     await waitFor(() => !el(first, "tutorial-panel").hidden && !el(second, "tutorial-panel").hidden, "tutoriel partagé");
     assert.equal(first.window.document.querySelector(".adventure-grid").children.length, 3);
+    el(first, "chat-channel").value = "group";
+    el(first, "chat-message").value = "Bonjour <script>";
+    el(first, "chat-form").dispatchEvent(new first.window.Event("submit", {bubbles:true,cancelable:true}));
+    await waitFor(() => el(second, "chat-group").textContent.includes("Bonjour <script>"), "chat partagé du groupe");
+    assert.equal(el(second, "chat-group").querySelector("script"), null);
+    el(first, "show-achievements").click();
+    assert(!el(first, "achievements-view").hidden);
+    assert(el(first, "achievement-rows").children.length >= 10);
+    el(first, "show-map").click();
     assert(el(first, "quest-view").closest(".quest-box"));
     assert(el(first, "combat-view").closest(".zone-actions"));
     assert(el(first, "map-view").closest(".map-strip"));
