@@ -255,3 +255,9 @@ Les ordres de marche ne déclenchent ni ne prolongent le délai d’attaque de 1
 ### Fiabilité des déplacements 0.10.5
 
 Les entités et cases de combat restent attachées au DOM pendant les actualisations, afin de préserver les doubles clics. Pendant une requête, le dernier ordre de déplacement est conservé puis exécuté si le combat est toujours le même. Un ordre de marche peut utiliser une révision antérieure lorsque son numéro de combat correspond au combat actuel ; le serveur valide toujours le propriétaire, les contraintes d’action et le chemin depuis la position courante. Les cases du chemin déjà atteintes sont retirées sans déplacement instantané ni accélération. Les anciens clients sans numéro de combat conservent la vérification stricte de révision.
+
+### Navigation directe 0.10.6
+
+Sur les cartes générale et détaillée, un clic consulte le lieu ou le point et un double clic lance directement le déplacement. La confirmation en haut de l’écran est supprimée. Les éléments interactifs restent attachés entre les actualisations pour préserver le double clic. Les restrictions de voyage pendant un combat ou un trajet restent appliquées par le serveur.
+
+Pendant un trajet dangereux, chaque point de contrôle ne tente désormais une rencontre que dans 25 % des cas, avant le calcul existant lié au niveau et au rang. Les combats de trajet sont ainsi environ quatre fois moins fréquents, sans modifier la recherche volontaire de monstres ni la taille des groupes.

@@ -455,3 +455,15 @@ def test_delayed_movement_is_validated_in_current_encounter_without_revision_ret
     with pytest.raises(GameError) as failure:
         game.command(token, uuid.uuid4().hex, "battle_move", session_id=state["id"], revision=stale, encounter=encounter, x=12, y=8, path=[[12, 8]])
     assert failure.value.code == "invalid_path"
+
+
+@pytest.mark.parametrize("draw,encounter", [(0.24, True), (0.25, False), (0.9, False)])
+def test_travel_encounters_have_separate_lower_probability(draw, encounter, monkeypatch):
+    from jeuxRPG.multiplayer import tutorial
+    data = tutorial.new_party([{"id": "p0", "name": "Marcheur", "class_name": "Knight"}])
+    tutorial.migrate(data, 0)
+    data["transit"] = {"destination": "rosee", "remaining": 300, "started_at": 0, "ready_at": 150, "segment": 150, "hazard": True}
+    calls = []
+    monkeypatch.setattr(tutorial, "spawn", lambda *args: calls.append(args))
+    tutorial.continue_journey(data, 150, lambda: draw, [])
+    assert bool(calls) is encounter

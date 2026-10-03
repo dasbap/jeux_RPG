@@ -8,6 +8,8 @@ from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
 from . import world, encounters, progression, forge, tactics
 
+TRAVEL_ENCOUNTER_CHANCE = .25
+
 
 STEPS = {
     "clearing": ("Clairière des Éveillés", "Explorez la clairière pour rencontrer votre premier gobelin."),
@@ -385,7 +387,7 @@ def continue_journey(party, now, random, messages):
             return
         else:
             transit["remaining"] = max(0, transit["remaining"] - transit["segment"])
-            if transit["hazard"]:
+            if transit["hazard"] and random() < TRAVEL_ENCOUNTER_CHANCE:
                 spawn(party, now, random, messages)
                 if party["mobs"]:
                     transit["paused_at"] = now

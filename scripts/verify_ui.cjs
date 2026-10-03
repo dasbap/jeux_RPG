@@ -35,16 +35,24 @@ async function client(html, app, name, className) {
   virtualConsole.on("jsdomError", error => errors.push(error.message));
   const dom = new JSDOM(html, {url: origin, runScripts: "outside-only", virtualConsole});
   clients.push(dom);
+  dom.pollTimers = [];
+  const startInterval = dom.window.setInterval.bind(dom.window);
+  dom.window.setInterval = (...args) => { const id = startInterval(...args); dom.pollTimers.push(id); return id; };
   dom.window.fetch = (url, options) => fetch(new URL(url, origin), options);
   dom.window.AbortSignal = AbortSignal;
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
-  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session.revision})};");
+  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
   await waitFor(() => !el(dom, "lobby").hidden, "inscription");
   return dom;
+}
+async function closeClient(dom) {
+  for (const timer of dom.pollTimers || []) dom.window.clearInterval(timer);
+  await waitFor(() => { const flags = dom.window.testFns.flags(); return !flags.busy && !flags.polling; }, "requêtes terminées avant fermeture");
+  dom.window.close();
 }
 async function finishCombat(dom) {
   for (let attempt = 0; attempt < 1200; attempt++) {
@@ -139,7 +147,7 @@ async function main() {
     el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("dblclick", {bubbles: true}));
     await waitFor(async () => (await request(group, "/api/state")).session.tutorial.battle.players[(await request(group, "/api/state")).session.me].position[1] === 5, "clic sur case de combat");
     await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
-    group.window.close();
+    await closeClient(group);
     clients.splice(clients.indexOf(group), 1);
     const necromancer = await client(html, app, "Invocateur", "Necromancien");
     await command(necromancer, "tutorial");
@@ -170,7 +178,7 @@ async function main() {
     assert.equal((await request(necromancer, "/api/state")).session.tutorial.battle.players[controlledState.me].position.join(","), originalPosition);
     await command(necromancer, "control_units", {units: []});
     assert(!Object.values((await request(necromancer, "/api/state")).session.tutorial.battle.summons).some(u => u.controlled));
-    necromancer.window.close();
+    await closeClient(necromancer);
     clients.splice(clients.indexOf(necromancer), 1);
     const first = await client(html, app, "Alice <script>", "Mage");
     const second = await client(html, app, "Bob", "Priest");
@@ -216,27 +224,30 @@ async function main() {
     el(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
     const roseeButtons = [...first.window.document.querySelectorAll("button")].filter(button => /^(Rejoindre|Prendre le chemin vers).*Rosée/.test(button.textContent));
     assert.equal(roseeButtons.length, 1);
-    roseeButtons[0].click();
-    assert(el(first, "travel-confirmation").hidden);
+    const villageNode = el(first, "world-map").querySelector('[data-destination="rosee"]');
+    villageNode.dispatchEvent(new first.window.MouseEvent("click", {bubbles: true}));
+    assert(villageNode.isConnected);
+    villageNode.dispatchEvent(new first.window.MouseEvent("click", {bubbles: true}));
+    assert(villageNode.isConnected);
+    villageNode.dispatchEvent(new first.window.MouseEvent("dblclick", {bubbles: true}));
+    assert.equal(el(first, "travel-confirmation"), null);
     await waitFor(async () => (await request(first, "/api/state")).session.tutorial.position !== "clearing", "départ vers Rosée");
     await finishCombat(first);
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");
-    const confirmation = first.window.testFns.requestTravel("clearing", "Clairière", "clearing");
-    assert(!el(first, "travel-confirmation").hidden);
-    assert(el(first, "travel-question").textContent.includes("Voulez-vous vous déplacer"));
-    el(first, "travel-cancel").click();
-    assert.equal(await confirmation, false);
-    assert.equal((await request(first, "/api/state")).session.tutorial.position, "rosee");
     await assert.rejects(command(first, "talk", {npc: "mira"}), error => error.code === "wrong_location");
     el(first, "show-map").click();
     el(first, "map-place").value = "rosee";
     el(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
     await waitFor(() => el(first, "world-map").querySelector('[data-point="mira"][aria-disabled="false"]'), "icône Mira");
-    el(first, "world-map").querySelector("[data-point=\"mira\"]").dispatchEvent(new first.window.Event("click", {bubbles: true}));
+    const miraNode = el(first, "world-map").querySelector('[data-point="mira"]');
+    miraNode.dispatchEvent(new first.window.MouseEvent("click", {bubbles: true}));
+    assert(miraNode.isConnected);
+    assert.equal((await request(first, "/api/state")).session.tutorial.position, "rosee");
+    miraNode.dispatchEvent(new first.window.MouseEvent("dblclick", {bubbles: true}));
     await waitFor(() => !el(first, "npc-view").hidden && !el(second, "npc-view").hidden, "déplacement point Mira");
     await command(first, "talk", {npc: "mira"});
     await waitFor(() => el(first, "world-map").querySelector('[data-point="forge"][aria-disabled="false"]'), "icône Forge");
-    el(first, "world-map").querySelector('[data-point="forge"]').dispatchEvent(new first.window.Event("click", {bubbles: true}));
+    el(first, "world-map").querySelector('[data-point="forge"]').dispatchEvent(new first.window.Event("dblclick", {bubbles: true}));
     await waitFor(() => !el(first, "craft-view").hidden, "forge verrouillée");
     assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
     assert([...el(first, "forge-catalogue").querySelectorAll("button")].every(b => b.disabled));
@@ -265,6 +276,6 @@ async function main() {
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.deepEqual(errors, []);
     console.log("UI HTTP vérifiée : deux joueurs, combat tactique, cases cliquables, PV et intentions, repère de quête, dépeçage, six recettes et tutoriel jusqu’à Brume.");
-  } finally { clients.forEach(dom => dom.window.close()); }
+  } finally { for (const dom of clients) await closeClient(dom); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

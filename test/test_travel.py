@@ -122,7 +122,8 @@ def test_three_goblins_share_one_combat_and_attack_without_player_action(game):
     assert state["tutorial"]["position"] == "clearing"
 
 
-def test_combat_pauses_remaining_walk_and_blocks_local_interactions(game):
+def test_combat_pauses_remaining_walk_and_blocks_local_interactions(game, monkeypatch):
+    monkeypatch.setattr(tutorial, "TRAVEL_ENCOUNTER_CHANCE", 1)
     player, _ = prepare(game)
     act(game, player, "move", destination="brume")
     game.random = lambda: .5

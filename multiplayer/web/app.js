@@ -14,7 +14,6 @@ let mapPlace = "";
 let mapPoint = "";
 let mapMarker = null;
 let focusedMob = "";
-let pendingTravel = null;
 let tacticalInteractionUntil = 0;
 let inspectedCell = null;
 const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
@@ -122,6 +121,28 @@ function paragraphs(container, texts) {
     $(container).append(p);
   }
 }
+function mountWorldMap(source) {
+  const container = $("world-map");
+  const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
+  if (!retained) { container.append(source); return source; }
+  function update(target, fresh) {
+    for (const attr of [...target.attributes]) target.removeAttribute(attr.name);
+    for (const attr of fresh.attributes) target.setAttribute(attr.name, attr.value);
+    target.onclick = fresh.onclick; target.ondblclick = fresh.ondblclick; target.onkeydown = fresh.onkeydown;
+    if (!fresh.children.length) { target.textContent = fresh.textContent; return; }
+    const old = [...target.children];
+    const kept = [...fresh.children].map((child, index) => {
+      const destination = child.dataset.destination, point = child.dataset.point;
+      const existing = destination ? old.find(node => node.dataset.destination === destination) : point ? old.find(node => node.dataset.point === point) : old[index]?.tagName === child.tagName && !old[index].dataset.destination && !old[index].dataset.point ? old[index] : null;
+      if (existing) { update(existing, child); return existing; }
+      return child;
+    });
+    for (const child of old) if (!kept.includes(child)) child.remove();
+    for (const child of kept) if (child.parentElement !== target) target.append(child);
+  }
+  update(retained, source);
+  return retained;
+}
 function renderWorld(adventure, me) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · +${p.hp} PV · +${p.endurance} endurance`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
@@ -131,13 +152,16 @@ function renderWorld(adventure, me) {
   const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length || adventure.moving || adventure.transit || adventure.journey?.length);
   function choosePoint(point) {
     mapPoint = point.id;
-
     if (point.locked_reason) message(point.locked_reason);
     showView("map");
-    if (locked || !point.can_interact) return;
-    if (point.id === "leon") return tutorialCommand("talk", {npc: "leon"});
-    if (adventure.position !== point.id) return tutorialCommand("move", {destination: point.id});
+  }
+  function visitPoint(point) {
+    if (locked) return;
+    if (point.id === "leon" && point.can_interact) return tutorialCommand("talk", {npc: "leon"});
+    if (adventure.position !== point.id) return requestTravel(point.id);
+    if (point.locked_reason) return message(point.locked_reason);
     if (point.action === "explore") return tutorialCommand("explore");
+    choosePoint(point);
   }
   if (!places.some(p => p.id === mapPlace)) mapPlace = world.current;
   const place = places.find(p => p.id === mapPlace);
@@ -175,21 +199,22 @@ function renderWorld(adventure, me) {
     }
   }
   for (const p of places) {
-    const group = svgElement("g", {role: "button", tabindex: "0", "aria-label": `${p.name}, ${p.visited ? "visité" : "non visité"}`, "aria-pressed": String(p.id === mapPlace), class: "map-node"});
+    const group = svgElement("g", {role: "button", tabindex: "0", "aria-label": `${p.name}, ${p.visited ? "visité" : "non visité"}`, "aria-pressed": String(p.id === mapPlace), class: "map-node", "data-destination": p.id});
     group.append(svgElement("circle", {cx: p.x, cy: p.y, r: p.id === world.current ? 15 : 11, class: p.visited ? "visited-node" : "unknown-node"}));
     group.append(svgElement("text", {x: p.x, y: p.y + 29, class: "place-label"}, p.name));
     if (p.id === world.current && !world.routes.some(r => r.id === adventure.position)) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
     const choose = () => { mapPlace = p.id; mapPoint = ""; showView("map"); };
-    group.addEventListener("click", choose);
-    group.addEventListener("dblclick", () => requestTravel(p.id, p.name, p.id));
-    group.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
+    group.onclick = choose;
+    group.ondblclick = () => requestTravel(p.id);
+    group.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); requestTravel(p.id); } };
     svg.append(group);
   }
   if (mapMarker) {
     const marker = world.objectives.find(m => m.zone === mapMarker.zone && m.point === mapMarker.point);
     if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
   }
-  $("world-map").replaceChildren(svg);
+  svg.dataset.map = "general";
+  const worldMapNodes = [mountWorldMap(svg)];
   if (place.points.length) {
     const local = svgElement("svg", {viewBox: "0 0 610 220", role: "group", "aria-label": `Points de ${place.name}`, class: "zone-map"});
     local.append(svgElement("text", {x: 305, y: 20, class: "place-label"}, `Points de ${place.name}`));
@@ -208,12 +233,15 @@ function renderWorld(adventure, me) {
       if (mapMarker?.zone === place.id && mapMarker.point === point.id) node.append(svgElement("circle", {cx: x, cy: y, r: 23, class: "objective-ring"}));
       if (adventure.position === point.id) node.append(svgElement("text", {x, y: y - 25, class: "place-label"}, "Vous êtes ici"));
       const choose = () => choosePoint(point);
-      node.addEventListener("click", choose);
-      node.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
+      node.onclick = choose;
+      node.ondblclick = () => visitPoint(point);
+      node.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); visitPoint(point); } };
       local.append(node);
     });
-    $("world-map").append(local);
+    local.dataset.map = `detail:${place.id}`;
+    worldMapNodes.push(mountWorldMap(local));
   }
+  for (const child of [...$("world-map").children]) if (!worldMapNodes.includes(child)) child.remove();
   paragraphs("place-details", [`${place.name} · ${place.type} · ${place.id === world.current ? "vous êtes ici" : place.visited ? "déjà visité" : "encore non visité"}`, place.description]);
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
@@ -323,7 +351,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
-  $("map-help").textContent = fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.";
+  $("map-help").textContent = fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
   $("character-menu").hidden = fighting;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
@@ -471,22 +499,13 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
 }
-function requestTravel(destination, name, zone) {
-  if (zone === session.tutorial.world.current) return tutorialCommand("move", {destination});
-  if (pendingTravel) pendingTravel(false);
-  $("travel-question").textContent = `Voulez-vous vous déplacer à ${name} ?`;
-  $("travel-confirmation").hidden = false;
-  return new Promise(resolve => {
-    pendingTravel = async accepted => {
-      pendingTravel = null;
-      $("travel-confirmation").hidden = true;
-      if (accepted) await tutorialCommand("move", {destination});
-      resolve(accepted);
-    };
-  });
+function requestTravel(destination) {
+  const adventure = session?.tutorial;
+  if (!adventure) return;
+  if (adventure.battle) return message("Terminez le combat avant de voyager.");
+  if (adventure.moving || adventure.transit || adventure.journey?.length) return message("Votre déplacement est déjà en cours.");
+  return tutorialCommand("move", {destination});
 }
-$("travel-accept").addEventListener("click", () => pendingTravel?.(true));
-$("travel-cancel").addEventListener("click", () => pendingTravel?.(false));
 function selectEntity(id) {
   tacticalInteractionUntil = Date.now() + 500;
   focusedMob = focusedMob === id ? "" : id;

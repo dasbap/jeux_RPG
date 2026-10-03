@@ -109,7 +109,8 @@ def test_five_enemies_have_distinct_targets_and_cannot_reward_twice(service):
     assert service.state(player["token"])["session"]["tutorial"]["players"][0]["inventory"] == inventory
 
 
-def test_trip_stops_at_each_encounter_and_resumes_after_victory(service):
+def test_trip_stops_at_each_encounter_and_resumes_after_victory(service, monkeypatch):
+    monkeypatch.setattr(tutorial, "TRAVEL_ENCOUNTER_CHANCE", 1)
     player = service.register("Knight", "Knight")
     state = act(service, player, "tutorial")
     row = service.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state["id"],)).fetchone()
@@ -185,7 +186,8 @@ def test_group_defeat_cancels_trip_and_recovers_in_safe_place(service):
     assert adventure["players"][0]["hp"] == adventure["players"][0]["max_hp"]
 
 
-def test_pending_journey_and_enemy_deadline_survive_restart(service):
+def test_pending_journey_and_enemy_deadline_survive_restart(service, monkeypatch):
+    monkeypatch.setattr(tutorial, "TRAVEL_ENCOUNTER_CHANCE", 1)
     player = service.register("Knight", "Knight")
     state = act(service, player, "tutorial")
     party = json.loads(service.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state["id"],)).fetchone()[0])
