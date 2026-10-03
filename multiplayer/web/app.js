@@ -1042,11 +1042,10 @@ const incomingInvite = location.hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.
 if (incomingInvite) { $("invite-input").value = incomingInvite; history.replaceState(null, "", location.pathname + location.search); }
 const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invite-link").value = invitationLink(invite); $("invitation").hidden = false; }
-$("refresh-state").addEventListener("click", () => refresh(true));
 window.addEventListener("online", () => refresh(true));
 window.addEventListener("pageshow", () => refresh(true));
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
-setInterval(refresh, 250);
+setInterval(refresh, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
 refresh();
 
 for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });

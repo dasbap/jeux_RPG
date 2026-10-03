@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from .network_log import create_logger, write
 from .service import GameService, GameError, digest
 
 
@@ -36,7 +37,8 @@ class RPGServer(ThreadingHTTPServer):
     daemon_threads = False
     block_on_close = True
 
-    def __init__(self, address, service, public_origin=None):
+    def __init__(self, address, service, public_origin=None, log_directory=".logs"):
+        self.network_log = create_logger(log_directory)
         self.service = service
         self.limiter = RateLimiter()
         self._slots = threading.BoundedSemaphore(32)
@@ -69,9 +71,12 @@ class RPGServer(ThreadingHTTPServer):
             self._stop.set()
             self._ticker.join(timeout=5)
         super().server_close()
+        for handler in self.network_log.handlers:
+            handler.close()
 
     def process_request(self, request, client_address):
         if not self._slots.acquire(blocking=False):
+            write(self.network_log, "CONNECTION_REJECTED", reason="capacity", peer=client_address[0])
             self.shutdown_request(request)
             return
         try:
@@ -96,7 +101,11 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(5)
 
     def log_message(self, format, *args):
-        pass
+        if "timed out" in format:
+            write(self.server.network_log, "HANDSHAKE_FAILED", reason="socket_timeout", peer=self.client_address[0])
+
+    def log_error(self, format, *args):
+        write(self.server.network_log, "HANDSHAKE_FAILED", reason="http_protocol", peer=self.client_address[0])
 
     def _respond(self, status, payload, content_type="application/json; charset=utf-8"):
         body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8") if isinstance(payload, (dict, list)) else payload
@@ -112,6 +121,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Retry-After", "60")
         self.end_headers()
         self.wfile.write(body)
+        if not getattr(self, "_network_combat", False):
+            write(self.server.network_log, "HTTP_RESPONSE", route=getattr(self, "_network_route", "unknown"), status=status, bytes=len(body), milliseconds=int((time.monotonic() - getattr(self, "_network_started", time.monotonic())) * 1000))
 
     def _guard(self):
         hosts = self.headers.get_all("Host", [])
@@ -161,12 +172,30 @@ class Handler(BaseHTTPRequestHandler):
         self._dispatch(True)
 
     def _dispatch(self, post):
+        started = time.monotonic()
+        self._network_started = started
+        self._network_combat = False
+        self._network_route = "unknown"
+        combat = False
+        action = "none"
         try:
             self._guard()
             parsed = urlsplit(self.path)
             if parsed.query or parsed.fragment:
                 raise GameError("invalid_path", "URL invalide.", 404)
             path = parsed.path
+            self._network_route = path if path in ("/", "/app.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
+            if path.startswith("/api/") and path != "/api/register":
+                token = self._token()
+                with self.server.service._lock:
+                    player = self.server.service._authenticate(token)
+                    session = self.server.service._active(player["id"])
+                    if session:
+                        row = self.server.service.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()
+                        combat = bool(row and json.loads(row[0]).get("battle")) or bool(not row and session["state"] == "running")
+            self._network_combat = combat
+            if not combat:
+                write(self.server.network_log, "CONNECTION", peer=self.client_address[0], method="POST" if post else "GET", route=self._network_route)
             if not post:
                 static = {"/": ("index.html", "text/html; charset=utf-8"),
                           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -194,25 +223,39 @@ class Handler(BaseHTTPRequestHandler):
                     raise GameError("rate_limit", "Trop de commandes.", 429)
                 if set(body) != {"request_id", "action", "params"} or not isinstance(body["params"], dict) or set(body["params"]) & {"token", "request_id", "action"}:
                     raise GameError("invalid_command", "Paramètres invalides.")
+                action = body["action"] if isinstance(body["action"], str) else "invalid"
+                combat = combat or action in ("strike", "skill", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill", "attack")
+                self._network_combat = combat
+                if not combat:
+                    write(self.server.network_log, "ACTION_REQUESTED", action=action, peer=self.client_address[0])
                 self._respond(200, self.server.service.command(token, body["request_id"], body["action"], **body["params"]))
+                if not combat:
+                    write(self.server.network_log, "ACTION_COMPLETED", action=action, milliseconds=int((time.monotonic() - started) * 1000))
             else:
                 raise GameError("not_found", "Ressource introuvable.", 404)
         except GameError as error:
+            if not combat:
+                write(self.server.network_log, "REQUEST_REJECTED", reason=error.code, status=error.status, action=action, peer=self.client_address[0])
             self._respond(error.status, {"error": error.code, "message": str(error)})
         except (ConnectionError, TimeoutError):
+            if not combat:
+                write(self.server.network_log, "CONNECTION_FAILED", reason="disconnected_or_timeout", action=action, peer=self.client_address[0])
             self.close_connection = True
         except Exception:
+            if not combat:
+                write(self.server.network_log, "REQUEST_FAILED", reason="internal_error", action=action, peer=self.client_address[0])
             self._respond(500, {"error": "internal_error", "message": "Erreur interne. La commande n'a pas été confirmée."})
 
 
 def main():
     parser = argparse.ArgumentParser(description="RPG multijoueur : tutoriel de la clairière à Brume")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--log-directory", default=".logs")
     parser.add_argument("--database", default=".data/multiplayer.sqlite3")
     parser.add_argument("--public-origin", help="Origine HTTPS du proxy, par exemple https://rpg.example.com")
     args = parser.parse_args()
     service = GameService(args.database)
-    server = RPGServer(("127.0.0.1", args.port), service, args.public_origin)
+    server = RPGServer(("127.0.0.1", args.port), service, args.public_origin, args.log_directory)
     print(f"RPG multijoueur : http://127.0.0.1:{server.server_address[1]}", flush=True)
     try:
         server.serve_forever(poll_interval=0.1)

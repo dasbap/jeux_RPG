@@ -3,6 +3,7 @@ import concurrent.futures
 import json
 import threading
 from types import SimpleNamespace
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -265,8 +266,8 @@ def test_discord_identity_and_guild_isolation(game):
 
 
 @pytest.fixture
-def http_server(game):
-    server = RPGServer(("127.0.0.1", 0), game)
+def http_server(game, tmp_path):
+    server = RPGServer(("127.0.0.1", 0), game, log_directory=tmp_path / ".logs")
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
     yield server
@@ -428,3 +429,36 @@ def test_expired_invitation_cannot_join_after_thirty_minutes(game):
     with pytest.raises(GameError) as failure:
         command(game, second, "join", invite=created["invite"])
     assert failure.value.code == "invalid_invite"
+
+
+def test_network_logger_flat_lines_and_redacts_payload(tmp_path):
+    from jeuxRPG.multiplayer.network_log import create_logger, write
+    logger = create_logger(tmp_path / ".logs")
+    write(logger, "ACTION_REQUESTED", action="explore\nFORGED", peer="127.0.0.1")
+    for handler in logger.handlers:
+        handler.close()
+    contents = (tmp_path / ".logs" / "network.log").read_text()
+    assert len(contents.splitlines()) == 1
+    assert "ACTION_REQUESTED action=explore FORGED" in contents
+    assert not list((tmp_path / ".logs").glob("network.log.*"))
+
+
+def test_http_network_logs_actions_failures_and_omits_combat_secrets(game, http_server):
+    import uuid
+    token = player(game)
+    status, created = request(http_server, "/api/commands", {"request_id": uuid.uuid4().hex, "action": "create", "params": {}}, token)
+    assert status == 200
+    game.command(token, uuid.uuid4().hex, "tutorial")
+    state = game.state(token)["session"]
+    status, _ = request(http_server, "/api/commands", {"request_id": uuid.uuid4().hex, "action": "explore", "params": {"session_id": state["id"], "revision": state["revision"]}}, token)
+    assert status == 200
+    state = game.state(token)["session"]
+    request(http_server, "/api/commands", {"request_id": uuid.uuid4().hex, "action": "strike", "params": {"session_id": state["id"], "revision": state["revision"], "target": "invalid"}}, token)
+    assert request(http_server, "/api/state")[0] == 401
+    contents = Path(http_server.network_log.handlers[0].baseFilename).read_text()
+    assert "ACTION_REQUESTED action=create" in contents
+    assert "ACTION_REQUESTED action=explore" in contents
+    assert "REQUEST_REJECTED reason=unauthorized" in contents
+    assert "action=strike" not in contents
+    assert token not in contents
+    assert created["invite"] not in contents
