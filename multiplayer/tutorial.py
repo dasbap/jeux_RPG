@@ -338,6 +338,9 @@ def migrate(party, now):
         if party["mobs"] and not party["battle"]:
             tactics.begin(party, now, "explore")
 
+    if "hp_regen" not in party:
+        progression.health_resources(party, now)
+
 
 def sync_mobs(party):
     party["mob"] = party["mobs"][0] if party["mobs"] else None
@@ -367,6 +370,7 @@ def spawn(party, now, random, messages, origin="travel"):
                               "rank": "D", "next_attack": now + random() * 6})
     tactics.begin(party, now, origin)
     sync_mobs(party)
+    progression.health_resources(party, now)
     messages.append(f"Vous rencontrez {count} gobelin(s) de rang D.")
 
 

@@ -799,3 +799,47 @@ def test_redirecting_to_diagonal_scales_remaining_time_without_resetting_it():
     act(data, "battle_move", x=0, y=5, path=[[0, 5]])
     act(data, "battle_move", now=.6, x=1, y=5, path=[[1, 5]])
     assert unit["next_move"] == pytest.approx(.6 + .6 * 2 ** .5)
+
+
+@pytest.mark.parametrize("kind", ["player", "invocation", "mob"])
+def test_default_health_regeneration_every_game_minute(kind):
+    data = party(class_name="Necromancien")
+    if kind == "invocation":
+        act(data, "skill", skill_name="Low Skull", target="p0")
+        tactics.complete_casts(data, 6.1, lambda: .5)
+        entity = data["characters"]["p0"]["invocations"][0]
+    else:
+        entity = data["characters"]["p0"] if kind == "player" else data["mobs"][0]
+    data["hp_regen"] = {}
+    entity["stats"]["hp"].update(max=100, current=50)
+    progression.resources(data, 10)
+    progression.resources(data, 69.99)
+    def hp():
+        if kind == "invocation":
+            return data["characters"]["p0"]["invocations"][0]["stats"]["hp"]["current"]
+        return (data["characters"]["p0"] if kind == "player" else data["mobs"][0])["stats"]["hp"]["current"]
+    assert hp() == 50
+    progression.resources(data, 70)
+    assert hp() == 51
+    progression.resources(data, 250)
+    assert hp() == 54
+    progression.resources(data, 250)
+    assert hp() == 54
+
+
+def test_health_regeneration_preserves_fractions_caps_and_never_revives():
+    data = party()
+    hp = data["characters"]["p0"]["stats"]["hp"]
+    hp.update(max=25, current=23)
+    progression.resources(data, 0)
+    progression.resources(data, 60)
+    assert data["characters"]["p0"]["stats"]["hp"]["current"] == 23
+    progression.resources(data, 240)
+    assert data["characters"]["p0"]["stats"]["hp"]["current"] == 24
+    progression.resources(data, 600)
+    assert data["characters"]["p0"]["stats"]["hp"]["current"] == 25
+    data["characters"]["p0"]["stats"]["hp"]["current"] = 0
+    data["mobs"][0]["stats"]["hp"]["current"] = 0
+    progression.resources(data, 1200)
+    assert data["characters"]["p0"]["stats"]["hp"]["current"] == 0
+    assert data["mobs"][0]["stats"]["hp"]["current"] == 0

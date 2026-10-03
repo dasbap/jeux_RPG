@@ -37,11 +37,42 @@ def scale_skill(character, skill):
             effect.value = max(1, int(effect.value * .55 + stat.current_value * .25))
 
 
+def health_resources(party, now):
+    units = list(party["characters"].items())
+    for character in party["characters"].values():
+        units.extend((invocation["id"], invocation) for invocation in character.get("invocations", []))
+    encounter = party.get("battle", {}).get("started_at", 0) if party.get("battle") else 0
+    units.extend((f"mob:{encounter}:{mob['combat_id']}", mob) for mob in party.get("mobs", []))
+    timers = party.setdefault("hp_regen", {})
+    active = set()
+    changed = False
+    for key, data in units:
+        active.add(key)
+        timer = timers.setdefault(key, {"at": now, "fraction": 0})
+        hp = data["stats"]["hp"]
+        minutes = max(0, int((now - timer["at"]) / 60))
+        if hp["current"] <= 0 or hp["current"] >= hp["max"]:
+            timer.update(at=now, fraction=0)
+            continue
+        if not minutes:
+            continue
+        amount = hp["max"] * .01 * minutes + timer["fraction"]
+        gained = int(round(amount, 10))
+        hp["current"] = min(hp["max"], hp["current"] + gained)
+        timer.update(at=timer["at"] + minutes * 60, fraction=0 if hp["current"] == hp["max"] else amount - gained)
+        changed = changed or gained > 0
+    party["hp_regen"] = {key: value for key, value in timers.items() if key in active}
+    if party.get("mobs"):
+        party["mob"] = party["mobs"][0]
+    return changed
+
+
 def resources(party, now):
     from .tutorial import unpack, pack
+    health_changed = health_resources(party, now)
     last = party.setdefault("resource_at", now)
     if now - last < RATIO:
-        return False
+        return health_changed
     elapsed = (now - last) / RATIO
     for key, data in party["characters"].items():
         character = unpack(data)

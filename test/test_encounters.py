@@ -69,12 +69,12 @@ def test_enemy_attacks_without_player_command_with_jitter_and_no_catchup_burst(s
     assert state["tutorial"]["mobs"][0]["next_attack"] == 36
     service.clock.value = 100000
     service.tick()
-    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - damage
+    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial
     service.clock.value += 2
     service.tick()
-    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - 2 * damage
+    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - damage
     service.tick()
-    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - 2 * damage
+    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - damage
 
 
 def test_five_enemies_have_distinct_targets_and_cannot_reward_twice(service):
