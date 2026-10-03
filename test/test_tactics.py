@@ -256,7 +256,7 @@ def test_rescue_before_first_village_returns_to_known_safe_point():
     assert any(route["destination"] == "rosee" for route in world["routes"])
 
 
-def test_dead_ally_can_be_called_until_its_body_is_seen():
+def test_dead_ally_does_not_trigger_a_call():
     data = party(mobs=2)
     near(data)
     unit = data["battle"]["players"]["p0"]
@@ -267,7 +267,7 @@ def test_dead_ally_can_be_called_until_its_body_is_seen():
     enemy = data["mobs"][0]
     tactics.advance(data, 0, lambda: .5)
     assert dead["combat_id"] not in enemy["known_dead"]
-    assert enemy["calling_until"] == 6
+    assert enemy["calling_until"] is None
     data["battle"]["corpses"][0]["position"] = [9, 3]
     enemy["calling_until"] = None
     enemy["needs_call"] = True
@@ -289,3 +289,31 @@ def test_goblin_combat_movement_is_three_kilometres_per_hour():
     assert tactics.GOBLIN_MOVE_TIME == 2 * tactics.MOVE_TIME
     preset = tactics.PRESETS[data["battle"]["preset"]]
     assert preset["cell_metres"] / tactics.GOBLIN_MOVE_TIME * 3.6 == 3
+
+
+def test_call_only_reaches_unalerted_allies_strictly_within_ten_tiles():
+    data = party(mobs=3)
+    caller, close, distant = data["mobs"]
+    caller["position"] = [1, 0]
+    close["position"] = [10, 0]
+    distant["position"] = [11, 0]
+    assert tactics.unalerted_allies(data, caller) == [close]
+    close["alerted"] = True
+    assert tactics.unalerted_allies(data, caller) == []
+    caller["calling_until"] = 6
+    tactics.advance(data, 0, lambda: .5)
+    assert caller["calling_until"] is None
+
+
+def test_snapshot_hides_distant_and_occluded_enemies_without_ending_combat():
+    data = party()
+    state = tutorial.view(data, "p0", 0)
+    assert state["mobs"] == [] and state["mob"] is None
+    assert state["battle"]["hostiles_alive"] == 1
+    assert state["battle"]["intents"] == []
+    near(data)
+    assert len(tutorial.view(data, "p0", 0)["mobs"]) == 1
+    data["battle"]["players"]["p0"]["position"] = [5, 5]
+    data["mobs"][0]["position"] = [7, 5]
+    assert tutorial.view(data, "p0", 0)["mobs"] == []
+    assert not tactics.allowed(data, "p0", "mob", 6)

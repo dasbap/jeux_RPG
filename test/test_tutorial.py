@@ -76,7 +76,7 @@ def combat_fixture(game, token, injury=False):
 def win(game, token):
     for _ in range(100):
         state = game.state(token)["session"]
-        if not state["tutorial"]["mob"]:
+        if not state["tutorial"]["battle"]["hostiles_alive"]:
             break
         combat_fixture(game, token)
         command(game, token, "strike")
@@ -403,7 +403,7 @@ def test_bestiary_matches_combat_rules_and_old_saves_are_supported(game):
     command(game, player["token"], "tutorial")
     state = command(game, player["token"], "explore")
     creature = state["tutorial"]["world"]["bestiary"][0]
-    assert creature["hp"]["first_encounter"] == state["tutorial"]["mob"]["stats"]["hp"]["max"]
+    assert creature["hp"]["first_encounter"] == combat_fixture(game, player["token"])["mobs"][0]["stats"]["hp"]["max"]
     assert creature["xp"]["hunt"] == GOBLIN["xp_hunt"]
     assert creature["weaknesses"] == [v.name for v in goblin_table["advantage"]["weakness"]]
     assert creature["resistances"] == [v.name for v in goblin_table["advantage"]["resilience"]]

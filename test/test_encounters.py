@@ -82,7 +82,7 @@ def test_five_enemies_have_distinct_targets_and_cannot_reward_twice(service):
     act(service, player, "tutorial")
     service.random = lambda: 0
     state = act(service, player, "explore")
-    enemies = state["tutorial"]["mobs"]
+    enemies = combat_fixture(service, player["token"])["mobs"]
     assert len(enemies) == 5
     assert len({m["combat_id"] for m in enemies}) == 5
     assert state["tutorial"]["players"][0]["skills"][0]["targets"] == []
@@ -122,7 +122,7 @@ def test_trip_stops_at_each_encounter_and_resumes_after_victory(service):
     stops = []
     for _ in range(100):
         adventure = state["tutorial"]
-        if adventure["mob"]:
+        if adventure["battle"]:
             stops.append(adventure["position"])
             state = win(service, player["token"])
         elif adventure["transit"]:
@@ -196,7 +196,7 @@ def test_pending_journey_and_enemy_deadline_survive_restart(service):
     service.tick()
     state = service.state(player["token"])["session"]
     before = state["tutorial"]
-    assert before["mob"]
+    assert before["battle"]["hostiles_alive"]
     assert before["position"] == "clearing_rosee"
     assert before["journey"] == ["rosee"]
     database = service.db.execute("PRAGMA database_list").fetchone()[2]

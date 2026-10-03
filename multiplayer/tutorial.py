@@ -143,12 +143,14 @@ def view(party, me, now):
     result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / progression.RATIO if transit else 0
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
-    result["battle"] = tactics.view(party, now)
+    result["battle"] = tactics.view(party, now, me)
+    result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
+    result["mob"] = result["mobs"][0] if result["mobs"] else None
     result["players"] = []
     characters = {key: unpack(value) for key, value in party["characters"].items()}
-    enemies = {m["combat_id"]: unpack(m) for m in party.get("mobs", [])}
-    if not enemies and party["mob"]:
-        enemies = {"mob": unpack(party["mob"])}
+    enemies = {m["combat_id"]: unpack(m) for m in result["mobs"]}
+    if not enemies and result["mob"]:
+        enemies = {"mob": unpack(result["mob"])}
     mob = next(iter(enemies.values()), None)
     targets = {**characters, **enemies}
     for player_id, data in party["characters"].items():

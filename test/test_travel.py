@@ -99,7 +99,7 @@ def test_three_goblins_share_one_combat_and_attack_without_player_action(game):
     draws = iter([.5, .2, .05, .04, 0, .25, .5])
     game.random = lambda: next(draws)
     state = act(game, player, "explore")
-    assert len(state["tutorial"]["mobs"]) == 3
+    assert state["tutorial"]["battle"]["hostiles_alive"] == 3
     assert state["tutorial"]["combat_size"] == 3
     for destination in ("rosee", "clearing_fight", "clearing"):
         with pytest.raises(GameError) as error:
@@ -129,7 +129,7 @@ def test_combat_pauses_remaining_walk_and_blocks_local_interactions(game):
     game.clock.value = 180
     game.tick()
     state = game.state(player["token"])["session"]
-    assert state["tutorial"]["mob"]
+    assert state["tutorial"]["battle"]["hostiles_alive"]
     assert state["tutorial"]["transit"]["paused_at"] == 180
     remaining = state["tutorial"]["transit"]["remaining"]
     for instant in (181, 182):

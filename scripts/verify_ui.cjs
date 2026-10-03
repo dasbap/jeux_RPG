@@ -77,6 +77,11 @@ async function finishCombat(dom) {
       const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, target);
       if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
       else await pause(50);
+    } else if (adventure.battle.hostiles_alive) {
+      const target = [9, 4];
+      const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, target);
+      if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
+      else await pause(50);
     } else {
       await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.includes("Tous les ennemis sont morts"), "interface après mort du dernier mob");
       assert.equal(el(dom, "enemy-intents").querySelectorAll("tr").length, 0);
@@ -126,14 +131,11 @@ async function main() {
     const group = await client(html, app, "Groupe", "Knight");
     await command(group, "tutorial");
     await command(group, "explore");
-    await waitFor(() => el(group, "mob-cards").children.length === 3, "trois ennemis simultanés");
-    assert(el(group, "mob-name").textContent.includes("3 / 3"));
-    assert(el(group, "battle").classList.contains("combat-mode"));
-    assert.equal(el(group, "mob-cards").querySelectorAll("progress").length, 3);
+    await waitFor(() => el(group, "battle").classList.contains("combat-mode"), "combat actif sans ennemis visibles");
+    assert.equal(el(group, "mob-cards").children.length, 0);
+    assert.equal(el(group, "enemy-intents").querySelectorAll("tr").length, 0);
     assert.equal(el(group, "combat-target").options.length, 0);
-    el(group, "mob-cards").querySelector("button").click();
-    assert(el(group, "world-map").querySelector(".objective-ring"));
-    assert(el(group, "enemy-intents").textContent.includes("Patrouille"));
+    assert(!el(group, "tactical-actions").textContent.includes("Quitter le champ de bataille"));
     el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("click", {bubbles: true}));
     await waitFor(async () => (await request(group, "/api/state")).session.tutorial.battle.players[(await request(group, "/api/state")).session.me].position[1] === 5, "clic sur case de combat");
     await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
@@ -178,7 +180,10 @@ async function main() {
     assert(el(first, "enemy-intents").closest("#combat-enemy-panel"));
     assert.deepEqual([...el(first, "combat-layout").children].map(panel => panel.id), ["combat-player-panel", "combat-map-panel", "combat-enemy-panel"]);
     await finishCombat(first);
-    await move(first, "rosee");
+    await waitFor(() => [...el(first, "tutorial-actions").querySelectorAll("button")].some(b => b.textContent.includes("Rejoindre") && !b.disabled), "trajet visible après premier combat");
+    [...el(first, "tutorial-actions").querySelectorAll("button")].find(b => b.textContent.includes("Rejoindre")).click();
+    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.position !== "clearing", "départ vers Rosée");
+    await finishCombat(first);
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");
     let confirmation = "";
     first.window.confirm = text => { confirmation = text; return false; };

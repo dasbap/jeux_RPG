@@ -388,6 +388,10 @@ function renderTutorial(adventure) {
   $("standby-title").textContent = adventure.moving ? "En chemin" : "Exploration";
   $("standby-description").textContent = adventure.moving ? "Vous marchez vers votre destination. Une rencontre peut interrompre le trajet." : ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position) ? "Explorez les alentours pour rencontrer des créatures." : adventure.position === "rosee" ? "Cliquez sur Mira pour parler de sa quête, ou sur la forge pour consulter son accès." : "Choisissez un point sur la carte pour poursuivre votre aventure.";
   if (!fighting && !adventure.moving) {
+    for (const route of adventure.world.routes.filter(route => route.destination)) {
+      const destination = adventure.world.places.find(place => place.id === route.destination);
+      button("tutorial-actions", `Rejoindre ${destination.name}`, () => requestTravel(destination.id, destination.name, destination.id));
+    }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   renderWorld(adventure, me);
@@ -406,7 +410,7 @@ function renderTutorial(adventure) {
     if (recipe.cost) { const craft = document.createElement("button"); craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);
   }
-  $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} gobelin(s) vivant(s) · rang D` : "";
+  $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} ennemi(s) visible(s)` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
@@ -423,7 +427,7 @@ function renderTutorial(adventure) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = !fighting || possibleTargets.length === 0;
   const selected = possibleTargets.find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.mobs.length ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting) renderBattle(adventure, me);
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
@@ -546,7 +550,7 @@ function renderBattle(adventure, me) {
     button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
     button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
   }
-  if (!adventure.mobs.length) { const leave = document.createElement("button"); leave.textContent = "Quitter le champ de bataille"; leave.disabled = disabled; leave.addEventListener("click", () => tutorialCommand("leave_battle")); $("tactical-actions").append(leave); }
+  if (!adventure.battle.hostiles_alive) { const leave = document.createElement("button"); leave.textContent = "Quitter le champ de bataille"; leave.disabled = disabled; leave.addEventListener("click", () => tutorialCommand("leave_battle")); $("tactical-actions").append(leave); }
 }
 
 async function refresh() {

@@ -86,7 +86,17 @@ def begin(party, now, origin):
             mob["home"] = mob["position"][:]
 
 
-def view(party, now):
+def visible(party, player, mob):
+    battle = party.get("battle")
+    unit = battle and battle["players"].get(player)
+    return bool(unit and distance(unit["position"], mob["position"]) <= 6 and sight(PRESETS[battle["preset"]], unit["position"], mob["position"]))
+
+
+def unalerted_allies(party, mob):
+    return [ally for ally in party["mobs"] if ally is not mob and ally["combat_id"] in mob["allies"] and not ally.get("alerted", False) and distance(ally["position"], mob["position"]) < 10]
+
+
+def view(party, now, player=None):
     battle = party.get("battle")
     if not battle:
         return None
@@ -94,7 +104,7 @@ def view(party, now):
     result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"])}
     result["intents"] = [{"id": mob["combat_id"], "name": mob["name"], "action": mob["intent"],
                            "remaining_seconds": max(0, (mob.get("calling_until") or mob.get("windup_until") or mob.get("next_attack", now)) - now) / progression.RATIO}
-                          for mob in party["mobs"]]
+                          for mob in party["mobs"] if player is None or visible(party, player, mob)]
     return result
 
 
@@ -105,7 +115,7 @@ def allowed(party, player, target, attack_range):
     unit = battle["players"][player]
     enemy = next((m for m in party["mobs"] if m["combat_id"] == target), None)
     other = enemy or battle["players"].get(target)
-    return bool(other and distance(unit["position"], other["position"]) <= attack_range and sight(PRESETS[battle["preset"]], unit["position"], other["position"]))
+    return bool(other and (enemy is None or visible(party, player, enemy)) and distance(unit["position"], other["position"]) <= attack_range and sight(PRESETS[battle["preset"]], unit["position"], other["position"]))
 
 
 def ready(party, player, now, error):
@@ -176,6 +186,7 @@ def damaged(party, mob, actor, now):
     was_calling = mob["calling_until"] is not None
     mob["calling_until"] = None
     mob["next_call"] = now + CALL_TIME if was_calling else mob["next_call"]
+    mob["alerted"] = True
     mob["needs_call"] = True
     if sees(PRESETS[battle["preset"]], mob, unit):
         mob["target"] = actor
@@ -245,6 +256,7 @@ def advance(party, now, random):
         visible.sort()
         target = visible[0][1] if visible else None
         if target:
+            mob["alerted"] = True
             previous = mob.get("target")
             mob["target"] = target
             mob["last_known"] = battle["players"][target]["position"][:]
@@ -260,19 +272,21 @@ def advance(party, now, random):
             mob["search_until"] = now + SEARCH_TIME
             mob["needs_call"] = True
             mob["windup_until"] = None
+        if mob["calling_until"] is not None and not unalerted_allies(party, mob):
+            mob["calling_until"] = None
         if mob["calling_until"] is not None:
             mob["intent"] = "Appel aux alliés"
             if mob["calling_until"] <= now:
                 mob["calling_until"] = None
                 mob["next_call"] = now + CALL_TIME
                 messages.append(f"{mob['name']} appelle ses alliés.")
-                for ally in party["mobs"]:
-                    if ally is not mob and distance(ally["position"], mob["position"]) <= 8:
-                        ally["last_known"] = deepcopy(mob["last_known"])
-                        ally["state"] = "search"
-                        ally["search_until"] = now + SEARCH_TIME
+                for ally in unalerted_allies(party, mob):
+                    ally["alerted"] = True
+                    ally["last_known"] = deepcopy(mob["last_known"])
+                    ally["state"] = "search"
+                    ally["search_until"] = now + SEARCH_TIME
             continue
-        if mob.get("needs_call") and mob["next_call"] <= now and any(a not in mob["known_dead"] for a in mob["allies"]):
+        if mob.get("needs_call") and mob["next_call"] <= now and unalerted_allies(party, mob):
             mob["calling_until"] = now + CALL_TIME
             mob["needs_call"] = False
             mob["windup_until"] = None
