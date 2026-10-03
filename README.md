@@ -19,18 +19,18 @@ Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusi
 1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
 2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
 3. Ouvrir **Carte**, explorer le lieu actuel ou sélectionner **Sous-bois**, puis **Se déplacer à ce point**. Battre le premier gobelin, puis prendre le chemin de Rosée depuis la carte.
-4. Dans les détails de Rosée sur la carte, cliquer sur l’icône de la **Place du village · Mira**. La marche locale commence et les actions de Mira apparaissent à votre arrivée. Accepter la quête et explorer le campement de la lisière pour battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
-5. Rendre la quête : les personnages atteignent au moins le niveau 5 et acquièrent les compétences correspondantes de leur classe. Un entraînement sans récompenses permet de les essayer.
+4. Dans les détails de Rosée sur la carte, cliquer sur l’icône de la **Place du village · Mira**. La marche locale commence et les actions de Mira apparaissent à votre arrivée. Accepter la quête et explorer le campement de la lisière pour battre trois gobelins. Chaque victoire apporte de l’expérience. Approchez les corps pour les dépecer et partager les matériaux, puis quittez explicitement le champ de bataille.
+5. Rendre la quête : la récompense contribue à la progression ; les compétences restent héritées de la classe et débloquées aux niveaux prévus. Un entraînement sans récompenses permet de les essayer.
 6. À la forge, chaque joueur fabrique et équipe sa veste avec deux peaux et trois crocs. La veste donne 10 PV supplémentaires et 3 points d'endurance.
 7. Une fois chaque aventurier équipé, rejoindre Brume pour terminer le tutoriel.
 
-Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. L'énergie se régénère et les délais exprimés en tours diminuent après une action ; chaque ennemi attaque dès sa disponibilité, avec un délai aléatoire de zéro à deux secondes, puis un délai de trois secondes plus zéro à deux secondes entre ses attaques. L'interface ne propose que l'attaque simple et les compétences acquises, sans action générique de soin ou de récupération. La victoire sur le groupe entier soigne les aventuriers. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
+Les actions de combat sont espacées de **1,2 seconde réelle**. Chaque compétence garde son propre délai, mesuré dans le temps : une compétence n’empêche pas une attaque simple dès la fin du délai global. Le Slash du chevalier coûte **10 Aura** ; les autres coûts sont augmentés, sans dépasser la réserve maximale de la classe. L’énergie revient progressivement, indépendamment des commandes, sans remboursement après une attaque ou une victoire. L’attaque simple et les compétences évoluent avec les caractéristiques, avec un coefficient réduit pour l’attaque simple du chevalier. Une défaite collective secourt le groupe sans supprimer sa quête ni les matériaux déjà récupérés.
 
-La carte horizontale reste visible au-dessus de trois panneaux indépendants : consultation (caractéristiques, inventaire, équipement et bestiaire), actions du lieu actuel (exploration, dialogue, fabrication ou combat) et journal de quêtes. Changer d'onglet de consultation conserve les actions et les quêtes visibles. Sur un écran étroit, les panneaux se réorganisent pour rester lisibles. Cliquer sur une icône dans la zone actuelle rejoint directement ce point. Les icônes des autres zones ouvrent leurs détails et chemins connus. En combat ou pendant la marche, les cartes restent consultables et les déplacements sont bloqués par le client et le serveur. La forge affiche explicitement son verrouillage jusqu’à la remise de la quête de Mira. Les interactions avec Mira ou la forge demandent de rejoindre physiquement leur point ; le serveur refuse les actions à distance. Léon est accessible depuis son icône uniquement lorsqu’il est présent dans la zone actuelle.
+La carte horizontale reste visible au-dessus de trois panneaux indépendants : consultation (caractéristiques, inventaire, équipement et bestiaire), actions du lieu actuel (exploration, dialogue, fabrication ou combat) et journal de quêtes. Changer d'onglet de consultation conserve les actions et les quêtes visibles. Sur un écran étroit, les panneaux se réorganisent pour rester lisibles. Cliquer sur une icône dans la zone actuelle rejoint directement ce point. Les icônes des autres zones ouvrent leurs détails et chemins connus. Pendant la marche, les interactions sont bloquées. En combat, la carte devient un champ de bataille ; les autres panneaux disparaissent, seuls les déplacements tactiques sont autorisés. Le détail des lieux reste fermé jusqu’à un clic. Localiser une quête dessine un cercle creux sans changer la zone consultée, même si la destination reste à découvrir. Un déplacement vers une autre zone demande une confirmation côté client. La forge affiche explicitement son verrouillage jusqu’à la remise de la quête de Mira. Les interactions avec Mira ou la forge demandent de rejoindre physiquement leur point ; le serveur refuse les actions à distance. Léon est accessible depuis son icône uniquement lorsqu’il est présent dans la zone actuelle.
 
 En combat, choisir d'abord une cible : seules l'attaque simple et les compétences utilisables sur elle apparaissent. Un allié n'est proposé que si une compétence de soin ou de buff acquise permet une action sur lui. Un personnage à pleine vie n'est pas proposé pour un soin, une invocation doit viser son propriétaire et une attaque doit viser l'ennemi vivant du combat. Une cible sans action disponible est masquée, notamment pendant le délai global. Le client filtre les choix à partir de l'état reçu et des règles de ciblage ; le serveur recalcule les conditions lors de chaque commande. Les actions refusées ne consomment ni énergie ni objets.
 
-Le monde possède un marchand itinérant entre Rosée et Brume. Son passage est déterminé par l'horloge interne au ratio 1:20, sans afficher le ratio ni le temps écoulé dans l'interface. Mira reste disponible pour éviter de bloquer le tutoriel. Léon reste huit heures de jeu dans chaque village (24 minutes réelles), puis marche jusqu’au suivant. Pendant sa traversée, il n’est présent dans aucun village. Il est pour l’instant un PNJ de passage, sans boutique.
+Le monde possède un marchand itinérant entre Rosée et Brume. Son passage est déterminé par l'horloge interne au ratio 1:3, sans afficher le ratio ni le temps écoulé dans l'interface. Mira reste disponible pour éviter de bloquer le tutoriel. Léon reste huit heures de jeu dans chaque village (160 minutes réelles), puis marche jusqu’au suivant. Pendant sa traversée, il n’est présent dans aucun village. Il est pour l’instant un PNJ de passage, sans boutique.
 
 L'identité est conservée dans l'onglet pendant sa session. Pour retrouver un personnage après fermeture de l'onglet, conserver sa **clé de reconnexion** en privé et la saisir dans « Retrouver mon personnage ». Se déconnecter conserve la progression du tutoriel. En revenant avec sa clé, le joueur retrouve son groupe et ses compétences, son inventaire et son équipement.
 
@@ -116,7 +116,10 @@ Actions prises en charge :
 | `strike` | `session_id`, `revision`, `target` (`mob`) |
 | `skill` | `session_id`, `revision`, `skill_name`, `target` |
 | `talk` | `session_id`, `revision`, `npc` (`mira`) |
-| `craft` | `session_id`, `revision`, `recipe` (`veste`) |
+| `craft`, `upgrade` | `session_id`, `revision`, `recipe` (`casque`, `veste`, `gants`, `jambieres`, `bottes`, `ceinture`) |
+| `battle_move` | `session_id`, `revision`, `x`, `y`, `path` (cases adjacentes) |
+| `hide`, `leave_battle` | `session_id`, `revision` |
+| `harvest` | `session_id`, `revision`, `target` (identifiant du corps) |
 | `travel` | `session_id`, `revision`, `destination` (`rosee`, `brume`) |
 
 Le bot doit afficher les résultats, désactiver les mentions, répondre aux interactions et organiser ses notifications. Le SDK, le token Discord et les commandes slash ne sont pas inclus dans ce POC. Pour piloter l'expiration hors requêtes, le bot peut appeler `service.tick()` régulièrement depuis un thread ou une tâche asynchrone. L'adaptateur réutilise l'identifiant d'interaction pour empêcher une exécution en double.
@@ -126,7 +129,7 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 - SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une version d'état obsolète est refusée avec `stale_revision` ; actualiser avant une nouvelle action.
 - Une commande rejouée avec le même identifiant et le même contenu retourne son résultat initial. Un contenu différent avec cet identifiant est refusé. Les identifiants et reçus sont persistés.
 - L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur réconcilie les échéances toutes les 100 ms ; l'interface interroge l'état toutes les 500 ms. Ce n'est pas un système temps réel dur.
-- Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats sont des échanges action/riposte avec un délai serveur ; les ennemis n'attaquent pas les joueurs déconnectés. Le monde ouvert, les échanges, les boutiques et les quêtes génériques ne sont pas encore implémentés.
+- Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats évoluent dans la boucle autonome du serveur, avec des positions individuelles ; quitter l’onglet ne met pas un combat en pause. Le monde ouvert, les échanges, les boutiques et les quêtes génériques ne sont pas encore implémentés.
 - La clé personnelle est un secret d'accès, pas une authentification par mot de passe ou OAuth. Aucune récupération par email ni révocation de compte n'est fournie. Le POC est destiné à un environnement de démonstration contrôlé.
 - La nouvelle table des tutoriels est créée automatiquement sans modifier les données des anciens duels. Sauvegarder la base après arrêt du serveur avant une mise à jour. Un nouveau tutoriel recommence au niveau 1 ; la progression reste attachée à son aventure sauvegardée.
 
@@ -150,7 +153,7 @@ Le bestiaire ne révèle que les monstres rencontrés. Le tutoriel contient actu
 
 ## Déplacements et groupes de créatures
 
-La position du groupe est sauvegardée. « Vous êtes ici » indique sa zone sur la carte et son point précis dans le panneau des actions. `move` accepte un identifiant de zone ou de point connu ; le serveur calcule le trajet sur le graphe des chemins. La marche est chronométrée côté serveur selon la distance et une vitesse de 5 km/h dans le monde. La position progresse sur la carte pendant le trajet. Un point de contrôle de rencontre est effectué au plus tous les 250 mètres des segments dangereux, avec un contrôle en fin de segment. Plusieurs contrôles peuvent donc avoir lieu sur un même chemin. Les portions locales mesurent 10 mètres. Un combat suspend le trajet ; sa victoire relance les étapes restantes. Plusieurs combats peuvent donc survenir pendant un seul déplacement. Une défaite annule le trajet et ramène le groupe dans un lieu sûr. La position est commune aux deux joueurs de ce POC coopératif.
+La position du groupe est sauvegardée. « Vous êtes ici » indique sa zone sur la carte et son point précis dans le panneau des actions. `move` accepte un identifiant de zone ou de point connu ; le serveur calcule le trajet sur le graphe des chemins. La marche est chronométrée côté serveur selon la distance et une vitesse de 6 km/h dans le monde. La position progresse sur la carte pendant le trajet. Un point de contrôle de rencontre est effectué au plus tous les 250 mètres des segments dangereux, avec un contrôle en fin de segment. Plusieurs contrôles peuvent donc avoir lieu sur un même chemin. Les portions locales mesurent 10 mètres. Un combat suspend le trajet ; sa sortie explicite après la victoire relance les étapes restantes. Plusieurs combats peuvent donc survenir pendant un seul déplacement. Une défaite annule le trajet et ramène le groupe dans un lieu sûr. La position est commune aux deux joueurs de ce POC coopératif.
 
 Le calcul des groupes est commun aux rangs S, A, B, C, D et E et s'arrête au premier échec, avec cinq créatures maximum. À niveaux égaux, les gobelins de rang D utilisent les probabilités conditionnelles suivantes :
 
@@ -169,12 +172,40 @@ Chaque ennemi possède un identifiant de cible et sa propre prochaine attaque. L
 
 Les chemins actuels ont des distances de démonstration, configurées dans `multiplayer/world.py` :
 
-| Chemin | Distance | Marche réelle sans combat au ratio 1:20 |
+| Chemin | Distance | Marche réelle sans combat au ratio 1:3 |
 | --- | --- | --- |
-| Clairière → Rosée | 0,3 km | 10,8 s |
-| Rosée → Lisière | 0,2 km | 7,2 s |
-| Rosée → Brume | 1 km | 36 s |
+| Clairière → Rosée | 0,3 km | 60 s |
+| Rosée → Lisière | 0,2 km | 40 s |
+| Rosée → Brume | 1 km | 200 s |
 
-Un combat gèle la marche restante. Sa durée s’ajoute au trajet ; terminer le combat relance les portions restantes. Les échéances et la distance restante sont sauvegardées, et un trajet déjà engagé ne peut pas être remplacé par une autre commande de déplacement. L’arrivée à Brume termine le tutoriel via la boucle autonome du serveur.
+Un combat gèle la marche restante. Sa durée s’ajoute au trajet ; quitter le champ de bataille relance les portions restantes. Les échéances et la distance restante sont sauvegardées, et un trajet déjà engagé ne peut pas être remplacé par une autre commande de déplacement. L’arrivée à Brume termine le tutoriel via la boucle autonome du serveur.
 
 Une rencontre tire le groupe entier avant le début du combat : si trois gobelins sont tirés, ils sont tous présents simultanément, ciblables séparément et autonomes. L’interface indique le numéro de rencontre et le nombre d’ennemis vivants par rapport au groupe initial. Un long trajet peut ensuite déclencher d’autres rencontres, chacune avec son propre groupe.
+
+
+## Combat tactique et progression du POC 0.8
+
+Quinze presets sont disponibles : trois terrains pour chacun des cinq contextes (clairière, lisière, route, entraînement à Rosée et bois de Brume). Une case représente deux mètres. Les couvertures bloquent la marche et la ligne de vue. Le corps à corps porte à 1,5 case ; les classes à distance et les compétences de soutien portent à six cases. L’interface affiche chaque mob, ses PV sous forme de barre, sa position et son intention. Cliquer sur sa fiche PV entoure sa position.
+
+Explorer donne l’initiative : les joueurs apparaissent dissimulés et les mobs patrouillent. Un joueur visible et atteignable est poursuivi ; chaque membre du groupe garde son propre placement et sa dissimulation. Perdre un joueur de vue déclenche une recherche à sa dernière position connue, pendant 180 secondes de jeu (60 secondes réelles), puis la patrouille reprend. Un stun bloque déplacement, attaque et appel ; sans cible visible à son réveil, le mob reprend sa patrouille.
+
+Un mob qui repère un ennemi, subit une première attaque ou voit l’ennemi s’éloigner peut appeler ses alliés. L’appel dure six secondes de jeu (deux réelles), comme son délai de réutilisation. Les dégâts ou un stun l’interrompent. Un allié mort reste considéré comme joignable tant que son corps n’a pas été vu. Les autres mobs reçoivent une dernière position connue, sans révélation magique d’un joueur caché.
+
+La victoire conserve les corps et le champ de bataille. Il faut approcher à 1,5 case pour dépecer ; chaque corps ne rapporte qu’une fois ses matériaux, partagés avec le groupe. Sortir abandonne les corps non dépecés et reprend le voyage suspendu. L’entraînement ne rapporte ni expérience ni matériaux.
+
+La forge fabrique casque, torse, gants, jambières, bottes et ceinture. Chaque pièce possède son niveau indépendant de +0 à +10 et ses bonus de PV/endurance. Les coûts communs suivent `quantité_initiale × (niveau + 1) + niveau²`. Dès +4, il faut des cristaux de gobelin (8 % de chance par corps) ; dès +8, des noyaux (2 %). Ces quantités augmentent avec le niveau. À +10, les noms ajoutent respectivement **raffiné**, **solide**, **précis**, **robustes**, **agiles**, **renforcée**. Une amélioration refusée ne retire aucun matériau et n’ajoute aucun bonus.
+
+Un gobelin rapporte 50 XP par joueur. Le prochain niveau nécessite `500 × niveau^1,8` XP, arrondies à l’entier inférieur : 500 au niveau 1, 1 741 au niveau 2, puis des seuils croissants. Les anciens personnages conservent leur niveau et leur équipement lors de la migration.
+
+Le client calcule les chemins tactiques, les possibilités de ciblage et le rendu. Le serveur contrôle session, révision, délais, ressources, cases adjacentes, portée et ligne de vue ; il conserve l’autorité sur les dégâts, récompenses, IA et déplacements des PNJ. Il ne fait pas confiance à un dommage ou à un déplacement instantané annoncé par un client. Les modèles de personnages reconstruits sont mis en cache pour limiter le coût des instantanés. Le bestiaire filtre les cartes de spawn effectivement découvertes et les noms/matériaux ; le tri des cartes n’apparaît que lorsqu’au moins deux sont connues.
+
+Les contrôles de rencontre sont placés à un premier instant aléatoire dans chaque segment, puis au plus tous les 250 mètres. Un combat peut donc commencer au début, au milieu ou à la fin d’un trajet. Le monde reste un POC coopératif limité à deux joueurs et au gobelin comme espèce hostile ; les probabilités, statistiques et terrains restent des premiers réglages à équilibrer en jeu.
+
+Pour reproduire le parcours HTTP de deux clients avec un DOM jsdom (Node.js requis), après installation du paquet Python :
+
+```bash
+npm install --prefix .ui-test jsdom@26.1.0
+python scripts/verify_http_ui.py
+```
+
+Ce script démarre un serveur de test local avec une base temporaire, une horloge accélérée et des tirages déterministes. Il accélère aussi la fenêtre du limiteur de requêtes pour suivre l’horloge du scénario. Les protections HTTP avec leurs limites réelles et les délais du jeu sont testés séparément par `python -m pytest -q`. Le scénario jsdom vérifie les comportements et le DOM ; il ne constitue pas une vérification visuelle dans un navigateur.

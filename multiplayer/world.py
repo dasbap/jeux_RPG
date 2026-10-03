@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from jeuxRPG._class.res.character.table_stat_subclass import goblin_table
+from .forge import RARE_DROPS
 
 
 PLACES = {
@@ -10,7 +11,7 @@ PLACES = {
     "rosee": {"name": "Village de Rosée", "type": "village", "x": 290, "y": 160,
               "description": "Un village forestier avec une place, une forge et un terrain d'entraînement. Il relie la clairière, la lisière et la route de Brume.",
               "points": [{"id": "mira", "name": "Place du village · Mira", "type": "pnj", "description": "Mira propose une quête pour protéger la lisière."},
-                         {"id": "forge", "name": "Forge", "type": "atelier", "description": "La forge transforme les peaux et crocs de gobelin en veste."},
+                         {"id": "forge", "name": "Forge", "type": "atelier", "description": "La forge fabrique six pièces d’armure et les améliore jusqu’à +10 avec des matériaux communs et rares."},
                          {"id": "training", "name": "Terrain d'entraînement", "type": "rencontre", "description": "Essayez vos nouvelles compétences sans récompense supplémentaire."}]},
     "lisiere": {"name": "Lisière de Rosée", "type": "zone", "x": 290, "y": 45,
                 "description": "Une zone de chasse proche de Rosée, fréquentée par des gobelins.",
@@ -28,7 +29,7 @@ ROUTES = [
 
 CURRENT = {"clearing": "clearing", "first_fight": "clearing", "road": "clearing",
            "village": "rosee", "hunt": "lisiere", "craft": "rosee", "travel": "rosee", "complete": "brume"}
-GOBLIN = {"hp_first": 18, "hp_hunt": 24, "xp_first": 100, "xp_hunt": 200, "loot": {"peau": 1, "croc": 1}}
+GOBLIN = {"hp_first": 18, "hp_hunt": 24, "xp_first": 50, "xp_hunt": 50, "loot": {"peau": 1, "croc": 1}}
 
 
 def discovery(party):
@@ -69,7 +70,7 @@ def view(party, me, traveller=None):
         known.add("lisiere")
     if step in ("craft", "travel", "complete"):
         known.add("brume")
-    fighting = bool(party["mob"] or party.get("mobs"))
+    fighting = bool(party.get("battle") or party["mob"] or party.get("mobs"))
     moving = bool(party.get("transit") or party.get("journey"))
     places = []
     for key, definition in PLACES.items():
@@ -89,14 +90,12 @@ def view(party, me, traveller=None):
             point["can_interact"] = point["local"] and not fighting and not moving
             if point["id"] == "forge" and party["quest"] != "completed":
                 point["locked_reason"] = "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village."
-            elif point["id"] == "forge" and me in party["equipment"]:
-                point["locked_reason"] = "Votre veste est déjà fabriquée et équipée."
             elif point["id"] == "mira" and step == "hunt" and party["kills"] < 3:
                 point["locked_reason"] = f"Mira attend encore {3 - party['kills']} gobelin(s) vaincu(s)."
             if not fighting and not moving and party.get("position", CURRENT[step]) == point["id"]:
                 if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == 3):
                     point["action"] = "dialogue"
-                elif point["id"] == "forge" and step == "craft" and me not in party["equipment"]:
+                elif point["id"] == "forge" and party["quest"] == "completed":
                     point["action"] = "forge"
                 elif point["id"] == "clearing_fight" and step == "clearing" or point["id"] == "hunt" and step == "hunt" and party["kills"] < 3 or point["id"] == "training" and step in ("craft", "travel"):
                     point["action"] = "explore"
@@ -119,6 +118,8 @@ def view(party, me, traveller=None):
                          "weaknesses": [value.name for value in advantages["weakness"]],
                          "resistances": [value.name for value in advantages["resilience"]],
                          "loot": [{"item": key, "quantity": quantity} for key, quantity in GOBLIN["loot"].items()],
+                         "rare_loot": [{"item": key, "chance": value} for key, value in RARE_DROPS.items()],
+                         "spawn_maps": [{"id": key, "name": point_name(key)} for key in party.get("seen_spawnpoints", ["clearing"]) if zone_of(key) in visited],
                          "xp": {"first_encounter": GOBLIN["xp_first"], "hunt": GOBLIN["xp_hunt"], "training": 0},
                          "locations": [PLACES[key]["name"] for key in ("clearing", "lisiere") if key in visited],
                          "materials_usage": "Deux peaux et trois crocs permettent de fabriquer une veste à Rosée. L'entraînement ne donne aucun butin."})
@@ -126,7 +127,7 @@ def view(party, me, traveller=None):
     if current_zone not in {p["id"] for p in places}:
         definition = PLACES[current_zone]
         places.append({"id": current_zone, **deepcopy(definition), "visited": True})
-    return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "bestiary": bestiary}
+    return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "bestiary": bestiary, "objectives": [{"zone": "rosee", "point": "mira", "x": PLACES["rosee"]["x"], "y": PLACES["rosee"]["y"]}, {"zone": "lisiere", "point": "hunt", "x": PLACES["lisiere"]["x"], "y": PLACES["lisiere"]["y"]}]}
 
 
 ROAD_POINTS = {r["id"]: {"zone": "lisiere" if r["id"] == "rosee_lisiere" else "clearing" if r["id"] == "clearing_rosee" else "rosee", "name": r["name"]} for r in ROUTES}
@@ -192,4 +193,4 @@ def distance_km(source, destination):
 
 
 def walking_seconds(source, destination):
-    return distance_km(source, destination) / 5 * 3600
+    return distance_km(source, destination) / 6 * 3600

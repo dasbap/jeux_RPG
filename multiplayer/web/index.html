@@ -37,20 +37,20 @@
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
         <h3 id="location"></h3><p id="objective"></p>
-        <section class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
+        <section class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted" id="map-help">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
         <div class="adventure-grid">
           <section class="dashboard-box consultation"><h2>Personnage</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
         <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
         <section id="inventory-view" hidden><h3>Inventaire</h3><div id="inventory-details"></div></section>
 
-        <section id="bestiary-view" hidden><h3>Bestiaire découvert</h3><div id="bestiary-details"></div></section>
+        <section id="bestiary-view" hidden><h3>Bestiaire découvert</h3><div class="actions" id="bestiary-filters"><label>Carte de spawn<select id="bestiary-map"></select></label><label>Rechercher<input id="bestiary-search" placeholder="Nom ou matériau"></label><label id="bestiary-sort-label">Trier les cartes<select id="bestiary-sort"><option value="asc">Cartes A → Z</option><option value="desc">Cartes Z → A</option></select></label></div><div id="bestiary-details"></div></section>
 </section>
           <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3 id="standby-title">Exploration</h3><p id="standby-description"></p><div id="tutorial-actions" class="actions"></div></section>
         <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
 
-        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Veste de la lisière : deux peaux et trois crocs. Une fois équipée, elle donne +10 PV et +3 endurance.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="craft-actions" class="actions"></div></section>
+        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Fabriquez six pièces indépendantes et améliorez-les jusqu’à +10. Les coûts et les matériaux rares requis figurent dans le catalogue.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="forge-catalogue"></div><div id="craft-actions" class="actions"></div></section>
         <section id="combat-view" hidden>
-          <h3 id="mob-name"></h3><p id="mob-hp"></p><p id="combat-status" role="status"></p>
+          <div id="combat-resources"></div><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div><div id="tactical-actions" class="actions"></div><div id="corpse-actions" class="actions"></div><p id="combat-status" role="status"></p>
           <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
           <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
           <p class="muted">Choisissez une cible pour afficher votre attaque et vos compétences disponibles. Un allié est proposé uniquement si une compétence de votre classe peut le soigner ou l'améliorer.</p>
@@ -62,7 +62,7 @@
       <p id="result"></p>
       <div id="duel-target-controls" hidden><label for="duel-target">Choisir votre adversaire</label><select id="duel-target"></select></div>
       <div class="actions"><button id="party-tutorial">Commencer le tutoriel du groupe</button><button id="start" class="secondary">Duel optionnel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
-      <h3>Journal partagé</h3><ol id="events"></ol>
+      <h3 id="shared-log-title">Journal partagé</h3><ol id="events"></ol>
     </section>
     <footer>De la clairière à Brume · votre aventure est sauvegardée</footer>
   </main>

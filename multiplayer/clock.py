@@ -3,7 +3,7 @@ import time
 
 
 class GameClock:
-    ratio = 20.0
+    ratio = 3.0
 
     def __init__(self, epoch_wall, epoch_game=0.0, monotonic=time.monotonic, wall=time.time, minimum_game=0.0):
         self._monotonic = monotonic

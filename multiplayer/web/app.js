@@ -10,6 +10,8 @@ let viewContext = "";
 let combatTarget = "";
 let mapPlace = "";
 let mapPoint = "";
+let mapMarker = null;
+let focusedMob = "";
 const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
 function message(text, error = false) {
   $("message").textContent = text;
@@ -116,15 +118,15 @@ function paragraphs(container, texts) {
   }
 }
 function renderWorld(adventure, me) {
-  paragraphs("equipment-details", [me.equipment ? `Torse : ${me.equipment}` : "Torse : aucun équipement équipé.", me.equipment ? "Bonus actifs : +10 PV maximum et +3 endurance." : "La forge de Rosée permet de fabriquer votre premier équipement."]);
+  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · +${p.hp} PV · +${p.endurance} endurance`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
-  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la veste de la lisière`) : ["Votre inventaire est vide."]);
+  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
-  const locked = busy || Boolean(adventure.mob || adventure.mobs?.length || adventure.moving || adventure.transit || adventure.journey?.length);
+  const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length || adventure.moving || adventure.transit || adventure.journey?.length);
   function choosePoint(point) {
     mapPoint = point.id;
-    $("map-details").open = !point.can_interact;
+
     if (point.locked_reason) message(point.locked_reason);
     showView("map");
     if (locked || !point.can_interact) return;
@@ -156,8 +158,8 @@ function renderWorld(adventure, me) {
     svg.append(svgElement("line", {x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: route.destination ? "known-route accessible-route" : "known-route"}));
     svg.append(svgElement("text", {x: (from.x + to.x) / 2 + (from.x === to.x ? 90 : 0), y: (from.y + to.y) / 2 + (from.x === to.x ? -3 : 38), class: "route-label"}, route.name));
     if (adventure.position === route.id) {
-      const half = route.distance_km / 5 * 3600 / 2;
-      const fraction = Math.max(0, Math.min(1, 1 - adventure.travel_remaining_real_seconds * 20 / half));
+      const half = route.distance_km / 6 * 3600 / 2;
+      const fraction = Math.max(0, Math.min(1, 1 - adventure.travel_remaining_real_seconds * 3 / half));
       const forward = adventure.transit?.destination === route.id ? adventure.journey?.[0] === route.to : adventure.transit?.destination === route.to;
       const progress = adventure.transit?.destination === route.id ? fraction / 2 : .5 + fraction / 2;
       const proportion = forward ? progress : 1 - progress;
@@ -172,10 +174,14 @@ function renderWorld(adventure, me) {
     group.append(svgElement("circle", {cx: p.x, cy: p.y, r: p.id === world.current ? 15 : 11, class: p.visited ? "visited-node" : "unknown-node"}));
     group.append(svgElement("text", {x: p.x, y: p.y + 29, class: "place-label"}, p.name));
     if (p.id === world.current && !world.routes.some(r => r.id === adventure.position)) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
-    const choose = () => { mapPlace = p.id; mapPoint = ""; $("map-details").open = true; showView("map"); };
+    const choose = () => { mapPlace = p.id; mapPoint = ""; showView("map"); };
     group.addEventListener("click", choose);
     group.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
     svg.append(group);
+  }
+  if (mapMarker) {
+    const marker = world.objectives.find(m => m.zone === mapMarker.zone && m.point === mapMarker.point);
+    if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
   }
   $("world-map").replaceChildren(svg);
   if (place.points.length) {
@@ -193,6 +199,7 @@ function renderWorld(adventure, me) {
       const icons = {pnj: "●", atelier: "⚒", rencontre: "⚔", repère: "◆"};
       node.append(svgElement("text", {x, y: y + 4, class: "point-icon"}, icons[point.type] || "◆"));
       node.append(svgElement("text", {x, y: y + 25, class: "place-label"}, point.name));
+      if (mapMarker?.zone === place.id && mapMarker.point === point.id) node.append(svgElement("circle", {cx: x, cy: y, r: 23, class: "objective-ring"}));
       if (adventure.position === point.id) node.append(svgElement("text", {x, y: y - 25, class: "place-label"}, "Vous êtes ici"));
       const choose = () => choosePoint(point);
       node.addEventListener("click", choose);
@@ -205,13 +212,13 @@ function renderWorld(adventure, me) {
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
     const p = document.createElement("p");
-    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 5 * 3600 / 20).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
+    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 6 * 3600 / 3).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
     $("map-routes").append(p);
     if (route.destination && !locked) {
       const button = document.createElement("button");
       button.textContent = `Prendre le chemin vers ${places.find(p => p.id === route.destination).name}`;
       button.disabled = locked;
-      button.addEventListener("click", () => tutorialCommand("travel", {destination: route.destination}));
+      button.addEventListener("click", () => requestTravel(route.destination, places.find(p => p.id === route.destination).name, route.destination));
       $("map-routes").append(button);
     }
   }
@@ -231,14 +238,14 @@ function renderWorld(adventure, me) {
     const move = document.createElement("button");
     move.textContent = "Se déplacer à ce point";
     move.disabled = busy;
-    move.addEventListener("click", () => tutorialCommand("move", {destination: point.id}));
+    move.addEventListener("click", () => requestTravel(point.id, point.name, place.id));
     $("point-actions").append(move);
   }
   if (!locked && place.id !== world.current) {
     const move = document.createElement("button");
     move.textContent = `Rejoindre ${place.name}`;
     move.disabled = busy;
-    move.addEventListener("click", () => tutorialCommand("move", {destination: place.id}));
+    move.addEventListener("click", () => requestTravel(place.id, place.name, place.id));
     $("map-routes").append(move);
   }
   if (!locked && point?.action) {
@@ -251,7 +258,17 @@ function renderWorld(adventure, me) {
   $("bestiary-details").replaceChildren();
   if (!world.bestiary.length) paragraphs("bestiary-details", ["Aucun monstre rencontré. Le bestiaire se complète à chaque découverte."]);
   const damageTypes = {PHYSICAL: "physique", MAGIC: "magique", SACRED: "sacré"};
-  for (const mob of world.bestiary) {
+  const selectedMap = $("bestiary-map").value;
+  const maps = [...new Map(world.bestiary.flatMap(m => m.spawn_maps || []).map(m => [m.id, m])).values()];
+  $("bestiary-map").replaceChildren();
+  const allMaps = document.createElement("option"); allMaps.value = ""; allMaps.textContent = "Toutes les cartes découvertes"; $("bestiary-map").append(allMaps);
+  for (const map of maps) { const option = document.createElement("option"); option.value = map.id; option.textContent = map.name; $("bestiary-map").append(option); }
+  $("bestiary-map").value = maps.some(m => m.id === selectedMap) ? selectedMap : "";
+  $("bestiary-sort-label").hidden = maps.length < 2;
+  const query = $("bestiary-search").value.trim().toLocaleLowerCase();
+  const filtered = world.bestiary.filter(m => (!$("bestiary-map").value || m.spawn_maps.some(p => p.id === $("bestiary-map").value)) && `${m.name} ${m.loot.map(p => p.item).join(" ")} ${(m.rare_loot || []).map(p => p.item).join(" ")}`.toLocaleLowerCase().includes(query));
+  if (world.bestiary.length && !filtered.length) paragraphs("bestiary-details", ["Aucun mob découvert ne correspond à ces filtres."]);
+  for (const mob of filtered) {
     const card = document.createElement("article");
     card.className = "codex-card";
     const title = document.createElement("h4");
@@ -264,7 +281,8 @@ function renderWorld(adventure, me) {
       `Résistances : ${mob.resistances.map(t => damageTypes[t] || t).join(", ") || "aucune"}`,
       `Matériaux donnés par victoire : ${mob.loot.map(item => `${item.quantity} ${item.item}`).join(", ")}`,
       `Expérience : ${mob.xp.first_encounter} au premier combat, ${mob.xp.hunt} par chasse. Entraînement : aucun butin ni XP.`,
-      `Lieux observés : ${mob.locations.join(", ")}`, mob.materials_usage]) {
+      `Cartes de spawn découvertes : ${[...(mob.spawn_maps || [])].sort((a, b) => a.name.localeCompare(b.name) * ($("bestiary-sort").value === "desc" ? -1 : 1)).map(p => p.name).join(", ")}`,
+      `Matériaux rares au dépeçage : ${(mob.rare_loot || []).map(p => `${p.item} (${(100 * p.chance).toFixed(0)} %)`).join(", ")}`, mob.materials_usage]) {
       const p = document.createElement("p");
       p.textContent = text;
       card.append(p);
@@ -279,6 +297,7 @@ function showView(view) {
 function skillAllowed(me, skill, target, mob) {
   if (!mob || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0 || !skill.available || skill.cooldown > 0) return false;
   const energy = me.energies.find(e => e.type === skill.energy);
+  if (!battleAllowed(session.tutorial, me.id, target.id, skill.range)) return false;
   if (!energy || energy.current < skill.cost || !skill.targets.includes(target.id)) return false;
   if (["DAMAGE", "DEBUFF"].includes(skill.type)) return target.enemy && target.hp > 0;
   if (skill.type === "INVOCATION") return target.id === me.id && me.invocations.length < me.invocation_limit;
@@ -290,7 +309,12 @@ function skillAllowed(me, skill, target, mob) {
 }
 function renderTutorial(adventure) {
   $("combat-view").prepend($("fighters"));
-  const fighting = Boolean(adventure.mob || adventure.mobs?.length);
+  const fighting = Boolean(adventure.battle);
+  $("battle").classList.toggle("combat-mode", fighting);
+  document.body.classList.toggle("combat-active", fighting);
+  $("map-help").textContent = fighting ? "Cliquez sur une case pour marcher. Les blocs bruns servent de couverture. Cliquez sur les PV d’un mob pour le localiser." : "Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.";
+  $("character-menu").hidden = fighting;
+  $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
     if (!["stats", "equipment", "inventory", "map", "bestiary"].includes(currentView)) currentView = "map";
@@ -311,7 +335,7 @@ function renderTutorial(adventure) {
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   $("standby-view").hidden = fighting || canTalk || atForge;
-  $("fighters").hidden = !fighting;
+  $("fighters").hidden = true;
   for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
   }
@@ -359,15 +383,24 @@ function renderTutorial(adventure) {
   renderWorld(adventure, me);
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
-  if (hasQuest) button("quest-actions", "Localiser le lieu de la quête sur la carte", () => { mapPlace = "rosee"; mapPoint = "mira"; showView("map"); });
-  $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : me.equipment ? "Votre veste est déjà fabriquée et équipée." : "Forge débloquée : vous pouvez fabriquer votre veste si vous avez les matériaux.";
-  $("craft-materials").textContent = `Votre sac : ${me.inventory.peau || 0} peau(s), ${me.inventory.croc || 0} croc(s).`;
-  if (canCraft) action("craft-actions", "Fabriquer et équiper la veste", "craft", {recipe: "veste"}, (me.inventory.peau || 0) < 2 || (me.inventory.croc || 0) < 3);
+  button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
+  $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";
+  $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${item}`).join(", ") || "aucun matériau"}.`;
+  $("forge-catalogue").replaceChildren();
+  if (atForge) for (const recipe of me.forge) {
+    const card = document.createElement("article"); card.className = "codex-card";
+    const title = document.createElement("h4"); title.textContent = recipe.equipped ? `${recipe.equipped.name} +${recipe.equipped.level}` : recipe.name; card.append(title);
+    const info = document.createElement("p"); info.textContent = recipe.cost ? `Coût : ${Object.entries(recipe.cost).map(([k,v]) => `${v} ${k}`).join(", ")}` : "Amélioration maximale +10 atteinte."; card.append(info);
+    const bonus = document.createElement("p"); bonus.textContent = `Bonus : +${recipe.equipped?.hp ?? recipe.hp} PV, +${recipe.equipped?.endurance ?? recipe.endurance} endurance.`; card.append(bonus);
+    const adjective = document.createElement("p"); adjective.textContent = `À +10 : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
+    if (recipe.cost) { const craft = document.createElement("button"); craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
+    $("forge-catalogue").append(card);
+  }
   $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} gobelin(s) vivant(s) · rang D` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs?.length ? adventure.mobs : [{...adventure.mob, combat_id: "mob"}]).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
-  const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && me.cooldown_real_seconds <= 0 && me.can_attack);
+  const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
   const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => canAttack(target) || me.skills.some(skill => skillAllowed(me, skill, target, mob))) : [];
   $("combat-target").replaceChildren();
   for (const target of possibleTargets) {
@@ -380,7 +413,8 @@ function renderTutorial(adventure) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = !fighting || possibleTargets.length === 0;
   const selected = possibleTargets.find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.mobs.length ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  if (fighting) renderBattle(adventure, me);
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
     if (selected) for (const skill of me.skills.filter(s => skillAllowed(me, s, selected, mob))) {
@@ -390,6 +424,121 @@ function renderTutorial(adventure) {
     }
   }
 }
+function requestTravel(destination, name, zone) {
+  if (zone !== session.tutorial.world.current && !window.confirm(`Voulez-vous vous déplacer à ${name} ?`)) return;
+  return tutorialCommand("move", {destination});
+}
+function gridSight(map, source, target) {
+  let [x, y] = source;
+  const [tx, ty] = target;
+  const dx = Math.abs(tx - x), dy = Math.abs(ty - y), sx = x < tx ? 1 : -1, sy = y < ty ? 1 : -1;
+  let error = dx - dy;
+  while (x !== tx || y !== ty) {
+    const twice = error * 2;
+    if (twice > -dy) { error -= dy; x += sx; }
+    if (twice < dx) { error += dx; y += sy; }
+    if (map.cover.some(p => p[0] === x && p[1] === y)) return false;
+  }
+  return true;
+}
+function battleAllowed(adventure, player, target, range) {
+  if (!adventure?.battle) return false;
+  const source = adventure.battle.players[player]?.position;
+  const destination = adventure.mobs.find(m => m.combat_id === target)?.position || adventure.battle.players[target]?.position;
+  return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
+}
+function gridPath(map, source, destination) {
+  const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || map.cover.some(p => p[0] === x && p[1] === y);
+  if (blocked(...destination)) return null;
+  const key = p => p.join(",");
+  const queue = [source];
+  const parents = new Map([[key(source), null]]);
+  for (let index = 0; index < queue.length; index++) {
+    const node = queue[index];
+    if (key(node) === key(destination)) {
+      const result = [];
+      let point = node;
+      while (parents.get(key(point)) !== null) { result.unshift(point); point = parents.get(key(point)); }
+      return result;
+    }
+    for (const point of [[node[0] + 1, node[1]], [node[0] - 1, node[1]], [node[0], node[1] + 1], [node[0], node[1] - 1]]) {
+      if (!blocked(...point) && !parents.has(key(point))) { parents.set(key(point), node); queue.push(point); }
+    }
+  }
+  return null;
+}
+function renderBattle(adventure, me) {
+  const battle = adventure.battle, map = battle.map;
+  const unit = battle.players[me.id];
+  const disabled = busy || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0;
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);
+  svg.setAttribute("class", "battle-map");
+  svg.setAttribute("role", "group");
+  svg.setAttribute("aria-label", map.name);
+  const element = (tag, attrs, text = "") => {
+    const node = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
+    node.textContent = text;
+    return node;
+  };
+  for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+    const cover = map.cover.some(p => p[0] === x && p[1] === y);
+    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
+    const move = () => {
+      if (disabled) return;
+      const path = gridPath(map, unit.position, [x, y]);
+      if (!path?.length) return message("Cette case est occupée par une couverture ou correspond à votre position.");
+      tutorialCommand("battle_move", {x, y, path});
+    };
+    cell.addEventListener("click", move);
+    cell.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } });
+    svg.append(cell);
+  }
+  for (const step of unit.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
+  const draw = (id, position, label, className) => {
+    const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
+    group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
+    group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
+    if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
+    group.addEventListener("click", () => { focusedMob = id; combatTarget = id; renderTutorial(session.tutorial); });
+    svg.append(group);
+  };
+  for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
+  for (const mob of adventure.mobs) draw(mob.combat_id, mob.position, mob.combat_id === "mob" ? "G1" : `G${mob.combat_id.split("-")[1]}`, "enemy-unit");
+  for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
+  $("world-map").replaceChildren(svg);
+  $("mob-cards").replaceChildren();
+  for (const mob of adventure.mobs) {
+    const card = document.createElement("button"); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
+    const title = document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
+    const bar = document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
+    card.append(title, bar);
+    card.addEventListener("click", () => { focusedMob = mob.combat_id; combatTarget = mob.combat_id; renderTutorial(session.tutorial); });
+    $("mob-cards").append(card);
+  }
+  paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
+  const table = document.createElement("table");
+  for (const intent of battle.intents) {
+    const row = document.createElement("tr");
+    for (const text of [intent.name, intent.action, intent.remaining_seconds > 0 && /Entaille|Appel/.test(intent.action) ? `${intent.remaining_seconds.toFixed(1)} s` : ""]) { const cell = document.createElement("td"); cell.textContent = text; row.append(cell); }
+    table.append(row);
+  }
+  $("enemy-intents").replaceChildren(table);
+  $("tactical-actions").replaceChildren();
+  const hide = document.createElement("button"); hide.textContent = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture";
+  hide.disabled = disabled || unit.hidden || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
+  hide.addEventListener("click", () => tutorialCommand("hide")); $("tactical-actions").append(hide);
+  $("corpse-actions").replaceChildren();
+  for (const corpse of battle.corpses) {
+    const button = document.createElement("button"); button.textContent = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
+    button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
+    button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
+  }
+  if (!adventure.mobs.length) { const leave = document.createElement("button"); leave.textContent = "Quitter le champ de bataille"; leave.disabled = disabled; leave.addEventListener("click", () => tutorialCommand("leave_battle")); $("tactical-actions").append(leave); }
+}
+
 async function refresh() {
   if (!token) {
     $("connection").textContent = "Prêt · créez votre personnage";
@@ -510,3 +659,5 @@ const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invitation").hidden = false; }
 setInterval(refresh, 500);
 refresh();
+
+for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });

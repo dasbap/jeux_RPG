@@ -1,11 +1,12 @@
 from copy import deepcopy
+from functools import lru_cache
 
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters
+from . import world, encounters, progression, forge, tactics
 
 
 STEPS = {
@@ -21,7 +22,7 @@ STEPS = {
 
 
 def create_character(player):
-    return Character.create(player["class_name"], player["id"], player["name"])
+    return progression.configure(Character.create(player["class_name"], player["id"], player["name"]))
 
 
 def pack(character):
@@ -46,11 +47,19 @@ def pack(character):
     }
 
 
+@lru_cache(maxsize=128)
+def blueprint(class_name, level):
+    character = progression.configure(Character.create(class_name, "blueprint", "Modèle"))
+    if level > 1:
+        character.gain_exp(sum(progression.required(value) for value in range(1, level)))
+    return character
+
+
 def unpack(data, master=None):
     if master is None:
-        character = Character.create(data["class_name"], data["id"], data["name"])
-        if data["level"] > 1:
-            character.gain_exp(sum(level * 100 for level in range(1, data["level"])))
+        character = deepcopy(blueprint(data["class_name"], data["level"]))
+        character.user_id = data["id"]
+        character.name = data["name"]
     else:
         character = Character.create(data["class_name"], master=master, name=data["name"])
         Invocation.all_invocation.remove(character)
@@ -78,7 +87,7 @@ def unpack(data, master=None):
             getattr(character.get_stat(stat.__name__), "buffs" if value["group"] == "buff" else "debuffs").append(effect)
     for value in data["invocations"]:
         character.invocations.add_invocation(unpack(value, character))
-    return character
+    return progression.configure(character)
 
 
 def recover(character):
@@ -98,7 +107,7 @@ def new_party(players):
 
 def npc(now):
     stay = 8 * 3600
-    crossing = next(r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume") / 5 * 3600
+    crossing = next(r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume") / 6 * 3600
     phase = now % (2 * (stay + crossing))
     location = "Rosée" if phase < stay else "Brume" if stay + crossing <= phase < 2 * stay + crossing else None
     return {"name": "Léon, marchand itinérant", "location": location, "travelling": location is None}
@@ -125,14 +134,16 @@ def can_target(actor, skill, target, mob):
 def view(party, me, now):
     party = deepcopy(party)
     migrate(party, now)
+    progression.resources(party, now)
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
-    result["moving"] = bool(transit and not party["mobs"])
-    result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / 20 if transit else 0
+    result["moving"] = bool(transit and not party["battle"])
+    result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / progression.RATIO if transit else 0
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
+    result["battle"] = tactics.view(party, now)
     result["players"] = []
     characters = {key: unpack(value) for key, value in party["characters"].items()}
     enemies = {m["combat_id"]: unpack(m) for m in party.get("mobs", [])}
@@ -142,22 +153,28 @@ def view(party, me, now):
     targets = {**characters, **enemies}
     for player_id, data in party["characters"].items():
         character = characters[player_id]
+        for name, skill in character.skills.items():
+            skill.current_cooldown = max(0, (party["skill_ready"].get(player_id, {}).get(name, 0) - now) / progression.RATIO)
         actionable = bool(mob and character.is_alive() and not character.is_stunned() and party["ready"][player_id] <= now)
         result["players"].append({"id": player_id, "name": character.name, "class_name": character.char_class,
-                                  "level": character.level, "exp": character.exp, "next_level_exp": character.level * 100,
+                                  "level": character.level, "exp": character.exp, "next_level_exp": progression.required(character.level),
                                   "hp": character.hp.current_value, "max_hp": character.hp.value,
                                   "stats": {key: getattr(character, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
                                   "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
                                   "can_attack": actionable,
                                   "energies": data["energies"], "inventory": party["inventory"][player_id],
-                                  "equipment": party["equipment"].get(player_id),
-                                  "cooldown_real_seconds": max(0, party["ready"][player_id] - now) / 20,
+                                  "equipment": " · ".join(f"{v['name']} +{v['level']}" for v in party["equipment"].get(player_id, {}).values()) or None,
+                                  "gear": list(party["equipment"].get(player_id, {}).values()),
+                                  "forge": forge.catalogue(party, player_id),
+                                  "attack_range": progression.attack_range(character),
+                                  "cooldown_real_seconds": max(0, party["ready"][player_id] - now) / progression.RATIO,
                                   "skills": [{"name": s.name, "description": s.description, "type": s.skill_type.name,
+                                              "range": progression.attack_range(character, s),
                                               "cost": s.energie_cost, "energy": s.energie_target.__name__,
-                                              "cooldown": s.current_cooldown,
+                                              "cooldown": max(0, party["skill_ready"].get(player_id, {}).get(s.name, 0) - now) / progression.RATIO,
                                               "can_target_others": s.can_target_others,
-                                              "targets": [key for key, target in targets.items() if actionable and can_target(character, s, target, target if key in enemies else mob)],
-                                              "available": s.is_ready() and s.can_afford(character)}
+                                              "targets": [key for key, target in targets.items() if actionable and can_target(character, s, target, target if key in enemies else mob) and tactics.allowed(party, player_id, key, progression.attack_range(character, s))],
+                                              "available": party["skill_ready"].get(player_id, {}).get(s.name, 0) <= now and s.can_afford(character)}
                                              for s in character.skills.values()],
                                   "upcoming_skills": [{"level": int(level.split()[1]), "name": s.name}
                                                       for level, skills in character.class_skills_dict.items()
@@ -170,143 +187,95 @@ def view(party, me, now):
     return result
 
 
-def execute_one(party, player_id, action, params, now, error):
+def execute_one(party, player_id, action, params, now, error, random):
     characters = {key: unpack(value) for key, value in party["characters"].items()}
     actor = characters[player_id]
-    actor.drop_xp = lambda killer: ""
-    step = party["step"]
     messages = []
-    finished = False
-    if action in ("strike", "skill", "rest"):
-        if not actor.is_alive():
-            raise error("defeated", "Votre personnage est à terre. Un allié peut terminer le combat.", 409)
-        if party["ready"][player_id] > now:
-            raise error("cooldown", "Votre prochaine action n'est pas encore disponible.", 409)
-        mob = unpack(party["mob"]) if party["mob"] else None
-        if action != "rest" and mob is None:
-            raise error("not_fighting", "Commencez un combat avant d'utiliser une attaque ou une compétence.", 409)
-        if mob:
-            mob.drop_xp = lambda killer: ""
-        for character in characters.values():
-            for invocation in character.invocations.get_all():
-                invocation.drop_xp = lambda killer: ""
-        if actor.is_stunned() and action != "rest":
-            raise error("stunned", "Votre personnage est étourdi.", 409)
+    if action in ("strike", "skill"):
+        tactics.ready(party, player_id, now, error)
+        enemies = {m["combat_id"]: unpack(m) for m in party["mobs"]}
+        for target in [*characters.values(), *enemies.values()]:
+            target.drop_xp = lambda killer: ""
+        target_id = params["target"]
+        if not isinstance(target_id, str):
+            raise error("invalid_target", "Cible invalide.")
+        target = enemies.get(target_id) or characters.get(target_id)
+        mob = target if target_id in enemies else next(iter(enemies.values()), None)
+        if target is None:
+            raise error("invalid_target", "Cible absente de ce combat.")
         if action == "strike":
-            if params["target"] != "mob" or not mob.is_alive():
-                raise error("invalid_target", "L'attaque simple doit viser un ennemi vivant de ce combat.")
-            mob.lose_hp(actor, max(4, actor.force.current_value + 3))
+            if target_id not in enemies:
+                raise error("invalid_target", "L'attaque simple doit viser un ennemi.")
+            if not tactics.allowed(party, player_id, target_id, progression.attack_range(actor)):
+                raise error("out_of_range", "La cible est hors de portée ou masquée par une couverture.", 409)
+            target.lose_hp(actor, progression.simple_damage(actor))
             messages.append(f"{actor.name} porte une attaque simple.")
-        elif action == "skill":
+        else:
             skill = actor.skills.get(params["skill_name"]) if isinstance(params["skill_name"], str) else None
             if skill is None:
-                raise error("unknown_skill", "Cette compétence n'est pas acquise par votre classe et votre niveau.")
-            target_id = params["target"]
-            if not isinstance(target_id, str):
-                raise error("invalid_target", "Cible invalide.")
-            if skill.skill_type in (SkillType.DAMAGE, SkillType.DEBUFF):
-                target = mob if target_id == "mob" else None
-            elif skill.skill_type == SkillType.INVOCATION:
-                target = actor if target_id == player_id else None
-            else:
-                target = characters.get(target_id)
-            if target is None:
-                raise error("invalid_target", "Cette compétence ne peut pas viser cette cible.")
+                raise error("unknown_skill", "Compétence non acquise.")
+            skill.current_cooldown = max(0, (party["skill_ready"].get(player_id, {}).get(skill.name, 0) - now) / progression.RATIO)
             if not skill.is_ready() or not skill.can_afford(actor):
-                raise error("skill_unavailable", "Compétence indisponible : énergie ou délai insuffisant.", 409)
+                raise error("skill_unavailable", "Énergie ou délai insuffisant.", 409)
             if not can_target(actor, skill, target, mob):
-                raise error("invalid_target", "Aucune action utile de cette compétence n'est possible sur cette cible.")
+                raise error("invalid_target", "Aucune action utile sur cette cible.")
+            if not tactics.allowed(party, player_id, target_id, progression.attack_range(actor, skill)):
+                raise error("out_of_range", "La cible est hors de portée ou masquée.", 409)
+            progression.scale_skill(actor, skill)
             try:
-                success, message = actor.use_skill(skill.name, target)
+                success, _ = actor.use_skill(skill.name, target)
             finally:
                 for invocation in list(Invocation.all_invocation):
                     if invocation.master is actor:
                         Invocation.all_invocation.remove(invocation)
             if not success:
-                raise error("skill_unavailable", "Compétence indisponible : vérifiez l'énergie, le délai et la cible.", 409)
+                raise error("skill_unavailable", "La compétence ne peut pas être utilisée.", 409)
+            party["skill_ready"].setdefault(player_id, {})[skill.name] = now + skill.cooldown * progression.RATIO
             messages.append(f"{actor.name} utilise {skill.name}.")
-        else:
-            if mob:
-                actor.rest()
-                messages.append(f"{actor.name} récupère de l'énergie.")
-            else:
-                recover(actor)
-                messages.append(f"{actor.name} se repose et récupère ses points de vie et son énergie.")
-        if mob:
+            party["effect_at"][target_id] = now + progression.ACTION_SECONDS * progression.RATIO
+        if target_id in enemies:
             for invocation in actor.invocations.get_all():
-                if invocation.is_alive() and mob.is_alive():
-                    invocation.attack(mob)
-            if mob.is_alive():
-                mob._update_status()
-                party["mob"] = pack(mob)
+                invocation.drop_xp = lambda killer: ""
+                if invocation.is_alive() and target.is_alive():
+                    invocation.attack(target)
+        party["characters"] = {key: pack(c) for key, c in characters.items()}
+        survivors = []
+        defeated = []
+        for data in party["mobs"]:
+            enemy = enemies[data["combat_id"]]
+            data.update(pack(enemy))
+            if data["combat_id"] == target_id:
+                tactics.damaged(party, data, player_id, now)
+            if enemy.is_alive():
+                survivors.append(data)
             else:
-                party["mob"] = None
-                reward = 0 if party.get("training") else world.GOBLIN["xp_first"] if step == "first_fight" else world.GOBLIN["xp_hunt"]
-                for key, character in characters.items():
-                    if reward:
-                        character.gain_exp(reward)
-                        inventory = party["inventory"][key]
-                        for item, quantity in world.GOBLIN["loot"].items():
-                            inventory[item] = inventory.get(item, 0) + quantity
-                    if len(party.get("mobs", [])) <= 1:
-                        recover(character)
-                if step == "first_fight":
-                    party["step"] = "road"
-                elif not party.get("training") and party["quest"] == "active" and world.zone_of(party.get("position", "lisiere")) == "lisiere":
-                    party["kills"] = min(3, party["kills"] + 1)
-                messages.append(f"Gobelin vaincu : chaque aventurier reçoit {reward} XP, une peau et un croc." if reward else "Entraînement terminé : vous avez essayé vos compétences sans récompense supplémentaire.")
-            if action != "rest":
-                actor.rest()
-                if action == "skill" and party["mob"]:
-                    skill.current_cooldown = skill.cooldown
-            actor._update_status()
-            if not any(c.is_alive() for c in characters.values()):
-                party["mob"] = None
-                if step == "first_fight":
-                    party["step"] = "clearing"
-                for character in characters.values():
-                    recover(character)
-                messages.append("Le groupe est secouru. Reprenez le combat sans perdre votre progression.")
-        party["ready"][player_id] = now + 60 if mob else now
-    elif action == "talk":
-        if params["npc"] != "mira" or party["mob"]:
-            raise error("invalid_npc", "Ce PNJ n'est pas accessible ici.", 409)
-        if step == "village":
-            party["step"] = "hunt"
-            party["quest"] = "active"
-            messages.append("Mira : battez trois gobelins de la lisière. Gardez leurs peaux et leurs crocs pour la forge.")
-        elif step == "hunt" and party["kills"] == 3:
-            party["step"] = "craft"
-            party["quest"] = "completed"
-            for character in characters.values():
+                defeated.append(data)
+        party["mobs"] = survivors
+        sync_mobs(party)
+        for data in defeated:
+            tactics.defeated(party, data, now, random, messages)
+        party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
+        return messages, False
+    if action == "talk":
+        if party["battle"] or params["npc"] != "mira":
+            raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
+        if party["step"] == "village":
+            party.update(step="hunt", quest="active")
+            messages.append("Mira : battez trois gobelins, puis dépecez les corps pour récupérer les matériaux de la forge.")
+        elif party["step"] == "hunt" and party["kills"] >= 3:
+            party.update(step="craft", quest="completed")
+            for key, character in characters.items():
                 character.gain_exp(300)
-                recover(character)
-            messages.append("Mira : merci ! Chaque aventurier reçoit 300 XP. Rendez-vous à la forge pour fabriquer votre veste.")
+                party["characters"][key] = pack(character)
+            messages.append("Mira : merci ! Chaque aventurier reçoit 300 XP. La forge est désormais ouverte.")
         else:
-            raise error("quest_incomplete", "Mira attend la défaite de trois gobelins.", 409)
-    elif action == "craft":
-        if step != "craft" or params["recipe"] != "veste" or party["mob"]:
-            raise error("invalid_recipe", "Cette recette n'est pas disponible ici.", 409)
-        inventory = party["inventory"][player_id]
-        if player_id in party["equipment"]:
-            raise error("already_crafted", "Votre veste est déjà fabriquée.", 409)
-        if inventory.get("peau", 0) < 2 or inventory.get("croc", 0) < 3:
-            raise error("missing_materials", "Il faut deux peaux et trois crocs.", 409)
-        inventory["peau"] -= 2
-        inventory["croc"] -= 3
-        party["equipment"][player_id] = "Veste de la lisière · +10 PV, +3 endurance"
-        actor.hp.value += 10
-        actor.endurance.value += 3
-        actor.endurance.current_value += 3
-        recover(actor)
-        messages.append(f"{actor.name} fabrique et équipe sa veste de la lisière.")
-        if len(party["equipment"]) == len(characters):
-            party["step"] = "travel"
-    else:
-        raise error("invalid_command", "Action de tutoriel inconnue.")
-    party["characters"] = {key: pack(character) for key, character in characters.items()}
-    world.record(party)
-    return messages, finished
+            raise error("quest_incomplete", "Mira attend trois gobelins vaincus.", 409)
+        return messages, False
+    if action == "rest" and not party["battle"]:
+        actor.hp.current_value = actor.hp.value
+        party["characters"][player_id] = pack(actor)
+        return [f"{actor.name} se repose. Son énergie se régénère avec le temps."], False
+    raise error("invalid_command", "Action inconnue.")
 
 
 def migrate(party, now):
@@ -316,15 +285,25 @@ def migrate(party, now):
     party.setdefault("position", world.CURRENT[party["step"]])
     party.setdefault("journey", [])
     party.setdefault("transit", None)
+    party.setdefault("battle", None)
+    party.setdefault("resource_at", now)
+    party.setdefault("skill_ready", {})
+    party.setdefault("effect_at", {})
+    forge.migrate(party)
     if "mobs" not in party or party["mob"] and not party["mobs"]:
         party["mobs"] = [{**party["mob"], "combat_id": "mob", "next_attack": now + 40}] if party["mob"] else []
+    if party.get("rules_version", 0) < 8:
+        party["ready"] = {key: min(value, now + 3.6) for key, value in party["ready"].items()}
+        party["rules_version"] = 8
+        if party["mobs"] and not party["battle"]:
+            tactics.begin(party, now, "explore")
 
 
 def sync_mobs(party):
     party["mob"] = party["mobs"][0] if party["mobs"] else None
 
 
-def spawn(party, now, random, messages):
+def spawn(party, now, random, messages, origin="travel"):
     zone = world.zone_of(party["position"])
     level = min(c["level"] for c in party["characters"].values())
     count = encounters.group_size("D", level, (4 if party["position"] == "rosee_brume" else world.LEVELS[zone]), random)
@@ -333,6 +312,7 @@ def spawn(party, now, random, messages):
         return
     party["encounter_number"] = party.get("encounter_number", 0) + 1
     party["combat_size"] = count
+    party["seen_spawnpoints"] = sorted(set(party.get("seen_spawnpoints", [])) | {party["position"]})
     first = party["step"] == "clearing"
     party["training"] = party["position"] == "training"
     party["combat_step"] = "first_fight" if first else party["step"]
@@ -344,7 +324,8 @@ def spawn(party, now, random, messages):
         mob.hp.value = world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]
         mob.hp.current_value = mob.hp.value
         party["mobs"].append({**pack(mob), "combat_id": "mob" if index == 0 else f"mob-{index + 1}",
-                              "rank": "D", "next_attack": now + random() * 40})
+                              "rank": "D", "next_attack": now + random() * 6})
+    tactics.begin(party, now, origin)
     sync_mobs(party)
     messages.append(f"Vous rencontrez {count} gobelin(s) de rang D.")
 
@@ -363,7 +344,7 @@ def arrive(party, destination, messages):
 
 
 def continue_journey(party, now, random, messages):
-    if party["mobs"]:
+    if party["battle"] or party["mobs"]:
         return
     transit = party["transit"]
     if transit:
@@ -386,7 +367,7 @@ def continue_journey(party, now, random, messages):
                 arrive(party, transit["destination"], messages)
                 party["transit"] = None
             elif transit["remaining"] > 0:
-                transit["segment"] = min(180, transit["remaining"])
+                transit["segment"] = min(150, transit["remaining"])
                 transit["started_at"] = now
                 transit["ready_at"] = now + transit["segment"]
             if party["mobs"] or party["transit"]:
@@ -395,20 +376,22 @@ def continue_journey(party, now, random, messages):
         destination = party["journey"].pop(0)
         source = party["position"]
         duration = world.walking_seconds(source, destination)
+        first_segment = min(150, duration * (.15 + .7 * random()))
         dangerous = source in world.ROAD_POINTS or destination in world.ROAD_POINTS or world.hazard(destination)
         if destination in world.ROAD_POINTS:
             party["position"] = destination
         party["transit"] = {"destination": destination, "remaining": duration,
-                            "started_at": now, "ready_at": now + min(180, duration),
-                            "segment": min(180, duration), "hazard": dangerous}
+                            "started_at": now, "ready_at": now + first_segment,
+                            "segment": first_segment, "hazard": dangerous}
         messages.append(f"Vous partez vers {world.point_name(destination)}.")
 
 
 def execute(party, player_id, action, params, now, error, random):
     migrate(party, now)
+    progression.resources(party, now)
     messages = []
     if action in ("travel", "move"):
-        if party["mobs"] or party["mob"]:
+        if party["battle"] or party["mobs"] or party["mob"]:
             raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
         if party["transit"] or party["journey"]:
             raise error("already_moving", "Votre déplacement est déjà en cours.", 409)
@@ -420,12 +403,19 @@ def execute(party, player_id, action, params, now, error, random):
         party["journey"] = path
         continue_journey(party, now, random, messages)
         return messages, party["step"] == "complete"
+    if action in ("battle_move", "hide", "harvest", "leave_battle"):
+        messages = tactics.execute(party, player_id, action, params, now, error)
+        if action == "leave_battle":
+            continue_journey(party, now, random, messages)
+        return messages, party["step"] == "complete"
+    if action in ("craft", "upgrade"):
+        return forge.execute(party, player_id, action, params["recipe"], error)
     position = party["position"]
-    if party["transit"] and not party["mobs"]:
+    if party["transit"] and not party["battle"]:
         raise error("moving", "Attendez votre arrivée pour interagir.", 409)
     if action == "talk" and params["npc"] == "leon":
         merchant = npc(now)
-        if party["mobs"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
+        if party["battle"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
             raise error("invalid_npc", "Léon n'est pas présent dans votre zone.", 409)
         return ["Léon : je séjourne huit heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
     if action == "craft" and party["quest"] != "completed":
@@ -433,69 +423,25 @@ def execute(party, player_id, action, params, now, error, random):
     if action == "talk" and position != "mira" or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":
-        if party["mobs"] or party["step"] == "complete" or position not in ("clearing", "clearing_fight", "hunt", "lisiere", "training"):
+        if party["battle"] or party["mobs"] or position not in ("clearing", "clearing_fight", "hunt", "lisiere", "training"):
             raise error("wrong_location", "Aucune exploration possible à votre position.", 409)
-        spawn(party, now, random, messages)
+        spawn(party, now, random, messages, origin="explore")
         world.record(party)
         return messages, False
-    if action in ("strike", "skill", "rest") and party["mobs"]:
-        target_id = params.get("target", "mob")
-        if not isinstance(target_id, str):
-            raise error("invalid_target", "Cible invalide.")
-        index = next((i for i, m in enumerate(party["mobs"]) if m["combat_id"] == target_id), 0)
-        if action == "strike" or action == "skill" and target_id not in party["characters"]:
-            if not any(m["combat_id"] == target_id for m in party["mobs"]):
-                raise error("invalid_target", "Cet ennemi n'est pas vivant dans ce combat.")
-        selected = party["mobs"][index]
-        party["mob"] = selected
-        mapped = {**params, "target": "mob" if target_id == selected["combat_id"] else target_id}
-        combat_step = party["combat_step"]
-        old_step = party["step"]
-        party["step"] = combat_step
-        messages, _ = execute_one(party, player_id, action, mapped, now, error)
-        if party["mob"]:
-            party["mobs"][index] = {**party["mob"], "combat_id": selected["combat_id"], "rank": "D", "next_attack": selected["next_attack"]}
-        else:
-            party["mobs"].pop(index)
-        if party["mobs"]:
-            party["step"] = old_step
-        sync_mobs(party)
-        if not party["mobs"]:
-            continue_journey(party, now, random, messages)
-        return messages, party["step"] == "complete"
-    return execute_one(party, player_id, action, params, now, error)
+    return execute_one(party, player_id, action, params, now, error, random)
 
 
 def advance(party, now, random):
     migrate(party, now)
-    messages = []
-    characters = {key: unpack(value) for key, value in party["characters"].items()}
-    for data in party["mobs"]:
-        if data["next_attack"] > now:
-            continue
-        mob = unpack(data)
-        alive = [c for c in characters.values() if c.is_alive()]
-        if not alive:
-            break
-        target = alive[min(len(alive) - 1, int(random() * len(alive)))]
-        target.drop_xp = lambda killer: ""
-        if not mob.is_stunned():
-            target.lose_hp(mob, 3)
-            messages.append(f"{mob.name} attaque {target.name}.")
-        mob._update_status()
-        data.update(pack(mob))
-        data["next_attack"] = now + 60 + random() * 40
-    if party["mobs"] and not any(c.is_alive() for c in characters.values()):
-        party["mobs"] = []
-        party["journey"] = []
-        party["transit"] = None
-        if party["step"] == "first_fight":
-            party["step"] = "clearing"
-        party["position"] = "clearing" if party["step"] == "clearing" else "rosee"
-        for character in characters.values():
-            recover(character)
-        messages.append("Le groupe est secouru. Le déplacement est interrompu.")
-    party["characters"] = {key: pack(value) for key, value in characters.items()}
+    progression.resources(party, now)
+    messages = tactics.advance(party, now, random)
+    timed_units = [*party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
+    for key, data in timed_units:
+        if data["effects"] and party["effect_at"].get(key, now + 1) <= now:
+            character = unpack(data)
+            character._update_status()
+            data.update(pack(character))
+            party["effect_at"][key] = now + progression.ACTION_SECONDS * progression.RATIO
     sync_mobs(party)
     continue_journey(party, now, random, messages)
     return messages

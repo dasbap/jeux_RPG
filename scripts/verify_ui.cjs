@@ -22,7 +22,7 @@ async function request(dom, path, body) {
   return data;
 }
 async function command(dom, action, params = {}) {
-  for (let retry = 0; retry < 3; retry++) {
+  for (let retry = 0; retry < 15; retry++) {
     const state = await request(dom, "/api/state");
     try {
       return await request(dom, "/api/commands", {request_id: randomUUID(), action, params: {...(action === "tutorial" || action === "create" || action === "join" ? {} : {session_id: state.session.id, revision: state.session.revision}), ...params}});
@@ -38,7 +38,8 @@ async function client(html, app, name, className) {
   dom.window.fetch = (url, options) => fetch(new URL(url, origin), options);
   dom.window.AbortSignal = AbortSignal;
   dom.window.crypto.randomUUID = randomUUID;
-  dom.window.eval(app);
+  dom.window.confirm = () => true;
+  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel};");
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
@@ -46,16 +47,46 @@ async function client(html, app, name, className) {
   return dom;
 }
 async function finishCombat(dom) {
-  for (let attempt = 0; attempt < 600; attempt++) {
+  for (let attempt = 0; attempt < 1200; attempt++) {
     const state = await request(dom, "/api/state");
     const adventure = state.session.tutorial;
-    if (!adventure.mob) {
-      if (adventure.moving || adventure.transit || adventure.journey.length) { await pause(350); continue; }
+    const me = adventure.players.find(p => p.id === state.session.me);
+    if (!adventure.battle) {
+      if (adventure.moving || adventure.transit || adventure.journey.length) { await pause(50); continue; }
       return;
     }
-    const me = adventure.players.find(p => p.id === state.session.me);
-    if (me.hp > 0 && me.can_attack) await command(dom, "strike", {target: adventure.mobs[0].combat_id});
-    else await pause(350);
+    if (me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0) { await pause(50); continue; }
+    for (const ally of clients.filter(client => client !== dom && !client.window.closed)) {
+      const supportState = await request(ally, "/api/state");
+      if (supportState.session?.id !== state.session.id) continue;
+      const support = supportState.session.tutorial.players.find(p => p.id === supportState.session.me);
+      const heal = support.skills.find(s => s.type === "HEAL" && s.available && s.targets.includes(me.id));
+      if (me.hp < me.max_hp && heal) {
+        await command(ally, "skill", {skill_name: heal.name, target: me.id});
+        break;
+      }
+    }
+    const unit = adventure.battle.players[me.id];
+    if (unit.route.length) { await pause(50); continue; }
+    const enemy = adventure.mobs.find(m => dom.window.testFns.battleAllowed(adventure, me.id, m.combat_id, me.attack_range));
+    if (enemy) {
+      const skill = me.skills.find(s => s.available && ["DAMAGE", "DEBUFF"].includes(s.type) && s.targets.includes(enemy.combat_id));
+      await command(dom, skill ? "skill" : "strike", skill ? {skill_name: skill.name, target: enemy.combat_id} : {target: enemy.combat_id});
+    } else if (adventure.mobs.length) {
+      const target = adventure.mobs[0].position;
+      const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, target);
+      if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
+      else await pause(50);
+    } else {
+      const corpse = adventure.battle.corpses.find(c => !c.harvested.length);
+      if (!corpse) { await command(dom, "leave_battle"); continue; }
+      if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) <= 1.5) await command(dom, "harvest", {target: corpse.id});
+      else {
+        const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, corpse.position);
+        await command(dom, "battle_move", {x: corpse.position[0], y: corpse.position[1], path});
+      }
+    }
+    await pause(30);
   }
   throw new Error("Combat bloqué");
 }
@@ -70,15 +101,20 @@ async function main() {
     const group = await client(html, app, "Groupe", "Knight");
     await command(group, "tutorial");
     await command(group, "explore");
-    await waitFor(() => el(group, "combat-target").options.length === 3, "trois ennemis simultanés");
+    await waitFor(() => el(group, "mob-cards").children.length === 3, "trois ennemis simultanés");
     assert(el(group, "mob-name").textContent.includes("3 / 3"));
-    const before = (await request(group, "/api/state")).session.tutorial.position;
-    el(group, "world-map").querySelector('[data-point="clearing_fight"]').dispatchEvent(new group.window.Event("click", {bubbles: true}));
-    await pause(200);
-    assert.equal((await request(group, "/api/state")).session.tutorial.position, before);
+    assert(el(group, "battle").classList.contains("combat-mode"));
+    assert.equal(el(group, "mob-cards").querySelectorAll("progress").length, 3);
+    assert.equal(el(group, "combat-target").options.length, 0);
+    el(group, "mob-cards").querySelector("button").click();
+    assert(el(group, "world-map").querySelector(".objective-ring"));
+    assert(el(group, "enemy-intents").textContent.includes("Patrouille"));
+    el(group, "world-map").querySelector('[data-cell="1,5"]').dispatchEvent(new group.window.Event("click", {bubbles: true}));
+    await waitFor(async () => (await request(group, "/api/state")).session.tutorial.battle.players[(await request(group, "/api/state")).session.me].position[1] === 5, "clic sur case de combat");
     await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
     group.window.close();
-    const first = await client(html, app, "Alice <script>", "Knight");
+    clients.splice(clients.indexOf(group), 1);
+    const first = await client(html, app, "Alice <script>", "Mage");
     const second = await client(html, app, "Bob", "Priest");
     assert.notEqual(first.window.sessionStorage.getItem("rpg-token"), second.window.sessionStorage.getItem("rpg-token"));
     assert.equal(el(first, "player-name").querySelector("script"), null);
@@ -91,6 +127,12 @@ async function main() {
     assert(el(first, "combat-view").closest(".zone-actions"));
     assert(el(first, "map-view").closest(".map-strip"));
     assert(!el(first, "quest-view").hidden);
+    assert(!el(first, "map-details").open);
+    const selected = el(first, "map-place").value;
+    el(first, "quest-actions").querySelector("button").click();
+    assert.equal(el(first, "map-place").value, selected);
+    assert(!el(first, "map-details").open);
+    assert(el(first, "world-map").querySelector(".objective-ring"));
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.equal(el(first, "combat-target").options.length, 0);
@@ -101,23 +143,31 @@ async function main() {
     explore.click();
     await waitFor(() => !el(first, "combat-view").hidden && !el(second, "combat-view").hidden, "combat");
     assert(!el(first, "map-view").hidden && !el(first, "quest-view").hidden);
-    assert.deepEqual([...el(first, "combat-target").options].map(o => o.value), ["mob"]);
-    const initial = (await request(first, "/api/state")).session.tutorial.players.reduce((sum, p) => sum + p.hp, 0);
-    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.players.reduce((sum, p) => sum + p.hp, 0) < initial, "attaque autonome sans action joueur");
+    assert(el(first, "battle").classList.contains("combat-mode"));
+    assert(el(first, "character-menu").hidden);
+    assert(el(first, "world-map").querySelector(".battle-map"));
     await finishCombat(first);
     await move(first, "rosee");
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");
+    let confirmation = "";
+    first.window.confirm = text => { confirmation = text; return false; };
+    await first.window.testFns.requestTravel("clearing", "Clairière", "clearing");
+    assert(confirmation.includes("Voulez-vous vous déplacer"));
+    assert.equal((await request(first, "/api/state")).session.tutorial.position, "rosee");
+    first.window.confirm = () => true;
     await assert.rejects(command(first, "talk", {npc: "mira"}), error => error.code === "wrong_location");
     el(first, "show-map").click();
     el(first, "map-place").value = "rosee";
     el(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
+    await waitFor(() => el(first, "world-map").querySelector('[data-point="mira"][aria-disabled="false"]'), "icône Mira");
     el(first, "world-map").querySelector("[data-point=\"mira\"]").dispatchEvent(new first.window.Event("click", {bubbles: true}));
     await waitFor(() => !el(first, "npc-view").hidden && !el(second, "npc-view").hidden, "déplacement point Mira");
     await command(first, "talk", {npc: "mira"});
+    await waitFor(() => el(first, "world-map").querySelector('[data-point="forge"][aria-disabled="false"]'), "icône Forge");
     el(first, "world-map").querySelector('[data-point="forge"]').dispatchEvent(new first.window.Event("click", {bubbles: true}));
     await waitFor(() => !el(first, "craft-view").hidden, "forge verrouillée");
     assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
-    assert.equal(el(first, "craft-actions").querySelectorAll("button").length, 0);
+    assert([...el(first, "forge-catalogue").querySelectorAll("button")].every(b => b.disabled));
     await move(first, "hunt");
     while ((await request(first, "/api/state")).session.tutorial.kills < 3) {
       await command(first, "explore");
@@ -127,6 +177,7 @@ async function main() {
     await command(first, "talk", {npc: "mira"});
     await move(first, "forge");
     await waitFor(() => !el(first, "craft-view").hidden && !el(second, "craft-view").hidden, "forge partagée");
+    assert.equal(el(first, "forge-catalogue").children.length, 6);
     await command(first, "craft", {recipe: "veste"});
     await command(second, "craft", {recipe: "veste"});
     await move(first, "brume");
@@ -138,7 +189,7 @@ async function main() {
     el(first, "show-map").click();
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.deepEqual(errors, []);
-    console.log("UI HTTP vérifiée : deux joueurs, trois panneaux, déplacement vers Mira, combat autonome, quête, craft et arrivée à Brume.");
+    console.log("UI HTTP vérifiée : deux joueurs, combat tactique, cases cliquables, PV et intentions, repère de quête, dépeçage, six recettes et tutoriel jusqu’à Brume.");
   } finally { clients.forEach(dom => dom.window.close()); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

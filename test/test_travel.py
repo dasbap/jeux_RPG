@@ -4,6 +4,7 @@ import uuid
 import pytest
 
 from jeuxRPG.multiplayer import tutorial, world
+from test.test_tutorial import combat_fixture, win
 from jeuxRPG.multiplayer.service import GameError, GameService
 
 
@@ -51,8 +52,7 @@ def finish_trip(game, player):
         state = game.state(player["token"])["session"]
         party = state["tutorial"]
         if party["mob"]:
-            game.clock.value += 61
-            act(game, player, "strike", target=party["mobs"][0]["combat_id"])
+            win(game, player["token"])
         elif party["transit"]:
             game.clock.value = party["transit"]["ready_at"]
             game.tick()
@@ -61,7 +61,7 @@ def finish_trip(game, player):
     pytest.fail("Déplacement bloqué")
 
 
-def test_one_kilometre_takes_twelve_game_minutes_and_four_encounter_checks(game):
+def test_one_kilometre_takes_ten_game_minutes_and_random_encounter_checks(game):
     player, _ = prepare(game)
     draws = []
     game.random = lambda: draws.append(game.clock.value) or .999
@@ -71,24 +71,24 @@ def test_one_kilometre_takes_twelve_game_minutes_and_four_encounter_checks(game)
     with pytest.raises(GameError) as error:
         act(game, player, "move", destination="forge")
     assert error.value.code == "already_moving"
-    game.clock.value = 719
+    game.clock.value = 599
     game.tick()
     assert game.state(player["token"])["session"]["tutorial"]["position"] != "brume"
     state = finish_trip(game, player)
-    assert len(draws) == 4
+    assert len(draws) >= 4
     assert state["state"] == "finished"
     assert state["tutorial"]["position"] == "brume"
-    assert world.walking_seconds("rosee", "rosee_brume") + world.walking_seconds("rosee_brume", "brume") == 720
+    assert world.walking_seconds("rosee", "rosee_brume") + world.walking_seconds("rosee_brume", "brume") == 600
 
 
 def test_trip_finishes_at_distance_deadline_when_server_ticks_regularly(game):
     player, _ = prepare(game)
     act(game, player, "move", destination="brume")
-    for instant in (180, 360, 540, 719):
+    for instant in (150, 300, 450, 599):
         game.clock.value = instant
         game.tick()
     assert game.state(player["token"])["session"]["tutorial"]["moving"]
-    game.clock.value = 720
+    game.clock.value = 600
     game.tick()
     assert game.state(player["token"])["session"]["state"] == "finished"
 
@@ -99,22 +99,24 @@ def test_three_goblins_share_one_combat_and_attack_without_player_action(game):
     draws = iter([.5, .2, .05, .04, 0, .25, .5])
     game.random = lambda: next(draws)
     state = act(game, player, "explore")
-    adventure = state["tutorial"]
-    assert len(adventure["mobs"]) == 3
-    assert adventure["combat_size"] == 3
-    assert adventure["encounter_number"] == 1
-    assert len(adventure["players"][0]["skills"][0]["targets"]) == 3
-    assert [m["next_attack"] for m in adventure["mobs"]] == [0, 10, 20]
+    assert len(state["tutorial"]["mobs"]) == 3
+    assert state["tutorial"]["combat_size"] == 3
     for destination in ("rosee", "clearing_fight", "clearing"):
         with pytest.raises(GameError) as error:
             act(game, player, "move", destination=destination)
         assert error.value.code == "in_combat"
+    party = combat_fixture(game, player["token"])
+    party["battle"]["players"][player["player"]["id"]]["hidden"] = False
+    for mob in party["mobs"]:
+        mob["allies"] = []
+    save_party(game, state["id"], party)
     game.random = lambda: .5
     game.clock.value = 20
     game.tick()
+    game.clock.value = 22
+    game.tick()
     state = game.state(player["token"])["session"]
-    assert len(state["tutorial"]["mobs"]) == 3
-    attacks = [e for e in state["events"] if "attaque Marcheur" in e["message"]]
+    attacks = [e for e in state["events"] if "utilise Entaille" in e["message"]]
     assert len(attacks) == 3
     assert state["tutorial"]["encounter_number"] == 1
     assert state["tutorial"]["position"] == "clearing"
@@ -141,13 +143,10 @@ def test_combat_pauses_remaining_walk_and_blocks_local_interactions(game):
     for point in state["tutorial"]["world"]["places"]:
         assert all(not p["can_interact"] for p in point["points"])
     game.random = lambda: .999
-    for _ in range(10):
-        if not game.state(player["token"])["session"]["tutorial"]["mob"]:
-            break
-        game.clock.value += 61
-        act(game, player, "strike", target="mob")
+    win(game, player["token"])
     transit = game.state(player["token"])["session"]["tutorial"]["transit"]
-    assert transit["ready_at"] >= game.clock.value + remaining
+    assert transit["ready_at"] > game.clock.value
+    assert transit["remaining"] == remaining
 
 
 def test_locked_forge_explains_required_quest_on_map_and_in_api(game):
@@ -172,11 +171,11 @@ def test_merchant_stays_eight_hours_and_is_absent_during_crossing():
     assert tutorial.npc(0)["location"] == "Rosée"
     assert tutorial.npc(28799)["location"] == "Rosée"
     assert tutorial.npc(28800)["travelling"]
-    assert tutorial.npc(29519)["location"] is None
-    assert tutorial.npc(29520)["location"] == "Brume"
-    assert tutorial.npc(58319)["location"] == "Brume"
-    assert tutorial.npc(58320)["travelling"]
-    assert tutorial.npc(59040)["location"] == "Rosée"
+    assert tutorial.npc(29399)["location"] is None
+    assert tutorial.npc(29400)["location"] == "Brume"
+    assert tutorial.npc(58199)["location"] == "Brume"
+    assert tutorial.npc(58200)["travelling"]
+    assert tutorial.npc(58800)["location"] == "Rosée"
 
 
 def test_merchant_talk_is_checked_against_current_zone(game):

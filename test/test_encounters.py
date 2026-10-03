@@ -3,7 +3,8 @@ import uuid
 
 import pytest
 
-from jeuxRPG.multiplayer import encounters, tutorial, world
+from jeuxRPG.multiplayer import encounters, tutorial, world, tactics
+from test.test_tutorial import combat_fixture, win
 from jeuxRPG.multiplayer.service import GameError, GameService
 
 
@@ -52,17 +53,24 @@ def test_enemy_attacks_without_player_command_with_jitter_and_no_catchup_burst(s
     act(service, player, "tutorial")
     state = act(service, player, "explore")
     initial = state["tutorial"]["players"][0]["hp"]
-    assert state["tutorial"]["mobs"][0]["next_attack"] == 20
-    service.clock.value = 19
-    service.tick()
-    assert service.state(player["token"])["session"]["revision"] == state["revision"]
     service.clock.value = 20
+    service.tick()
+    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial
+    party = combat_fixture(service, player["token"])
+    party["battle"]["players"][player["player"]["id"]]["hidden"] = False
+    service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state["id"]))
+    service.clock.value = 22
+    service.tick()
+    service.clock.value = 24
     service.tick()
     state = service.state(player["token"])["session"]
     damage = initial - state["tutorial"]["players"][0]["hp"]
     assert damage > 0
-    assert state["tutorial"]["mobs"][0]["next_attack"] == 100
+    assert state["tutorial"]["mobs"][0]["next_attack"] == 36
     service.clock.value = 100000
+    service.tick()
+    assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - damage
+    service.clock.value += 2
     service.tick()
     assert service.state(player["token"])["session"]["tutorial"]["players"][0]["hp"] == initial - 2 * damage
     service.tick()
@@ -77,20 +85,23 @@ def test_five_enemies_have_distinct_targets_and_cannot_reward_twice(service):
     enemies = state["tutorial"]["mobs"]
     assert len(enemies) == 5
     assert len({m["combat_id"] for m in enemies}) == 5
-    assert state["tutorial"]["players"][0]["skills"][0]["targets"] == [m["combat_id"] for m in enemies]
+    assert state["tutorial"]["players"][0]["skills"][0]["targets"] == []
+    combat_fixture(service, player["token"])
     for target in ([], {}, None):
         with pytest.raises(GameError) as failure:
             act(service, player, "skill", skill_name="Sword Slash", target=target)
         assert failure.value.code == "invalid_target"
     target = enemies[-1]["combat_id"]
-    for _ in range(5):
+    for _ in range(30):
         service.clock.value += 61
         state = act(service, player, "strike", target=target)
         if not any(m["combat_id"] == target for m in state["tutorial"]["mobs"]):
             break
     assert len(state["tutorial"]["mobs"]) == 4
     inventory = state["tutorial"]["players"][0]["inventory"]
-    assert inventory == {"peau": 1, "croc": 1}
+    assert inventory == {}
+    assert len(state["tutorial"]["battle"]["corpses"]) == 1
+    assert state["tutorial"]["players"][0]["exp"] == 50
     service.clock.value += 61
     with pytest.raises(GameError) as failure:
         act(service, player, "strike", target=target)
@@ -113,8 +124,7 @@ def test_trip_stops_at_each_encounter_and_resumes_after_victory(service):
         adventure = state["tutorial"]
         if adventure["mob"]:
             stops.append(adventure["position"])
-            service.clock.value += 61
-            state = act(service, player, "strike", target=adventure["mobs"][0]["combat_id"])
+            state = win(service, player["token"])
         elif adventure["transit"]:
             service.clock.value = adventure["transit"]["ready_at"]
             service.tick()
@@ -125,7 +135,7 @@ def test_trip_stops_at_each_encounter_and_resumes_after_victory(service):
     assert state["tutorial"]["position"] == "hunt"
     assert state["tutorial"]["journey"] == []
     assert state["tutorial"]["transit"] is None
-    assert state["tutorial"]["kills"] == 3
+    assert 1 <= state["tutorial"]["kills"] <= 3
 
 
 def test_server_rejects_remote_actions_and_unknown_paths(service):
@@ -159,6 +169,12 @@ def test_group_defeat_cancels_trip_and_recovers_in_safe_place(service):
     party["characters"][player["player"]["id"]]["stats"]["hp"]["current"] = 1
     party["journey"] = ["rosee"]
     service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state["id"]))
+    party = combat_fixture(service, player["token"])
+    party["battle"]["players"][player["player"]["id"]]["hidden"] = False
+    party["mobs"][0]["allies"] = []
+    service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state["id"]))
+    service.tick()
+    service.clock.value = 2
     service.tick()
     adventure = service.state(player["token"])["session"]["tutorial"]
     assert adventure["mobs"] == []

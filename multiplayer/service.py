@@ -29,9 +29,9 @@ def digest(value):
 
 class GameService:
     classes = ("Knight", "Mage", "Archer", "Priest", "Necromancien")
-    cooldown = 60.0
-    match_duration = 20 * 300.0
-    lobby_duration = 20 * 600.0
+    cooldown = 3.6
+    match_duration = 3 * 300.0
+    lobby_duration = 3 * 600.0
 
     def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
         self.random = random_source or secrets.SystemRandom().random
@@ -81,7 +81,16 @@ class GameService:
         self.db.execute("INSERT OR IGNORE INTO meta VALUES ('epoch_wall', ?)", (str(time.time()),))
         epoch = float(self.db.execute("SELECT value FROM meta WHERE key='epoch_wall'").fetchone()[0])
         checkpoint = self.db.execute("SELECT value FROM meta WHERE key='last_game'").fetchone()
-        self.clock = clock or GameClock(epoch, minimum_game=float(checkpoint[0]) if checkpoint else 0)
+        anchor_row = self.db.execute("SELECT value FROM meta WHERE key='epoch_game'").fetchone()
+        ratio_row = self.db.execute("SELECT value FROM meta WHERE key='clock_ratio'").fetchone()
+        anchor = float(anchor_row[0]) if anchor_row else 0
+        if checkpoint and (not ratio_row or float(ratio_row[0]) != GameClock.ratio):
+            epoch = time.time()
+            anchor = float(checkpoint[0])
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_wall', ?)", (str(epoch),))
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_game', ?)", (str(anchor),))
+        self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
+        self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
 
     def close(self):
         with self._lock:
@@ -98,7 +107,7 @@ class GameService:
                 messages = tutorial.advance(party, now, self.random)
                 if json.dumps(party, sort_keys=True) != before:
                     self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
-                    self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" else "running", row["session_id"]))
+                    self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", row["session_id"]))
                     for message in messages:
                         self._event(row["session_id"], now, message)
 
@@ -225,7 +234,12 @@ class GameService:
                    "travel": {"session_id", "revision", "destination"},
                    "move": {"session_id", "revision", "destination"},
                    "talk": {"session_id", "revision", "npc"},
-                   "craft": {"session_id", "revision", "recipe"}}
+                   "craft": {"session_id", "revision", "recipe"},
+                   "upgrade": {"session_id", "revision", "recipe"},
+                   "battle_move": {"session_id", "revision", "x", "y", "path"},
+                   "hide": {"session_id", "revision"},
+                   "harvest": {"session_id", "revision", "target"},
+                   "leave_battle": {"session_id", "revision"}}
         if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "revision" in params and (type(params["revision"]) is not int or params["revision"] < 0):
@@ -275,9 +289,9 @@ class GameService:
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
-        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft"):
+        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle"):
             session = self._session(player, params["session_id"])
-            if session["state"] != "running":
+            if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)
             if session["revision"] != params["revision"]:
                 raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
@@ -287,7 +301,7 @@ class GameService:
             party = json.loads(row[0])
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
-            self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if finished else "running", session["id"]))
+            self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", session["id"]))
             for message in messages:
                 self._event(session["id"], now, message)
             return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
@@ -332,7 +346,7 @@ class GameService:
                 if session["state"] != "lobby" or count != 2:
                     raise GameError("not_ready", "Deux joueurs doivent rejoindre le salon.", 409)
                 self.db.execute("UPDATE sessions SET state='running', deadline=?, revision=revision+1 WHERE id=?", (now + self.match_duration, session["id"]))
-                self._event(session["id"], now, "Le duel commence. Une attaque toutes les 3 secondes réelles.")
+                self._event(session["id"], now, "Le duel commence. Une action toutes les 1,2 seconde réelle.")
             elif action == "leave":
                 opponent = self.db.execute("SELECT player_id FROM members WHERE session_id=? AND player_id<>?", (session["id"], player_id)).fetchone()
                 winner = opponent[0] if session["state"] == "running" and opponent else None

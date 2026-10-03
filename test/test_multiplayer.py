@@ -22,7 +22,7 @@ class Clock:
         return self.value
 
     def advance(self, real_seconds):
-        self.value += real_seconds * 20
+        self.value += real_seconds * 3
 
 
 @pytest.fixture
@@ -55,8 +55,8 @@ def test_clock_ratio_without_wall_clock_drift():
     clock = GameClock(100, monotonic=lambda: source["mono"], wall=lambda: source["wall"])
     source["mono"] += 180
     source["wall"] -= 5000
-    assert clock.now() == 3600
-    assert clock.real_seconds(60) == 3
+    assert clock.now() == 540
+    assert clock.real_seconds(60) == 20
 
 
 def test_two_players_share_health_and_cooldown(game):
@@ -67,11 +67,11 @@ def test_two_players_share_health_and_cooldown(game):
     assert other["players"] == result["players"]
     assert next(p for p in other["players"] if p["id"] == other["me"])["hp"] < before
     me = next(p for p in result["players"] if p["id"] == result["me"])
-    assert me["cooldown_real_seconds"] == 3
-    game.clock.advance(2.99)
+    assert me["cooldown_real_seconds"] == 1.2
+    game.clock.advance(1.19)
     with pytest.raises(GameError, match="disponible"):
         command(game, first, "attack", session_id=room["id"], revision=result["revision"])
-    game.clock.advance(0.01)
+    game.clock.advance(0.011)
     command(game, first, "attack", session_id=room["id"], revision=result["revision"])
 
 
@@ -123,7 +123,7 @@ def test_session_and_receipt_survive_restart(tmp_path):
     first, second, room = duel(initial)
     result = initial.command(first, "persisted_attack", "attack", session_id=room["id"], revision=room["revision"])
     initial.close()
-    clock.advance(2)
+    clock.advance(.2)
     reopened = GameService(database, clock)
     try:
         restored = reopened.state(second, room["id"])
@@ -137,20 +137,20 @@ def test_session_and_receipt_survive_restart(tmp_path):
 
 def test_restart_counts_offline_time():
     clock = GameClock(100, monotonic=lambda: 50, wall=lambda: 280)
-    assert clock.now() == 3600
+    assert clock.now() == 540
 
 
 def test_restart_checkpoint_prevents_time_going_backwards():
-    clock = GameClock(100, monotonic=lambda: 50, wall=lambda: 80, minimum_game=3600)
-    assert clock.now() == 3600
+    clock = GameClock(100, monotonic=lambda: 50, wall=lambda: 80, minimum_game=540)
+    assert clock.now() == 540
 
 
 def test_persisted_time_cannot_be_rewound(game):
     game.clock.advance(180)
     token = player(game)
-    assert game.state(token)["game_time"] == 3600
+    assert game.state(token)["game_time"] == 540
     game.clock.value = 10
-    assert game.state(token)["game_time"] == 3600
+    assert game.state(token)["game_time"] == 540
 
 
 def test_ticker_expires_session_without_client_requests(game, http_server):
