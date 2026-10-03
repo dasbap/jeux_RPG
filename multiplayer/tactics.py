@@ -98,7 +98,7 @@ def sees(preset, mob, unit):
 def begin(party, now, origin):
     from . import world
     zone = "road" if party["position"] in world.ROAD_POINTS else world.zone_of(party["position"])
-    preset = PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
+    preset = PRESETS["field_" + party["field_map"]] if party.get("field_map") else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
     party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now}
@@ -433,7 +433,7 @@ def unalerted_allies(party, mob):
 
 def exit_cell(party):
     preset = PRESETS[party["battle"]["preset"]]
-    return [0, preset["height"] // 2]
+    return preset["exits"][0]["position"] if party.get("field_map") else [0, preset["height"] // 2]
 
 
 def leave_field(party):
@@ -450,6 +450,8 @@ def view(party, now, player=None):
         return None
     preset = PRESETS[battle["preset"]]
     result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"]), "exit": exit_cell(party)}
+    result.pop("arrivals", None)
+    result.pop("explored_positions", None)
     for key, unit in result["players"].items():
         unit["can_hide"] = can_hide(party, key)
         unit["detected"] = any(mob.get("target") == key for mob in party["mobs"])
@@ -542,6 +544,8 @@ def execute(party, player, action, params, now, error):
         corpse["harvested"].append(player)
         messages = [f"{actor.name} dépèce {corpse['name']} : " + ", ".join(f"{v} {k}" for k, v in corpse["loot"].items())]
     elif action == "leave_battle":
+        if party.get("field_map"):
+            raise error("use_gate", "Rejoignez une sortie de la carte pour changer de zone.", 409)
         if unit["position"] != exit_cell(party):
             raise error("not_at_exit", "Rejoignez la case Sortie au bord de la carte.", 409)
         return leave_field(party)
@@ -594,6 +598,10 @@ def defeated(party, mob, now, random, messages):
             if random() < probability:
                 loot[item] = 1
     party["battle"]["corpses"].append({"id": mob["combat_id"], "name": mob["name"], "position": mob["position"][:], "loot": loot, "harvested": []})
+    if party.get("field_mode") and not party.get("training"):
+        zone = world.zone_of(party["position"])
+        kills = party.setdefault("zone_kills", {})
+        kills[zone] = kills.get(zone, 0) + 1
     if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere":
         party["kills"] = min(3, party["kills"] + 1)
     if not party.get("training"):
@@ -623,7 +631,15 @@ def advance(party, now, random):
                 if not unit["hidden"]:
                     messages.append(f"{actor.name} quitte sa dissimulation en se déplaçant.")
             unit["next_move"] = now + (step_time(unit["position"], unit["route"][0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, key, unit["route"][0], retaining=True) else MOVE_TIME) if unit["route"] else MOVE_TIME)
-    if any(unit["position"] == exit_cell(party) and characters[key].is_alive() for key, unit in battle["players"].items()):
+    if party.get("field_map"):
+        from . import fields
+        fields.reveal(party)
+        for key, unit in battle["players"].items():
+            gate = next((gate for gate in preset["exits"] if gate["position"] == unit["position"]), None)
+            if gate and characters[key].is_alive():
+                party["characters"] = {identifier: pack(actor) for identifier, actor in characters.items()}
+                return messages + fields.transition(party, gate, key, now)
+    elif any(unit["position"] == exit_cell(party) and characters[key].is_alive() for key, unit in battle["players"].items()):
         party["characters"] = {key: pack(c) for key, c in characters.items()}
         return messages + leave_field(party)
     charge_control(party, characters, now, messages)
@@ -747,6 +763,10 @@ def advance(party, now, random):
     party["characters"] = {key: pack(characters[key]) for key in party["characters"]}
     sync_summons(party, now)
     if not any(characters[key].is_alive() for key in party["characters"]):
+        if party.get("field_map"):
+            from . import fields
+            party["fields"][party["field_map"]] = fields.snapshot(party, now)
+            party.pop("field_map", None)
         party.update(mobs=[], mob=None, battle=None, journey=[], transit=None, position="rosee" if "rosee" in party["visited"] else "clearing")
         if party["step"] == "first_fight":
             party["step"] = "clearing"

@@ -322,3 +322,15 @@ Version 0.10.21 : les messages du général sont distribués uniquement aux conn
 La version 0.10.22 affiche la meilleure différence de niveau remportée en duel solo dans le titre « Briseur de limites (+N niveaux) ». L’écart est enregistré au début du combat ; les victoires avec un écart inférieur ne le réduisent pas.
 
 La version 0.10.24 organise Rosée et Brume autour d’une entrée, d’une place centrale et de rues. Les bâtiments d’une même rue se suivent : les itinéraires client et leur validation serveur utilisent ces liaisons, également affichées sur la carte détaillée. Les maisons, auberges et la boutique sont des repères sans interaction pour le moment.
+
+La version 0.10.25 lance les nouveaux tutoriels web directement dans une forêt fixe à explorer à pied. La case du chemin rapide ouvre la carte générale. Rosée (64 × 40 cases) et Brume sont des cartes tactiques zoomables, y compris hors combat. Rosée rejoint la lisière, la forêt et la grotte ; la lisière rejoint aussi le campement gobelin. La grotte comprend trois salles, dont la dernière est une impasse. La forêt possède une sortie complète vers les chemins rapides.
+
+Les terrains, obstacles et positions initiales des ennemis de ces zones sont prédéfinis. Les combats aléatoires restent réservés aux trajets rapides. Les zones explorées, corps et ennemis survivants restent en mémoire de la partie et sont enregistrés avec elle : revenir sur une carte ne recrée pas les créatures tuées. La carte se découvre en marchant ; les ennemis vivants restent soumis à la visibilité et aux couvertures. La molette et les boutons permettent de zoomer, les flèches déplacent la vue et « Suivre le personnage » recentre la caméra.
+
+Une sortie vers une autre carte transporte le groupe et ses invocations. Seuls les ennemis alertés qui voient le personnage franchir cette sortie et peuvent agir le poursuivent. Une sortie complète vers la vue générale arrête la poursuite. Les interactions avec Mira et la forge demandent de se trouver près de leurs positions sur la carte, sans ennemi qui menace le personnage. Pour une partie déjà commencée, « Explorer à pied » ouvre la carte fixe du lieu depuis la vue générale. L’API `tutorial` accepte `field_mode: true` ; sans ce paramètre, les intégrations existantes conservent leur parcours précédent.
+
+Test de charge des cartes fixes : `python scripts/verify_load.py --fixed-zones --seconds 30 --combat-users 15 --poll-interval .25 --output test/load/30_fixed_zones.json`.
+
+Les gobelins vaincus dans les zones de Rosée avant d’accepter la quête de Mira sont pris en compte, afin qu’une zone déjà débarrassée de ses ennemis ne bloque pas le tutoriel. Les poursuivants atteignent la carte suivante après le temps nécessaire pour rejoindre la sortie.
+
+Mesure 0.10.25 : 30 joueurs, dont 15 en combat sur les cartes fixes et 15 à Rosée, pendant 30 s à 4 actualisations/s. 3 600 états et 120 déplacements, aucune erreur ; p95 des états 35,33 ms, p95 des déplacements 39,58 ms. Le maximum des états reste à 99,25 ms : ces résultats sous 40 ms concernent le p95 en local. Rapport : `test/load/30_fixed_zones.json`.

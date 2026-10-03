@@ -58,8 +58,12 @@ def main():
                 necromancer["battle"]["players"]["p0"]["position"] = [0, 9]
                 necromancer["mobs"][0]["position"] = [12, 1]
                 next(iter(necromancer["battle"]["summons"].values()))["position"] = [10, 1]
+                field_village = tutorial.new_party([{ "id": "p0", "name": "Test", "class_name": "Knight"}])
+                tutorial.fields.start(field_village, 0)
+                field_village["step"] = "road"
+                tutorial.fields.enter(field_village, "rosee", [32, 20], 0)
                 fixture_path.write_text(json.dumps({"combat": tutorial.view(fixture, "p0", 0), "necromancer": initial_necromancer,
-                                                  "control": tutorial.view(necromancer, "p0", 6)}), encoding="utf-8")
+                                                  "control": tutorial.view(necromancer, "p0", 6), "field_village": tutorial.view(field_village, "p0", 0)}), encoding="utf-8")
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_tactical_ui.cjs"), str(fixture_path)],
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:

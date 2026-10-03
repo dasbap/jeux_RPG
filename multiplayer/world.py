@@ -51,6 +51,12 @@ for village, layout in VILLAGE_STREETS.items():
             point.update(x=430 + order * 130, y=y)
 
 
+
+PLACES["lisiere"]["points"].extend([
+    {"id": "forest", "name": "Forêt de Rosée", "type": "rencontre", "description": "Une forêt à explorer à pied ; sa sortie rejoint les chemins rapides."},
+    *[{"id": f"cave_{index}", "name": f"Grotte · salle {index}", "type": "rencontre", "description": "Une grotte de trois salles : la dernière est une impasse."} for index in (1, 2, 3)],
+])
+
 ROUTES = [
     {"id": "clearing_rosee", "from": "clearing", "to": "rosee", "name": "Sentier de Rosée", "distance_km": 0.3},
     {"id": "rosee_lisiere", "from": "rosee", "to": "lisiere", "name": "Chemin de la lisière", "distance_km": 0.2},

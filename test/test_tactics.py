@@ -223,8 +223,8 @@ def test_missing_rare_material_cannot_upgrade_or_change_stats():
     assert data == before
 
 
-def test_fifteen_presets_have_valid_cover_and_traversable_spawn_positions():
-    assert len(tactics.PRESETS) == 15
+def test_presets_have_valid_cover_and_traversable_spawn_positions():
+    assert len(tactics.PRESETS) == 24
     for preset in tactics.PRESETS.values():
         assert tactics.walkable(preset, [1, 6])
         assert tactics.path(preset, [1, 6], [9, 5])
@@ -328,9 +328,13 @@ def test_snapshot_hides_distant_and_occluded_enemies_without_ending_combat():
 @pytest.mark.parametrize("origin", ["explore", "travel"])
 def test_all_group_spawns_are_walkable_and_distinct(preset_id, origin):
     data = party(mobs=5)
-    zone, index = preset_id.rsplit("_", 1)
-    data["position"] = {"road": "clearing_rosee", "rosee": "training"}.get(zone, zone)
-    data["encounter_number"] = int(index)
+    if preset_id.startswith("field_"):
+        data["field_map"] = preset_id[6:]
+        data["position"] = data["field_map"]
+    else:
+        zone, index = preset_id.rsplit("_", 1)
+        data["position"] = {"road": "clearing_rosee", "rosee": "training"}.get(zone, zone)
+        data["encounter_number"] = int(index)
     tactics.begin(data, 0, origin)
     preset = tactics.PRESETS[data["battle"]["preset"]]
     positions = [mob["position"] for mob in data["mobs"]]

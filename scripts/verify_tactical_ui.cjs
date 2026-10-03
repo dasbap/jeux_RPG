@@ -217,6 +217,23 @@ try {
   render(invisible);
   assert.equal(el("cell-entities").querySelectorAll("[data-target=mob]").length, 0);
   assert([...el("combat-actions").children].every(button => button.disabled));
+  if (fixtures.field_village) {
+    render(fixtures.field_village);
+    assert.equal(el("field-camera").hidden, false);
+    assert.equal(el("field-location").textContent, "Village de Rosée");
+    assert(el("world-map").querySelector('[data-site="mira"]'));
+    assert(el("world-map").querySelector(".unexplored-cell"));
+    const initialBox = el("world-map").querySelector("svg").getAttribute("viewBox");
+    el("field-zoom-in").click();
+    assert.notEqual(el("world-map").querySelector("svg").getAttribute("viewBox"), initialBox);
+    const zoomBox = el("world-map").querySelector("svg").getAttribute("viewBox");
+    el("field-right").click();
+    assert.notEqual(el("world-map").querySelector("svg").getAttribute("viewBox"), zoomBox);
+    el("field-center").click();
+    assert.equal(el("npc-view").hidden, false);
+    assert.equal(el("npc-view").parentElement.id, "combat-action-panel");
+    assert.equal(el("target-controls").hidden, true);
+  }
   assert.equal(errors.length, 0, errors.join(" · "));
   console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
 } finally {

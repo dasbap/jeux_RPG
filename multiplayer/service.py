@@ -378,7 +378,7 @@ class GameService:
             raise GameError("invalid_request", "Identifiant de commande invalide.")
         allowed = {"create": set(), "join": {"invite"}, "start": {"session_id", "revision"},
                    "attack": {"session_id", "revision"}, "leave": {"session_id", "revision"},
-                   "tutorial": set(), "explore": {"session_id", "revision", "world_context"},
+                   "tutorial": {"field_mode"}, "enter_zone": {"session_id", "revision"}, "explore": {"session_id", "revision", "world_context"},
                    "strike": {"session_id", "revision", "target"}, "rest": {"session_id", "revision"},
                    "skill": {"session_id", "revision", "skill_name", "target"},
                    "travel": {"session_id", "revision", "destination", "world_context"},
@@ -393,8 +393,10 @@ class GameService:
                    "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
                    "unit_order": {"session_id", "revision", "encounter", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "tutorial" and not params) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
+        if "field_mode" in params and type(params["field_mode"]) is not bool:
+            raise GameError("invalid_command", "Mode de zone invalide.")
         if "encounter" in params and (type(params["encounter"]) is not int or params["encounter"] < 1):
             raise GameError("invalid_encounter", "Combat invalide.")
         if "revision" in params and (type(params["revision"]) is not int or params["revision"] < 0):
@@ -440,11 +442,14 @@ class GameService:
             if session["state"] != "lobby" or session["owner"] != player_id:
                 raise GameError("not_ready", "Le créateur peut commencer le tutoriel depuis son salon.", 409)
             players = self.db.execute("SELECT p.* FROM players p JOIN members m ON m.player_id=p.id WHERE m.session_id=?", (session["id"],)).fetchall()
-            self.db.execute("INSERT INTO tutorials VALUES (?, ?)", (session["id"], json.dumps(tutorial.new_party(players))))
+            party = tutorial.new_party(players)
+            if params.get("field_mode"):
+                tutorial.fields.start(party, now)
+            self.db.execute("INSERT INTO tutorials VALUES (?, ?)", (session["id"], json.dumps(party)))
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
-        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
+        if action in ("enter_zone", "explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)

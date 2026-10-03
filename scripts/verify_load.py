@@ -32,7 +32,7 @@ def serve_load(database, tokens, connection):
         connection.close()
 
 
-def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None):
+def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None, fixed_zones=False):
     with tempfile.TemporaryDirectory() as directory:
         service = GameService(Path(directory) / "load.sqlite3", random_source=lambda: .5)
         clients = []
@@ -42,11 +42,20 @@ def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None):
             party = json.loads(service.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()[0])
             tutorial.migrate(party, service._now())
             combat = index < combat_users
-            if combat:
+            if fixed_zones:
+                tutorial.fields.start(party, service._now())
+                if not combat:
+                    party["step"] = "village"
+                tutorial.fields.enter(party, "hunt" if combat else "rosee", [1, 8] if combat else [32, 20], service._now())
+            if combat and not fixed_zones:
                 tutorial.spawn(party, service._now(), lambda: .2, [], origin="explore")
+            if combat:
                 for character in party["characters"].values():
                     character["stats"]["hp"].update(max=10000, current=10000)
-            else:
+                if fixed_zones:
+                    for mob, position in zip(party["mobs"], ([4, 8], [5, 9], [6, 8])):
+                        mob.update(position=list(position), home=list(position), alerted=True)
+            elif not fixed_zones:
                 party.update(step="village", position="rosee", visited=["clearing", "rosee"])
             service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
             clients.append((token, combat))
@@ -135,7 +144,7 @@ def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None):
             if not connection.poll(15):
                 raise RuntimeError("Le serveur ne répond plus")
             health = connection.recv()
-            report = {"users": users, "combat_users": combat_users, "town_users": users - combat_users, "duration_seconds": round(time.monotonic() - started, 2), "state_requests": len(latencies), "successful_movement_actions": sum(result[7] for result in results), "expected_action_conflicts": [value for result in results for value in result[2]], "errors": errors, "latency_ms": {"p50": round(statistics.median(latencies), 2), "p95": round(latencies[int(len(latencies) * .95)], 2), "max": round(max(latencies), 2)}, "server_processing_ms": {"p50": round(statistics.median(server_times), 2), "p95": round(server_times[int(len(server_times) * .95)], 2), "max": round(max(server_times), 2)}, "movement_latency_ms": {"p50": round(statistics.median(action_times), 2), "p95": round(action_times[int(len(action_times) * .95)], 2), "max": round(max(action_times), 2)} if action_times else None, "latency_target_ms": max_p95, "latency_target_met": max_p95 is None or (latencies[int(len(latencies) * .95)] < max_p95 and (not action_times or action_times[int(len(action_times) * .95)] < max_p95)), "average_full_bytes": round(full), "average_delta_bytes": round(delta), "reduction_percent": round(100 * (1 - delta / full), 1), **health, "separate_server_process": True, "persistent_http_connections": True, "poll_interval_seconds": poll_interval, "fixture": f"{combat_users} independent combat sessions with real mob AI, boosted player HP to keep fighting; {users - combat_users} town sessions; {1 / poll_interval:g} state requests/second/user, movement every 4 seconds in combat; localhost"}
+            report = {"fixed_zones": fixed_zones, "users": users, "combat_users": combat_users, "town_users": users - combat_users, "duration_seconds": round(time.monotonic() - started, 2), "state_requests": len(latencies), "successful_movement_actions": sum(result[7] for result in results), "expected_action_conflicts": [value for result in results for value in result[2]], "errors": errors, "latency_ms": {"p50": round(statistics.median(latencies), 2), "p95": round(latencies[int(len(latencies) * .95)], 2), "max": round(max(latencies), 2)}, "server_processing_ms": {"p50": round(statistics.median(server_times), 2), "p95": round(server_times[int(len(server_times) * .95)], 2), "max": round(max(server_times), 2)}, "movement_latency_ms": {"p50": round(statistics.median(action_times), 2), "p95": round(action_times[int(len(action_times) * .95)], 2), "max": round(max(action_times), 2)} if action_times else None, "latency_target_ms": max_p95, "latency_target_met": max_p95 is None or (latencies[int(len(latencies) * .95)] < max_p95 and (not action_times or action_times[int(len(action_times) * .95)] < max_p95)), "average_full_bytes": round(full), "average_delta_bytes": round(delta), "reduction_percent": round(100 * (1 - delta / full), 1), **health, "separate_server_process": True, "persistent_http_connections": True, "poll_interval_seconds": poll_interval, "fixture": f"{combat_users} independent combat sessions with real mob AI, boosted player HP to keep fighting; {users - combat_users} town sessions; {1 / poll_interval:g} state requests/second/user, movement every 4 seconds in combat; localhost"}
             return report
         finally:
             if process.is_alive():
@@ -155,8 +164,9 @@ if __name__ == "__main__":
     parser.add_argument("--combat-users", type=int, choices=range(31), default=15)
     parser.add_argument("--poll-interval", type=float, choices=(.25, .5, 1), default=1)
     parser.add_argument("--max-p95", type=float)
+    parser.add_argument("--fixed-zones", action="store_true")
     args = parser.parse_args()
-    report = run(args.seconds, combat_users=args.combat_users, poll_interval=args.poll_interval, max_p95=args.max_p95)
+    report = run(args.seconds, combat_users=args.combat_users, poll_interval=args.poll_interval, max_p95=args.max_p95, fixed_zones=args.fixed_zones)
     Path(args.output).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False))
     raise SystemExit(bool(report["errors"]) or not report["server_alive"] or not report["ticker_alive"] or not report["latency_target_met"])

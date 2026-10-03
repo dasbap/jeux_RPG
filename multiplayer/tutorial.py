@@ -7,7 +7,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics, achievements, bleeding
+from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields
 
 TRAVEL_ENCOUNTER_CHANCE = .25
 
@@ -160,6 +160,9 @@ def view(party, me, now):
     result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / progression.RATIO if transit else 0
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
+    result.pop("fields", None)
+    fields.reveal(party)
+    result["field_interactions"] = fields.interactions(party, me)
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
@@ -307,6 +310,8 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
         if party["step"] == "village":
             party.update(step="hunt", quest="active")
+            if party.get("field_mode"):
+                party["kills"] = min(3, party.get("zone_kills", {}).get("lisiere", 0))
             messages.append("Mira : battez trois gobelins, puis dépecez les corps pour récupérer les matériaux de la forge.")
         elif party["step"] == "hunt" and party["kills"] >= 3:
             party.update(step="craft", quest="completed")
@@ -391,11 +396,15 @@ def arrive(party, destination, messages):
         party["step"] = "complete"
         party["journey"] = []
     world.record(party)
+    if party.get("field_mode") and destination in fields.MAPS and destination in ("rosee", "brume", "lisiere", "clearing", "hunt", "forest", "cave_1", "cave_2", "cave_3"):
+        party["journey"] = []
+        messages.extend(fields.enter(party, destination, [1, 16] if destination == "brume" else [1, 20] if destination == "rosee" else [1, 10], party.get("field_now", 0)))
 
 
 def continue_journey(party, now, random, messages):
     if party["battle"] or party["mobs"]:
         return
+    party["field_now"] = now
     transit = party["transit"]
     if transit:
         if transit.get("paused_at") is not None:
@@ -422,7 +431,7 @@ def continue_journey(party, now, random, messages):
                 transit["ready_at"] = now + transit["segment"]
             if party["mobs"] or party["transit"]:
                 return
-    if party["journey"] and not party["mobs"]:
+    if party["journey"] and not party["mobs"] and not party.get("battle"):
         destination = party["journey"].pop(0)
         source = party["position"]
         duration = world.walking_seconds(source, destination)
@@ -492,6 +501,17 @@ def execute(party, player_id, action, params, now, error, random):
     migrate(party, now)
     progression.resources(party, now)
     messages = []
+    if action == "enter_zone":
+        if party.get("battle") or party.get("transit"):
+            raise error("moving", "Rejoignez un lieu hors combat avant d’explorer à pied.", 409)
+        identifier = party["position"] if party["position"] in fields.MAPS else world.zone_of(party["position"])
+        if identifier not in fields.MAPS:
+            raise error("wrong_location", "Ce chemin rapide n’est pas une entrée de zone.", 409)
+        party["field_mode"] = True
+        party.setdefault("fields", {})
+        return fields.enter(party, identifier, [1, 20] if identifier == "rosee" else [1, 16] if identifier == "brume" else [1, 10], now), False
+    if party.get("field_map") and action in ("talk", "craft", "upgrade"):
+        return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):
         if party["battle"] or party["mobs"] or party["mob"]:
             raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
@@ -545,9 +565,11 @@ def execute(party, player_id, action, params, now, error, random):
 def advance(party, now, random):
     migrate(party, now)
     progression.resources(party, now)
-    messages = tactics.complete_casts(party, now, random)
+    messages = fields.advance(party, now)
+    messages.extend(tactics.complete_casts(party, now, random))
     messages.extend(bleeding.advance(party, now, random))
     messages.extend(tactics.advance(party, now, random))
+    fields.reveal(party)
     timed_units = [*((invocation["id"], invocation) for character in party["characters"].values() for invocation in character["invocations"]), *party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
     for key, data in timed_units:
         if data["effects"]:

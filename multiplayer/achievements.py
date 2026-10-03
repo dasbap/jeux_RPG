@@ -10,7 +10,7 @@ def record(party):
 
 def victory(party, now):
     battle = party["battle"]
-    if party.get("training") or battle.get("awarded") or party["mobs"] or "initial_mobs" not in battle:
+    if battle.get("arrivals") or party.get("training") or battle.get("awarded") or party["mobs"] or "initial_mobs" not in battle:
         return
     battle["awarded"] = True
     stats = record(party)

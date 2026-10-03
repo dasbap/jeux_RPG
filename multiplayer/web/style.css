@@ -31,3 +31,9 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 .chat-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.chat-columns ol{height:150px;overflow:auto;padding-left:20px;overflow-wrap:anywhere}.table-scroll{overflow:auto}.achievement-unlocked{color:#73d9af}#achievement-rows td{padding:8px}#chat-panel input{min-width:0}@media(max-width:600px){.chat-columns{grid-template-columns:1fr}}
 
 .battle-exit{fill:#245b47!important;stroke:#83e8ad!important;stroke-width:3}.exit-label{fill:#fff;font-size:10px;font-weight:700;pointer-events:none}
+
+.field-site circle{fill:#d5ac54}.field-site text{fill:#ffe4a0}#field-camera{gap:4px;align-items:center}#field-camera button{min-width:34px;padding:6px}#field-location{margin-left:8px}#combat-action-panel #npc-view,#combat-action-panel #craft-view{grid-column:1/-1}
+
+#combat-action-panel #self-skills,#combat-action-panel #combat-actions,#combat-action-panel #skills{grid-row:2}#combat-action-panel #corpse-actions,#combat-action-panel #tactical-actions{grid-row:3}@media(max-width:750px){#combat-action-panel #self-skills,#combat-action-panel #combat-actions,#combat-action-panel #skills,#combat-action-panel #corpse-actions,#combat-action-panel #tactical-actions{grid-row:auto}}
+
+.unexplored-cell{fill:#101715;stroke:#1a2520}.unexplored-cell:hover{fill:#26352b}

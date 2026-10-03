@@ -24,6 +24,7 @@ function sectionChanged(name, value) {
   return true;
 }
 let pendingBattleMove = null;
+let fieldCamera = null;
 let currentView = "map";
 let viewContext = "";
 let combatTarget = "";
@@ -502,6 +503,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
   $("combat-layout").hidden = !fighting;
+  $("field-camera").hidden = !adventure.field_map;
+  if (adventure.field_map) $("field-location").textContent = adventure.battle.map.name;
   if (fighting) {
     for (const [parent, child] of [["combat-action-panel", "combat-view"], ["combat-player-panel", "combat-allies"], ["combat-player-panel", "unit-controls"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
       if ($(child).parentElement !== $(parent)) $(parent).append($(child));
@@ -514,7 +517,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
-  $("map-help").textContent = fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
+  $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
   $("character-menu").hidden = fighting;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
@@ -528,8 +531,9 @@ function renderTutorial(adventure, preserveBattle = false) {
     viewContext = context;
   }
   const me = adventure.players.find(player => player.id === session.me);
-  const canTalk = adventure.position === "mira" && !fighting && !adventure.moving;
-  const atForge = adventure.position === "forge" && !fighting && !adventure.moving;
+  const fieldSites = new Set((adventure.field_interactions || []).map(site => site.id));
+  const canTalk = (adventure.position === "mira" && !fighting || fieldSites.has("mira")) && !adventure.moving;
+  const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
@@ -538,6 +542,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
+  for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
   for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
@@ -597,7 +602,8 @@ function renderTutorial(adventure, preserveBattle = false) {
       const destination = adventure.world.places.find(place => place.id === route.destination);
       action("tutorial-actions", `Rejoindre ${destination.name}`, "travel", {destination: destination.id});
     }
-    if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
+    if (!adventure.moving && !adventure.world.routes.some(route => route.id === adventure.position)) action("tutorial-actions", "Explorer à pied", "enter_zone");
+    if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
@@ -636,7 +642,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = true;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis rejoignez la case Sortie au bord de la carte." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "La zone est calme. Vous pouvez explorer, dépecer les corps proches ou rejoindre une sortie." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting) {
     renderCombatFeedback(adventure);
     const playerUnit = adventure.battle.players[me.id];
@@ -878,7 +884,14 @@ function renderBattle(adventure, me) {
   const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);
+  if (adventure.field_map && fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: 24, x: unit.position[0], y: unit.position[1], follow: true};
+  if (adventure.field_map && fieldCamera.follow) { fieldCamera.x = unit.position[0]; fieldCamera.y = unit.position[1]; }
+  const width = adventure.field_map ? Math.min(map.width, fieldCamera.span) : map.width;
+  const height = adventure.field_map ? Math.min(map.height, Math.ceil(width * .67)) : map.height;
+  const left = adventure.field_map ? Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2))) : 0;
+  const top = adventure.field_map ? Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2))) : 0;
+  svg.setAttribute("viewBox", `${left * 40} ${top * 40} ${width * 40} ${height * 40}`);
+  if (adventure.field_map) svg.onwheel = event => { event.preventDefault(); adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
   svg.setAttribute("class", "battle-map");
   svg.setAttribute("role", "group");
   svg.setAttribute("aria-label", map.name);
@@ -888,10 +901,13 @@ function renderBattle(adventure, me) {
     node.textContent = text;
     return node;
   };
-  for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+  const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
+  for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
+    const discovered = !explored || explored.has(`${x},${y}`);
     const cover = map.cover.some(p => p[0] === x && p[1] === y);
-    const exit = (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
-    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: exit ? "battle-cell battle-exit" : cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": exit ? "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
+    const gate = map.exits?.find(gate => gate.position[0] === x && gate.position[1] === y);
+    const exit = adventure.field_map ? Boolean(gate) && discovered : (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
+    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
       if (cover) return message("Cette case est occupée par une couverture.");
@@ -901,7 +917,16 @@ function renderBattle(adventure, me) {
     cell.ondblclick = move;
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
-    if (exit) svg.append(element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle"}, "Sortie"));
+    if (exit) svg.append(element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle"}, gate?.name || "Sortie"));
+  }
+  for (const site of map.sites || []) {
+    if (explored && !explored.has(site.position.join(","))) continue;
+    const node = element("g", {class: "battle-unit field-site", "data-site": site.id});
+    node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
+    node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
+    node.onclick = () => { inspectedCell = site.position; renderTutorial(session.tutorial, true); message(site.name); };
+    node.ondblclick = () => moveControlled(adventure, me, site.position);
+    svg.append(node);
   }
   for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   for (const step of unit.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
@@ -946,6 +971,7 @@ function renderBattle(adventure, me) {
     });
     for (const child of [...previousMap.children]) if (!nodes.includes(child)) child.remove();
     for (const child of nodes) if (child.parentElement !== previousMap) previousMap.append(child);
+    previousMap.onwheel = svg.onwheel;
   } else $("world-map").replaceChildren(svg);
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
@@ -1132,8 +1158,8 @@ $("chat-form").addEventListener("submit", async event => {
   finally { $("send-chat").disabled = false; }
 });
 $("create").addEventListener("click", () => command("create"));
-$("tutorial").addEventListener("click", () => command("tutorial"));
-$("party-tutorial").addEventListener("click", () => command("tutorial"));
+$("tutorial").addEventListener("click", () => command("tutorial", {field_mode: true}));
+$("party-tutorial").addEventListener("click", () => command("tutorial", {field_mode: true}));
 $("join-form").addEventListener("submit", event => {
   event.preventDefault();
   command("join", {invite: invitationCode($("invite-input").value)});
@@ -1168,3 +1194,16 @@ setInterval(refresh, location.hostname === "localhost" || location.hostname === 
 refresh();
 
 for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });
+
+function adjustFieldCamera(action) {
+  if (!session?.tutorial?.field_map || !fieldCamera) return;
+  if (action === "in") fieldCamera.span = Math.max(10, fieldCamera.span - 4);
+  else if (action === "out") fieldCamera.span = Math.min(64, fieldCamera.span + 4);
+  else if (action === "center") fieldCamera.follow = true;
+  else { fieldCamera.follow = false; fieldCamera.x += action === "left" ? -5 : action === "right" ? 5 : 0; fieldCamera.y += action === "up" ? -5 : action === "down" ? 5 : 0; }
+  const map = session.tutorial.battle.map;
+  fieldCamera.x = Math.max(0, Math.min(map.width - 1, fieldCamera.x));
+  fieldCamera.y = Math.max(0, Math.min(map.height - 1, fieldCamera.y));
+  renderTutorial(session.tutorial);
+}
+for (const action of ["in", "out", "center", "left", "up", "down", "right"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
