@@ -5,7 +5,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world
+from . import world, encounters
 
 
 STEPS = {
@@ -93,7 +93,7 @@ def new_party(players):
     return {"step": "clearing", "kills": 0, "quest": "unaccepted", "mob": None,
             "characters": {p["id"]: pack(create_character(p)) for p in players},
             "inventory": {p["id"]: {} for p in players}, "equipment": {},
-            "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": []}
+            "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": [], "position": "clearing", "journey": [], "mobs": [], "combat_step": "clearing"}
 
 
 def npc(now):
@@ -119,14 +119,20 @@ def can_target(actor, skill, target, mob):
 
 
 def view(party, me, now):
+    party = deepcopy(party)
+    migrate(party, now)
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
+    result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
     result["players"] = []
     characters = {key: unpack(value) for key, value in party["characters"].items()}
-    mob = unpack(party["mob"]) if party["mob"] else None
-    targets = {**characters, **({"mob": mob} if mob else {})}
+    enemies = {m["combat_id"]: unpack(m) for m in party.get("mobs", [])}
+    if not enemies and party["mob"]:
+        enemies = {"mob": unpack(party["mob"])}
+    mob = next(iter(enemies.values()), None)
+    targets = {**characters, **enemies}
     for player_id, data in party["characters"].items():
         character = characters[player_id]
         actionable = bool(mob and character.is_alive() and not character.is_stunned() and party["ready"][player_id] <= now)
@@ -143,7 +149,7 @@ def view(party, me, now):
                                               "cost": s.energie_cost, "energy": s.energie_target.__name__,
                                               "cooldown": s.current_cooldown,
                                               "can_target_others": s.can_target_others,
-                                              "targets": [key for key, target in targets.items() if actionable and can_target(character, s, target, mob)],
+                                              "targets": [key for key, target in targets.items() if actionable and can_target(character, s, target, target if key in enemies else mob)],
                                               "available": s.is_ready() and s.can_afford(character)}
                                              for s in character.skills.values()],
                                   "upcoming_skills": [{"level": int(level.split()[1]), "name": s.name}
@@ -157,25 +163,14 @@ def view(party, me, now):
     return result
 
 
-def execute(party, player_id, action, params, now, error):
+def execute_one(party, player_id, action, params, now, error):
     characters = {key: unpack(value) for key, value in party["characters"].items()}
     actor = characters[player_id]
     actor.drop_xp = lambda killer: ""
     step = party["step"]
     messages = []
     finished = False
-    if action == "explore":
-        if party["mob"] or step not in ("clearing", "hunt", "craft", "travel") or step == "hunt" and party["kills"] >= 3:
-            raise error("invalid_step", "Aucun nouveau combat ici.", 409)
-        mob = Character.create("Goblin", "tutorial-mob", "Gobelin des bois")
-        mob.hp.value = world.GOBLIN["hp_first"] if step == "clearing" else world.GOBLIN["hp_hunt"]
-        mob.hp.current_value = mob.hp.value
-        party["mob"] = pack(mob)
-        party["training"] = step in ("craft", "travel")
-        if step == "clearing":
-            party["step"] = "first_fight"
-        messages.append("Un gobelin apparaît. Attaquez ou choisissez une compétence de votre classe.")
-    elif action in ("strike", "skill", "rest"):
+    if action in ("strike", "skill", "rest"):
         if not actor.is_alive():
             raise error("defeated", "Votre personnage est à terre. Un allié peut terminer le combat.", 409)
         if party["ready"][player_id] > now:
@@ -235,9 +230,6 @@ def execute(party, player_id, action, params, now, error):
                 if invocation.is_alive() and mob.is_alive():
                     invocation.attack(mob)
             if mob.is_alive():
-                if not mob.is_stunned():
-                    actor.lose_hp(mob, 3)
-                    messages.append(f"Le gobelin riposte contre {actor.name}.")
                 mob._update_status()
                 party["mob"] = pack(mob)
             else:
@@ -249,11 +241,12 @@ def execute(party, player_id, action, params, now, error):
                         inventory = party["inventory"][key]
                         for item, quantity in world.GOBLIN["loot"].items():
                             inventory[item] = inventory.get(item, 0) + quantity
-                    recover(character)
+                    if len(party.get("mobs", [])) <= 1:
+                        recover(character)
                 if step == "first_fight":
                     party["step"] = "road"
-                elif not party.get("training"):
-                    party["kills"] += 1
+                elif not party.get("training") and party["quest"] == "active" and world.zone_of(party.get("position", "lisiere")) == "lisiere":
+                    party["kills"] = min(3, party["kills"] + 1)
                 messages.append(f"Gobelin vaincu : chaque aventurier reçoit {reward} XP, une peau et un croc." if reward else "Entraînement terminé : vous avez essayé vos compétences sans récompense supplémentaire.")
             if action != "rest":
                 actor.rest()
@@ -268,18 +261,6 @@ def execute(party, player_id, action, params, now, error):
                     recover(character)
                 messages.append("Le groupe est secouru. Reprenez le combat sans perdre votre progression.")
         party["ready"][player_id] = now + 60 if mob else now
-    elif action == "travel":
-        if party["mob"]:
-            raise error("in_combat", "Terminez le combat avant de voyager.", 409)
-        if step == "road" and params["destination"] == "rosee":
-            party["step"] = "village"
-            messages.append("Vous atteignez Rosée. Mira vous attend sur la place du village.")
-        elif step == "travel" and params["destination"] == "brume":
-            party["step"] = "complete"
-            finished = True
-            messages.append("Vous arrivez à Brume. Votre tutoriel est terminé !")
-        else:
-            raise error("invalid_destination", "Cette route n'est pas encore accessible.", 409)
     elif action == "talk":
         if params["npc"] != "mira" or party["mob"]:
             raise error("invalid_npc", "Ce PNJ n'est pas accessible ici.", 409)
@@ -319,3 +300,141 @@ def execute(party, player_id, action, params, now, error):
     party["characters"] = {key: pack(character) for key, character in characters.items()}
     world.record(party)
     return messages, finished
+
+
+def migrate(party, now):
+    if "position" not in party:
+        world.record(party)
+    party.setdefault("combat_step", party["step"])
+    party.setdefault("position", world.CURRENT[party["step"]])
+    party.setdefault("journey", [])
+    if "mobs" not in party:
+        party["mobs"] = [{**party["mob"], "combat_id": "mob", "next_attack": now + 40}] if party["mob"] else []
+
+
+def sync_mobs(party):
+    party["mob"] = party["mobs"][0] if party["mobs"] else None
+
+
+def spawn(party, now, random, messages):
+    zone = world.zone_of(party["position"])
+    level = min(c["level"] for c in party["characters"].values())
+    count = encounters.group_size("D", level, (4 if party["position"] == "rosee_brume" else world.LEVELS[zone]), random)
+    if not count:
+        messages.append("Vous ne croisez aucun gobelin.")
+        return
+    first = party["step"] == "clearing"
+    party["training"] = party["position"] == "training"
+    party["combat_step"] = "first_fight" if first else party["step"]
+    if first:
+        party["step"] = "first_fight"
+    party["mobs"] = []
+    for index in range(count):
+        mob = Character.create("Goblin", "tutorial-mob", f"Gobelin des bois {index + 1}")
+        mob.hp.value = world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]
+        mob.hp.current_value = mob.hp.value
+        party["mobs"].append({**pack(mob), "combat_id": "mob" if index == 0 else f"mob-{index + 1}",
+                              "rank": "D", "next_attack": now + random() * 40})
+    sync_mobs(party)
+    messages.append(f"Vous rencontrez {count} gobelin(s) de rang D.")
+
+
+def continue_journey(party, now, random, messages):
+    while party["journey"] and not party["mobs"]:
+        destination = party["journey"].pop(0)
+        party["position"] = destination
+        zone = world.zone_of(destination)
+        party["visited"] = sorted(set(party["visited"]) | {zone})
+        messages.append(f"Vous arrivez à {world.point_name(destination)}.")
+        if zone == "rosee" and party["step"] == "road":
+            party["step"] = "village"
+        if destination in ("brume", "arrival") and party["step"] == "travel":
+            party["step"] = "complete"
+            party["journey"] = []
+        if world.hazard(destination):
+            spawn(party, now, random, messages)
+    world.record(party)
+
+
+def execute(party, player_id, action, params, now, error, random):
+    migrate(party, now)
+    messages = []
+    if action in ("travel", "move"):
+        if party["mobs"]:
+            raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
+        destination = params["destination"]
+        known = {p["id"] for p in world.view(party, player_id)["places"]}
+        path = world.path(party["position"], destination, known)
+        if path is None:
+            raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
+        party["journey"] = path
+        continue_journey(party, now, random, messages)
+        return messages, party["step"] == "complete"
+    position = party["position"]
+    if action == "talk" and position != "mira" or action == "craft" and position != "forge":
+        raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
+    if action == "explore":
+        if party["mobs"] or party["step"] == "complete" or position not in ("clearing", "clearing_fight", "hunt", "lisiere", "training"):
+            raise error("wrong_location", "Aucune exploration possible à votre position.", 409)
+        spawn(party, now, random, messages)
+        world.record(party)
+        return messages, False
+    if action in ("strike", "skill", "rest") and party["mobs"]:
+        target_id = params.get("target", "mob")
+        if not isinstance(target_id, str):
+            raise error("invalid_target", "Cible invalide.")
+        index = next((i for i, m in enumerate(party["mobs"]) if m["combat_id"] == target_id), 0)
+        if action == "strike" or action == "skill" and target_id not in party["characters"]:
+            if not any(m["combat_id"] == target_id for m in party["mobs"]):
+                raise error("invalid_target", "Cet ennemi n'est pas vivant dans ce combat.")
+        selected = party["mobs"][index]
+        party["mob"] = selected
+        mapped = {**params, "target": "mob" if target_id == selected["combat_id"] else target_id}
+        combat_step = party["combat_step"]
+        old_step = party["step"]
+        party["step"] = combat_step
+        messages, _ = execute_one(party, player_id, action, mapped, now, error)
+        if party["mob"]:
+            party["mobs"][index] = {**party["mob"], "combat_id": selected["combat_id"], "rank": "D", "next_attack": selected["next_attack"]}
+        else:
+            party["mobs"].pop(index)
+        if party["mobs"]:
+            party["step"] = old_step
+        sync_mobs(party)
+        if not party["mobs"]:
+            continue_journey(party, now, random, messages)
+        return messages, party["step"] == "complete"
+    return execute_one(party, player_id, action, params, now, error)
+
+
+def advance(party, now, random):
+    migrate(party, now)
+    messages = []
+    characters = {key: unpack(value) for key, value in party["characters"].items()}
+    for data in party["mobs"]:
+        if data["next_attack"] > now:
+            continue
+        mob = unpack(data)
+        alive = [c for c in characters.values() if c.is_alive()]
+        if not alive:
+            break
+        target = alive[min(len(alive) - 1, int(random() * len(alive)))]
+        target.drop_xp = lambda killer: ""
+        if not mob.is_stunned():
+            target.lose_hp(mob, 3)
+            messages.append(f"{mob.name} attaque {target.name}.")
+        mob._update_status()
+        data.update(pack(mob))
+        data["next_attack"] = now + 60 + random() * 40
+    if party["mobs"] and not any(c.is_alive() for c in characters.values()):
+        party["mobs"] = []
+        party["journey"] = []
+        if party["step"] == "first_fight":
+            party["step"] = "clearing"
+        party["position"] = "clearing" if party["step"] == "clearing" else "rosee"
+        for character in characters.values():
+            recover(character)
+        messages.append("Le groupe est secouru. Le déplacement est interrompu.")
+    party["characters"] = {key: pack(value) for key, value in characters.items()}
+    sync_mobs(party)
+    return messages

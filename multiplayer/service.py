@@ -33,7 +33,8 @@ class GameService:
     match_duration = 20 * 300.0
     lobby_duration = 20 * 600.0
 
-    def __init__(self, database=".data/multiplayer.sqlite3", clock=None):
+    def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
+        self.random = random_source or secrets.SystemRandom().random
         path = Path(database)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         if path.is_symlink():
@@ -88,7 +89,18 @@ class GameService:
 
     def tick(self):
         with self._transaction():
-            self._expire(self._now())
+            now = self._now()
+            self._expire(now)
+            rows = self.db.execute("SELECT t.session_id, t.data FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'").fetchall()
+            for row in rows:
+                party = json.loads(row["data"])
+                before = json.dumps(party, sort_keys=True)
+                messages = tutorial.advance(party, now, self.random)
+                if json.dumps(party, sort_keys=True) != before:
+                    self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
+                    self.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (row["session_id"],))
+                    for message in messages:
+                        self._event(row["session_id"], now, message)
 
     @contextmanager
     def _transaction(self):
@@ -211,6 +223,7 @@ class GameService:
                    "strike": {"session_id", "revision", "target"}, "rest": {"session_id", "revision"},
                    "skill": {"session_id", "revision", "skill_name", "target"},
                    "travel": {"session_id", "revision", "destination"},
+                   "move": {"session_id", "revision", "destination"},
                    "talk": {"session_id", "revision", "npc"},
                    "craft": {"session_id", "revision", "recipe"}}
         if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action == "attack" and set(params) == allowed[action] | {"target"})):
@@ -262,7 +275,7 @@ class GameService:
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
-        if action in ("explore", "strike", "skill", "rest", "travel", "talk", "craft"):
+        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running":
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)
@@ -272,7 +285,7 @@ class GameService:
             if row is None:
                 raise GameError("not_tutorial", "Cette session n'est pas un tutoriel.", 409)
             party = json.loads(row[0])
-            messages, finished = tutorial.execute(party, player_id, action, params, now, GameError)
+            messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
             self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if finished else "running", session["id"]))
             for message in messages:

@@ -6,6 +6,7 @@ from jeuxRPG._class.res.character.table_stat_subclass import goblin_table
 class Goblin(Character):
     """Classe représentant un Goblin (mob non jouable)."""
     
+    rank = "D"
     is_playable: bool = False
     class_skills_dict: ClassSkills = goblin_table["class_skills_dict"]
 

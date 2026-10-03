@@ -34,6 +34,12 @@ GOBLIN = {"hp_first": 18, "hp_hunt": 24, "xp_first": 100, "xp_hunt": 200, "loot"
 def discovery(party):
     step = party["step"]
     visited = {"clearing"}
+    if "position" in party:
+        visited.update(party.get("visited", []))
+        mobs = set(party.get("seen_mobs", []))
+        if party["mob"]:
+            mobs.add("goblin")
+        return visited, mobs
     if step in ("village", "hunt", "craft", "travel", "complete"):
         visited.add("rosee")
     if step in ("hunt", "craft", "travel", "complete"):
@@ -77,7 +83,7 @@ def view(party, me, traveller=None):
                                     "description": "Marchand itinérant actuellement présent dans ce village. Son passage suit l'horloge du monde."})
         for point in place["points"]:
             point["action"] = None
-            if not fighting:
+            if not fighting and party.get("position", CURRENT[step]) == point["id"]:
                 if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == 3):
                     point["action"] = "dialogue"
                 elif point["id"] == "forge" and step == "craft" and me not in party["equipment"]:
@@ -97,7 +103,7 @@ def view(party, me, traveller=None):
     bestiary = []
     if "goblin" in mobs:
         advantages = goblin_table["advantage"]
-        bestiary.append({"id": "goblin", "name": "Gobelin des bois", "description": "Un adversaire simple rencontré dans la clairière et la lisière.",
+        bestiary.append({"id": "goblin", "rank": "D", "name": "Gobelin des bois", "description": "Un adversaire simple rencontré dans la clairière et la lisière.",
                          "hp": {"first_encounter": GOBLIN["hp_first"], "hunt": GOBLIN["hp_hunt"]},
                          "stats": {key: goblin_table["base_stats"][key] for key in ("force", "endurance", "intelligence", "sagesse")},
                          "weaknesses": [value.name for value in advantages["weakness"]],
@@ -106,4 +112,63 @@ def view(party, me, traveller=None):
                          "xp": {"first_encounter": GOBLIN["xp_first"], "hunt": GOBLIN["xp_hunt"], "training": 0},
                          "locations": [PLACES[key]["name"] for key in ("clearing", "lisiere") if key in visited],
                          "materials_usage": "Deux peaux et trois crocs permettent de fabriquer une veste à Rosée. L'entraînement ne donne aucun butin."})
-    return {"current": CURRENT[step], "places": places, "routes": routes, "bestiary": bestiary}
+    current_zone = zone_of(party.get("position", CURRENT[step]))
+    if current_zone not in {p["id"] for p in places}:
+        definition = PLACES[current_zone]
+        places.append({"id": current_zone, **deepcopy(definition), "visited": True})
+    return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "bestiary": bestiary}
+
+
+ROAD_POINTS = {r["id"]: {"zone": "lisiere" if r["id"] == "rosee_lisiere" else "clearing" if r["id"] == "clearing_rosee" else "rosee", "name": r["name"]} for r in ROUTES}
+
+LEVELS = {"clearing": 1, "rosee": 1, "lisiere": 2, "brume": 4}
+
+
+def zone_of(point):
+    if point in ROAD_POINTS:
+        return ROAD_POINTS[point]["zone"]
+    if point in PLACES:
+        return point
+    for zone, place in PLACES.items():
+        if any(p["id"] == point for p in place["points"]):
+            return zone
+    return None
+
+
+def point_name(point):
+    if point in ROAD_POINTS:
+        return ROAD_POINTS[point]["name"]
+    zone = zone_of(point)
+    if point == zone:
+        return PLACES[zone]["name"]
+    return next(p["name"] for p in PLACES[zone]["points"] if p["id"] == point)
+
+
+def hazard(point):
+    return point in ROAD_POINTS or point in ("clearing", "clearing_fight", "lisiere", "hunt")
+
+
+def path(start, destination, known):
+    if not isinstance(destination, str) or zone_of(destination) not in known:
+        return None
+    graph = {zone: [] for zone in known}
+    for zone in known:
+        for point in PLACES[zone]["points"]:
+            graph[point["id"]] = [zone]
+            graph[zone].append(point["id"])
+    for route in ROUTES:
+        if route["from"] in known and route["to"] in known:
+            middle = route["id"]
+            graph[middle] = [route["from"], route["to"]]
+            graph[route["from"]].append(middle)
+            graph[route["to"]].append(middle)
+    queue = [(start, [])]
+    visited = set()
+    for node, route in queue:
+        if node == destination:
+            return route
+        if node in visited:
+            continue
+        visited.add(node)
+        queue.extend((neighbor, route + [neighbor]) for neighbor in graph.get(node, []) if neighbor not in visited)
+    return None

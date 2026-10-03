@@ -18,15 +18,15 @@ Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusi
 
 1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
 2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
-3. Ouvrir **Carte**, sélectionner le point **Sous-bois** de la clairière et l’explorer. Battre le premier gobelin, puis prendre le chemin de Rosée depuis la carte.
-4. Dans les détails de Rosée sur la carte, sélectionner la **Place du village · Mira**, puis **Interagir avec ce point**. Accepter la quête et explorer le campement de la lisière pour battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
-5. Rendre la quête : les personnages atteignent le niveau 5 et acquièrent les compétences correspondantes de leur classe. Un entraînement sans récompenses permet de les essayer.
+3. Ouvrir **Carte**, explorer le lieu actuel ou sélectionner **Sous-bois**, puis **Se déplacer à ce point**. Battre le premier gobelin, puis prendre le chemin de Rosée depuis la carte.
+4. Dans les détails de Rosée sur la carte, sélectionner la **Place du village · Mira**, puis **Se déplacer à ce point**. Les actions de Mira apparaissent à votre arrivée. Accepter la quête et explorer le campement de la lisière pour battre trois gobelins. Chaque victoire apporte de l'expérience et des matériaux à chaque membre du groupe.
+5. Rendre la quête : les personnages atteignent au moins le niveau 5 et acquièrent les compétences correspondantes de leur classe. Un entraînement sans récompenses permet de les essayer.
 6. À la forge, chaque joueur fabrique et équipe sa veste avec deux peaux et trois crocs. La veste donne 10 PV supplémentaires et 3 points d'endurance.
 7. Une fois chaque aventurier équipé, rejoindre Brume pour terminer le tutoriel.
 
-Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. L'énergie se régénère et les délais exprimés en tours diminuent après une action ; le gobelin peut riposter. L'interface ne propose que l'attaque simple et les compétences acquises, sans action générique de soin ou de récupération. Une victoire soigne le groupe. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
+Les actions de combat sont espacées de trois secondes. L'attaque simple est gratuite ; les compétences dépensent l'énergie prévue par leur classe. Les compétences offensives visent le gobelin, les soins et améliorations un membre du groupe, et les invocations leur propriétaire. L'énergie se régénère et les délais exprimés en tours diminuent après une action ; chaque ennemi attaque dès sa disponibilité, avec un délai aléatoire de zéro à deux secondes, puis un délai de trois secondes plus zéro à deux secondes entre ses attaques. L'interface ne propose que l'attaque simple et les compétences acquises, sans action générique de soin ou de récupération. La victoire sur le groupe entier soigne les aventuriers. Une défaite collective permet de recommencer le combat sans perdre la quête ni le butin déjà acquis.
 
-Le menu situé en haut sépare caractéristiques, équipement équipé, inventaire, journal de quêtes, carte et bestiaire. Les PNJ et la forge sont accessibles en sélectionnant leurs points sur la carte, puis une interaction disponible. L'interface conserve des écrans distincts pour le dialogue, le combat et la fabrication. Un seul écran de situation est affiché à la fois. Les statistiques donnent les PV, la force, l'endurance, l'intelligence, la sagesse, les énergies, les compétences, le sac et l'équipement. Le combat apparaît à la rencontre d'un ennemi ; les cibles sont absentes à l'apparition du personnage et hors combat.
+L'affichage comporte trois panneaux indépendants : consultation (caractéristiques, carte, inventaire, équipement et bestiaire), actions du lieu actuel (exploration, dialogue, fabrication ou combat) et journal de quêtes. Changer d'onglet de consultation conserve les actions et les quêtes visibles. Sur un écran étroit, les panneaux se réorganisent pour rester lisibles. Les interactions avec un PNJ ou la forge demandent de rejoindre physiquement leur point ; le serveur refuse les actions à distance.
 
 En combat, choisir d'abord une cible : seules l'attaque simple et les compétences utilisables sur elle apparaissent. Un allié n'est proposé que si une compétence de soin ou de buff acquise permet une action sur lui. Un personnage à pleine vie n'est pas proposé pour un soin, une invocation doit viser son propriétaire et une attaque doit viser l'ennemi vivant du combat. Une cible sans action disponible est masquée, notamment pendant le délai global. Le client filtre les choix à partir de l'état reçu et des règles de ciblage ; le serveur recalcule les conditions lors de chaque commande. Les actions refusées ne consomment ni énergie ni objets.
 
@@ -146,3 +146,22 @@ Les anciennes sauvegardes JSON restent accessibles au moteur historique, mais ne
 La carte affiche les lieux et chemins connus dans le parcours du tutoriel. Les lieux connus mais non visités restent sans détails ni points stratégiques. Les descriptions et points des villages déjà visités restent consultables, même après le départ. Les points incluent la place de Mira, la forge, le terrain d'entraînement et les rencontres de la clairière et de la lisière. Les routes ne permettent de voyager que lorsque les conditions du parcours sont satisfaites. La carte reste consultable pendant un combat, avec les interactions de voyage et des points désactivées. Le passage du marchand itinérant est indiqué dans les villages visités où il est présent.
 
 Le bestiaire ne révèle que les monstres rencontrés. Le tutoriel contient actuellement le gobelin des bois : sa fiche donne les PV des rencontres, caractéristiques, matériaux et quantités, expérience, lieux observés, faiblesses et résistances. Le gobelin actuel n'a aucune faiblesse ni résistance particulière définie. Les PV, matériaux et récompenses utilisent les mêmes règles que les combats. Les découvertes sont partagées dans le groupe, sauvegardées avec l'aventure et compatibles avec les sauvegardes antérieures, sans suppression des données.
+
+
+## Déplacements et groupes de créatures
+
+La position du groupe est sauvegardée. « Vous êtes ici » indique sa zone sur la carte et son point précis dans le panneau des actions. `move` accepte un identifiant de zone ou de point connu ; le serveur calcule le trajet sur le graphe des chemins. Chaque point dangereux traversé fait un tirage indépendant, y compris les sentiers entre villages. Un combat suspend le trajet ; sa victoire relance les étapes restantes. Plusieurs combats peuvent donc survenir pendant un seul déplacement. Une défaite annule le trajet et ramène le groupe dans un lieu sûr. La position est commune aux deux joueurs de ce POC coopératif.
+
+Le calcul des groupes est commun aux rangs S, A, B, C, D et E et s'arrête au premier échec, avec cinq créatures maximum. À niveaux égaux, les gobelins de rang D utilisent les probabilités conditionnelles suivantes :
+
+| Créature | Probabilité si toutes les précédentes sont apparues |
+| --- | --- |
+| 1 | 90 % |
+| 2 | 30 % |
+| 3 | 10 % |
+| 4 | 3 % |
+| 5 | 0,1 % |
+
+Ainsi, rencontrer au moins deux gobelins a une probabilité de 90 % × 30 % = 27 %. Ces probabilités ne sont pas des poids pour choisir directement une taille de groupe. Le niveau de zone comparé au niveau du membre le moins avancé multiplie les seuils par `2 ** ((niveau_zone - niveau_joueur) / 5)`, borné entre 0,25 et 1,5. Chaque seuil final est limité à 100 %. Les rangs plus difficiles réduisent les probabilités d'ajouter des créatures, selon un diviseur croissant ; leur premier seuil de base vaut 100 %. Le rang E est passif et ne déclenche aucun combat hostile. Les lapins et cerfs ne sont pas encore ajoutés. Les coefficients des rangs S à C constituent un premier équilibrage configurable dans `multiplayer/encounters.py`.
+
+Chaque ennemi possède un identifiant de cible et sa propre prochaine attaque. Les attaques autonomes sont traitées par le serveur, même sans commande du joueur. Après une interruption du serveur, une seule attaque par ennemi est exécutée à la reprise, sans rafale de rattrapage. La révision, les droits de session, la présence du joueur et la validité de la cible restent vérifiés transactionnellement.

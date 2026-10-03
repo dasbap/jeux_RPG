@@ -20,19 +20,31 @@ class Clock:
 
 @pytest.fixture
 def game(tmp_path):
-    service = GameService(tmp_path / "tutorial.sqlite3", Clock())
+    service = GameService(tmp_path / "tutorial.sqlite3", Clock(), random_source=lambda: 0.5)
     yield service
     service.close()
 
 
 def command(game, token, action, **params):
-    if action == "strike":
-        params.setdefault("target", "mob")
+    state = game.state(token)["session"]
+    if state and "tutorial" in state:
+        adventure = state["tutorial"]
+        destination = "mira" if action == "talk" else "forge" if action == "craft" else "hunt" if action == "explore" and adventure["step"] == "hunt" else "training" if action == "explore" and adventure["step"] in ("craft", "travel") else None
+        if destination and adventure.get("position") != destination:
+            command(game, token, "move", destination=destination)
+        if action == "strike":
+            params.setdefault("target", adventure["mobs"][0]["combat_id"] if adventure.get("mobs") else "mob")
     game.clock.value += 61
     state = game.state(token)["session"]
     if action not in ("tutorial", "create", "join"):
         params.update(session_id=state["id"], revision=state["revision"])
-    return game.command(token, uuid.uuid4().hex, action, **params)["session"]
+    previous = game.random
+    if action in ("travel", "move"):
+        game.random = lambda: 0.999999
+    try:
+        return game.command(token, uuid.uuid4().hex, action, **params)["session"]
+    finally:
+        game.random = previous
 
 
 def win(game, token):
@@ -53,7 +65,8 @@ def reach_forge(game, token):
     for _ in range(3):
         command(game, token, "explore")
         win(game, token)
-    return command(game, token, "talk", npc="mira")
+    command(game, token, "talk", npc="mira")
+    return command(game, token, "move", destination="forge")
 
 
 @pytest.mark.parametrize("class_name", GameService.classes)
@@ -82,7 +95,8 @@ def test_level_one_skill_uses_real_engine_and_survives_restart(game, class_name,
     command(game, player["token"], "explore")
     skill = state["tutorial"]["players"][0]["skills"][0]
     if class_name == "Priest":
-        command(game, player["token"], "strike")
+        game.clock.value += 41
+        game.tick()
     target = player["player"]["id"] if class_name in ("Priest", "Necromancien") else "mob"
     result = command(game, player["token"], "skill", skill_name=skill["name"], target=target)
     if result["tutorial"]["mob"]:
@@ -261,11 +275,14 @@ def test_heal_targets_only_injured_group_members(game):
     with pytest.raises(GameError) as failure:
         command(game, priest["token"], "skill", skill_name="Heal", target=knight["player"]["id"])
     assert failure.value.code == "invalid_target"
-    state = command(game, knight["token"], "strike")
+    game.clock.value += 41
+    game.tick()
+    state = game.state(priest["token"])["session"]
     healer = next(p for p in state["tutorial"]["players"] if p["id"] == priest["player"]["id"])
-    assert healer["skills"][0]["targets"] == [knight["player"]["id"]]
-    state = command(game, priest["token"], "skill", skill_name="Heal", target=knight["player"]["id"])
-    healed = next(p for p in state["tutorial"]["players"] if p["id"] == knight["player"]["id"])
+    injured_id = next(p["id"] for p in state["tutorial"]["players"] if p["hp"] < p["max_hp"])
+    assert healer["skills"][0]["targets"] == [injured_id]
+    state = command(game, priest["token"], "skill", skill_name="Heal", target=injured_id)
+    healed = next(p for p in state["tutorial"]["players"] if p["id"] == injured_id)
     assert healed["hp"] == healed["max_hp"]
 
 
@@ -317,6 +334,9 @@ def test_map_and_bestiary_discoveries_are_progressive(game):
     state = command(game, player["token"], "travel", destination="rosee")
     rosee = next(place for place in state["tutorial"]["world"]["places"] if place["id"] == "rosee")
     assert rosee["visited"]
+    assert next(point for point in rosee["points"] if point["id"] == "mira")["action"] is None
+    state = command(game, player["token"], "move", destination="mira")
+    rosee = next(place for place in state["tutorial"]["world"]["places"] if place["id"] == "rosee")
     assert next(point for point in rosee["points"] if point["id"] == "mira")["action"] == "dialogue"
     assert next(point for point in rosee["points"] if point["id"] == "forge")["action"] is None
 

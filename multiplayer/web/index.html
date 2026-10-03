@@ -37,14 +37,16 @@
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
         <h3 id="location"></h3><p id="objective"></p>
-        <section id="standby-view"><h3>Exploration</h3><p>Ouvrez la carte pour choisir un chemin, examiner un lieu ou interagir avec un point de la zone.</p><div id="tutorial-actions" class="actions"></div></section>
-        <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
-        <section id="quest-view" hidden><h3>Journal de quête</h3><p id="quest-progress"></p><p id="quest-description"></p><div id="quest-actions" class="actions"></div></section>
-        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
+        <div class="adventure-grid">
+          <section class="dashboard-box consultation"><h2>Personnage et carte</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
         <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
         <section id="inventory-view" hidden><h3>Inventaire</h3><div id="inventory-details"></div></section>
         <section id="map-view" hidden><h3>Carte des chemins connus</h3><p>Sélectionnez un lieu sur la carte. Les détails et points stratégiques des lieux visités restent consultables.</p><div id="world-map"></div><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></section>
         <section id="bestiary-view" hidden><h3>Bestiaire découvert</h3><div id="bestiary-details"></div></section>
+</section>
+          <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3>Exploration</h3><p>Les actions disponibles correspondent à votre position. Déplacez-vous sur la carte pour rejoindre un autre point.</p><div id="tutorial-actions" class="actions"></div></section>
+        <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
+
         <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Veste de la lisière : deux peaux et trois crocs. Une fois équipée, elle donne +10 PV et +3 endurance.</p><p id="craft-materials"></p><div id="craft-actions" class="actions"></div></section>
         <section id="combat-view" hidden>
           <h3 id="mob-name"></h3><p id="mob-hp"></p><p id="combat-status" role="status"></p>
@@ -52,6 +54,9 @@
           <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
           <p class="muted">Choisissez une cible pour afficher votre attaque et vos compétences disponibles. Un allié est proposé uniquement si une compétence de votre classe peut le soigner ou l'améliorer.</p>
         </section>
+          </section>
+          <section class="dashboard-box quest-box">        <section id="quest-view" hidden><h3>Journal de quête</h3><p id="quest-progress"></p><p id="quest-description"></p><div id="quest-actions" class="actions"></div></section></section>
+        </div>
       </section>
       <p id="result"></p>
       <div id="duel-target-controls" hidden><label for="duel-target">Choisir votre adversaire</label><select id="duel-target"></select></div>
