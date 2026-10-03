@@ -49,7 +49,10 @@ async function finishCombat(dom) {
   for (let attempt = 0; attempt < 600; attempt++) {
     const state = await request(dom, "/api/state");
     const adventure = state.session.tutorial;
-    if (!adventure.mob) return;
+    if (!adventure.mob) {
+      if (adventure.moving || adventure.transit || adventure.journey.length) { await pause(350); continue; }
+      return;
+    }
     const me = adventure.players.find(p => p.id === state.session.me);
     if (me.hp > 0 && me.can_attack) await command(dom, "strike", {target: adventure.mobs[0].combat_id});
     else await pause(350);
@@ -64,6 +67,17 @@ async function main() {
   const html = await (await fetch(origin)).text();
   const app = await (await fetch(new URL("/app.js", origin))).text();
   try {
+    const group = await client(html, app, "Groupe", "Knight");
+    await command(group, "tutorial");
+    await command(group, "explore");
+    await waitFor(() => el(group, "combat-target").options.length === 3, "trois ennemis simultanés");
+    assert(el(group, "mob-name").textContent.includes("3 / 3"));
+    const before = (await request(group, "/api/state")).session.tutorial.position;
+    el(group, "world-map").querySelector('[data-point="clearing_fight"]').dispatchEvent(new group.window.Event("click", {bubbles: true}));
+    await pause(200);
+    assert.equal((await request(group, "/api/state")).session.tutorial.position, before);
+    await assert.rejects(command(group, "move", {destination: "clearing_fight"}), error => error.code === "in_combat");
+    group.window.close();
     const first = await client(html, app, "Alice <script>", "Knight");
     const second = await client(html, app, "Bob", "Priest");
     assert.notEqual(first.window.sessionStorage.getItem("rpg-token"), second.window.sessionStorage.getItem("rpg-token"));
@@ -75,7 +89,7 @@ async function main() {
     assert.equal(first.window.document.querySelector(".adventure-grid").children.length, 3);
     assert(el(first, "quest-view").closest(".quest-box"));
     assert(el(first, "combat-view").closest(".zone-actions"));
-    assert(el(first, "map-view").closest(".consultation"));
+    assert(el(first, "map-view").closest(".map-strip"));
     assert(!el(first, "quest-view").hidden);
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
@@ -97,10 +111,13 @@ async function main() {
     el(first, "show-map").click();
     el(first, "map-place").value = "rosee";
     el(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
-    [...el(first, "map-points").querySelectorAll("button")].find(b => b.textContent.includes("Mira")).click();
-    [...el(first, "point-actions").querySelectorAll("button")].find(b => b.textContent === "Se déplacer à ce point").click();
+    el(first, "world-map").querySelector("[data-point=\"mira\"]").dispatchEvent(new first.window.Event("click", {bubbles: true}));
     await waitFor(() => !el(first, "npc-view").hidden && !el(second, "npc-view").hidden, "déplacement point Mira");
     await command(first, "talk", {npc: "mira"});
+    el(first, "world-map").querySelector('[data-point="forge"]').dispatchEvent(new first.window.Event("click", {bubbles: true}));
+    await waitFor(() => !el(first, "craft-view").hidden, "forge verrouillée");
+    assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
+    assert.equal(el(first, "craft-actions").querySelectorAll("button").length, 0);
     await move(first, "hunt");
     while ((await request(first, "/api/state")).session.tutorial.kills < 3) {
       await command(first, "explore");

@@ -42,7 +42,18 @@ def command(game, token, action, **params):
     if action in ("travel", "move"):
         game.random = lambda: 0.999999
     try:
-        return game.command(token, uuid.uuid4().hex, action, **params)["session"]
+        result = game.command(token, uuid.uuid4().hex, action, **params)["session"]
+        if action in ("travel", "move"):
+            for _ in range(100):
+                transit = result["tutorial"].get("transit")
+                if not transit:
+                    break
+                game.clock.value = max(game.clock.value, transit["ready_at"])
+                game.tick()
+                result = game.state(token)["session"]
+            else:
+                pytest.fail("Trajet bloqué")
+        return result
     finally:
         game.random = previous
 
@@ -172,10 +183,10 @@ def test_tutorial_does_not_expire_and_npc_changes_village(game):
     player = game.register("Mage", "Mage")
     state = command(game, player["token"], "tutorial")
     assert state["tutorial"]["traveller"]["location"] == "Rosée"
-    game.clock.value = 350
+    game.clock.value = 8 * 3600 + 720
     game.tick()
     assert game.state(player["token"])["session"]["tutorial"]["traveller"]["location"] == "Brume"
-    game.clock.value = 20000
+    game.clock.value = 100000
     game.tick()
     assert game.state(player["token"])["session"]["state"] == "running"
 
@@ -388,6 +399,6 @@ def test_travelling_npc_appears_only_in_visited_current_village(game):
     places = game.state(player["token"])["session"]["tutorial"]["world"]["places"]
     rosee = next(place for place in places if place["id"] == "rosee")
     assert any(point["id"] == "leon" for point in rosee["points"])
-    game.clock.value = 950
+    game.clock.value = 8 * 3600 + 1
     places = game.state(player["token"])["session"]["tutorial"]["world"]["places"]
     assert not any(point["id"] == "leon" for place in places for point in place["points"])

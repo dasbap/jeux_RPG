@@ -46,6 +46,7 @@ function render(state) {
   if (!session) return;
   $("battle-title").textContent = {lobby: "En attente du second joueur", running: "Duel en cours", finished: "Duel terminé"}[session.state];
   $("version").textContent = `État ${session.revision}`;
+  if (!session.tutorial) $("tutorial-panel").before($("fighters"));
   $("fighters").replaceChildren();
   $("fighters").hidden = Boolean(session.tutorial);
   for (const player of session.tutorial ? session.tutorial.players : session.players) {
@@ -120,6 +121,17 @@ function renderWorld(adventure, me) {
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la veste de la lisière`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
+  const locked = busy || Boolean(adventure.mob || adventure.mobs?.length || adventure.moving || adventure.transit || adventure.journey?.length);
+  function choosePoint(point) {
+    mapPoint = point.id;
+    $("map-details").open = !point.can_interact;
+    if (point.locked_reason) message(point.locked_reason);
+    showView("map");
+    if (locked || !point.can_interact) return;
+    if (point.id === "leon") return tutorialCommand("talk", {npc: "leon"});
+    if (adventure.position !== point.id) return tutorialCommand("move", {destination: point.id});
+    if (point.action === "explore") return tutorialCommand("explore");
+  }
   if (!places.some(p => p.id === mapPlace)) mapPlace = world.current;
   const place = places.find(p => p.id === mapPlace);
   $("map-place").replaceChildren();
@@ -143,13 +155,24 @@ function renderWorld(adventure, me) {
     const to = places.find(p => p.id === route.to);
     svg.append(svgElement("line", {x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: route.destination ? "known-route accessible-route" : "known-route"}));
     svg.append(svgElement("text", {x: (from.x + to.x) / 2 + (from.x === to.x ? 90 : 0), y: (from.y + to.y) / 2 + (from.x === to.x ? -3 : 38), class: "route-label"}, route.name));
+    if (adventure.position === route.id) {
+      const half = route.distance_km / 5 * 3600 / 2;
+      const fraction = Math.max(0, Math.min(1, 1 - adventure.travel_remaining_real_seconds * 20 / half));
+      const forward = adventure.transit?.destination === route.id ? adventure.journey?.[0] === route.to : adventure.transit?.destination === route.to;
+      const progress = adventure.transit?.destination === route.id ? fraction / 2 : .5 + fraction / 2;
+      const proportion = forward ? progress : 1 - progress;
+      const x = from.x + (to.x - from.x) * proportion;
+      const y = from.y + (to.y - from.y) * proportion;
+      svg.append(svgElement("circle", {cx: x, cy: y, r: 8, class: "visited-node"}));
+      svg.append(svgElement("text", {x, y: y - 20, class: "place-label"}, "Vous êtes ici"));
+    }
   }
   for (const p of places) {
     const group = svgElement("g", {role: "button", tabindex: "0", "aria-label": `${p.name}, ${p.visited ? "visité" : "non visité"}`, "aria-pressed": String(p.id === mapPlace), class: "map-node"});
     group.append(svgElement("circle", {cx: p.x, cy: p.y, r: p.id === world.current ? 15 : 11, class: p.visited ? "visited-node" : "unknown-node"}));
     group.append(svgElement("text", {x: p.x, y: p.y + 29, class: "place-label"}, p.name));
-    if (p.id === world.current) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
-    const choose = () => { mapPlace = p.id; mapPoint = ""; showView("map"); };
+    if (p.id === world.current && !world.routes.some(r => r.id === adventure.position)) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
+    const choose = () => { mapPlace = p.id; mapPoint = ""; $("map-details").open = true; showView("map"); };
     group.addEventListener("click", choose);
     group.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
     svg.append(group);
@@ -165,11 +188,13 @@ function renderWorld(adventure, me) {
       const x = index % 2 ? 450 : 270;
       const y = index < 2 ? 65 : 175;
       local.append(svgElement("line", {x1: 70, y1: 110, x2: x, y2: y, class: "known-route"}));
-      const node = svgElement("g", {role: "button", tabindex: "0", "aria-label": point.name, class: "map-node"});
+      const node = svgElement("g", {role: "button", tabindex: "0", "aria-label": point.name, "aria-disabled": String(locked), "data-point": point.id, class: "map-node"});
       node.append(svgElement("circle", {cx: x, cy: y, r: adventure.position === point.id ? 15 : 10, class: "visited-node"}));
+      const icons = {pnj: "●", atelier: "⚒", rencontre: "⚔", repère: "◆"};
+      node.append(svgElement("text", {x, y: y + 4, class: "point-icon"}, icons[point.type] || "◆"));
       node.append(svgElement("text", {x, y: y + 25, class: "place-label"}, point.name));
       if (adventure.position === point.id) node.append(svgElement("text", {x, y: y - 25, class: "place-label"}, "Vous êtes ici"));
-      const choose = () => { mapPoint = point.id; showView("map"); };
+      const choose = () => choosePoint(point);
       node.addEventListener("click", choose);
       node.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
       local.append(node);
@@ -180,12 +205,12 @@ function renderWorld(adventure, me) {
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
     const p = document.createElement("p");
-    p.textContent = `${route.name} : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
+    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 5 * 3600 / 20).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
     $("map-routes").append(p);
-    if (route.destination) {
+    if (route.destination && !locked) {
       const button = document.createElement("button");
       button.textContent = `Prendre le chemin vers ${places.find(p => p.id === route.destination).name}`;
-      button.disabled = busy;
+      button.disabled = locked;
       button.addEventListener("click", () => tutorialCommand("travel", {destination: route.destination}));
       $("map-routes").append(button);
     }
@@ -197,26 +222,26 @@ function renderWorld(adventure, me) {
     button.textContent = point.name;
     button.className = "secondary";
     button.setAttribute("aria-pressed", String(point.id === mapPoint));
-    button.addEventListener("click", () => { mapPoint = point.id; showView("map"); });
+    button.addEventListener("click", () => choosePoint(point));
     $("map-points").append(button);
   }
   const point = place.points.find(p => p.id === mapPoint);
-  paragraphs("point-details", point ? [`${point.name} · ${point.type}${adventure.position === point.id ? " · Vous êtes ici" : ""}`, point.description, point.action ? "Une interaction est disponible ici." : adventure.mob ? "Terminez le combat pour interagir avec les lieux." : "Aucune interaction disponible à cette étape."] : [place.points.length ? "Sélectionnez un point pour consulter ses détails et interactions." : "Les points de ce lieu seront révélés lors de votre visite."]);
-  if (!adventure.mob && point && adventure.position !== point.id && point.id !== "leon") {
+  paragraphs("point-details", point ? [`${point.name} · ${point.type}${adventure.position === point.id ? " · Vous êtes ici" : ""}`, point.description, point.locked_reason || (point.action ? "Une interaction est disponible ici." : adventure.mob ? "Terminez le combat pour interagir avec les lieux." : "Aucune interaction disponible à cette étape.")] : [place.points.length ? "Sélectionnez un point pour consulter ses détails et interactions." : "Les points de ce lieu seront révélés lors de votre visite."]);
+  if (!locked && point && adventure.position !== point.id && point.id !== "leon") {
     const move = document.createElement("button");
     move.textContent = "Se déplacer à ce point";
     move.disabled = busy;
     move.addEventListener("click", () => tutorialCommand("move", {destination: point.id}));
     $("point-actions").append(move);
   }
-  if (!adventure.mob && place.id !== world.current) {
+  if (!locked && place.id !== world.current) {
     const move = document.createElement("button");
     move.textContent = `Rejoindre ${place.name}`;
     move.disabled = busy;
     move.addEventListener("click", () => tutorialCommand("move", {destination: place.id}));
     $("map-routes").append(move);
   }
-  if (point?.action) {
+  if (!locked && point?.action) {
     const button = document.createElement("button");
     button.textContent = point.action === "explore" ? "Explorer ce point" : "Interagir avec ce point";
     button.disabled = busy;
@@ -264,8 +289,9 @@ function skillAllowed(me, skill, target, mob) {
   return skill.type === "BUFF";
 }
 function renderTutorial(adventure) {
-  const fighting = Boolean(adventure.mob);
-  const context = `${session.id}:${adventure.step}:${fighting}`;
+  $("combat-view").prepend($("fighters"));
+  const fighting = Boolean(adventure.mob || adventure.mobs?.length);
+  const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
     if (!["stats", "equipment", "inventory", "map", "bestiary"].includes(currentView)) currentView = "map";
     combatTarget = "";
@@ -274,15 +300,17 @@ function renderTutorial(adventure) {
     viewContext = context;
   }
   const me = adventure.players.find(player => player.id === session.me);
-  const canTalk = adventure.position === "mira" && !fighting && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3);
-  const canCraft = adventure.position === "forge" && !fighting && adventure.step === "craft" && !me.equipment;
+  const canTalk = adventure.position === "mira" && !fighting && !adventure.moving;
+  const atForge = adventure.position === "forge" && !fighting && !adventure.moving;
+  const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
-  for (const view of ["stats", "equipment", "inventory", "map", "bestiary"]) $(`${view}-view`).hidden = currentView !== view;
+  $("map-view").hidden = false;
+  for (const view of ["stats", "equipment", "inventory", "bestiary"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
   $("quest-view").hidden = false;
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
-  $("craft-view").hidden = !canCraft;
-  $("standby-view").hidden = fighting || canTalk || canCraft;
+  $("craft-view").hidden = !atForge;
+  $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = !fighting;
   for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
@@ -294,7 +322,7 @@ function renderTutorial(adventure) {
   $("leave").hidden = true;
   $("result").textContent = adventure.step === "complete" ? "Vous êtes arrivé au village de Brume." : "";
   $("location").textContent = adventure.location;
-  $("position-label").textContent = `Vous êtes ici : ${adventure.location}${adventure.journey?.length ? " · Trajet suspendu pendant le combat" : ""}`;
+  $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = !hasQuest ? "Aucune quête acceptée." : `Quête de Mira : ${{unaccepted: "à accepter", active: `${adventure.kills}/3 gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
   $("quest-description").textContent = !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
@@ -323,17 +351,19 @@ function renderTutorial(adventure) {
   function action(container, label, name, params = {}, disabled = false) {
     return button(container, label, () => tutorialCommand(name, params), disabled);
   }
-  if (!fighting) {
-    button("tutorial-actions", "Ouvrir la carte de la zone", () => showView("map"));
+  $("standby-title").textContent = adventure.moving ? "En chemin" : "Exploration";
+  $("standby-description").textContent = adventure.moving ? "Vous marchez vers votre destination. Une rencontre peut interrompre le trajet." : ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position) ? "Explorez les alentours pour rencontrer des créatures." : adventure.position === "rosee" ? "Cliquez sur Mira pour parler de sa quête, ou sur la forge pour consulter son accès." : "Choisissez un point sur la carte pour poursuivre votre aventure.";
+  if (!fighting && !adventure.moving) {
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   renderWorld(adventure, me);
-  $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
-  if (canTalk) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
+  $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
+  if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   if (hasQuest) button("quest-actions", "Localiser le lieu de la quête sur la carte", () => { mapPlace = "rosee"; mapPoint = "mira"; showView("map"); });
+  $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : me.equipment ? "Votre veste est déjà fabriquée et équipée." : "Forge débloquée : vous pouvez fabriquer votre veste si vous avez les matériaux.";
   $("craft-materials").textContent = `Votre sac : ${me.inventory.peau || 0} peau(s), ${me.inventory.croc || 0} croc(s).`;
   if (canCraft) action("craft-actions", "Fabriquer et équiper la veste", "craft", {recipe: "veste"}, (me.inventory.peau || 0) < 2 || (me.inventory.croc || 0) < 3);
-  $("mob-name").textContent = fighting ? "Ennemis · rang D" : "";
+  $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} gobelin(s) vivant(s) · rang D` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs?.length ? adventure.mobs : [{...adventure.mob, combat_id: "mob"}]).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;

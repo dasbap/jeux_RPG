@@ -107,19 +107,24 @@ def test_trip_stops_at_each_encounter_and_resumes_after_victory(service):
     party["characters"][player["player"]["id"]]["level"] = 2
     service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state["id"]))
     state = act(service, player, "move", destination="hunt")
-    assert state["tutorial"]["position"] == "rosee_lisiere"
-    assert state["tutorial"]["journey"] == ["lisiere", "hunt"]
+    assert state["tutorial"]["moving"]
     stops = []
-    for _ in range(30):
+    for _ in range(100):
         adventure = state["tutorial"]
-        if not adventure["mob"]:
+        if adventure["mob"]:
+            stops.append(adventure["position"])
+            service.clock.value += 61
+            state = act(service, player, "strike", target=adventure["mobs"][0]["combat_id"])
+        elif adventure["transit"]:
+            service.clock.value = adventure["transit"]["ready_at"]
+            service.tick()
+            state = service.state(player["token"])["session"]
+        else:
             break
-        stops.append(adventure["position"])
-        service.clock.value += 61
-        state = act(service, player, "strike", target=adventure["mobs"][0]["combat_id"])
-    assert set(stops) == {"rosee_lisiere", "lisiere", "hunt"}
+    assert set(stops) == {"rosee_lisiere", "lisiere"}
     assert state["tutorial"]["position"] == "hunt"
     assert state["tutorial"]["journey"] == []
+    assert state["tutorial"]["transit"] is None
     assert state["tutorial"]["kills"] == 3
 
 
@@ -171,7 +176,11 @@ def test_pending_journey_and_enemy_deadline_survive_restart(service):
     party.update(step="road", visited=["clearing"], position="clearing")
     service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state["id"]))
     state = act(service, player, "move", destination="rosee")
+    service.clock.value = state["tutorial"]["transit"]["ready_at"]
+    service.tick()
+    state = service.state(player["token"])["session"]
     before = state["tutorial"]
+    assert before["mob"]
     assert before["position"] == "clearing_rosee"
     assert before["journey"] == ["rosee"]
     database = service.db.execute("PRAGMA database_list").fetchone()[2]

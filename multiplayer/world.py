@@ -21,9 +21,9 @@ PLACES = {
 }
 
 ROUTES = [
-    {"id": "clearing_rosee", "from": "clearing", "to": "rosee", "name": "Sentier de Rosée"},
-    {"id": "rosee_lisiere", "from": "rosee", "to": "lisiere", "name": "Chemin de la lisière"},
-    {"id": "rosee_brume", "from": "rosee", "to": "brume", "name": "Route des Deux Villages"},
+    {"id": "clearing_rosee", "from": "clearing", "to": "rosee", "name": "Sentier de Rosée", "distance_km": 0.3},
+    {"id": "rosee_lisiere", "from": "rosee", "to": "lisiere", "name": "Chemin de la lisière", "distance_km": 0.2},
+    {"id": "rosee_brume", "from": "rosee", "to": "brume", "name": "Route des Deux Villages", "distance_km": 1.0},
 ]
 
 CURRENT = {"clearing": "clearing", "first_fight": "clearing", "road": "clearing",
@@ -69,7 +69,8 @@ def view(party, me, traveller=None):
         known.add("lisiere")
     if step in ("craft", "travel", "complete"):
         known.add("brume")
-    fighting = bool(party["mob"])
+    fighting = bool(party["mob"] or party.get("mobs"))
+    moving = bool(party.get("transit") or party.get("journey"))
     places = []
     for key, definition in PLACES.items():
         if key not in known:
@@ -78,12 +79,21 @@ def view(party, me, traveller=None):
                  "x": definition["x"], "y": definition["y"], "visited": key in visited,
                  "description": definition["description"] if key in visited else "Lieu connu, encore non visité. Ses détails seront révélés à votre arrivée.",
                  "points": deepcopy(definition["points"]) if key in visited else []}
-        if traveller and key in visited and key in ("rosee", "brume") and traveller["location"] in definition["name"]:
+        if traveller and key in visited and key in ("rosee", "brume") and traveller["location"] and traveller["location"] in definition["name"]:
             place["points"].append({"id": "leon", "name": traveller["name"], "type": "pnj",
                                     "description": "Marchand itinérant actuellement présent dans ce village. Son passage suit l'horloge du monde."})
         for point in place["points"]:
             point["action"] = None
-            if not fighting and party.get("position", CURRENT[step]) == point["id"]:
+            point["locked_reason"] = None
+            point["local"] = key == zone_of(party.get("position", CURRENT[step])) and party.get("position") not in ROAD_POINTS
+            point["can_interact"] = point["local"] and not fighting and not moving
+            if point["id"] == "forge" and party["quest"] != "completed":
+                point["locked_reason"] = "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village."
+            elif point["id"] == "forge" and me in party["equipment"]:
+                point["locked_reason"] = "Votre veste est déjà fabriquée et équipée."
+            elif point["id"] == "mira" and step == "hunt" and party["kills"] < 3:
+                point["locked_reason"] = f"Mira attend encore {3 - party['kills']} gobelin(s) vaincu(s)."
+            if not fighting and not moving and party.get("position", CURRENT[step]) == point["id"]:
                 if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == 3):
                     point["action"] = "dialogue"
                 elif point["id"] == "forge" and step == "craft" and me not in party["equipment"]:
@@ -95,9 +105,9 @@ def view(party, me, traveller=None):
     for definition in ROUTES:
         if definition["from"] in known and definition["to"] in known:
             route = {**definition, "destination": None}
-            if not fighting and step == "road" and route["id"] == "clearing_rosee":
+            if not fighting and not moving and step == "road" and route["id"] == "clearing_rosee":
                 route["destination"] = "rosee"
-            elif not fighting and step == "travel" and route["id"] == "rosee_brume":
+            elif not fighting and not moving and step == "travel" and route["id"] == "rosee_brume":
                 route["destination"] = "brume"
             routes.append(route)
     bestiary = []
@@ -172,3 +182,14 @@ def path(start, destination, known):
         visited.add(node)
         queue.extend((neighbor, route + [neighbor]) for neighbor in graph.get(node, []) if neighbor not in visited)
     return None
+
+
+def distance_km(source, destination):
+    road = source if source in ROAD_POINTS else destination if destination in ROAD_POINTS else None
+    if road:
+        return next(r["distance_km"] for r in ROUTES if r["id"] == road) / 2
+    return 0.01
+
+
+def walking_seconds(source, destination):
+    return distance_km(source, destination) / 5 * 3600

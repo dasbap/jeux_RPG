@@ -98,7 +98,7 @@ class GameService:
                 messages = tutorial.advance(party, now, self.random)
                 if json.dumps(party, sort_keys=True) != before:
                     self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
-                    self.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (row["session_id"],))
+                    self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" else "running", row["session_id"]))
                     for message in messages:
                         self._event(row["session_id"], now, message)
 

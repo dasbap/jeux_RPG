@@ -93,11 +93,15 @@ def new_party(players):
     return {"step": "clearing", "kills": 0, "quest": "unaccepted", "mob": None,
             "characters": {p["id"]: pack(create_character(p)) for p in players},
             "inventory": {p["id"]: {} for p in players}, "equipment": {},
-            "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": [], "position": "clearing", "journey": [], "mobs": [], "combat_step": "clearing"}
+            "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": [], "position": "clearing", "journey": [], "mobs": [], "combat_step": "clearing", "transit": None}
 
 
 def npc(now):
-    return {"name": "Léon, marchand itinérant", "location": "Rosée" if now % 600 < 300 else "Brume"}
+    stay = 8 * 3600
+    crossing = next(r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume") / 5 * 3600
+    phase = now % (2 * (stay + crossing))
+    location = "Rosée" if phase < stay else "Brume" if stay + crossing <= phase < 2 * stay + crossing else None
+    return {"name": "Léon, marchand itinérant", "location": location, "travelling": location is None}
 
 
 def can_target(actor, skill, target, mob):
@@ -124,6 +128,9 @@ def view(party, me, now):
     result = deepcopy(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
+    transit = party.get("transit")
+    result["moving"] = bool(transit and not party["mobs"])
+    result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / 20 if transit else 0
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
     result["players"] = []
@@ -308,7 +315,8 @@ def migrate(party, now):
     party.setdefault("combat_step", party["step"])
     party.setdefault("position", world.CURRENT[party["step"]])
     party.setdefault("journey", [])
-    if "mobs" not in party:
+    party.setdefault("transit", None)
+    if "mobs" not in party or party["mob"] and not party["mobs"]:
         party["mobs"] = [{**party["mob"], "combat_id": "mob", "next_attack": now + 40}] if party["mob"] else []
 
 
@@ -323,6 +331,8 @@ def spawn(party, now, random, messages):
     if not count:
         messages.append("Vous ne croisez aucun gobelin.")
         return
+    party["encounter_number"] = party.get("encounter_number", 0) + 1
+    party["combat_size"] = count
     first = party["step"] == "clearing"
     party["training"] = party["position"] == "training"
     party["combat_step"] = "first_fight" if first else party["step"]
@@ -339,29 +349,69 @@ def spawn(party, now, random, messages):
     messages.append(f"Vous rencontrez {count} gobelin(s) de rang D.")
 
 
-def continue_journey(party, now, random, messages):
-    while party["journey"] and not party["mobs"]:
-        destination = party["journey"].pop(0)
-        party["position"] = destination
-        zone = world.zone_of(destination)
-        party["visited"] = sorted(set(party["visited"]) | {zone})
-        messages.append(f"Vous arrivez à {world.point_name(destination)}.")
-        if zone == "rosee" and party["step"] == "road":
-            party["step"] = "village"
-        if destination in ("brume", "arrival") and party["step"] == "travel":
-            party["step"] = "complete"
-            party["journey"] = []
-        if world.hazard(destination):
-            spawn(party, now, random, messages)
+def arrive(party, destination, messages):
+    party["position"] = destination
+    zone = world.zone_of(destination)
+    party["visited"] = sorted(set(party["visited"]) | {zone})
+    messages.append(f"Vous arrivez à {world.point_name(destination)}.")
+    if destination == "rosee" and party["step"] == "road":
+        party["step"] = "village"
+    if destination in ("brume", "arrival") and party["step"] == "travel":
+        party["step"] = "complete"
+        party["journey"] = []
     world.record(party)
+
+
+def continue_journey(party, now, random, messages):
+    if party["mobs"]:
+        return
+    transit = party["transit"]
+    if transit:
+        if transit.get("paused_at") is not None:
+            delay = now - transit.pop("paused_at")
+            transit["started_at"] += delay
+            transit["ready_at"] += delay
+        if transit["remaining"] <= 0:
+            arrive(party, transit["destination"], messages)
+            party["transit"] = None
+        elif now < transit["ready_at"]:
+            return
+        else:
+            transit["remaining"] = max(0, transit["remaining"] - transit["segment"])
+            if transit["hazard"]:
+                spawn(party, now, random, messages)
+                if party["mobs"]:
+                    transit["paused_at"] = now
+            if transit["remaining"] <= 0 and not party["mobs"]:
+                arrive(party, transit["destination"], messages)
+                party["transit"] = None
+            elif transit["remaining"] > 0:
+                transit["segment"] = min(180, transit["remaining"])
+                transit["started_at"] = now
+                transit["ready_at"] = now + transit["segment"]
+            if party["mobs"] or party["transit"]:
+                return
+    if party["journey"] and not party["mobs"]:
+        destination = party["journey"].pop(0)
+        source = party["position"]
+        duration = world.walking_seconds(source, destination)
+        dangerous = source in world.ROAD_POINTS or destination in world.ROAD_POINTS or world.hazard(destination)
+        if destination in world.ROAD_POINTS:
+            party["position"] = destination
+        party["transit"] = {"destination": destination, "remaining": duration,
+                            "started_at": now, "ready_at": now + min(180, duration),
+                            "segment": min(180, duration), "hazard": dangerous}
+        messages.append(f"Vous partez vers {world.point_name(destination)}.")
 
 
 def execute(party, player_id, action, params, now, error, random):
     migrate(party, now)
     messages = []
     if action in ("travel", "move"):
-        if party["mobs"]:
+        if party["mobs"] or party["mob"]:
             raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
+        if party["transit"] or party["journey"]:
+            raise error("already_moving", "Votre déplacement est déjà en cours.", 409)
         destination = params["destination"]
         known = {p["id"] for p in world.view(party, player_id)["places"]}
         path = world.path(party["position"], destination, known)
@@ -371,6 +421,15 @@ def execute(party, player_id, action, params, now, error, random):
         continue_journey(party, now, random, messages)
         return messages, party["step"] == "complete"
     position = party["position"]
+    if party["transit"] and not party["mobs"]:
+        raise error("moving", "Attendez votre arrivée pour interagir.", 409)
+    if action == "talk" and params["npc"] == "leon":
+        merchant = npc(now)
+        if party["mobs"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
+            raise error("invalid_npc", "Léon n'est pas présent dans votre zone.", 409)
+        return ["Léon : je séjourne huit heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
+    if action == "craft" and party["quest"] != "completed":
+        raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
     if action == "talk" and position != "mira" or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":
@@ -429,6 +488,7 @@ def advance(party, now, random):
     if party["mobs"] and not any(c.is_alive() for c in characters.values()):
         party["mobs"] = []
         party["journey"] = []
+        party["transit"] = None
         if party["step"] == "first_fight":
             party["step"] = "clearing"
         party["position"] = "clearing" if party["step"] == "clearing" else "rosee"
@@ -437,4 +497,5 @@ def advance(party, now, random):
         messages.append("Le groupe est secouru. Le déplacement est interrompu.")
     party["characters"] = {key: pack(value) for key, value in characters.items()}
     sync_mobs(party)
+    continue_journey(party, now, random, messages)
     return messages

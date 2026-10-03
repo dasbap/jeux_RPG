@@ -37,17 +37,18 @@
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
         <h3 id="location"></h3><p id="objective"></p>
+        <section class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
         <div class="adventure-grid">
-          <section class="dashboard-box consultation"><h2>Personnage et carte</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
+          <section class="dashboard-box consultation"><h2>Personnage</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-details"></div></section>
         <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
         <section id="inventory-view" hidden><h3>Inventaire</h3><div id="inventory-details"></div></section>
-        <section id="map-view" hidden><h3>Carte des chemins connus</h3><p>Sélectionnez un lieu sur la carte. Les détails et points stratégiques des lieux visités restent consultables.</p><div id="world-map"></div><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></section>
+
         <section id="bestiary-view" hidden><h3>Bestiaire découvert</h3><div id="bestiary-details"></div></section>
 </section>
-          <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3>Exploration</h3><p>Les actions disponibles correspondent à votre position. Déplacez-vous sur la carte pour rejoindre un autre point.</p><div id="tutorial-actions" class="actions"></div></section>
+          <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3 id="standby-title">Exploration</h3><p id="standby-description"></p><div id="tutorial-actions" class="actions"></div></section>
         <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
 
-        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Veste de la lisière : deux peaux et trois crocs. Une fois équipée, elle donne +10 PV et +3 endurance.</p><p id="craft-materials"></p><div id="craft-actions" class="actions"></div></section>
+        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Veste de la lisière : deux peaux et trois crocs. Une fois équipée, elle donne +10 PV et +3 endurance.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="craft-actions" class="actions"></div></section>
         <section id="combat-view" hidden>
           <h3 id="mob-name"></h3><p id="mob-hp"></p><p id="combat-status" role="status"></p>
           <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
