@@ -63,6 +63,8 @@ def unpack(data, master=None):
     else:
         character = Character.create(data["class_name"], master=master, name=data["name"])
         Invocation.all_invocation.remove(character)
+        character.drop_xp = lambda killer: ""
+    character.user_id = data["id"]
     character.level = data["level"]
     character.exp = data["exp"]
     for key, value in data["stats"].items():
@@ -157,13 +159,14 @@ def view(party, me, now):
         character = characters[player_id]
         for name, skill in character.skills.items():
             skill.current_cooldown = max(0, (party["skill_ready"].get(player_id, {}).get(name, 0) - now) / progression.RATIO)
-        actionable = bool(mob and character.is_alive() and not character.is_stunned() and party["ready"][player_id] <= now)
+        actionable = bool(party["mobs"] and character.is_alive() and not character.is_stunned() and party["ready"][player_id] <= now and not party["battle"]["players"][player_id].get("casting"))
         result["players"].append({"id": player_id, "name": character.name, "class_name": character.char_class,
                                   "level": character.level, "exp": character.exp, "next_level_exp": progression.required(character.level),
                                   "hp": character.hp.current_value, "max_hp": character.hp.value,
                                   "stats": {key: getattr(character, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
                                   "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
-                                  "can_attack": actionable,
+                                  "can_attack": actionable and not party["battle"]["players"][player_id].get("casting") if party["battle"] else False,
+                                  "casting": tactics.cast_view(party, player_id, now),
                                   "energies": data["energies"], "inventory": party["inventory"][player_id],
                                   "equipment": " · ".join(f"{v['name']} +{v['level']}" for v in party["equipment"].get(player_id, {}).values()) or None,
                                   "gear": list(party["equipment"].get(player_id, {}).values()),
@@ -172,6 +175,7 @@ def view(party, me, now):
                                   "cooldown_real_seconds": max(0, party["ready"][player_id] - now) / progression.RATIO,
                                   "skills": [{"name": s.name, "description": s.description, "type": s.skill_type.name,
                                               "range": progression.attack_range(character, s),
+                                              "cast_seconds": progression.casting(s)["seconds"], "concentration": progression.casting(s)["concentration"],
                                               "cost": s.energie_cost, "energy": s.energie_target.__name__,
                                               "cooldown": max(0, party["skill_ready"].get(player_id, {}).get(s.name, 0) - now) / progression.RATIO,
                                               "can_target_others": s.can_target_others,
@@ -189,12 +193,13 @@ def view(party, me, now):
     return result
 
 
-def execute_one(party, player_id, action, params, now, error, random):
+def execute_one(party, player_id, action, params, now, error, random, resolved=False):
     characters = {key: unpack(value) for key, value in party["characters"].items()}
     actor = characters[player_id]
     messages = []
     if action in ("strike", "skill"):
-        tactics.ready(party, player_id, now, error)
+        if not resolved:
+            tactics.ready(party, player_id, now, error)
         enemies = {m["combat_id"]: unpack(m) for m in party["mobs"]}
         for target in [*characters.values(), *enemies.values()]:
             target.drop_xp = lambda killer: ""
@@ -216,13 +221,28 @@ def execute_one(party, player_id, action, params, now, error, random):
             skill = actor.skills.get(params["skill_name"]) if isinstance(params["skill_name"], str) else None
             if skill is None:
                 raise error("unknown_skill", "Compétence non acquise.")
-            skill.current_cooldown = max(0, (party["skill_ready"].get(player_id, {}).get(skill.name, 0) - now) / progression.RATIO)
+            skill.current_cooldown = 0 if resolved else max(0, (party["skill_ready"].get(player_id, {}).get(skill.name, 0) - now) / progression.RATIO)
+            if resolved:
+                actor.get_energie(skill.energie_target).current_value += skill.energie_cost
             if not skill.is_ready() or not skill.can_afford(actor):
                 raise error("skill_unavailable", "Énergie ou délai insuffisant.", 409)
             if not can_target(actor, skill, target, mob):
                 raise error("invalid_target", "Aucune action utile sur cette cible.")
             if not tactics.allowed(party, player_id, target_id, progression.attack_range(actor, skill)):
                 raise error("out_of_range", "La cible est hors de portée ou masquée.", 409)
+            if not resolved:
+                timing = progression.casting(skill)
+                unit = party["battle"]["players"][player_id]
+                unit["route"] = []
+                unit["hidden"] = False
+                unit["casting"] = {"skill_name": skill.name, "target": target_id, "started_at": now,
+                                   "ends_at": now + timing["seconds"] * progression.RATIO,
+                                   "concentration": timing["concentration"]}
+                actor.consume_energie(skill.energie_cost, skill.energie_target)
+                party["characters"][player_id] = pack(actor)
+                party["skill_ready"].setdefault(player_id, {})[skill.name] = unit["casting"]["ends_at"] + skill.cooldown * progression.RATIO
+                party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
+                return [f"{actor.name} commence {skill.name} ({timing['seconds']:g} s)."], False
             progression.scale_skill(actor, skill)
             try:
                 success, _ = actor.use_skill(skill.name, target)
@@ -235,12 +255,8 @@ def execute_one(party, player_id, action, params, now, error, random):
             party["skill_ready"].setdefault(player_id, {})[skill.name] = now + skill.cooldown * progression.RATIO
             messages.append(f"{actor.name} utilise {skill.name}.")
             party["effect_at"][target_id] = now + progression.ACTION_SECONDS * progression.RATIO
-        if target_id in enemies:
-            for invocation in actor.invocations.get_all():
-                invocation.drop_xp = lambda killer: ""
-                if invocation.is_alive() and target.is_alive():
-                    invocation.attack(target)
         party["characters"] = {key: pack(c) for key, c in characters.items()}
+        tactics.sync_summons(party, now)
         survivors = []
         defeated = []
         for data in party["mobs"]:
@@ -256,7 +272,8 @@ def execute_one(party, player_id, action, params, now, error, random):
         sync_mobs(party)
         for data in defeated:
             tactics.defeated(party, data, now, random, messages)
-        party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
+        if not resolved:
+            party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
         return messages, False
     if action == "talk":
         if party["battle"] or params["npc"] != "mira":
@@ -436,7 +453,8 @@ def execute(party, player_id, action, params, now, error, random):
 def advance(party, now, random):
     migrate(party, now)
     progression.resources(party, now)
-    messages = tactics.advance(party, now, random)
+    messages = tactics.complete_casts(party, now, random)
+    messages.extend(tactics.advance(party, now, random))
     timed_units = [*party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
     for key, data in timed_units:
         if data["effects"] and party["effect_at"].get(key, now + 1) <= now:

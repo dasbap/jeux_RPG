@@ -13,3 +13,6 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 .combat-active main>header,.combat-active main>h1,.combat-active main>.intro,.combat-active footer{display:none}
 
 .combat-mode .adventure-grid{display:none}.combat-mode #combat-layout{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,2fr) minmax(230px,1fr);gap:16px;align-items:start}#combat-layout>*,#combat-map-panel .map-strip{min-width:0}#combat-map-panel .map-strip{margin:0}#combat-player-panel .actions,#combat-enemy-panel .actions{display:grid;grid-template-columns:1fr}#combat-player-panel button,#combat-enemy-panel .mob-card{width:100%;min-width:0}#combat-player-panel #combat-resources p{display:block;overflow-wrap:anywhere}#combat-enemy-panel td{overflow-wrap:anywhere}@media(max-width:950px){.combat-mode #combat-layout{grid-template-columns:minmax(170px,.8fr) minmax(0,1.7fr) minmax(190px,1fr);gap:10px}}@media(max-width:750px){.combat-mode #combat-layout{grid-template-columns:1fr}#combat-map-panel{order:1}#combat-player-panel{order:2}#combat-enemy-panel{order:3}}
+
+.summon-unit circle { fill: #cbd5e1; stroke: #4338ca; stroke-width: 3; }
+.mob-card.selected { outline: 3px solid #b45309; }

@@ -57,3 +57,9 @@ def resources(party, now):
         party["characters"][key] = pack(character)
     party["resource_at"] = now
     return True
+
+
+def casting(skill):
+    physical = skill.DamageType and skill.DamageType.name == "PHYSICAL"
+    duration = .4 if physical else 2.0 if skill.skill_type.name == "INVOCATION" else 1.5
+    return {"seconds": duration, "concentration": not bool(physical)}

@@ -29,13 +29,14 @@ def test_slash_consumes_ten_aura_and_simple_attack_after_global_delay():
     before = data["characters"]["p0"]["energies"][0]["current"]
     act(data, "skill", skill_name="Sword Slash", target="mob")
     assert data["characters"]["p0"]["energies"][0]["current"] == before - 10
-    assert data["skill_ready"]["p0"]["Sword Slash"] == 0
+    assert data["skill_ready"]["p0"]["Sword Slash"] == pytest.approx(1.2)
     with pytest.raises(GameError) as failure:
         act(data, "strike", now=3.59, target="mob")
     assert failure.value.code == "cooldown"
+    tactics.complete_casts(data, 1.21, lambda: .5)
     act(data, "strike", now=3.6, target="mob")
     assert data["characters"]["p0"]["energies"][0]["current"] < before
-    assert data["skill_ready"]["p0"]["Sword Slash"] == 0
+    assert data["skill_ready"]["p0"]["Sword Slash"] == 1.21
 
 
 def test_fractional_regeneration_accumulates_and_is_not_action_based():
@@ -102,6 +103,7 @@ def test_hidden_coop_ally_not_focused_and_calls_interrupted_by_damage():
     near(data)
     data["battle"]["players"]["p0"]["hidden"] = False
     data["battle"]["players"]["p1"].update(position=[1, 6], hidden=True)
+    data["mobs"][1]["position"] = [1, 4]
     tactics.advance(data, 0, lambda: .5)
     enemy = data["mobs"][0]
     assert enemy["target"] == "p0"
@@ -234,11 +236,12 @@ def test_support_skill_cooldown_expires_with_time_independently_of_attack():
     data["characters"]["p0"] = tutorial.pack(character)
     near(data)
     act(data, "skill", skill_name="Blessing", target="p0")
-    assert data["skill_ready"]["p0"]["Blessing"] == 6
-    act(data, "strike", now=3.6, target="mob")
-    assert data["skill_ready"]["p0"]["Blessing"] == 6
-    tutorial.advance(data, 9, lambda: .5)
-    view = tutorial.view(data, "p0", 9)
+    assert data["skill_ready"]["p0"]["Blessing"] == 10.5
+    tactics.complete_casts(data, 4.5, lambda: .5)
+    act(data, "strike", now=4.5, target="mob")
+    assert data["skill_ready"]["p0"]["Blessing"] == 10.5
+    tutorial.advance(data, 12, lambda: .5)
+    view = tutorial.view(data, "p0", 12)
     blessing = next(s for s in view["players"][0]["skills"] if s["name"] == "Blessing")
     assert blessing["cooldown"] == 0 and blessing["available"]
     assert "p0" in blessing["targets"]
@@ -317,3 +320,151 @@ def test_snapshot_hides_distant_and_occluded_enemies_without_ending_combat():
     data["mobs"][0]["position"] = [7, 5]
     assert tutorial.view(data, "p0", 0)["mobs"] == []
     assert not tactics.allowed(data, "p0", "mob", 6)
+
+
+@pytest.mark.parametrize("preset_id", tactics.PRESETS)
+@pytest.mark.parametrize("origin", ["explore", "travel"])
+def test_all_group_spawns_are_walkable_and_distinct(preset_id, origin):
+    data = party(mobs=5)
+    zone, index = preset_id.rsplit("_", 1)
+    data["position"] = {"road": "clearing_rosee", "rosee": "training"}.get(zone, zone)
+    data["encounter_number"] = int(index)
+    tactics.begin(data, 0, origin)
+    preset = tactics.PRESETS[data["battle"]["preset"]]
+    positions = [mob["position"] for mob in data["mobs"]]
+    assert len({tuple(p) for p in positions}) == 5
+    assert all(tactics.walkable(preset, p) for p in positions)
+
+
+def test_cast_reserves_energy_and_immobilizes_until_completion():
+    data = party(class_name="Mage")
+    near(data)
+    skill = next(iter(tutorial.unpack(data["characters"]["p0"]).skills.values()))
+    before = data["mobs"][0]["stats"]["hp"]["current"]
+    energy = data["characters"]["p0"]["energies"][0]["current"]
+    act(data, "skill", skill_name=skill.name, target="mob")
+    assert data["mobs"][0]["stats"]["hp"]["current"] == before
+    assert data["characters"]["p0"]["energies"][0]["current"] == energy - skill.energie_cost
+    assert tutorial.view(data, "p0", 0)["players"][0]["casting"]["remaining_seconds"] == 1.5
+    with pytest.raises(GameError) as failure:
+        act(data, "battle_move", now=3.7, x=8, y=5, path=[[8, 5]])
+    assert failure.value.code == "casting"
+    tactics.complete_casts(data, 4.5, lambda: .5)
+    assert not data["battle"]["players"]["p0"].get("casting")
+    assert not data["mobs"] or data["mobs"][0]["stats"]["hp"]["current"] < before
+
+
+def test_enemy_damage_breaks_concentration_without_refunding_energy():
+    data = party(class_name="Mage")
+    near(data)
+    skill = next(iter(tutorial.unpack(data["characters"]["p0"]).skills.values()))
+    act(data, "skill", skill_name=skill.name, target="mob")
+    enemy = data["mobs"][0]
+    enemy["windup_until"] = 1
+    reserved = data["characters"]["p0"]["energies"][0]["current"]
+    messages = tactics.advance(data, 1.2, lambda: .5)
+    assert not data["battle"]["players"]["p0"].get("casting")
+    assert any("concentration brisée" in message for message in messages)
+    assert data["characters"]["p0"]["energies"][0]["current"] == reserved
+    hp = enemy["stats"]["hp"]["current"]
+    tactics.complete_casts(data, 9, lambda: .5)
+    assert enemy["stats"]["hp"]["current"] == hp
+
+
+def test_physical_cast_survives_damage_and_invalidated_target_is_not_hit():
+    data = party()
+    near(data)
+    act(data, "skill", skill_name="Sword Slash", target="mob")
+    data["mobs"][0]["windup_until"] = .1
+    tactics.advance(data, .2, lambda: .5)
+    assert data["battle"]["players"]["p0"].get("casting")
+    data["mobs"][0]["position"] = [0, 0]
+    messages = tactics.complete_casts(data, 1.3, lambda: .5)
+    assert any("cible devenue inaccessible" in message for message in messages)
+    assert not data["battle"]["players"]["p0"].get("casting")
+
+
+def test_two_visible_goblins_pursue_instead_of_calling_each_other():
+    data = party(mobs=2)
+    data["battle"]["players"]["p0"].update(position=[9, 6], hidden=False)
+    data["mobs"][0]["position"] = [9, 2]
+    data["mobs"][1]["position"] = [10, 3]
+    before = [mob["position"][:] for mob in data["mobs"]]
+    tactics.advance(data, 2.4, lambda: .5)
+    assert all(mob["calling_until"] is None for mob in data["mobs"])
+    assert all(mob["state"] == "chase" for mob in data["mobs"])
+    assert any(mob["position"] != p for mob, p in zip(data["mobs"], before))
+
+
+def test_ranged_attack_records_source_and_enemy_can_detect_at_player_range():
+    data = party(class_name="Mage")
+    data["battle"]["players"]["p0"].update(position=[3, 8], hidden=True)
+    mob = data["mobs"][0]
+    mob["position"] = [9, 8]
+    act(data, "strike", target="mob")
+    assert mob["target"] == "p0" and mob["state"] == "chase"
+    data["battle"]["players"]["p0"]["position"] = [1, 0]
+    tactics.damaged(data, mob, "p0", 4)
+    assert mob["last_known"] == [1, 0] and mob["state"] == "search"
+    assert mob["search_until"] == 34
+    tactics.advance(data, 34, lambda: .5)
+    assert mob["state"] == "patrol"
+
+
+def test_patrol_paths_cover_large_walkable_area():
+    for preset in tactics.PRESETS.values():
+        route = tactics.patrol_route(preset, 0)
+        assert all(tactics.walkable(preset, p) for p in route)
+        assert max(tactics.distance(a, b) for a in route for b in route) > 7
+        assert all(tactics.path(preset, a, b) for a, b in zip(route, route[1:] + route[:1]))
+
+
+def test_skeleton_exists_on_map_and_attacks_without_master_action():
+    data = party(mobs=2, class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    assert not data["battle"]["summons"]
+    tactics.complete_casts(data, 6, lambda: .5)
+    assert len(data["battle"]["summons"]) == 1
+    summon = next(iter(data["battle"]["summons"].values()))
+    assert tactics.walkable(tactics.PRESETS[data["battle"]["preset"]], summon["position"])
+    summon["position"] = [9, 5]
+    for mob in data["mobs"]:
+        mob["position"] = [9, 4]
+    weaker = data["mobs"][1]
+    weaker["stats"]["hp"]["current"] = 10
+    before = weaker["stats"]["hp"]["current"]
+    tactics.advance(data, 6, lambda: .5)
+    assert weaker["stats"]["hp"]["current"] < before
+    assert data["mobs"][0]["stats"]["hp"]["current"] == 18
+    assert all(key == "p0" for key in data["characters"])
+
+
+
+def test_dead_skeleton_during_master_damage_does_not_crash_simulation():
+    data = party(class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    tactics.complete_casts(data, 6, lambda: .5)
+    data["characters"]["p0"]["invocations"][0]["stats"]["hp"]["current"] = 1
+    next(iter(data["battle"]["summons"].values()))["position"] = [0, 0]
+    character = tutorial.unpack(data["characters"]["p0"])
+    character.lose_hp(tutorial.unpack(data["mobs"][0]), 6)
+    data["characters"]["p0"] = tutorial.pack(character)
+    tactics.advance(data, 6, lambda: .5)
+    assert not data["characters"]["p0"]["invocations"]
+    assert not data["battle"]["summons"]
+    assert data["characters"]["p0"]["stats"]["hp"]["current"] > 0
+
+
+def test_autonomous_skeleton_damage_interrupts_an_ally_call():
+    data = party(mobs=2, class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    tactics.complete_casts(data, 6, lambda: .5)
+    next(iter(data["battle"]["summons"].values()))["position"] = [9, 5]
+    data["mobs"][0].update(position=[9, 4], calling_until=12)
+    data["mobs"][1]["position"] = [1, 4]
+    tactics.advance(data, 6, lambda: .5)
+    assert data["mobs"][0]["calling_until"] is None
+    assert data["mobs"][0]["next_call"] == 12

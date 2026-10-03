@@ -45,6 +45,12 @@ def command(game, token, action, **params):
         game.random = lambda: 1.0
     try:
         result = game.command(token, uuid.uuid4().hex, action, **params)["session"]
+        if action == "skill" and any(p.get("casting") is not None for p in result["tutorial"]["players"]):
+            party = json.loads(game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (result["id"],)).fetchone()[0])
+            cast = next(unit["casting"] for unit in party["battle"]["players"].values() if unit.get("casting"))
+            game.clock.value = cast["ends_at"]
+            game.tick()
+            result = game.state(token)["session"]
         if action in ("travel", "move"):
             for _ in range(100):
                 transit = result["tutorial"].get("transit")

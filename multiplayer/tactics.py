@@ -65,7 +65,7 @@ def sight(preset, source, target):
 
 
 def sees(preset, mob, unit):
-    return distance(mob["position"], unit["position"]) <= (1.5 if unit.get("hidden") else 5) and sight(preset, mob["position"], unit["position"])
+    return distance(mob["position"], unit["position"]) <= (1.5 if unit.get("hidden") else 6) and sight(preset, mob["position"], unit["position"])
 
 
 def begin(party, now, origin):
@@ -75,6 +75,7 @@ def begin(party, now, origin):
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
     party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "next_brain": now}
+    occupied = [u["position"] for u in players.values()]
     identifiers = [m["combat_id"] for m in party["mobs"]]
     for index, mob in enumerate(party["mobs"]):
         mob.update(position=[9 + index % 2, 2 + index], home=[9 + index % 2, 2 + index], state="patrol", target=None,
@@ -84,6 +85,122 @@ def begin(party, now, origin):
         if origin != "explore":
             mob["position"] = [4 + index % 2, 6 - index]
             mob["home"] = mob["position"][:]
+
+        mob["position"] = free_position(preset, mob["position"], occupied)
+        occupied.append(mob["position"])
+        mob["home"] = mob["position"][:]
+        mob["patrol_route"] = patrol_route(preset, index)
+        mob["patrol_index"] = 0
+    sync_summons(party, now)
+
+
+def free_position(preset, wanted, occupied=()):
+    cells = [[x, y] for x in range(preset["width"]) for y in range(preset["height"])
+             if walkable(preset, [x, y]) and [x, y] not in occupied]
+    return min(cells, key=lambda p: (distance(p, wanted), p[1], p[0]))
+
+
+def patrol_route(preset, index):
+    wanted = ((8, 1), (12, 1), (12, 8), (8, 8), (4, 8), (4, 4))
+    route = [free_position(preset, list(p)) for p in wanted]
+    offset = index % len(route)
+    return route[offset:] + route[:offset]
+
+
+def cast_view(party, player, now):
+    cast = party.get("battle") and party["battle"]["players"][player].get("casting")
+    return {"name": cast["skill_name"], "remaining_seconds": max(0, cast["ends_at"] - now) / progression.RATIO,
+            "concentration": cast["concentration"]} if cast else None
+
+
+def complete_casts(party, now, random):
+    from .tutorial import execute_one, unpack
+    from .service import GameError
+    if not party.get("battle"):
+        return []
+    messages = []
+    for key, unit in party["battle"]["players"].items():
+        cast = unit.get("casting")
+        if not cast:
+            continue
+        actor = unpack(party["characters"][key])
+        if not actor.is_alive() or actor.is_stunned():
+            unit.pop("casting", None)
+            messages.append(f"{actor.name} : incantation interrompue.")
+        elif cast["ends_at"] <= now:
+            unit.pop("casting", None)
+            try:
+                result, _ = execute_one(party, key, "skill", {"skill_name": cast["skill_name"], "target": cast["target"]}, now, GameError, random, resolved=True)
+                messages.extend(result)
+            except GameError:
+                messages.append(f"{actor.name} : {cast['skill_name']} annulé, cible devenue inaccessible.")
+    return messages
+
+
+def sync_summons(party, now):
+    battle = party.get("battle")
+    if not battle:
+        return
+    summons = battle.setdefault("summons", {})
+    active = set()
+    reserved = {i["id"] for data in party["characters"].values() for i in data["invocations"] if i["id"] != "-1"}
+    occupied = [p["position"] for p in battle["players"].values()] + [m["position"] for m in party["mobs"]]
+    for owner, data in party["characters"].items():
+        for index, invocation in enumerate(data["invocations"]):
+            if invocation["id"] == "-1":
+                sequence = battle.get("summon_sequence", 0)
+                key = f"{owner}:summon:{sequence}"
+                while key in summons or key in reserved:
+                    sequence += 1
+                    key = f"{owner}:summon:{sequence}"
+                battle["summon_sequence"] = sequence + 1
+                invocation["id"] = key
+                reserved.add(key)
+            key = invocation["id"]
+            active.add(key)
+            if key not in summons:
+                summons[key] = {"owner": owner, "index": index, "position": free_position(PRESETS[battle["preset"]], battle["players"][owner]["position"], occupied),
+                                "next_move": now, "next_attack": now, "hidden": False, "route": []}
+                occupied.append(summons[key]["position"])
+            summons[key].update(index=index, name=invocation["name"], hp=invocation["stats"]["hp"]["current"], max_hp=invocation["stats"]["hp"]["max"])
+    battle["summons"] = {key: unit for key, unit in summons.items() if key in active}
+
+
+def advance_summons(party, characters, now, random, messages):
+    from .tutorial import unpack, pack, sync_mobs
+    battle = party["battle"]
+    preset = PRESETS[battle["preset"]]
+    for summon_id, unit in battle.get("summons", {}).items():
+        invocations = characters[unit["owner"]].invocations.get_all()
+        if unit["index"] >= len(invocations) or not invocations[unit["index"]].is_alive():
+            continue
+        invocation = invocations[unit["index"]]
+        candidates = [mob for mob in party["mobs"] if distance(unit["position"], mob["position"]) <= 6 and sight(preset, unit["position"], mob["position"])]
+        if not candidates:
+            continue
+        target = min(candidates, key=lambda m: (distance(unit["position"], m["position"]), m["stats"]["hp"]["current"], m["combat_id"]))
+        if distance(unit["position"], target["position"]) <= 1.5:
+            if unit["next_attack"] > now:
+                continue
+            enemy = unpack(target)
+            enemy.drop_xp = lambda killer: ""
+            enemy.lose_hp(invocation, progression.simple_damage(invocation))
+            target.update(pack(enemy))
+            damaged(party, target, summon_id, now)
+            unit["next_attack"] = now + 3 * progression.RATIO
+            messages.append(f"{invocation.name} attaque {target['name']}.")
+            if not enemy.is_alive():
+                party["mobs"].remove(target)
+                party["characters"] = {key: pack(c) for key, c in characters.items()}
+                defeated(party, target, now, random, messages)
+                for key, data in party["characters"].items():
+                    characters[key] = unpack(data)
+                sync_mobs(party)
+        elif unit["next_move"] <= now:
+            route = path(preset, unit["position"], target["position"])
+            if route:
+                unit["position"] = route[0]
+                unit["next_move"] = now + MOVE_TIME
 
 
 def visible(party, player, mob):
@@ -125,6 +242,8 @@ def ready(party, player, now, error):
         raise error("stunned" if actor.is_stunned() else "defeated", "Votre personnage ne peut pas agir.", 409)
     if party["ready"][player] > now:
         raise error("cooldown", "Attendez la fin du délai de 1,2 seconde.", 409)
+    if party.get("battle") and party["battle"]["players"][player].get("casting"):
+        raise error("casting", "Votre incantation vous immobilise jusqu’à sa fin.", 409)
     return actor
 
 
@@ -180,7 +299,7 @@ def execute(party, player, action, params, now, error):
 
 def damaged(party, mob, actor, now):
     battle = party["battle"]
-    unit = battle["players"][actor]
+    unit = battle["players"].get(actor) or battle.get("summons", {}).get(actor)
     unit["hidden"] = False
     unit["route"] = []
     was_calling = mob["calling_until"] is not None
@@ -193,6 +312,8 @@ def damaged(party, mob, actor, now):
         mob["last_known"] = unit["position"][:]
         mob["state"] = "chase"
     else:
+        mob["target"] = None
+        mob["last_known"] = unit["position"][:]
         mob["state"] = "search"
         mob["search_until"] = now + SEARCH_TIME
     stun = max((e["duration"] for e in mob.get("effects", []) if e["group"] == "stun"), default=0)
@@ -231,13 +352,25 @@ def advance(party, now, random):
     battle["next_brain"] = now + MOVE_TIME
     preset = PRESETS[battle["preset"]]
     messages = []
+    sync_summons(party, now)
     characters = {key: unpack(data) for key, data in party["characters"].items()}
     for key, unit in battle["players"].items():
         actor = characters[key]
         if unit["route"] and actor.is_alive() and not actor.is_stunned() and unit["next_move"] <= now:
             unit["position"] = unit["route"].pop(0)
             unit["next_move"] = now + MOVE_TIME
+    advance_summons(party, characters, now, random, messages)
+    units = {**battle["players"], **battle.get("summons", {})}
+    for key, unit in battle.get("summons", {}).items():
+        invocations = characters[unit["owner"]].invocations.get_all()
+        if unit["index"] < len(invocations):
+            characters[key] = invocations[unit["index"]]
     for mob in party["mobs"]:
+        if any(characters[key].is_alive() and sees(preset, mob, unit) for key, unit in units.items()):
+            mob["alerted"] = True
+    for mob in party["mobs"]:
+        if not walkable(preset, mob["position"]):
+            mob["position"] = free_position(preset, mob["position"])
         if mob.get("stunned_until", 0) > now:
             mob["calling_until"] = None
             mob["windup_until"] = None
@@ -246,12 +379,12 @@ def advance(party, now, random):
         if mob.get("stunned_until"):
             mob["stunned_until"] = 0
             mob["effects"] = [e for e in mob["effects"] if e["group"] != "stun"]
-            if not any(c.is_alive() and sees(preset, mob, battle["players"][key]) for key, c in characters.items()):
+            if not any(c.is_alive() and sees(preset, mob, units[key]) for key, c in characters.items()):
                 mob.update(state="patrol", target=None, last_known=None, search_until=None, needs_call=False)
         for corpse in battle["corpses"]:
             if distance(mob["position"], corpse["position"]) <= 5 and sight(preset, mob["position"], corpse["position"]) and corpse["id"] not in mob["known_dead"]:
                 mob["known_dead"].append(corpse["id"])
-        visible = [(distance(mob["position"], unit["position"]), key) for key, unit in battle["players"].items()
+        visible = [(distance(mob["position"], unit["position"]), key) for key, unit in units.items()
                    if characters[key].is_alive() and sees(preset, mob, unit) and path(preset, mob["position"], unit["position"]) is not None]
         visible.sort()
         target = visible[0][1] if visible else None
@@ -259,7 +392,7 @@ def advance(party, now, random):
             mob["alerted"] = True
             previous = mob.get("target")
             mob["target"] = target
-            mob["last_known"] = battle["players"][target]["position"][:]
+            mob["last_known"] = units[target]["position"][:]
             if mob["state"] == "patrol" or previous != target:
                 mob["needs_call"] = True
             if mob.get("previous_distance", 0) <= 1.5 < visible[0][0]:
@@ -297,7 +430,12 @@ def advance(party, now, random):
                 enemy = unpack(mob)
                 actor = characters[target]
                 actor.drop_xp = lambda killer: ""
+                before_hp = actor.hp.current_value
                 actor.lose_hp(enemy, 3)
+                cast = units[target].get("casting")
+                if cast and cast["concentration"] and actor.hp.current_value < before_hp:
+                    units[target].pop("casting", None)
+                    messages.append(f"{actor.name} : concentration brisée, sort annulé.")
                 mob["windup_until"] = None
                 mob["next_attack"] = now + 9 + random() * 6
                 messages.append(f"{mob['name']} utilise Entaille contre {actor.name}.")
@@ -306,7 +444,7 @@ def advance(party, now, random):
             mob["intent"] = "Va utiliser Entaille" if mob["windup_until"] else "Prépare sa prochaine attaque"
         else:
             mob["windup_until"] = None
-            destination = mob["last_known"] if mob["state"] == "search" else battle["players"][target]["position"] if target else None
+            destination = mob["last_known"] if mob["state"] == "search" else units[target]["position"] if target else None
             if mob["state"] == "search" and mob.get("search_until", now) <= now:
                 mob.update(state="patrol", last_known=None, search_until=None)
                 destination = None
@@ -316,21 +454,25 @@ def advance(party, now, random):
                 if candidates:
                     destination = candidates[int(now / 6) % len(candidates)]
             if destination is None:
-                home = mob["home"]
-                candidates = [[home[0] + dx, home[1] + dy] for dx, dy in ((0, 0), (1, 0), (0, 1), (-1, 0))]
-                candidates = [p for p in candidates if walkable(preset, p)]
-                destination = candidates[int(now / 9 + int(mob["combat_id"].replace("mob", "").replace("-", "") or 1)) % len(candidates)]
+                patrol = mob.setdefault("patrol_route", patrol_route(preset, 0))
+                index = mob.setdefault("patrol_index", 0)
+                if mob["position"] == patrol[index]:
+                    index = (index + 1) % len(patrol)
+                    mob["patrol_index"] = index
+                destination = patrol[index]
             route = path(preset, mob["position"], destination)
             if route and mob["next_move"] <= now:
                 mob["position"] = route[0]
                 mob["next_move"] = now + GOBLIN_MOVE_TIME
             mob["intent"] = "Poursuit un joueur" if target else "Cherche à la dernière position connue" if mob["state"] == "search" else "Patrouille"
-    party["characters"] = {key: pack(character) for key, character in characters.items()}
-    if not any(c.is_alive() for c in characters.values()):
+    party["characters"] = {key: pack(characters[key]) for key in party["characters"]}
+    sync_summons(party, now)
+    if not any(characters[key].is_alive() for key in party["characters"]):
         party.update(mobs=[], mob=None, battle=None, journey=[], transit=None, position="rosee" if "rosee" in party["visited"] else "clearing")
         if party["step"] == "first_fight":
             party["step"] = "clearing"
-        for key, character in characters.items():
+        for key in party["characters"]:
+            character = characters[key]
             recover(character)
             party["characters"][key] = pack(character)
         messages.append("Le groupe est secouru et quitte le champ de bataille.")

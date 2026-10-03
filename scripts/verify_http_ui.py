@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -7,7 +8,7 @@ import time
 from types import SimpleNamespace
 
 import jeuxRPG
-from jeuxRPG.multiplayer import server as server_module
+from jeuxRPG.multiplayer import server as server_module, tutorial
 from jeuxRPG.multiplayer.service import GameService
 from jeuxRPG.multiplayer.server import RPGServer
 
@@ -37,6 +38,20 @@ def main():
                 modules = str(root / ".ui-test" / "node_modules")
                 if os.environ.get("NODE_PATH"):
                     modules += os.pathsep + os.environ["NODE_PATH"]
+                fixture = tutorial.new_party([{"id": "p0", "name": "Test", "class_name": "Knight"}])
+                tutorial.migrate(fixture, 0)
+                tutorial.spawn(fixture, 0, lambda: 0, [], origin="explore")
+                fixture["mobs"] = fixture["mobs"][:3]
+                tutorial.sync_mobs(fixture)
+                fixture["battle"]["players"]["p0"].update(position=[9, 5], hidden=False)
+                for mob, position in zip(fixture["mobs"], ([9, 4], [10, 5], [12, 5])):
+                    mob["position"] = position
+                fixture_path = Path(directory) / "ui-fixture.json"
+                fixture_path.write_text(json.dumps(tutorial.view(fixture, "p0", 0)), encoding="utf-8")
+                checked = subprocess.run(["node", str(root / "scripts" / "verify_tactical_ui.cjs"), str(fixture_path)],
+                                         env={**os.environ, "NODE_PATH": modules}, timeout=30)
+                if checked.returncode:
+                    return checked.returncode
                 result = subprocess.run(["node", str(root / "scripts" / "verify_ui.cjs")],
                                         env={**os.environ, "NODE_PATH": modules,
                                              "RPG_TEST_ORIGIN": f"http://127.0.0.1:{server.server_address[1]}"},

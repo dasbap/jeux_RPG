@@ -12,6 +12,8 @@ let mapPlace = "";
 let mapPoint = "";
 let mapMarker = null;
 let focusedMob = "";
+let pendingTravel = null;
+let tacticalInteractionUntil = 0;
 const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
 function message(text, error = false) {
   $("message").textContent = text;
@@ -176,6 +178,7 @@ function renderWorld(adventure, me) {
     if (p.id === world.current && !world.routes.some(r => r.id === adventure.position)) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
     const choose = () => { mapPlace = p.id; mapPoint = ""; showView("map"); };
     group.addEventListener("click", choose);
+    group.addEventListener("dblclick", () => requestTravel(p.id, p.name, p.id));
     group.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
     svg.append(group);
   }
@@ -295,7 +298,7 @@ function showView(view) {
   if (session && session.tutorial) renderTutorial(session.tutorial);
 }
 function skillAllowed(me, skill, target, mob) {
-  if (!mob || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0 || !skill.available || skill.cooldown > 0) return false;
+  if (!session.tutorial.battle?.hostiles_alive || me.casting || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0 || !skill.available || skill.cooldown > 0) return false;
   const energy = me.energies.find(e => e.type === skill.energy);
   if (!battleAllowed(session.tutorial, me.id, target.id, skill.range)) return false;
   if (!energy || energy.current < skill.cost || !skill.targets.includes(target.id)) return false;
@@ -307,7 +310,7 @@ function skillAllowed(me, skill, target, mob) {
   if (skill.type === "HEAL") return target.hp < target.max_hp;
   return skill.type === "BUFF";
 }
-function renderTutorial(adventure) {
+function renderTutorial(adventure, preserveBattle = false) {
   $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
   $("combat-layout").hidden = !fighting;
@@ -329,6 +332,7 @@ function renderTutorial(adventure) {
   if (context !== viewContext) {
     if (!["stats", "equipment", "inventory", "map", "bestiary"].includes(currentView)) currentView = "map";
     combatTarget = "";
+    focusedMob = "";
     mapPlace = "";
     mapPoint = "";
     viewContext = context;
@@ -394,7 +398,7 @@ function renderTutorial(adventure) {
     }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  renderWorld(adventure, me);
+  if (!fighting || !preserveBattle) renderWorld(adventure, me);
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
@@ -414,8 +418,8 @@ function renderTutorial(adventure) {
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
-  const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
-  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => canAttack(target) || me.skills.some(skill => skillAllowed(me, skill, target, mob))) : [];
+  const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
+  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (canAttack(target) || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
   $("combat-target").replaceChildren();
   for (const target of possibleTargets) {
     const option = document.createElement("option");
@@ -423,24 +427,65 @@ function renderTutorial(adventure) {
     option.textContent = `${target.name}${target.id === me.id ? " · vous" : ""}`;
     $("combat-target").append(option);
   }
-  if (possibleTargets.length && !possibleTargets.some(target => target.id === combatTarget)) combatTarget = possibleTargets[0].id;
+  if (!combatTarget && possibleTargets.length) {
+    const placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = "Sélectionnez une entité sur la carte"; $("combat-target").prepend(placeholder);
+  }
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = !fighting || possibleTargets.length === 0;
   const selected = possibleTargets.find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
-  if (fighting) renderBattle(adventure, me);
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  if (fighting && !preserveBattle) renderBattle(adventure, me);
   if (fighting && me.hp > 0) {
     if (selected && canAttack(selected)) action("combat-actions", "Attaque simple", "strike", {target: selected.id});
     if (selected) for (const skill of me.skills.filter(s => skillAllowed(me, s, selected, mob))) {
-      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy}`, "skill", {skill_name: skill.name, target: selected.id});
+      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: selected.id});
       element.className = "secondary";
       element.title = skill.description;
     }
   }
 }
 function requestTravel(destination, name, zone) {
-  if (zone !== session.tutorial.world.current && !window.confirm(`Voulez-vous vous déplacer à ${name} ?`)) return;
-  return tutorialCommand("move", {destination});
+  if (zone === session.tutorial.world.current) return tutorialCommand("move", {destination});
+  if (pendingTravel) pendingTravel(false);
+  $("travel-question").textContent = `Voulez-vous vous déplacer à ${name} ?`;
+  $("travel-confirmation").hidden = false;
+  return new Promise(resolve => {
+    pendingTravel = async accepted => {
+      pendingTravel = null;
+      $("travel-confirmation").hidden = true;
+      if (accepted) await tutorialCommand("move", {destination});
+      resolve(accepted);
+    };
+  });
+}
+$("travel-accept").addEventListener("click", () => pendingTravel?.(true));
+$("travel-cancel").addEventListener("click", () => pendingTravel?.(false));
+function selectEntity(id) {
+  tacticalInteractionUntil = Date.now() + 500;
+  focusedMob = focusedMob === id ? "" : id;
+  combatTarget = focusedMob;
+  renderTutorial(session.tutorial, true);
+  const ns = "http://www.w3.org/2000/svg";
+  for (const card of $("mob-cards").querySelectorAll("[data-mob]")) card.classList.toggle("selected", card.dataset.mob === focusedMob);
+  for (const group of $("world-map").querySelectorAll("[data-unit]")) {
+    group.querySelector(".objective-ring")?.remove();
+    if (group.dataset.unit === focusedMob) {
+      const source = group.querySelector("circle"), ring = document.createElementNS(ns, "circle");
+      for (const attr of ["cx", "cy"]) ring.setAttribute(attr, source.getAttribute(attr));
+      ring.setAttribute("r", "18"); ring.setAttribute("class", "objective-ring"); group.append(ring);
+    }
+  }
+}
+function approachEntity(position) {
+  const adventure = session.tutorial, me = adventure.players.find(p => p.id === session.me);
+  if (busy || me.casting || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0) return;
+  const unit = adventure.battle.players[me.id], map = adventure.battle.map;
+  if (Math.hypot(unit.position[0] - position[0], unit.position[1] - position[1]) <= 1.5) return;
+  const candidates = [[position[0] - 1, position[1]], [position[0] + 1, position[1]], [position[0], position[1] - 1], [position[0], position[1] + 1]];
+  const paths = candidates.map(p => gridPath(map, unit.position, p)).filter(p => p !== null).sort((a,b) => a.length - b.length);
+  if (!paths.length || !paths[0].length) return;
+  const path = paths[0], [x,y] = path[path.length - 1];
+  tutorialCommand("battle_move", {x, y, path});
 }
 function gridSight(map, source, target) {
   let [x, y] = source;
@@ -484,7 +529,7 @@ function gridPath(map, source, destination) {
 function renderBattle(adventure, me) {
   const battle = adventure.battle, map = battle.map;
   const unit = battle.players[me.id];
-  const disabled = busy || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0;
+  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);
@@ -516,11 +561,16 @@ function renderBattle(adventure, me) {
     group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
     group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
-    group.addEventListener("click", () => { focusedMob = id; combatTarget = id; renderTutorial(session.tutorial); });
+    group.addEventListener("click", () => selectEntity(id));
+    group.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(position); });
     svg.append(group);
   };
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
   for (const mob of adventure.mobs) draw(mob.combat_id, mob.position, mob.combat_id === "mob" ? "G1" : `G${mob.combat_id.split("-")[1]}`, "enemy-unit");
+  for (const [id, summon] of Object.entries(battle.summons || {})) {
+    draw(id, summon.position, "S", "summon-unit");
+    svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
+  }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
   $("world-map").replaceChildren(svg);
   $("mob-cards").replaceChildren();
@@ -529,7 +579,9 @@ function renderBattle(adventure, me) {
     const title = document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
     const bar = document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
     card.append(title, bar);
-    card.addEventListener("click", () => { focusedMob = mob.combat_id; combatTarget = mob.combat_id; renderTutorial(session.tutorial); });
+    card.classList.toggle("selected", focusedMob === mob.combat_id);
+    card.addEventListener("click", () => selectEntity(mob.combat_id));
+    card.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(mob.position); });
     $("mob-cards").append(card);
   }
   paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
@@ -543,9 +595,12 @@ function renderBattle(adventure, me) {
   $("tactical-actions").replaceChildren();
   const hide = document.createElement("button"); hide.textContent = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture";
   hide.disabled = disabled || unit.hidden || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
-  hide.addEventListener("click", () => tutorialCommand("hide")); $("tactical-actions").append(hide);
+  hide.addEventListener("click", () => tutorialCommand("hide"));
+  if (!hide.disabled) $("tactical-actions").append(hide);
+  else if (unit.hidden) { const label = document.createElement("p"); label.textContent = "Vous êtes dissimulé"; $("tactical-actions").append(label); }
   $("corpse-actions").replaceChildren();
   for (const corpse of battle.corpses) {
+    if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5) continue;
     const button = document.createElement("button"); button.textContent = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
     button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
     button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
@@ -558,7 +613,7 @@ async function refresh() {
     $("connection").textContent = "Prêt · créez votre personnage";
     return;
   }
-  if (polling || busy) return;
+  if (polling || busy || Date.now() < tacticalInteractionUntil) return;
   polling = true;
   try {
     const state = await api("/api/state");
@@ -647,6 +702,7 @@ $("map-place").addEventListener("change", () => { mapPlace = $("map-place").valu
 $("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ? "combat" : "standby"));
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
+  focusedMob = combatTarget;
   if (session?.tutorial) renderTutorial(session.tutorial);
 });
 $("create").addEventListener("click", () => command("create"));

@@ -55,7 +55,7 @@ async function finishCombat(dom) {
       if (adventure.moving || adventure.transit || adventure.journey.length) { await pause(50); continue; }
       return;
     }
-    if (me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0) { await pause(50); continue; }
+    if (me.casting || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0) { await pause(50); continue; }
     for (const ally of clients.filter(client => client !== dom && !client.window.closed)) {
       const supportState = await request(ally, "/api/state");
       if (supportState.session?.id !== state.session.id) continue;
@@ -182,15 +182,17 @@ async function main() {
     await finishCombat(first);
     await waitFor(() => [...el(first, "tutorial-actions").querySelectorAll("button")].some(b => b.textContent.includes("Rejoindre") && !b.disabled), "trajet visible après premier combat");
     [...el(first, "tutorial-actions").querySelectorAll("button")].find(b => b.textContent.includes("Rejoindre")).click();
+    assert(!el(first, "travel-confirmation").hidden);
+    el(first, "travel-accept").click();
     await waitFor(async () => (await request(first, "/api/state")).session.tutorial.position !== "clearing", "départ vers Rosée");
     await finishCombat(first);
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");
-    let confirmation = "";
-    first.window.confirm = text => { confirmation = text; return false; };
-    await first.window.testFns.requestTravel("clearing", "Clairière", "clearing");
-    assert(confirmation.includes("Voulez-vous vous déplacer"));
+    const confirmation = first.window.testFns.requestTravel("clearing", "Clairière", "clearing");
+    assert(!el(first, "travel-confirmation").hidden);
+    assert(el(first, "travel-question").textContent.includes("Voulez-vous vous déplacer"));
+    el(first, "travel-cancel").click();
+    assert.equal(await confirmation, false);
     assert.equal((await request(first, "/api/state")).session.tutorial.position, "rosee");
-    first.window.confirm = () => true;
     await assert.rejects(command(first, "talk", {npc: "mira"}), error => error.code === "wrong_location");
     el(first, "show-map").click();
     el(first, "map-place").value = "rosee";

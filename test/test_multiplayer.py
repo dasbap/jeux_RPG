@@ -342,3 +342,69 @@ def test_static_page_security_headers(http_server):
         assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert b"app.js" in response.read()
+
+
+
+def test_ticker_logs_failure_keeps_http_alive_and_retries(game, http_server, caplog, monkeypatch):
+    succeeded = threading.Event()
+    original = game.tick
+    calls = []
+
+    def flaky_tick():
+        calls.append(True)
+        if len(calls) == 1:
+            raise RuntimeError("simulation-test-failure")
+        original()
+        succeeded.set()
+
+    monkeypatch.setattr(game, "tick", flaky_tick)
+    assert succeeded.wait(3)
+    assert http_server._ticker.is_alive()
+    assert not http_server._stop.is_set()
+    with urlopen(f"http://127.0.0.1:{http_server.server_address[1]}/", timeout=3) as response:
+        assert response.status == 200
+    assert "simulation-test-failure" in caplog.text
+
+
+def test_bad_saved_session_does_not_stop_other_sessions(game, caplog):
+    bad = player(game, "Sauvegarde cassée")
+    good = player(game, "Sauvegarde saine")
+    broken = command(game, bad, "tutorial")["session"]
+    healthy = command(game, good, "tutorial")["session"]
+    game.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", ("{", broken["id"]))
+    game.clock.advance(2)
+    game.tick()
+    state = game.state(good)["session"]
+    assert state["revision"] > healthy["revision"]
+    assert "Simulation interrompue" in caplog.text
+
+
+
+def test_main_process_stays_alive_after_printing_address(tmp_path):
+    import os
+    import queue
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    environment = {**os.environ, "PYTHONPATH": str(root.parent) + os.pathsep + os.environ.get("PYTHONPATH", "")}
+    process = subprocess.Popen([sys.executable, str(root / "main.py"), "--database", str(tmp_path / "main.sqlite3"), "--port", "0"],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=environment, cwd=root)
+    lines = queue.Queue()
+    reader = threading.Thread(target=lambda: lines.put(process.stdout.readline()), daemon=True)
+    reader.start()
+    try:
+        line = lines.get(timeout=5)
+        assert line.startswith("RPG multijoueur : http://127.0.0.1:")
+        address = line.split(" : ", 1)[1].strip()
+        for _ in range(3):
+            with urlopen(address, timeout=3) as response:
+                assert response.status == 200
+        assert process.poll() is None
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
+        reader.join(timeout=1)
+        process.stdout.close()
+        process.stderr.close()

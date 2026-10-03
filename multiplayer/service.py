@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import math
 import os
 import re
@@ -34,6 +35,7 @@ class GameService:
     lobby_duration = 3 * 600.0
 
     def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
+        self._tick_errors = {}
         self.random = random_source or secrets.SystemRandom().random
         path = Path(database)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -101,10 +103,20 @@ class GameService:
             now = self._now()
             self._expire(now)
             rows = self.db.execute("SELECT t.session_id, t.data FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'").fetchall()
+            active = {row["session_id"] for row in rows}
+            self._tick_errors = {key: value for key, value in self._tick_errors.items() if key in active}
             for row in rows:
-                party = json.loads(row["data"])
-                before = json.dumps(party, sort_keys=True)
-                messages = tutorial.advance(party, now, self.random)
+                try:
+                    party = json.loads(row["data"])
+                    before = json.dumps(party, sort_keys=True)
+                    messages = tutorial.advance(party, now, self.random)
+                except Exception:
+                    last = self._tick_errors.get(row["session_id"], -60)
+                    if time.monotonic() - last >= 60:
+                        logging.getLogger(__name__).exception("Simulation interrompue pour la session %s ; les autres sessions restent actives.", row["session_id"])
+                        self._tick_errors[row["session_id"]] = time.monotonic()
+                    continue
+                self._tick_errors.pop(row["session_id"], None)
                 if json.dumps(party, sort_keys=True) != before:
                     self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
                     self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", row["session_id"]))

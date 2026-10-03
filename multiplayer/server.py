@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import threading
 import time
 from collections import deque
@@ -59,8 +60,9 @@ class RPGServer(ThreadingHTTPServer):
             try:
                 self.service.tick()
             except Exception:
-                self._stop.set()
-                self.shutdown()
+                logging.getLogger(__name__).exception("Erreur de simulation : le serveur reste accessible, nouvel essai dans une seconde.")
+                if self._stop.wait(1):
+                    return
 
     def server_close(self):
         if hasattr(self, "_stop"):

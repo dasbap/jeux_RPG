@@ -180,16 +180,16 @@ Les chemins actuels ont des distances de démonstration, configurées dans `mult
 
 Un combat gèle la marche restante. Sa durée s’ajoute au trajet ; quitter le champ de bataille relance les portions restantes. Les échéances et la distance restante sont sauvegardées, et un trajet déjà engagé ne peut pas être remplacé par une autre commande de déplacement. L’arrivée à Brume termine le tutoriel via la boucle autonome du serveur.
 
-Une rencontre tire le groupe entier avant le début du combat : si trois gobelins sont tirés, ils sont tous présents simultanément, ciblables séparément et autonomes. L’interface indique le numéro de rencontre et le nombre d’ennemis vivants par rapport au groupe initial. Un long trajet peut ensuite déclencher d’autres rencontres, chacune avec son propre groupe.
+Une rencontre tire le groupe entier avant le début du combat : si trois gobelins sont tirés, ils sont tous présents simultanément, ciblables séparément et autonomes. L’interface indique le numéro de rencontre et le nombre d’ennemis visibles par rapport au groupe initial. Un long trajet peut ensuite déclencher d’autres rencontres, chacune avec son propre groupe.
 
 
-## Combat tactique et progression du POC 0.8
+## Combat tactique et progression du POC 0.9
 
-Quinze presets sont disponibles : trois terrains pour chacun des cinq contextes (clairière, lisière, route, entraînement à Rosée et bois de Brume). Une case représente deux mètres. Le joueur marche à 6 km/h et le gobelin se déplace à 3 km/h en combat (respectivement 1,2 et 2,4 secondes de jeu par case). Les couvertures bloquent la marche et la ligne de vue. Le corps à corps porte à 1,5 case ; les classes à distance et les compétences de soutien portent à six cases. L’interface affiche chaque mob, ses PV sous forme de barre, sa position et son intention. Cliquer sur sa fiche PV entoure sa position.
+Quinze presets sont disponibles : trois terrains pour chacun des cinq contextes (clairière, lisière, route, entraînement à Rosée et bois de Brume). Une case représente deux mètres. Le joueur marche à 6 km/h et le gobelin se déplace à 3 km/h en combat (respectivement 1,2 et 2,4 secondes de jeu par case). Les couvertures bloquent la marche et la ligne de vue. Le corps à corps porte à 1,5 case ; les classes à distance et les compétences de soutien portent à six cases. L’interface affiche uniquement les ennemis à six cases maximum et en ligne de vue, avec leurs PV, leur position et leur intention. Les autres ennemis ne sont pas transmis au client. Un clic sur une entité la sélectionne exclusivement ; un second clic la désélectionne. Un double clic fait marcher jusqu’à une case voisine. Le bouton pour se cacher apparaît uniquement si cette action est possible ; les indications de dépeçage disparaissent en s’éloignant des corps.
 
 Explorer donne l’initiative : les joueurs apparaissent dissimulés et les mobs patrouillent. Un joueur visible et atteignable est poursuivi ; chaque membre du groupe garde son propre placement et sa dissimulation. Perdre un joueur de vue déclenche une recherche à sa dernière position connue, pendant 30 secondes de jeu (10 secondes réelles), puis la patrouille reprend. Un stun bloque déplacement, attaque et appel ; sans cible visible à son réveil, le mob reprend sa patrouille.
 
-Un mob qui repère un ennemi, subit une première attaque ou voit l’ennemi s’éloigner peut appeler ses alliés. L’appel dure six secondes de jeu (deux réelles), comme son délai de réutilisation. Les dégâts ou un stun l’interrompent. Un allié mort reste considéré comme joignable tant que son corps n’a pas été vu. Les autres mobs reçoivent une dernière position connue, sans révélation magique d’un joueur caché.
+Un mob qui repère un ennemi, subit une première attaque ou voit l’ennemi s’éloigner peut appeler ses alliés. L’appel dure six secondes de jeu (deux réelles), comme son délai de réutilisation. Les dégâts ou un stun l’interrompent. Seuls les alliés vivants non avertis à moins de dix cases sont concernés. Ils reçoivent une dernière position connue, sans révélation magique d’un joueur caché.
 
 La victoire conserve les corps et le champ de bataille. Il faut approcher à 1,5 case pour dépecer ; chaque corps ne rapporte qu’une fois ses matériaux, partagés avec le groupe. Sortir abandonne les corps non dépecés et reprend le voyage suspendu. L’entraînement ne rapporte ni expérience ni matériaux.
 
@@ -211,3 +211,14 @@ python scripts/verify_http_ui.py
 Ce script démarre un serveur de test local avec une base temporaire, une horloge accélérée et des tirages déterministes. Il accélère aussi la fenêtre du limiteur de requêtes pour suivre l’horloge du scénario. Les protections HTTP avec leurs limites réelles et les délais du jeu sont testés séparément par `python -m pytest -q`. Le scénario jsdom vérifie les comportements et le DOM ; il ne constitue pas une vérification visuelle dans un navigateur.
 
 La CI exécute également le scénario HTTP/jsdom. Il vérifie explicitement qu’après la mort du dernier ennemi, les anciennes fiches PV et intentions disparaissent, qu’un clic permet encore de marcher jusqu’au corps et que le bouton de sortie termine effectivement le combat après dépeçage.
+
+
+## Incantations, invocations et continuité du serveur
+
+Les compétences physiques ont une préparation de 0,4 seconde réelle, les invocations de 2 secondes et les autres sorts de 1,5 seconde. Le compte à rebours apparaît dans les actions du joueur. Le personnage reste immobile pendant cette durée. Les sorts non physiques demandent de la concentration : des dégâts effectifs, la mort ou un étourdissement interrompent l’incantation. L’énergie est consommée au départ ; la cible, sa portée et la ligne de vue sont vérifiées de nouveau à la résolution. Le délai général de 1,2 seconde commence au départ de l’action ; les délais propres des compétences commencent à leur résolution. Les déplacements entre zones se confirment dans un panneau de la page.
+
+Les squelettes invoqués occupent des cases libres et se déplacent automatiquement. Ils attaquent l’ennemi visible le plus proche ; à distance égale, ils privilégient celui qui a le moins de PV. Les mobs peuvent les repérer et les attaquer. Les invocations suivent le rythme du serveur, même si leur maître ne lance aucune action.
+
+Les patrouilles suivent des circuits étendus adaptés aux obstacles de chaque terrain. Les mobs détectent un joueur visible à six cases, comme la portée maximale des attaques à distance. Un appel ne commence que si un allié vivant non averti est à moins de dix cases ; les mobs qui voient déjà un adversaire sont avertis avant de décider d’appeler. Les spawns des groupes et des invocations sont vérifiés et les anciennes positions sur un obstacle sont corrigées lors de la simulation.
+
+Une erreur de simulation ne ferme plus silencieusement le serveur. Sa trace est affichée dans le terminal ; une session défaillante est isolée des autres. Ce mécanisme conserve le service disponible et signale l’erreur, sans effacer les sauvegardes. Pour vérifier la version chargée après une mise à jour : `python -m pip install --force-reinstall .`, puis `python main.py`.
