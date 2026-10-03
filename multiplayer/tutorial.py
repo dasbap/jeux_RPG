@@ -234,8 +234,9 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 raise error("invalid_target", "L'attaque simple doit viser un ennemi.")
             if not tactics.allowed(party, player_id, target_id, progression.attack_range(actor)):
                 raise error("out_of_range", "La cible est hors de portée ou masquée par une couverture.", 409)
+            before_hp = target.hp.current_value
             target.lose_hp(actor, progression.simple_damage(actor))
-            messages.append(f"{actor.name} porte une attaque simple.")
+            messages.append(f"{actor.name} termine son attaque simple contre {target.name} : {max(0, before_hp - target.hp.current_value)} dégâts.")
         else:
             skill = actor.skills.get(params["skill_name"]) if isinstance(params["skill_name"], str) else None
             if skill is None:
@@ -263,6 +264,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
                 return [f"{actor.name} commence {skill.name} ({timing['seconds']:g} s)."], False
             progression.scale_skill(actor, skill)
+            before_hp = target.hp.current_value
             try:
                 success, _ = actor.use_skill(skill.name, target)
             finally:
@@ -272,7 +274,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             if not success:
                 raise error("skill_unavailable", "La compétence ne peut pas être utilisée.", 409)
             party["skill_ready"].setdefault(player_id, {})[skill.name] = now + skill.cooldown * progression.RATIO
-            messages.append(f"{actor.name} utilise {skill.name}.")
+            messages.append(f"{actor.name} utilise {skill.name} : sort terminé sur {target.name}{' · ' + str(max(0, before_hp - target.hp.current_value)) + ' dégâts' if target_id in enemies else ''}.")
             party["effect_at"][target_id] = now + progression.ACTION_SECONDS * progression.RATIO
         party["characters"] = {key: pack(c) for key, c in characters.items()}
         tactics.sync_summons(party, now)

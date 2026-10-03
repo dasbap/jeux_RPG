@@ -265,3 +265,9 @@ Pendant un trajet dangereux, chaque point de contrôle ne tente désormais une r
 ### Affichage des ressources 0.10.7
 
 Les fiches de personnage, d’invocations et d’ennemis affichent le nom, une barre avec la valeur courante/maximale pour les PV et chaque énergie, puis les statuts à droite avec leur durée restante en secondes réelles à une décimale. La durée affichée correspond au prochain tick d’effet et aux cycles restants ; les effets sur les invocations expirent désormais sur le même rythme.
+
+### Retours de combat et dissimulation 0.10.8
+
+La fabrication de la veste est marquée comme accomplie dans le journal de quête et la forge ; en groupe, l’interface précise si un compagnon doit encore fabriquer sa veste. Le combat affiche les derniers événements et un journal : lancement et fin de sorts, attaques, dégâts reçus, repérage et perte de ligne de vue. Une perte de PV apparaît aussi sur la fiche concernée.
+
+Un personnage repéré perd sa dissimulation et ne peut pas se cacher simplement à sa dernière position connue. Il doit rompre la ligne de vue et quitter cette position. Un déplacement entre des cases couvertes conserve la dissimulation à vitesse réduite de moitié ; entrer à découvert ou être vu la supprime.

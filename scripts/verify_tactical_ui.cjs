@@ -11,15 +11,17 @@ virtualConsole.on("jsdomError", error => errors.push(error.message));
 const dom = new JSDOM(fs.readFileSync(path.join(root, "multiplayer/web/index.html"), "utf8"), {url: "http://127.0.0.1:8080", runScripts: "outside-only", virtualConsole});
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/app.js"), "utf8") + `
-window.uiTest = {calls: [], render: adventure => {session = {id: "ui", me: "p0", tutorial: adventure}; renderTutorial(adventure);}};
+window.uiTest = {calls: [], render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
 `);
 const el = id => dom.window.document.getElementById(id);
-const render = value => dom.window.uiTest.render(JSON.parse(JSON.stringify(value)));
+const render = (value, events = []) => dom.window.uiTest.render(JSON.parse(JSON.stringify(value)), events);
 const event = (node, name) => node.dispatchEvent(new dom.window.MouseEvent(name, {bubbles: true}));
 const unit = id => el("world-map").querySelector(`[data-unit="${id}"]`);
 try {
-  render(fixture);
+  render(fixture, [{id: 1, game_time: 99, message: "Joueur repéré par Gobelin."}, {id: 2, game_time: 100, message: "Gobelin utilise Entaille : 3 PV perdus."}]);
+  assert(el("combat-notice").textContent.includes("3 PV perdus"));
+  assert(el("combat-events").textContent.includes("repéré"));
   assert.equal(el("mob-cards").children.length, 3);
   event(unit("mob"), "click");
   assert.equal(el("combat-target").options.length, 1);
@@ -88,6 +90,7 @@ try {
   assert(!el("corpse-actions").textContent.includes("déjà dépecé"));
   assert(!el("tactical-actions").textContent.includes("Se cacher"));
   far.battle.players.p0.position = [2, 5];
+  far.battle.players.p0.can_hide = true;
   render(far);
   assert(el("tactical-actions").textContent.includes("Se cacher"));
   far.players[0].casting = {name: "Sort", remaining_seconds: 1.4, concentration: true};

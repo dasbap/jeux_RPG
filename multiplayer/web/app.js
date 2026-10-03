@@ -335,6 +335,26 @@ function skillAllowed(me, skill, target, mob) {
   if (skill.type === "HEAL") return target.hp < target.max_hp;
   return skill.type === "BUFF";
 }
+function renderCombatFeedback(adventure) {
+  const events = (session.events || []).filter(event => event.game_time >= (adventure.battle?.started_at || 0)).slice(-12);
+  const latest = events.at(-1);
+  const notice = $("combat-notice");
+  if (notice.dataset.event !== String(latest?.id || "")) {
+    notice.dataset.event = String(latest?.id || "");
+    notice.textContent = latest?.message || "Choisissez une cible ou déplacez-vous sur la carte.";
+    notice.classList.toggle("damage-notice", /PV perdus/.test(latest?.message || ""));
+    notice.classList.toggle("detection-notice", /repéré/.test(latest?.message || ""));
+  }
+  const log = $("combat-events"), retained = new Set();
+  const followLatest = log.scrollTop + log.clientHeight >= log.scrollHeight - 12;
+  for (const event of events) {
+    let row = [...log.children].find(child => child.dataset.event === String(event.id));
+    if (!row) { row = document.createElement("li"); row.dataset.event = String(event.id); row.textContent = event.message; log.append(row); }
+    retained.add(row);
+  }
+  for (const row of [...log.children]) if (!retained.has(row)) row.remove();
+  if (followLatest) log.scrollTop = log.scrollHeight;
+}
 function renderTutorial(adventure, preserveBattle = false) {
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
@@ -390,7 +410,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = !hasQuest ? "Aucune quête acceptée." : `Quête de Mira : ${{unaccepted: "à accepter", active: `${adventure.kills}/3 gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
-  $("quest-description").textContent = !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
+  const vest = me.gear.find(piece => piece.slot === "torso");
+  $("quest-description").textContent = vest && adventure.quest === "completed" ? adventure.step === "craft" ? "Veste fabriquée et équipée : votre objectif de forge est accompli. Attendez que votre compagnon fabrique sa veste." : adventure.step === "complete" ? "Veste fabriquée et équipée. Vous avez rejoint Brume : tutoriel terminé." : "Veste fabriquée et équipée : objectif accompli. Prochaine étape : rejoindre le village de Brume." : !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
   renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
   for (const text of [
@@ -437,6 +458,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";
+  if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
+  if (vest && adventure.quest === "completed") $("forge-status").textContent = `Veste équipée (+${vest.level}). ${adventure.step === "craft" ? "Votre compagnon doit encore fabriquer la sienne." : "Fabrication validée : rejoignez Brume pour terminer le tutoriel."}`;
   $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${item}`).join(", ") || "aucun matériau"}.`;
   $("forge-catalogue").replaceChildren();
   if (atForge) for (const recipe of me.forge) {
@@ -468,6 +491,11 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("target-controls").hidden = !fighting;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
   $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  if (fighting) {
+    renderCombatFeedback(adventure);
+    const playerUnit = adventure.battle.players[me.id];
+    if (playerUnit.hidden && playerUnit.route.length) $("combat-status").textContent = "Déplacement discret : vitesse réduite, dissimulation maintenue tant que vous restez couvert.";
+  }
   if (fighting && !preserveBattle) renderBattle(adventure, me);
   if (fighting) {
     renderUnitControls(adventure, me, action);
@@ -560,6 +588,12 @@ function renderVitals(container, units) {
       const statuses = document.createElement("div"); statuses.className = "vitals-statuses";
       card.append(name, resources, statuses); parent.append(card);
     }
+    const previousHp = Number(card.dataset.hp ?? unit.hp);
+    if (unit.hp < previousHp) {
+      const change = document.createElement("span"); change.className = "hp-change"; change.textContent = `−${Number((previousHp - unit.hp).toFixed(1))} PV`; card.append(change);
+      setTimeout(() => change.remove(), 1200);
+    }
+    card.dataset.hp = String(unit.hp);
     kept.add(card); card.querySelector(".vitals-name").textContent = unitName(unit);
     const resources = [{type: "PV", current: unit.hp, max: unit.max_hp}, ...(unit.energies || [])];
     const rows = card.querySelector(".vitals-resources");
@@ -574,6 +608,7 @@ function renderVitals(container, units) {
     const statuses = card.querySelector(".vitals-statuses");
     statuses.replaceChildren();
     const heading = document.createElement("span"); heading.className = "vitals-status-label"; heading.textContent = "Statuts :"; statuses.append(heading);
+    if (unit.hidden || unit.detected) { const visibility = document.createElement("span"); visibility.className = "status-badge"; visibility.textContent = unit.hidden ? "Dissimulé" : "Repéré"; statuses.append(visibility); }
     for (const effect of unit.effects || []) {
       const badge = document.createElement("span"); badge.className = "status-badge";
       const seconds = effect.remaining_seconds ?? effect.duration * 1.2;
@@ -774,7 +809,7 @@ function renderBattle(adventure, me) {
   }
   for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
   renderVitals("combat-stats-details", adventure.players.flatMap(player => player.invocations));
-  renderVitals("combat-resources", adventure.players);
+  renderVitals("combat-resources", adventure.players.map(player => ({...player, hidden: battle.players[player.id].hidden, detected: battle.players[player.id].detected})));
   const table = document.createElement("table");
   for (const intent of battle.intents) {
     const row = document.createElement("tr");
@@ -784,10 +819,10 @@ function renderBattle(adventure, me) {
   $("enemy-intents").replaceChildren(table);
   $("tactical-actions").replaceChildren();
   const hide = document.createElement("button"); hide.textContent = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture";
-  hide.disabled = disabled || unit.hidden || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
+  hide.disabled = disabled || unit.hidden || unit.can_hide === false || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
   hide.addEventListener("click", () => tutorialCommand("hide"));
   if (!hide.disabled) $("tactical-actions").append(hide);
-  else if (unit.hidden) { const label = document.createElement("p"); label.textContent = "Vous êtes dissimulé"; $("tactical-actions").append(label); }
+  else if (unit.hidden) { const label = document.createElement("p"); label.textContent = "Dissimulé · déplacement couvert à vitesse réduite"; $("tactical-actions").append(label); }
   $("corpse-actions").replaceChildren();
   for (const corpse of battle.corpses) {
     if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5) continue;

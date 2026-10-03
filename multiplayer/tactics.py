@@ -17,6 +17,7 @@ PRESETS = {f"{zone}_{index + 1}": {"id": f"{zone}_{index + 1}", "name": f"{name}
 CALL_TIME = 6.0
 SEARCH_TIME = 10 * progression.RATIO
 MOVE_TIME = 1.2
+STEALTH_MOVE_TIME = 2.4
 GOBLIN_MOVE_TIME = 2.4
 CONTROL_RULES = {"Squelette": {"energy": "Mana", "per_second": .4}}
 
@@ -75,7 +76,7 @@ def begin(party, now, origin):
     preset = PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
-    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "next_brain": now}
+    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now}
     occupied = [u["position"] for u in players.values()]
     identifiers = [m["combat_id"] for m in party["mobs"]]
     for index, mob in enumerate(party["mobs"]):
@@ -236,11 +237,12 @@ def advance_summons(party, characters, now, random, messages):
                 continue
             enemy = unpack(target)
             enemy.drop_xp = lambda killer: ""
+            before_hp = enemy.hp.current_value
             enemy.lose_hp(invocation, progression.simple_damage(invocation))
             target.update(pack(enemy))
             damaged(party, target, summon_id, now)
             unit["next_attack"] = now + 3 * progression.RATIO
-            messages.append(f"{invocation.name} attaque {target['name']}.")
+            messages.append(f"{invocation.name} termine son attaque contre {target['name']} : {max(0, before_hp - enemy.hp.current_value)} dégâts.")
             if not enemy.is_alive():
                 party["mobs"].remove(target)
                 party["characters"] = {key: pack(c) for key, c in characters.items()}
@@ -403,6 +405,9 @@ def view(party, now, player=None):
         return None
     preset = PRESETS[battle["preset"]]
     result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"])}
+    for key, unit in result["players"].items():
+        unit["can_hide"] = can_hide(party, key)
+        unit["detected"] = any(mob.get("target") == key for mob in party["mobs"])
     result["intents"] = [{"id": mob["combat_id"], "name": mob["name"], "action": mob["intent"],
                            "remaining_seconds": max(0, (mob.get("calling_until") or mob.get("windup_until") or mob.get("next_attack", now)) - now) / progression.RATIO}
                           for mob in party["mobs"] if player is None or visible(party, player, mob)]
@@ -417,6 +422,19 @@ def allowed(party, player, target, attack_range):
     enemy = next((m for m in party["mobs"] if m["combat_id"] == target), None)
     other = enemy or battle["players"].get(target)
     return bool(other and (enemy is None or visible(party, player, enemy)) and distance(unit["position"], other["position"]) <= attack_range and sight(PRESETS[battle["preset"]], unit["position"], other["position"]))
+
+
+def can_hide(party, player, position=None):
+    battle = party.get("battle")
+    if not battle:
+        return False
+    unit = {**battle["players"][player]}
+    if position is not None:
+        unit["position"] = position
+    preset = PRESETS[battle["preset"]]
+    if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
+        return False
+    return not any((distance(mob["position"], unit["position"]) <= 6 and sight(preset, mob["position"], unit["position"])) or (mob.get("state") in ("chase", "search") and mob.get("last_known") == unit["position"]) for mob in party["mobs"])
 
 
 def ready(party, player, now, error, redirect=False):
@@ -453,12 +471,13 @@ def execute(party, player, action, params, now, error):
         moving = bool(unit["route"])
         unit["route"] = deepcopy(route)
         if not moving:
-            unit["next_move"] = now + MOVE_TIME
-        unit["hidden"] = False
+            unit["next_move"] = now + (STEALTH_MOVE_TIME if unit.get("hidden") and route and can_hide(party, player, route[0]) else MOVE_TIME)
         messages = [f"{actor.name} se déplace sur le champ de bataille."]
     elif action == "hide":
         if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
             raise error("no_cover", "Rejoignez une couverture pour vous dissimuler.", 409)
+        if not can_hide(party, player):
+            raise error("still_detected", "Vous êtes encore repéré : quittez la dernière position connue et rompez la ligne de vue avant de vous cacher.", 409)
         unit["route"] = []
         unit["hidden"] = True
         messages = [f"{actor.name} se cache derrière une couverture."]
@@ -547,7 +566,11 @@ def advance(party, now, random):
         actor = characters[key]
         if unit["route"] and actor.is_alive() and not actor.is_stunned() and unit["next_move"] <= now:
             unit["position"] = unit["route"].pop(0)
-            unit["next_move"] = now + MOVE_TIME
+            if unit.get("hidden"):
+                unit["hidden"] = can_hide(party, key)
+                if not unit["hidden"]:
+                    messages.append(f"{actor.name} quitte sa dissimulation en se déplaçant.")
+            unit["next_move"] = now + (STEALTH_MOVE_TIME if unit.get("hidden") and unit["route"] and can_hide(party, key, unit["route"][0]) else MOVE_TIME)
     charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}
@@ -581,6 +604,9 @@ def advance(party, now, random):
         if target:
             mob["alerted"] = True
             previous = mob.get("target")
+            if previous != target:
+                messages.append(f"{characters[target].name} est repéré par {mob['name']}.")
+            units[target]["hidden"] = False
             mob["target"] = target
             mob["last_known"] = units[target]["position"][:]
             if mob["state"] == "patrol" or previous != target:
@@ -590,6 +616,7 @@ def advance(party, now, random):
             mob["previous_distance"] = visible[0][0]
             mob["state"] = "chase"
         elif mob.get("target"):
+            messages.append(f"{characters[mob['target']].name if mob['target'] in characters else 'La cible'} a rompu la ligne de vue ; {mob['name']} cherche sa dernière position connue.")
             mob["target"] = None
             mob["state"] = "search"
             mob["search_until"] = now + SEARCH_TIME
@@ -621,6 +648,7 @@ def advance(party, now, random):
                 actor = characters[target]
                 actor.drop_xp = lambda killer: ""
                 before_hp = actor.hp.current_value
+                before_invocations_hp = sum(invocation.hp.current_value for invocation in actor.invocations.get_all())
                 actor.lose_hp(enemy, 3)
                 cast = units[target].get("casting")
                 if cast and cast["concentration"] and actor.hp.current_value < before_hp:
@@ -628,7 +656,7 @@ def advance(party, now, random):
                     messages.append(f"{actor.name} : concentration brisée, sort annulé.")
                 mob["windup_until"] = None
                 mob["next_attack"] = now + 9 + random() * 6
-                messages.append(f"{mob['name']} utilise Entaille contre {actor.name}.")
+                messages.append(f"{mob['name']} utilise Entaille contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}.")
             elif mob["windup_until"] is None and mob["next_attack"] <= now:
                 mob["windup_until"] = now + 1.8
             mob["intent"] = "Va utiliser Entaille" if mob["windup_until"] else "Prépare sa prochaine attaque"

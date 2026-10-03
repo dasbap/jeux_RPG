@@ -83,6 +83,12 @@ def execute(party, player, action, recipe, error):
     actor.endurance.current_value += endurance_delta
     gear[slot] = new
     party["characters"][player] = pack(actor)
+    previous_step = party["step"]
     if party["step"] == "craft" and all("torso" in party["equipment"].get(key, {}) for key in party["characters"]):
         party["step"] = "travel"
-    return [f"{actor.name} {'améliore' if old else 'fabrique et équipe'} {new['name']} +{level}."], False
+    messages = [f"{actor.name} {'améliore' if old else 'fabrique et équipe'} {new['name']} +{level}."]
+    if previous_step == "craft" and party["step"] == "travel":
+        messages.append("Objectif accompli : veste fabriquée et équipée. Prochaine étape : rejoindre le village de Brume.")
+    elif previous_step == "craft" and slot == "torso":
+        messages.append(f"{actor.name} a terminé la fabrication de sa veste. Attendez que les autres joueurs équipent la leur.")
+    return messages, False

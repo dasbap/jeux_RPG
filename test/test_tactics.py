@@ -67,6 +67,7 @@ def test_attack_and_skill_scale_without_excessive_knight_damage():
 
 def test_client_cannot_teleport_cross_cover_or_increase_range():
     data = party()
+    data["battle"]["players"]["p0"]["hidden"] = False
     for route, target in [([[9, 5]], [9, 5]), ([[2, 6]], [2, 6]), ([[True, 5]], [1, 5]), ([[1, 5], [1, 4]], [1, 3])]:
         before = deepcopy(data)
         with pytest.raises(GameError) as failure:
@@ -699,6 +700,7 @@ def test_movement_cannot_bypass_casting_or_stun():
 
 def test_delayed_route_skips_only_steps_already_reached_without_teleport():
     data = party()
+    data["battle"]["players"]["p0"]["hidden"] = False
     act(data, "battle_move", x=1, y=4, path=[[1, 5], [1, 4]])
     tactics.advance(data, 1.2, lambda: .5)
     unit = data["battle"]["players"]["p0"]
@@ -728,3 +730,35 @@ def test_status_seconds_follow_effect_tick_and_invocation_effects_expire():
     tutorial.advance(data, 13.22, lambda: .5)
     assert data["characters"]["p0"]["effects"] == []
     assert data["characters"]["p0"]["invocations"][0]["effects"] == []
+
+
+def test_covered_stealth_movement_is_slower_and_open_ground_reveals_player():
+    data = party()
+    unit = data["battle"]["players"]["p0"]
+    act(data, "hide")
+    act(data, "battle_move", now=3.6, x=1, y=4, path=[[1, 5], [1, 4]])
+    assert unit["hidden"]
+    assert unit["next_move"] == pytest.approx(3.6 + tactics.STEALTH_MOVE_TIME)
+    tactics.advance(data, 4.8, lambda: .5)
+    assert unit["position"] == [1, 6]
+    tactics.advance(data, 6, lambda: .5)
+    assert unit["position"] == [1, 5]
+    assert unit["hidden"]
+    tactics.advance(data, 7.21, lambda: .5)
+    assert unit["position"] == [1, 4]
+    assert not unit["hidden"]
+
+
+def test_detection_cancels_hidden_and_cover_does_not_hide_known_position():
+    data = party()
+    unit = data["battle"]["players"]["p0"]
+    data["mobs"][0]["position"] = [1, 5]
+    messages = tactics.advance(data, 0, lambda: .5)
+    assert not unit["hidden"]
+    assert any("repéré" in message for message in messages)
+    data["mobs"][0]["position"] = [4, 6]
+    data["mobs"][0]["last_known"] = unit["position"][:]
+    data["mobs"][0]["state"] = "search"
+    with pytest.raises(GameError) as failure:
+        act(data, "hide", now=4)
+    assert failure.value.code == "still_detected"

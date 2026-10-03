@@ -262,7 +262,9 @@ async function main() {
     await waitFor(() => !el(first, "craft-view").hidden && !el(second, "craft-view").hidden, "forge partagée");
     assert.equal(el(first, "forge-catalogue").children.length, 6);
     await command(first, "craft", {recipe: "veste"});
+    await waitFor(() => el(first, "quest-description").textContent.includes("Veste fabriquée et équipée") && el(first, "quest-description").textContent.includes("compagnon"), "fabrication personnelle validée dans la quête");
     await command(second, "craft", {recipe: "veste"});
+    await waitFor(() => el(first, "quest-description").textContent.includes("Prochaine étape") && el(first, "craft-actions").textContent.includes("Brume"), "objectif Brume après fabrication du groupe");
     await move(first, "brume");
     await waitFor(() => el(first, "battle-title").textContent === "Aventure accomplie" && el(second, "battle-title").textContent === "Aventure accomplie", "fin coopérative");
     assert(el(first, "combat-layout").hidden);
