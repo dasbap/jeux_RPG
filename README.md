@@ -247,3 +247,7 @@ La barre d’actions affiche les actions de l’entité contrôlée : personnage
 ### Actualisation et statuts 0.10.3
 
 La cible sélectionnée reste conservée lors d’un clic de déplacement. Les actualisations continuent pendant les commandes ; les réponses périmées sont ignorées. Les cases, entités et cartes d’ennemis conservent leurs éléments interactifs entre les actualisations, ce qui permet de recevoir les positions sans suspendre les mises à jour pendant un double clic. Les statuts actifs sont visibles dans les informations du personnage et des ennemis.
+
+### Déplacements et accès à Rosée 0.10.4
+
+Les ordres de marche ne déclenchent ni ne prolongent le délai d’attaque de 1,2 seconde. La marche reste autorisée pendant ce délai, mais les incantations et étourdissements immobilisent toujours les personnages. Le ciblage des ennemis visibles reste disponible pendant la marche et le délai d’action. Le bouton « Rejoindre Village de Rosée » lance directement le trajet annoncé ; les boutons de route redondants sont supprimés. Le déplacement vers un point d’une autre zone depuis la consultation de carte conserve sa confirmation.

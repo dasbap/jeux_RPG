@@ -33,7 +33,7 @@ try {
   assert(!el("world-map").querySelector(".objective-ring"));
   event(unit("mob-3"), "click");
   assert([...el("combat-actions").children].every(button => button.disabled));
-  assert.equal(el("combat-target").options.length, 0);
+  assert.equal(el("combat-target").value, "mob-3");
   event(unit("mob-3"), "dblclick");
   const movement = dom.window.uiTest.calls.at(-1);
   assert.equal(movement.action, "battle_move");
@@ -41,7 +41,7 @@ try {
   assert(Math.hypot(movement.params.x - 12, movement.params.y - 5) <= 1.5);
   const moving = JSON.parse(JSON.stringify(fixture));
   moving.players[0].cooldown_real_seconds = 1;
-  moving.battle.players.p0.route = [[8, 5]];
+  moving.battle.players.p0.route = [];
   render(moving);
   const beforeRedirect = dom.window.uiTest.calls.length;
   event(unit("mob-3"), "dblclick");

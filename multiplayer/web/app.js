@@ -219,13 +219,7 @@ function renderWorld(adventure, me) {
     const p = document.createElement("p");
     p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 6 * 3600 / 3).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
     $("map-routes").append(p);
-    if (route.destination && !locked) {
-      const button = document.createElement("button");
-      button.textContent = `Prendre le chemin vers ${places.find(p => p.id === route.destination).name}`;
-      button.disabled = locked;
-      button.addEventListener("click", () => requestTravel(route.destination, places.find(p => p.id === route.destination).name, route.destination));
-      $("map-routes").append(button);
-    }
+
   }
   $("map-points").replaceChildren();
   $("point-actions").replaceChildren();
@@ -246,7 +240,7 @@ function renderWorld(adventure, me) {
     move.addEventListener("click", () => requestTravel(point.id, point.name, place.id));
     $("point-actions").append(move);
   }
-  if (!locked && place.id !== world.current) {
+  if (!locked && place.id !== world.current && !world.routes.some(route => route.destination === place.id)) {
     const move = document.createElement("button");
     move.textContent = `Rejoindre ${place.name}`;
     move.disabled = busy;
@@ -405,7 +399,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (!fighting && !adventure.moving) {
     for (const route of adventure.world.routes.filter(route => route.destination)) {
       const destination = adventure.world.places.find(place => place.id === route.destination);
-      button("tutorial-actions", `Rejoindre ${destination.name}`, () => requestTravel(destination.id, destination.name, destination.id));
+      action("tutorial-actions", `Rejoindre ${destination.name}`, "travel", {destination: destination.id});
     }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
@@ -430,7 +424,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
-  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (canAttack(target) || target.enemy && controlledUnits(adventure, me.id).length > 0 || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
+  const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (target.enemy || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
   $("combat-target").replaceChildren();
   for (const target of possibleTargets) {
     const option = document.createElement("option");
@@ -515,7 +509,7 @@ function selectEntity(id) {
 }
 function approachEntity(position) {
   const adventure = session.tutorial, me = adventure.players.find(p => p.id === session.me);
-  if (busy || me.casting || me.hp <= 0 || me.stunned || (me.cooldown_real_seconds > 0 && !adventure.battle.players[me.id].route.length)) return;
+  if (busy || me.casting || me.hp <= 0 || me.stunned) return;
   const unit = controlledUnits(adventure, me.id)[0]?.[1] || adventure.battle.players[me.id], map = adventure.battle.map;
   if (Math.hypot(unit.position[0] - position[0], unit.position[1] - position[1]) <= 1.5) return;
   const candidates = [[position[0] - 1, position[1]], [position[0] + 1, position[1]], [position[0], position[1] - 1], [position[0], position[1] + 1]];
@@ -641,7 +635,7 @@ function gridPath(map, source, destination) {
 function renderBattle(adventure, me) {
   const battle = adventure.battle, map = battle.map;
   const unit = battle.players[me.id];
-  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned || (me.cooldown_real_seconds > 0 && !unit.route.length);
+  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);

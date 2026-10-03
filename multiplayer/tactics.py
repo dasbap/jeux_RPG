@@ -300,7 +300,7 @@ def control(party, player, action, params, now, error):
         raise error("forbidden_unit", "Vous ne pouvez contrôler que vos alliés vivants.", 403)
     actor = unpack(party["characters"][player])
     if ids:
-        ready(party, player, now, error)
+        ready(party, player, now, error, redirect=action == "unit_order" and params.get("order") == "move")
     characters = {key: unpack(data) for key, data in party["characters"].items()}
     if action == "control_units":
         charge_control(party, characters, now, [])
@@ -376,7 +376,8 @@ def control(party, player, action, params, now, error):
         unit["order"] = {"type": order, "target": deepcopy(target)}
         unit["route"] = deepcopy(routes.get(key, []))
         unit["next_move"] = max(unit["next_move"], now)
-    party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
+    if order != "move":
+        party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
     return [f"Ordre {order} transmis à {len(ids)} allié(s)."]
 
 
@@ -431,7 +432,7 @@ def execute(party, player, action, params, now, error):
     battle = party.get("battle")
     if not battle:
         raise error("not_fighting", "Aucun champ de bataille actif.", 409)
-    actor = ready(party, player, now, error, redirect=action == "battle_move" and bool(battle["players"][player]["route"]))
+    actor = ready(party, player, now, error, redirect=action == "battle_move")
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]
     if action == "battle_move":
@@ -475,7 +476,8 @@ def execute(party, player, action, params, now, error):
         messages = ["Le groupe quitte le champ de bataille."]
     else:
         raise error("invalid_command", "Action tactique inconnue.")
-    party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
+    if action != "battle_move":
+        party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
     return messages
 
 

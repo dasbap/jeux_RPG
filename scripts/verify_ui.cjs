@@ -212,9 +212,12 @@ async function main() {
     assert.deepEqual([...el(first, "combat-layout").children].map(panel => panel.id), ["combat-player-panel", "combat-map-panel", "combat-enemy-panel", "combat-action-panel"]);
     await finishCombat(first);
     await waitFor(() => [...el(first, "tutorial-actions").querySelectorAll("button")].some(b => b.textContent.includes("Rejoindre") && !b.disabled), "trajet visible après premier combat");
-    [...el(first, "tutorial-actions").querySelectorAll("button")].find(b => b.textContent.includes("Rejoindre")).click();
-    assert(!el(first, "travel-confirmation").hidden);
-    el(first, "travel-accept").click();
+    el(first, "map-place").value = "rosee";
+    el(first, "map-place").dispatchEvent(new first.window.Event("change", {bubbles: true}));
+    const roseeButtons = [...first.window.document.querySelectorAll("button")].filter(button => /^(Rejoindre|Prendre le chemin vers).*Rosée/.test(button.textContent));
+    assert.equal(roseeButtons.length, 1);
+    roseeButtons[0].click();
+    assert(el(first, "travel-confirmation").hidden);
     await waitFor(async () => (await request(first, "/api/state")).session.tutorial.position !== "clearing", "départ vers Rosée");
     await finishCombat(first);
     await waitFor(() => el(first, "position-label").textContent.includes("Village de Rosée") && el(first, "combat-view").hidden, "arrivée Rosée");

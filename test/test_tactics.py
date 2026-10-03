@@ -671,3 +671,27 @@ def test_invocation_skill_cannot_use_master_skill_or_remote_target():
     with pytest.raises(GameError) as failure:
         control_action(data, "unit_skill", units=[key], skill_name="Sword Slash", target="mob")
     assert failure.value.code == "out_of_range"
+
+
+def test_movement_does_not_start_or_extend_attack_cooldown():
+    data = party()
+    near(data)
+    act(data, "battle_move", x=8, y=5, path=[[8, 5]])
+    assert data["ready"]["p0"] == 0
+    act(data, "strike", now=.1, target="mob")
+    attack_ready = data["ready"]["p0"]
+    act(data, "battle_move", now=.2, x=10, y=5, path=[[10, 5]])
+    assert data["ready"]["p0"] == attack_ready
+    assert data["battle"]["players"]["p0"]["route"] == [[10, 5]]
+    with pytest.raises(GameError) as failure:
+        act(data, "strike", now=.3, target="mob")
+    assert failure.value.code == "cooldown"
+
+
+def test_movement_cannot_bypass_casting_or_stun():
+    data = party()
+    near(data)
+    act(data, "skill", skill_name="Sword Slash", target="mob")
+    with pytest.raises(GameError) as failure:
+        act(data, "battle_move", now=.1, x=8, y=5, path=[[8, 5]])
+    assert failure.value.code == "casting"
