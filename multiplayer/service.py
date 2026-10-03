@@ -252,6 +252,7 @@ class GameService:
                    "hide": {"session_id", "revision"},
                    "harvest": {"session_id", "revision", "target"},
                    "control_units": {"session_id", "revision", "units"},
+                   "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
                    "unit_order": {"session_id", "revision", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
         if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action == "attack" and set(params) == allowed[action] | {"target"})):
@@ -303,7 +304,7 @@ class GameService:
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
-        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order"):
+        if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)

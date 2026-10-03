@@ -166,6 +166,14 @@ def sync_summons(party, now):
             summons[key].update(index=index, name=invocation["name"], hp=invocation["stats"]["hp"]["current"], max_hp=invocation["stats"]["hp"]["max"],
                                 stats=deepcopy(invocation["stats"]), energies=deepcopy(invocation["energies"]),
                                 control_cost=deepcopy(CONTROL_RULES.get(invocation["class_name"], {"energy": None, "per_second": 0})))
+            from .tutorial import unpack
+            actor = unpack(invocation)
+            summons[key]["skills"] = [{"name": skill.name, "description": skill.description,
+                "cost": skill.energie_cost, "energy": skill.energie_target.__name__,
+                "range": progression.attack_range(actor, skill), "cast_seconds": progression.casting(skill)["seconds"],
+                "cooldown": max(0, summons[key].get("skill_ready", {}).get(skill.name, 0) - now) / progression.RATIO,
+                "available": skill.can_afford(actor) and summons[key].get("skill_ready", {}).get(skill.name, 0) <= now,
+                "type": skill.skill_type.name} for skill in actor.skills.values()]
     battle["summons"] = {key: unit for key, unit in summons.items() if key in active}
 
 
@@ -180,6 +188,34 @@ def advance_summons(party, characters, now, random, messages):
         if unit["index"] >= len(invocations) or not invocations[unit["index"]].is_alive() or invocations[unit["index"]].is_stunned():
             continue
         invocation = invocations[unit["index"]]
+        cast = unit.get("casting")
+        if cast:
+            if cast["ends_at"] > now:
+                continue
+            unit.pop("casting", None)
+            skill = invocation.skills.get(cast["skill_name"])
+            target = next((mob for mob in party["mobs"] if mob["combat_id"] == cast["target"]), None)
+            if not target or not visible(party, unit["owner"], target) or distance(unit["position"], target["position"]) > progression.attack_range(invocation, skill) or not sight(preset, unit["position"], target["position"]):
+                messages.append(f"{invocation.name} : cible perdue pendant l’incantation.")
+                continue
+            enemy = unpack(target)
+            enemy.drop_xp = lambda killer: ""
+            invocation.get_energie(skill.energie_target).current_value += skill.energie_cost
+            skill.current_cooldown = 0
+            progression.scale_skill(invocation, skill)
+            success, _ = invocation.use_skill(skill.name, enemy)
+            target.update(pack(enemy))
+            if success:
+                damaged(party, target, summon_id, now)
+                messages.append(f"{invocation.name} utilise {skill.name}.")
+                if not enemy.is_alive():
+                    party["mobs"].remove(target)
+                    party["characters"] = {key: pack(c) for key, c in characters.items()}
+                    defeated(party, target, now, random, messages)
+                    for key, data in party["characters"].items():
+                        characters[key] = unpack(data)
+                    sync_mobs(party)
+            continue
         if unit.get("controlled"):
             order = unit.get("order", {"type": "hold"})
             if order["type"] == "move":
@@ -283,6 +319,31 @@ def control(party, player, action, params, now, error):
         return ["Contrôle des alliés mis à jour."]
     if not ids or any(not u.get("controlled") for u in units):
         raise error("not_controlled", "Prenez le contrôle des alliés avant de leur donner un ordre.", 409)
+    if action == "unit_skill":
+        if len(units) != 1:
+            raise error("invalid_units", "Une compétence exige une seule invocation contrôlée.")
+        unit = units[0]
+        invocation = characters[player].invocations.get_all()[unit["index"]]
+        skill = invocation.skills.get(params["skill_name"]) if isinstance(params["skill_name"], str) else None
+        enemy = next((mob for mob in party["mobs"] if mob["combat_id"] == params["target"]), None)
+        if not skill or skill.skill_type.name != "DAMAGE":
+            raise error("unknown_skill", "Compétence offensive non acquise.")
+        if unit.get("casting") or invocation.is_stunned() or unit.get("skill_ready", {}).get(skill.name, 0) > now or not skill.can_afford(invocation):
+            raise error("skill_unavailable", "Énergie, incantation ou délai insuffisant.", 409)
+        if not enemy or not visible(party, player, enemy) or distance(unit["position"], enemy["position"]) > progression.attack_range(invocation, skill) or not sight(PRESETS[battle["preset"]], unit["position"], enemy["position"]):
+            raise error("out_of_range", "Cible invisible, masquée ou hors de portée.", 409)
+        charge_control(party, characters, now, [])
+        if not unit.get("controlled"):
+            raise error("control_energy", "Le contrôle a expiré.", 409)
+        timing = progression.casting(skill)
+        invocation.consume_energie(skill.energie_cost, skill.energie_target)
+        unit.update(route=[], order={"type": "hold"}, casting={"skill_name": skill.name, "target": enemy["combat_id"], "ends_at": now + timing["seconds"] * progression.RATIO, "concentration": timing["concentration"]})
+        unit.setdefault("skill_ready", {})[skill.name] = unit["casting"]["ends_at"] + skill.cooldown * progression.RATIO
+        party["characters"] = {key: pack(c) for key, c in characters.items()}
+        party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
+        return [f"{invocation.name} commence {skill.name}."]
+    if any(unit.get("casting") for unit in units):
+        raise error("casting", "L’invocation est immobilisée pendant son incantation.", 409)
     order, target, routes = params["order"], params["target"], params["paths"]
     if not isinstance(order, str) or order not in ("move", "attack", "hold") or not isinstance(routes, dict):
         raise error("invalid_order", "Ordre invalide.")

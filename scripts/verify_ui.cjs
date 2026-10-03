@@ -205,11 +205,11 @@ async function main() {
     assert(el(first, "character-menu").hidden);
     assert(el(first, "world-map").querySelector(".battle-map"));
     assert(!el(first, "combat-layout").hidden);
-    assert(el(first, "combat-view").closest("#combat-player-panel"));
+    assert(el(first, "combat-view").closest("#combat-action-panel"));
     assert(el(first, "map-view").closest("#combat-map-panel"));
     assert(el(first, "mob-cards").closest("#combat-enemy-panel"));
     assert(el(first, "enemy-intents").closest("#combat-enemy-panel"));
-    assert.deepEqual([...el(first, "combat-layout").children].map(panel => panel.id), ["combat-player-panel", "combat-map-panel", "combat-enemy-panel"]);
+    assert.deepEqual([...el(first, "combat-layout").children].map(panel => panel.id), ["combat-player-panel", "combat-map-panel", "combat-enemy-panel", "combat-action-panel"]);
     await finishCombat(first);
     await waitFor(() => [...el(first, "tutorial-actions").querySelectorAll("button")].some(b => b.textContent.includes("Rejoindre") && !b.disabled), "trajet visible après premier combat");
     [...el(first, "tutorial-actions").querySelectorAll("button")].find(b => b.textContent.includes("Rejoindre")).click();

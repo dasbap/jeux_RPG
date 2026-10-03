@@ -427,7 +427,7 @@ def execute(party, player_id, action, params, now, error, random):
         party["journey"] = path
         continue_journey(party, now, random, messages)
         return messages, party["step"] == "complete"
-    if action in ("control_units", "unit_order"):
+    if action in ("control_units", "unit_order", "unit_skill"):
         return tactics.control(party, player_id, action, params, now, error), False
     if action in ("battle_move", "hide", "harvest", "leave_battle"):
         messages = tactics.execute(party, player_id, action, params, now, error)

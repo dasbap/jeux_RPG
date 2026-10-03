@@ -5,6 +5,7 @@ let session = null;
 let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
 let polling = false;
+let stateEpoch = 0;
 let currentView = "map";
 let viewContext = "";
 let combatTarget = "";
@@ -425,7 +426,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("mob-name").textContent = fighting ? `Combat ${adventure.encounter_number || 1} · ${(adventure.mobs || []).length} / ${adventure.combat_size || 1} ennemi(s) visible(s)` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
-  const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
+  const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
   const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (canAttack(target) || target.enemy && controlledUnits(adventure, me.id).length > 0 || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
@@ -448,9 +449,18 @@ function renderTutorial(adventure, preserveBattle = false) {
     renderUnitControls(adventure, me, action);
     renderSelection(adventure, me);
     const controlled = controlledUnits(adventure, me.id);
-    if (controlled.length && selected?.enemy) action("combat-actions", "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected.id, paths: {}}, me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0);
+    if (controlled.length) {
+      const single = controlled.length === 1 ? controlled[0][1] : null;
+      $("combat-action-title").textContent = single ? `Actions · ${unitName({...single,id:controlled[0][0]})}` : "Actions · groupe d’alliés";
+      action("combat-actions", single ? "Attaque simple · invocation" : "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected?.id, paths: {}}, !selected?.enemy || me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0 || controlled.some(([,unit]) => unit.casting));
+      for (const skill of single?.skills || []) {
+        const targetAllowed = selected?.enemy && Math.hypot(single.position[0] - selected.position[0], single.position[1] - selected.position[1]) <= skill.range && gridSight(adventure.battle.map, single.position, selected.position);
+        action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "unit_skill", {units: [controlled[0][0]], skill_name: skill.name, target: selected?.id}, !targetAllowed || !skill.available || Boolean(single.casting) || me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0);
+      }
+      if (single?.casting) $("combat-status").textContent = `${single.name} · ${single.casting.skill_name} · incantation en cours`;
+    } else $("combat-action-title").textContent = `Actions · ${me.name}`;
   }
-  if (fighting) {
+  if (fighting && !controlledUnits(adventure, me.id).length) {
     action("combat-actions", "Attaque simple", "strike", {target: selected?.id}, !selected || !canAttack(selected));
     for (const skill of me.skills.filter(s => s.type === "INVOCATION")) {
       const element = action("self-skills", `Invoquer · ${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "skill", {skill_name: skill.name, target: me.id}, !skillAllowed(me, skill, me, mob));
@@ -489,6 +499,7 @@ function selectEntity(id) {
   inspectedCell = position ? [...position] : null;
   const summon = adventure.battle?.summons?.[id], actor = adventure.players.find(p => p.id === session.me);
   if (focusedMob && summon?.owner === session.me && !summon.controlled && !busy && actor.hp > 0 && !actor.stunned && !actor.casting && actor.cooldown_real_seconds <= 0 && canPayControl(adventure, actor, summon)) tutorialCommand("control_units", {units: [id]});
+  if (focusedMob === session.me && controlledUnits(adventure, session.me).length && !busy) tutorialCommand("control_units", {units: []});
   renderTutorial(session.tutorial, true);
   const ns = "http://www.w3.org/2000/svg";
   for (const card of $("mob-cards").querySelectorAll("[data-mob]")) card.classList.toggle("selected", card.dataset.mob === focusedMob);
@@ -522,12 +533,17 @@ function unitName(unit) {
   const number = unit.id?.match(/:summon:(\d+)$/);
   return number ? `${unit.name} · #${Number(number[1]) + 1}` : unit.name;
 }
+function combatVitals(unit) {
+  return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""}`;
+}
 function statsText(unit) {
   const stats = unit.stats || {};
   const value = key => typeof stats[key] === "object" ? stats[key].current : stats[key] ?? "?";
   return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV · Force ${value("force")} · Endurance ${value("endurance")} · Intelligence ${value("intelligence")} · Sagesse ${value("sagesse")}${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""}`;
 }
 function moveControlled(adventure, me, destination) {
+  adventure = session.tutorial;
+  me = adventure.players.find(player => player.id === session.me);
   const controlled = controlledUnits(adventure, me.id);
   const [x,y] = destination;
   if (controlled.length) {
@@ -575,7 +591,7 @@ function renderSelection(adventure, me) {
   }
   for (const button of [...$("cell-entities").children]) if (!retained.has(button)) button.remove();
   const selected = battle.summons?.[focusedMob];
-  paragraphs("selected-unit-stats", selected ? [statsText({...selected,id:focusedMob}), selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
+  paragraphs("selected-unit-stats", selected ? [combatVitals({...selected,id:focusedMob}), selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
   let [x, y] = source;
@@ -677,7 +693,7 @@ function renderBattle(adventure, me) {
     card.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(mob.position); });
     $("mob-cards").append(card);
   }
-  paragraphs("combat-stats-details", adventure.players.flatMap(player => [statsText(player), ...player.invocations.map(statsText)]));
+  paragraphs("combat-stats-details", adventure.players.flatMap(player => player.invocations.map(combatVitals)));
   paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
   const table = document.createElement("table");
   for (const intent of battle.intents) {
@@ -702,20 +718,24 @@ function renderBattle(adventure, me) {
   if (!adventure.battle.hostiles_alive) { const leave = document.createElement("button"); leave.textContent = "Quitter le champ de bataille"; leave.disabled = disabled; leave.addEventListener("click", () => tutorialCommand("leave_battle")); $("tactical-actions").append(leave); }
 }
 
-async function refresh() {
+async function refresh(force = false) {
   if (!token) {
     $("connection").textContent = "Prêt · créez votre personnage";
     return;
   }
-  if (polling || busy || Date.now() < tacticalInteractionUntil) return;
+  if (polling || busy || (!force && Date.now() < tacticalInteractionUntil)) return;
   polling = true;
+  const epoch = stateEpoch;
   try {
     const state = await api("/api/state");
+    if (epoch !== stateEpoch || busy || (state.session && session && state.session.id === session.id && state.session.revision < session.revision)) return;
     if (state.session) {
       session = state.session;
       sessionId = session.id;
     } else if (sessionId) {
-      session = await api(`/api/sessions/${sessionId}`);
+      const updated = await api(`/api/sessions/${sessionId}`);
+      if (epoch !== stateEpoch || busy || (updated.id === session?.id && updated.revision < session.revision)) return;
+      session = updated;
     } else session = null;
     remember();
     render(state);
@@ -738,6 +758,7 @@ async function refresh() {
 }
 async function command(action, params = {}) {
   if (busy) return;
+  stateEpoch++;
   busy = true;
   if (session?.tutorial) renderTutorial(session.tutorial);
   message("");
@@ -777,7 +798,7 @@ async function command(action, params = {}) {
     if (session.state !== "lobby") $("invitation").hidden = true;
   } catch (error) {
     message(error.message, true);
-  } finally { busy = false; if (session?.tutorial) renderTutorial(session.tutorial); await refresh(); }
+  } finally { busy = false; if (session?.tutorial) renderTutorial(session.tutorial); await refresh(true); }
 }
 $("register-form").addEventListener("submit", async event => {
   event.preventDefault();

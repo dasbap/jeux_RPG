@@ -237,3 +237,9 @@ Le coût du squelette est de 0,4 Mana par seconde réelle et par unité contrôl
 ### Interface de combat 0.10.1
 
 La carte reste au centre, les statistiques des joueurs et invocations et leur contrôle à gauche, les ennemis et intentions à droite. La barre d’actions en bas conserve les emplacements de l’attaque simple et des sorts acquis ; les actions impossibles sont désactivées. Les panneaux latéraux défilent dans leur propre espace et ne repoussent plus la carte lors des mises à jour.
+
+### Synchronisation et ressources de combat 0.10.2
+
+Les réponses d’actualisation périmées ne remplacent plus l’état d’une commande plus récente. Les déplacements utilisent la dernière position reçue et une actualisation est demandée après chaque commande. En combat, les alliés et invocations n’affichent que leurs PV et ressources ; les caractéristiques détaillées restent dans la consultation hors combat.
+
+La barre d’actions affiche les actions de l’entité contrôlée : personnage, invocation unique ou groupe. Une invocation unique peut lancer ses compétences offensives acquises avec son propre coût, sa portée, son incantation et son délai, validés par le serveur. Les personnages des autres joueurs ne peuvent pas être contrôlés.

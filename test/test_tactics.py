@@ -639,3 +639,35 @@ def test_redirect_movement_preserves_position_and_step_timer_during_cooldown():
     tactics.advance(data, timer, lambda: .5)
     assert unit["position"] == [0, 6]
     assert unit["route"] == [[0, 5]]
+
+
+def test_controlled_invocation_skill_consumes_own_mana_and_casts_from_own_position():
+    data = summoned_party()
+    key, unit = next(iter(data["battle"]["summons"].items()))
+    unit["position"] = [9, 5]
+    data["mobs"][0]["position"] = [9, 4]
+    data["battle"]["players"]["p0"]["position"] = [0, 9]
+    control_action(data, "control_units", units=[key])
+    before = data["characters"]["p0"]["invocations"][0]["energies"][0]["current"]
+    control_action(data, "unit_skill", units=[key], skill_name="Sword Slash", target="mob")
+    cost = next(skill["cost"] for skill in unit["skills"] if skill["name"] == "Sword Slash")
+    assert data["characters"]["p0"]["invocations"][0]["energies"][0]["current"] == before - cost
+    assert unit["casting"]["skill_name"] == "Sword Slash"
+    hp = data["mobs"][0]["stats"]["hp"]["current"]
+    actors = {player: tutorial.unpack(raw) for player, raw in data["characters"].items()}
+    tactics.advance_summons(data, actors, unit["casting"]["ends_at"], lambda: .5, [])
+    assert not unit.get("casting")
+    assert not data["mobs"] or data["mobs"][0]["stats"]["hp"]["current"] < hp
+
+
+def test_invocation_skill_cannot_use_master_skill_or_remote_target():
+    data = summoned_party()
+    key, unit = next(iter(data["battle"]["summons"].items()))
+    control_action(data, "control_units", units=[key])
+    with pytest.raises(GameError) as failure:
+        control_action(data, "unit_skill", units=[key], skill_name="Low Skull", target="mob")
+    assert failure.value.code == "unknown_skill"
+    unit["position"] = [0, 9]
+    with pytest.raises(GameError) as failure:
+        control_action(data, "unit_skill", units=[key], skill_name="Sword Slash", target="mob")
+    assert failure.value.code == "out_of_range"

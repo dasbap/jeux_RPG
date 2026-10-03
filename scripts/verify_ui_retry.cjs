@@ -8,7 +8,7 @@ async function check(conflicts, failure) {
   const revisions = [], messages = [];
   let reads = 0;
   const context = {
-    busy: false, sessionId: "room", session: {id: "room", revision: 0},
+    busy: false, stateEpoch: 0, sessionId: "room", session: {id: "room", revision: 0},
     crypto: {randomUUID: () => "request"},
     $: () => ({disabled: false, hidden: false}),
     remember: () => {}, refresh: async () => {},
@@ -34,4 +34,27 @@ async function check(conflicts, failure) {
     assert(!messages.some(message => message.error));
   }
 }
-Promise.resolve().then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
+async function checkLateSnapshot() {
+  const refreshSource = source.slice(source.indexOf("async function refresh("), source.indexOf("async function command("));
+  let resolveRead;
+  let renders = 0;
+  const context = {token: "token", polling: false, busy: false, tacticalInteractionUntil: 0, stateEpoch: 0,
+    sessionId: "room", session: {id: "room", revision: 1}, Date,
+    api: () => new Promise(resolve => {resolveRead = resolve;}), remember: () => {},
+    render: () => {renders++;}, $: () => ({}), message: () => {}};
+  vm.createContext(context);
+  const pending = vm.runInContext(`${refreshSource}; refresh();`, context);
+  context.stateEpoch++;
+  context.session = {id: "room", revision: 3};
+  resolveRead({session: {id: "room", revision: 2}});
+  await pending;
+  assert.equal(context.session.revision, 3);
+  assert.equal(renders, 0);
+  assert.equal(context.polling, false);
+  const oldRevision = vm.runInContext("refresh();", context);
+  resolveRead({session: {id: "room", revision: 2}});
+  await oldRevision;
+  assert.equal(context.session.revision, 3);
+  assert.equal(renders, 0);
+}
+Promise.resolve().then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
