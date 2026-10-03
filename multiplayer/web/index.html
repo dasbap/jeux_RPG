@@ -29,8 +29,8 @@
     <section id="lobby" class="panel" hidden>
       <div class="section-head"><h2 id="player-name">Votre personnage</h2><button id="logout" class="quiet">Se déconnecter</button></div>
       <details><summary>Ma clé de reconnexion</summary><p>Conservez cette clé en privé : elle donne accès à votre personnage.</p><button id="copy-token" class="secondary">Copier ma clé</button><p id="token-output" hidden></p></details>
-      <div id="room-controls"><button id="tutorial">Commencer le tutoriel en solo</button><button id="create" class="secondary">Inviter un compagnon</button><form id="join-form"><label for="invite-input">Invitation de votre compagnon</label><input id="invite-input" required autocomplete="off" maxlength="64"><button class="secondary" type="submit">Rejoindre</button></form></div>
-      <div id="invitation" hidden><p>Partagez cette invitation avec le second joueur :</p><code id="invite-code"></code><button id="copy-invite" class="quiet">Copier</button></div>
+      <div id="room-controls"><button id="tutorial">Commencer le tutoriel en solo</button><button id="create" class="secondary">Inviter un compagnon</button><form id="join-form"><label for="invite-input">Code ou lien d’invitation de votre compagnon</label><input id="invite-input" required autocomplete="off" maxlength="2048"><button class="secondary" type="submit">Rejoindre</button></form></div>
+      <div id="invitation" hidden><p id="invite-status" role="status"></p><label for="invite-link">Lien à partager</label><input id="invite-link" readonly><button id="copy-invite-link" class="quiet">Copier le lien</button><p>Ou transmettez ce code :</p><code id="invite-code"></code><button id="copy-invite" class="quiet">Copier le code</button></div>
     </section>
     <section id="battle" class="panel" hidden>
       <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" hidden></span></div>

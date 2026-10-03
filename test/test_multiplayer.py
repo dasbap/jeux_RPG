@@ -156,7 +156,7 @@ def test_persisted_time_cannot_be_rewound(game):
 def test_ticker_expires_session_without_client_requests(game, http_server):
     token = player(game)
     room = command(game, token, "create")["session"]
-    game.clock.advance(601)
+    game.clock.advance(1801)
     import time
     deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
@@ -408,3 +408,23 @@ def test_main_process_stays_alive_after_printing_address(tmp_path):
         reader.join(timeout=1)
         process.stdout.close()
         process.stderr.close()
+
+
+def test_invitation_remains_valid_for_thirty_real_minutes(game):
+    first = player(game)
+    second = player(game, "Bob")
+    created = command(game, first, "create")
+    assert created["session"]["remaining_real_seconds"] == 1800
+    game.clock.advance(1799)
+    joined = command(game, second, "join", invite=created["invite"])
+    assert len(joined["session"]["players"]) == 2
+
+
+def test_expired_invitation_cannot_join_after_thirty_minutes(game):
+    first = player(game)
+    second = player(game, "Bob")
+    created = command(game, first, "create")
+    game.clock.advance(1801)
+    with pytest.raises(GameError) as failure:
+        command(game, second, "join", invite=created["invite"])
+    assert failure.value.code == "invalid_invite"

@@ -32,7 +32,7 @@ class GameService:
     classes = ("Knight", "Mage", "Archer", "Priest", "Necromancien")
     cooldown = 3.6
     match_duration = 3 * 300.0
-    lobby_duration = 3 * 600.0
+    lobby_duration = GameClock.ratio * 1800.0
 
     def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
         self._tick_errors = {}

@@ -21,6 +21,25 @@ function message(text, error = false) {
   $("message").textContent = text;
   $("message").classList.toggle("error", error);
 }
+function requestId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+function invitationCode(value) {
+  const trimmed = value.trim();
+  try { return new URL(trimmed).hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.[1] || trimmed; }
+  catch { return trimmed; }
+}
+function invitationLink(code) {
+  const url = new URL(location.href);
+  url.hash = `invite=${code}`;
+  url.search = "";
+  return url.href;
+}
 async function api(path, body, authenticated = true) {
   const headers = {};
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
@@ -46,6 +65,12 @@ function render(state) {
   $("room-controls").hidden = Boolean(session && session.state !== "finished");
   $("battle").hidden = !session;
   $("invitation").hidden = !(session && session.state === "lobby" && session.owner === session.me && sessionStorage.getItem("rpg-invite-session") === session.id);
+  if (!$("invitation").hidden) {
+    const code = sessionStorage.getItem("rpg-invite") || "";
+    $("invite-code").textContent = code;
+    $("invite-link").value = invitationLink(code);
+    $("invite-status").textContent = `Invitation valable encore ${Math.ceil(session.remaining_real_seconds / 60)} min · ${session.players.length}/2 joueurs. Attendez votre compagnon avant de démarrer.`;
+  }
   $("tutorial-panel").hidden = !(session && session.tutorial);
   $("character-menu").hidden = !(session && session.tutorial);
   $("duel-target-controls").hidden = true;
@@ -83,7 +108,7 @@ function render(state) {
   $("start").hidden = session.state !== "lobby" || session.owner !== session.me;
   $("start").disabled = busy || session.players.length !== 2;
   $("party-tutorial").hidden = session.state !== "lobby" || session.owner !== session.me;
-  $("party-tutorial").disabled = busy;
+  $("party-tutorial").disabled = busy || session.players.length !== 2;
   $("attack").hidden = session.state !== "running";
   $("attack").disabled = busy || me.cooldown_real_seconds > 0;
   $("duel-target").replaceChildren();
@@ -891,7 +916,7 @@ async function command(action, params = {}) {
     let currentParams = params;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        data = await api("/api/commands", {request_id: crypto.randomUUID(), action, params: currentParams});
+        data = await api("/api/commands", {request_id: requestId(), action, params: currentParams});
         break;
       } catch (error) {
         if (error.code !== "stale_revision" || !currentParams.session_id || attempt === 4) throw error;
@@ -916,8 +941,13 @@ async function command(action, params = {}) {
       sessionStorage.setItem("rpg-invite", data.invite);
       sessionStorage.setItem("rpg-invite-session", session.id);
       $("invite-code").textContent = data.invite;
+      $("invite-link").value = invitationLink(data.invite);
+      $("invite-status").textContent = "Invitation créée · valable 30 minutes. Partagez le lien ou le code avec votre compagnon.";
+      message("Invitation créée. Le lien et le code sont affichés ci-dessus.");
+      $("party-tutorial").disabled = session.players.length !== 2;
       $("invitation").hidden = false;
     }
+    if (action === "join") message("Vous avez rejoint votre compagnon. Le créateur peut démarrer le tutoriel.");
     if (session.state !== "lobby") $("invitation").hidden = true;
   } catch (error) {
     message(error.message, true);
@@ -967,7 +997,7 @@ $("tutorial").addEventListener("click", () => command("tutorial"));
 $("party-tutorial").addEventListener("click", () => command("tutorial"));
 $("join-form").addEventListener("submit", event => {
   event.preventDefault();
-  command("join", {invite: $("invite-input").value.trim()});
+  command("join", {invite: invitationCode($("invite-input").value)});
 });
 for (const action of ["start", "attack", "leave"]) $(action).addEventListener("click", () => {
   if (session) command(action, {session_id: session.id, revision: session.revision, ...(action === "attack" ? {target: $("duel-target").value} : {})});
@@ -985,9 +1015,12 @@ async function copy(text, outputId) {
   catch { $(outputId).hidden = false; $(outputId).textContent = text; message("Sélectionnez le texte pour le copier."); }
 }
 $("copy-token").addEventListener("click", () => copy(token, "token-output"));
+$("copy-invite-link").addEventListener("click", () => copy($("invite-link").value, "invite-link"));
 $("copy-invite").addEventListener("click", () => copy($("invite-code").textContent, "invite-code"));
+const incomingInvite = location.hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.[1];
+if (incomingInvite) { $("invite-input").value = incomingInvite; history.replaceState(null, "", location.pathname + location.search); }
 const invite = sessionStorage.getItem("rpg-invite");
-if (invite) { $("invite-code").textContent = invite; $("invitation").hidden = false; }
+if (invite) { $("invite-code").textContent = invite; $("invite-link").value = invitationLink(invite); $("invitation").hidden = false; }
 setInterval(refresh, 250);
 refresh();
 
