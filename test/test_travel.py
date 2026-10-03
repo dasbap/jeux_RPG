@@ -68,9 +68,6 @@ def test_one_kilometre_takes_ten_game_minutes_and_random_encounter_checks(game):
     state = act(game, player, "move", destination="brume")
     assert state["tutorial"]["position"] == "rosee_brume"
     assert state["tutorial"]["moving"]
-    with pytest.raises(GameError) as error:
-        act(game, player, "move", destination="forge")
-    assert error.value.code == "already_moving"
     game.clock.value = 599
     game.tick()
     assert game.state(player["token"])["session"]["tutorial"]["position"] != "brume"
@@ -186,3 +183,46 @@ def test_merchant_talk_is_checked_against_current_zone(game):
     with pytest.raises(GameError) as error:
         act(game, player, "talk", npc="leon")
     assert error.value.code == "invalid_npc"
+
+
+def test_midway_return_uses_walked_distance_without_teleport(game):
+    player, _ = prepare(game)
+    act(game, player, "move", destination="brume")
+    game.clock.value = 60
+    state = act(game, player, "move", destination="rosee")
+    transit = state["tutorial"]["transit"]
+    assert transit["destination"] == "rosee"
+    assert transit["remaining"] == pytest.approx(60)
+    assert state["tutorial"]["position"] == "rosee_brume"
+    game.clock.value = 119
+    game.tick()
+    assert game.state(player["token"])["session"]["tutorial"]["moving"]
+    game.clock.value = 120
+    game.tick()
+    state = game.state(player["token"])["session"]
+    assert state["tutorial"]["position"] == "rosee"
+    assert not state["tutorial"]["moving"]
+
+
+def test_midway_change_route_returns_to_junction_and_keeps_progress(game):
+    player, _ = prepare(game)
+    act(game, player, "move", destination="brume")
+    game.clock.value = 60
+    state = act(game, player, "move", destination="lisiere")
+    assert state["tutorial"]["transit"]["destination"] == "rosee"
+    assert state["tutorial"]["journey"] == ["rosee_lisiere", "lisiere"]
+    game.clock.value = 80
+    state = act(game, player, "move", destination="brume")
+    assert state["tutorial"]["transit"]["remaining"] == pytest.approx(260)
+    assert state["tutorial"]["journey"] == ["brume"]
+
+
+def test_unknown_destination_during_travel_does_not_change_route(game):
+    player, _ = prepare(game)
+    act(game, player, "move", destination="brume")
+    before = load_party(game, game.state(player["token"])["session"]["id"])["transit"]
+    with pytest.raises(GameError) as failure:
+        act(game, player, "move", destination="unknown")
+    assert failure.value.code == "invalid_destination"
+    after = load_party(game, game.state(player["token"])["session"]["id"])["transit"]
+    assert after == before

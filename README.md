@@ -275,3 +275,5 @@ Un personnage repéré perd sa dissimulation et ne peut pas se cacher simplement
 Les déplacements tactiques autorisent les diagonales pour les joueurs, invocations et mobs. Chaque pas diagonal prend √2 fois la durée d’un pas droit, également en marche dissimulée. Les chemins privilégient la distance parcourue et ne permettent pas de traverser le coin d’une couverture.
 
 Tous les personnages vivants, invocations et mobs récupèrent par défaut 1 % de leurs PV maximum par minute de jeu (20 secondes réelles au ratio 1:3), même en combat. Les fractions de PV sont conservées jusqu’à atteindre un point entier ; la régénération ne dépasse pas le maximum et ne ressuscite pas les morts.
+
+Pendant un trajet hors combat, une nouvelle destination recalcule l’itinéraire depuis la progression réelle sur le chemin : le groupe peut revenir en arrière ou poursuivre vers une autre route sans téléportation. Le journal du combat est placé sous les actions et reste replié par défaut.

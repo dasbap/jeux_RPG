@@ -25,6 +25,8 @@ try {
   assert.equal(JSON.stringify(dom.window.uiTest.gridPath(openMap, [0,0], [1,1])), "[[0,1],[1,1]]");
   render(fixture, [{id: 1, game_time: 99, message: "Joueur repéré par Gobelin."}, {id: 2, game_time: 100, message: "Gobelin utilise Entaille : 3 PV perdus."}]);
   assert(el("combat-notice").textContent.includes("3 PV perdus"));
+  assert(!el("combat-feedback").querySelector("details").open);
+  assert(el("skills").compareDocumentPosition(el("combat-feedback")) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   assert(el("combat-events").textContent.includes("repéré"));
   assert.equal(el("mob-cards").children.length, 3);
   event(unit("mob"), "click");

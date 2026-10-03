@@ -424,10 +424,51 @@ def continue_journey(party, now, random, messages):
         dangerous = source in world.ROAD_POINTS or destination in world.ROAD_POINTS or world.hazard(destination)
         if destination in world.ROAD_POINTS:
             party["position"] = destination
-        party["transit"] = {"destination": destination, "remaining": duration,
+        party["transit"] = {"source": source, "total": duration, "destination": destination, "remaining": duration,
                             "started_at": now, "ready_at": now + first_segment,
                             "segment": first_segment, "hazard": dangerous}
         messages.append(f"Vous partez vers {world.point_name(destination)}.")
+
+
+def redirect_journey(party, destination, known, now, random, messages, error):
+    transit = party["transit"]
+    if not transit:
+        route = world.path(party["position"], destination, known)
+        if route is None:
+            raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
+        party["journey"] = route
+        continue_journey(party, now, random, messages)
+        return
+    source = transit.get("source")
+    if source is None:
+        road = transit["destination"] if transit["destination"] in world.ROAD_POINTS else party["position"]
+        definition = next((r for r in world.ROUTES if r["id"] == road), None)
+        source = (road if transit["destination"] != road else (definition["from"] if next(iter(party.get("journey", [])), None) == definition["to"] else definition["to"])) if definition else party["position"]
+    total = transit.get("total", world.walking_seconds(source, transit["destination"]))
+    elapsed = max(0, min(transit["remaining"], now - transit["started_at"]))
+    remaining = max(0, transit["remaining"] - elapsed)
+    travelled = total - remaining
+    candidates = []
+    for endpoint, duration in ((source, travelled), (transit["destination"], remaining)):
+        route = world.path(endpoint, destination, known)
+        if route is not None:
+            cost = duration
+            previous = endpoint
+            for point in route:
+                cost += world.walking_seconds(previous, point)
+                previous = point
+            candidates.append((cost, endpoint, duration, route))
+    if not candidates:
+        raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
+    _, endpoint, duration, route = min(candidates, key=lambda item: item[0])
+    reverse = endpoint == source
+    segment = min(duration, max(0, transit["ready_at"] - now))
+    party["journey"] = route
+    party["transit"] = {"source": transit["destination"] if reverse else source, "destination": endpoint,
+                        "total": total, "remaining": duration, "started_at": now,
+                        "ready_at": now + segment, "segment": segment, "hazard": transit["hazard"]}
+    messages.append(f"Vous {'faites demi-tour' if reverse else 'changez d’itinéraire'} vers {world.point_name(destination)}.")
+    continue_journey(party, now, random, messages)
 
 
 def execute(party, player_id, action, params, now, error, random):
@@ -437,10 +478,11 @@ def execute(party, player_id, action, params, now, error, random):
     if action in ("travel", "move"):
         if party["battle"] or party["mobs"] or party["mob"]:
             raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
-        if party["transit"] or party["journey"]:
-            raise error("already_moving", "Votre déplacement est déjà en cours.", 409)
         destination = params["destination"]
         known = {p["id"] for p in world.view(party, player_id)["places"]}
+        if party["transit"] or party["journey"]:
+            redirect_journey(party, destination, known, now, random, messages, error)
+            return messages, party["step"] == "complete"
         path = world.path(party["position"], destination, known)
         if path is None:
             raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)

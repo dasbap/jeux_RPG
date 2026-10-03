@@ -149,7 +149,7 @@ function renderWorld(adventure, me) {
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
-  const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length || adventure.moving || adventure.transit || adventure.journey?.length);
+  const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length);
   function choosePoint(point) {
     mapPoint = point.id;
     if (point.locked_reason) message(point.locked_reason);
@@ -158,7 +158,7 @@ function renderWorld(adventure, me) {
   function visitPoint(point) {
     if (locked) return;
     if (point.id === "leon" && point.can_interact) return tutorialCommand("talk", {npc: "leon"});
-    if (adventure.position !== point.id) return requestTravel(point.id);
+    if (adventure.position !== point.id || adventure.moving) return requestTravel(point.id);
     if (point.locked_reason) return message(point.locked_reason);
     if (point.action === "explore") return tutorialCommand("explore");
     choosePoint(point);
@@ -191,7 +191,9 @@ function renderWorld(adventure, me) {
       const fraction = Math.max(0, Math.min(1, 1 - adventure.travel_remaining_real_seconds * 3 / half));
       const forward = adventure.transit?.destination === route.id ? adventure.journey?.[0] === route.to : adventure.transit?.destination === route.to;
       const progress = adventure.transit?.destination === route.id ? fraction / 2 : .5 + fraction / 2;
-      const proportion = forward ? progress : 1 - progress;
+      const endpoint = id => id === route.from ? 0 : id === route.to ? 1 : .5;
+      const transit = adventure.transit;
+      const proportion = transit?.source && [route.from,route.to,route.id].includes(transit.source) && [route.from,route.to,route.id].includes(transit.destination) ? endpoint(transit.source) + (endpoint(transit.destination) - endpoint(transit.source)) * Math.max(0,Math.min(1,1 - adventure.travel_remaining_real_seconds * 3 / transit.total)) : forward ? progress : 1 - progress;
       const x = from.x + (to.x - from.x) * proportion;
       const y = from.y + (to.y - from.y) * proportion;
       svg.append(svgElement("circle", {cx: x, cy: y, r: 8, class: "visited-node"}));
@@ -262,14 +264,14 @@ function renderWorld(adventure, me) {
   }
   const point = place.points.find(p => p.id === mapPoint);
   paragraphs("point-details", point ? [`${point.name} · ${point.type}${adventure.position === point.id ? " · Vous êtes ici" : ""}`, point.description, point.locked_reason || (point.action ? "Une interaction est disponible ici." : adventure.mob ? "Terminez le combat pour interagir avec les lieux." : "Aucune interaction disponible à cette étape.")] : [place.points.length ? "Sélectionnez un point pour consulter ses détails et interactions." : "Les points de ce lieu seront révélés lors de votre visite."]);
-  if (!locked && point && adventure.position !== point.id && point.id !== "leon") {
+  if (!locked && point && (adventure.position !== point.id || adventure.moving) && point.id !== "leon") {
     const move = document.createElement("button");
     move.textContent = "Se déplacer à ce point";
     move.disabled = busy;
     move.addEventListener("click", () => requestTravel(point.id, point.name, place.id));
     $("point-actions").append(move);
   }
-  if (!locked && place.id !== world.current && !world.routes.some(route => route.destination === place.id)) {
+  if (!locked && (place.id !== world.current || adventure.moving) && !world.routes.some(route => route.destination === place.id)) {
     const move = document.createElement("button");
     move.textContent = `Rejoindre ${place.name}`;
     move.disabled = busy;
@@ -531,7 +533,6 @@ function requestTravel(destination) {
   const adventure = session?.tutorial;
   if (!adventure) return;
   if (adventure.battle) return message("Terminez le combat avant de voyager.");
-  if (adventure.moving || adventure.transit || adventure.journey?.length) return message("Votre déplacement est déjà en cours.");
   return tutorialCommand("move", {destination});
 }
 function selectEntity(id) {
