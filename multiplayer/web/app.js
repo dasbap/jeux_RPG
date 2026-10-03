@@ -953,7 +953,7 @@ function renderBattle(adventure, me) {
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id});
     node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
-    node.onclick = () => { inspectedCell = site.position; renderTutorial(session.tutorial, true); message(site.name); };
+    node.onclick = () => { inspectedCell = site.position; renderTutorial(session.tutorial, true); message(site.name); if (site.dialogue && Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5) tutorialCommand("talk", {npc: site.id}); };
     node.ondblclick = () => moveControlled(adventure, me, site.position);
     svg.append(node);
   }

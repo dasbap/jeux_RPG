@@ -346,3 +346,20 @@ La vision des personnages joueurs passe à 12 cases, contre 6 pour les invocatio
 Les déplacements rapides ouvrent la carte locale uniquement à la destination finale : les villages intermédiaires ne détournent plus le trajet vers le campement. Les arrivées utilisent le passage correspondant à la provenance ; quitter puis rejoindre une zone conserve son passage de retour.
 
 Les cartes fixes et les terrains de rencontre disposent de décors de forêt, de village ou de grotte, de chemins, de cours d’eau et de ponts. L’eau bloque les déplacements, y compris ceux des ennemis, mais reste transparente à la ligne de vue. Les ponts sont praticables. Les positions des anciennes sauvegardes sont replacées sur une case praticable lorsque le nouveau terrain les recouvre.
+
+## Éditeur graphique externe — alpha 0.11.0a2
+
+Depuis le dépôt, lancer `python map_editor.py` après installation. Le paquet fournit aussi `jeux-rpg-map-editor` et `python -m jeuxRPG.multiplayer.map_editor`. L’éditeur de bureau utilise Tkinter, fourni avec l’installation Python officielle Windows ; sur Linux, installer le paquet Tkinter de la distribution. Il ne se connecte pas au serveur du jeu.
+
+Sélectionner une carte, puis peindre par clic ou glisser : sol, arbres, rochers, maisons, eau, ponts, chemins, fleurs, herbe, cristaux et campements. Ajouter des apparitions de gobelins, des PNJ et des passages de téléportation. Pour un passage, choisir l’identifiant exact de la carte destination et la case d’arrivée `x,y` ; une destination vide rejoint les chemins rapides. Un PNJ dispose d’un nom et d’un dialogue. Son propriétaire peut être `leader` pour le premier joueur du groupe, un identifiant joueur précis, ou vide pour un PNJ fixe. Les outils Inspecter et Effacer, l’annulation Ctrl+Z, le zoom, les barres de déplacement et les propriétés de carte permettent de corriger la scène. Les apparitions utilisent actuellement l’espèce gobelin ; les PNJ ajoutés proposent un dialogue, sans générateur de quêtes ou de compétences.
+
+Enregistrer sous `maps.json`. La sauvegarde valide les limites des cases, les obstacles, les destinations, les points d’arrivée et l’accessibilité des passages, PNJ et apparitions. Elle conserve les cartes nécessaires au tutoriel. Le remplacement du fichier est atomique. Pour utiliser ce fichier dans PowerShell :
+
+```powershell
+$env:RPG_MAPS_FILE = (Resolve-Path .\maps.json).Path
+python main.py
+```
+
+Redémarrer le serveur après une modification. Tester les cartes dans une nouvelle session : les ennemis et le terrain exploré des sessions existantes restent sauvegardés. Les nouvelles cartes deviennent accessibles en reliant un passage d’une carte existante à leur identifiant. Les changements du fichier sont réservés à l’opérateur local ; aucune API publique d’édition n’est ouverte.
+
+Par défaut, les invocations suivent leur propriétaire à distance de deux cases quand elles n’ont aucune cible. Elles conservent leurs attaques automatiques ; le contrôle manuel et les incantations prennent la priorité. Les PNJ liés suivent aussi leur joueur et accompagnent le groupe lors des changements de zone. Les PNJ fixes, comme Mira et Léon, restent fixes ou conservent leur itinéraire propre. Les PNJ d’escorte ajoutés par l’éditeur sont pacifiques et ne disposent pas encore d’une IA de combat.

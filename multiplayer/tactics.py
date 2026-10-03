@@ -103,7 +103,7 @@ def begin(party, now, origin):
     preset = PRESETS["field_" + party["field_map"]] if party.get("field_map") else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
     players = {key: {"position": [1, 6 + index], "hidden": origin == "explore", "route": [], "next_move": now}
                for index, key in enumerate(party["characters"])}
-    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now, "terrain_version": 1}
+    party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now, "terrain_version": preset.get("terrain_version", 1)}
     party["battle"].update(initial_mobs=len(party["mobs"]), initial_players=sum(c["stats"]["hp"]["current"] > 0 for c in party["characters"].values()), higher_level=any(m["level"] > max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), enemy_alerted=False, damage_received=False)
     party["battle"]["level_difference"] = max((m["level"] - max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), default=0)
     occupied = [u["position"] for u in players.values()]
@@ -209,6 +209,30 @@ def sync_summons(party, now):
     battle["summons"] = {key: unit for key, unit in summons.items() if key in active}
 
 
+def follow_owner(preset, unit, owner, now):
+    if distance(unit["position"], owner["position"]) <= 2 or unit.get("next_move", 0) > now:
+        return
+    route = path(preset, unit["position"], owner["position"])
+    if route:
+        unit["next_move"] = now + step_time(unit["position"], route[0])
+        unit["position"] = route[0]
+
+
+def advance_companions(party, characters, preset, now):
+    battle = party["battle"]
+    companions = battle.setdefault("companions", {})
+    for site in preset.get("sites", []):
+        owner = site.get("owner")
+        if owner == "leader":
+            owner = next(iter(battle["players"]), None)
+        if owner not in battle["players"] or not characters[owner].is_alive():
+            continue
+        key = site["id"]
+        if key not in companions:
+            companions[key] = {**deepcopy(site), "owner": owner, "next_move": now}
+        follow_owner(preset, companions[key], battle["players"][owner], now)
+
+
 def advance_summons(party, characters, now, random, messages):
     from .tutorial import unpack, pack, sync_mobs
     battle = party["battle"]
@@ -261,6 +285,8 @@ def advance_summons(party, characters, now, random, messages):
         else:
             candidates = [mob for mob in party["mobs"] if distance(unit["position"], mob["position"]) <= 6 and sight(preset, unit["position"], mob["position"])]
         if not candidates:
+            if not unit.get("controlled"):
+                follow_owner(preset, unit, battle["players"][unit["owner"]], now)
             continue
         target = min(candidates, key=lambda m: (distance(unit["position"], m["position"]), m["stats"]["hp"]["current"], m["combat_id"]))
         if distance(unit["position"], target["position"]) <= 1.5 and sight(preset, unit["position"], target["position"]):
@@ -452,6 +478,7 @@ def view(party, now, player=None):
         return None
     preset = PRESETS[battle["preset"]]
     result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"]), "exit": exit_cell(party)}
+    result["map"]["sites"] = [site for site in result["map"].get("sites", []) if not site.get("owner")] + list(result.get("companions", {}).values())
     result.pop("arrivals", None)
     result.pop("explored_positions", None)
     for key, unit in result["players"].items():
@@ -644,6 +671,7 @@ def advance(party, now, random):
     elif any(unit["position"] == exit_cell(party) and characters[key].is_alive() for key, unit in battle["players"].items()):
         party["characters"] = {key: pack(c) for key, c in characters.items()}
         return messages + leave_field(party)
+    advance_companions(party, characters, preset, now)
     charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}

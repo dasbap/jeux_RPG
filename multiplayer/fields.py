@@ -6,7 +6,7 @@ from . import tactics, world, progression
 
 def terrain(identifier, name, width, height, cover, exits, mobs=(), sites=()):
     return {"id": "field_" + identifier, "name": name, "width": width, "height": height, "cell_metres": 2,
-            "cover": [list(point) for point in cover], "exits": exits, "spawns": [list(point) for point in mobs], "sites": sites}
+            "cover": [list(point) for point in cover], "exits": exits, "spawns": [list(point) for point in mobs], "sites": list(sites)}
 
 
 def gate(x, y, destination, entry, name):
@@ -86,7 +86,14 @@ def decorate(definition):
 for definition in [*tactics.PRESETS.values(), *MAPS.values()]:
     decorate(definition)
 
+from .map_assets import configured
+
+MAPS = configured(MAPS)
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
+for identifier, definition in MAPS.items():
+    if world.zone_of(identifier) is None:
+        world.PLACES[identifier] = {"name": definition["name"], "type": "zone", "x": 70, "y": 300 + 30 * len(world.PLACES), "description": "Zone personnalisée.", "points": []}
+        world.LEVELS[identifier] = 1
 
 
 def start(party, now):
@@ -101,6 +108,7 @@ def enter(party, identifier, entry, now, pursuers=()):
     from . import tutorial
     from jeuxRPG._class.character import Character
     definition = MAPS[identifier]
+    companions = deepcopy(party.get("battle", {}).get("companions", {})) if party.get("battle") else deepcopy(party.get("linked_companions", {}))
     party["position"] = identifier
     party["field_map"] = identifier
     if identifier == "rosee" and party["step"] == "road":
@@ -139,6 +147,13 @@ def enter(party, identifier, entry, now, pursuers=()):
         position = tactics.free_position(definition, entry, occupied)
         occupied.append(position)
         party["battle"]["players"][key] = {"position": position, "hidden": False, "route": [], "next_move": now, "detected": False}
+    party["battle"]["companions"] = companions
+    for unit in companions.values():
+        owner = party["battle"]["players"].get(unit["owner"])
+        if owner:
+            unit.update(position=tactics.free_position(definition, owner["position"], occupied), next_move=now)
+            occupied.append(unit["position"])
+    party["linked_companions"] = deepcopy(companions)
     party["battle"]["combat_step"] = party["combat_step"]
     party["battle"].setdefault("arrivals", [])
     for enemy in pursuers:
@@ -190,6 +205,7 @@ def transition(party, gate, player, now):
     party["field_return_from"] = party["field_map"]
     x, y = gate["position"]
     party["field_return_entry"] = [1 if x == 0 else definition["width"] - 2 if x == definition["width"] - 1 else x, 1 if y == 0 else definition["height"] - 2 if y == definition["height"] - 1 else y]
+    party["linked_companions"] = deepcopy(battle.get("companions", {}))
     party.update(battle=None, mobs=[], mob=None)
     party.pop("field_map", None)
     if party["position"] == "clearing" and party["step"] in ("clearing", "first_fight"):
@@ -202,20 +218,22 @@ def interactions(party, player):
         return []
     definition = MAPS[party["field_map"]]
     unit = party["battle"]["players"][player]
-    return [site for site in definition["sites"] if tactics.distance(unit["position"], site["position"]) <= 1.5]
+    sites = [site for site in definition["sites"] if not site.get("owner")] + list(party["battle"].get("companions", {}).values())
+    return [site for site in sites if tactics.distance(unit["position"], site["position"]) <= 1.5]
 
 
 def execute(party, player, action, params, now, error, random):
     from . import tutorial, forge
     nearby = interactions(party, player)
-    site = "mira" if action == "talk" else "forge"
-    if action == "talk" and params.get("npc") != "mira":
-        raise error("invalid_npc", "Ce PNJ n’est pas présent ici.", 409)
+    site = params.get("npc") if action == "talk" else "forge"
     if site not in {item["id"] for item in nearby}:
         raise error("wrong_location", "Approchez-vous du lieu pour interagir.", 409)
     unit = party["battle"]["players"][player]
     if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
+    if action == "talk" and site != "mira":
+        npc = next(item for item in nearby if item["id"] == site)
+        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}"], False
     battle, position = party["battle"], party["position"]
     party.update(battle=None, position=site)
     try:
@@ -311,11 +329,14 @@ def repop(party, identifier, now, pursuers=()):
 
 def migrate_terrain(party):
     battle = party.get("battle")
-    if not battle or battle.get("terrain_version") == 1:
+    if not battle:
         return
     definition = tactics.PRESETS[battle["preset"]]
+    version = definition.get("terrain_version", 1)
+    if battle.get("terrain_version") == version:
+        return
     occupied = []
-    for unit in [*battle["players"].values(), *battle.get("summons", {}).values(), *party["mobs"]]:
+    for unit in [*battle["players"].values(), *battle.get("summons", {}).values(), *battle.get("companions", {}).values(), *party["mobs"]]:
         unit["position"] = tactics.free_position(definition, unit["position"], occupied)
         occupied.append(unit["position"])
         if "route" in unit:
@@ -324,4 +345,4 @@ def migrate_terrain(party):
             unit["home"] = tactics.free_position(definition, unit["home"])
         if "patrol_route" in unit:
             unit["patrol_route"] = [tactics.free_position(definition, point) for point in unit["patrol_route"]]
-    battle["terrain_version"] = 1
+    battle["terrain_version"] = version

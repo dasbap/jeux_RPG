@@ -1065,3 +1065,26 @@ def test_limit_breaker_remembers_starting_level_difference_and_best_victory():
     data["battle"].update(awarded=False, level_difference=2)
     achievements.victory(data, 150)
     assert achievements.view(data)["level_difference"] == 4
+
+
+def test_idle_invocation_follows_owner_but_manual_hold_wins():
+    data = party(class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    tactics.complete_casts(data, 6, lambda: .5)
+    data["mobs"] = []
+    summon = next(iter(data["battle"]["summons"].values()))
+    summon.update(position=[1, 5], next_move=0)
+    data["battle"]["players"]["p0"]["position"] = [5, 5]
+    characters = {key: tutorial.unpack(actor) for key, actor in data["characters"].items()}
+    tactics.advance_summons(data, characters, 7, lambda: .5, [])
+    assert tactics.distance(summon["position"], [5, 5]) < 4
+    position = summon["position"][:]
+    tactics.advance_summons(data, characters, 7.1, lambda: .5, [])
+    assert summon["position"] == position
+    summon.update(controlled=True, order={"type": "hold"})
+    tactics.advance_summons(data, characters, 20, lambda: .5, [])
+    assert summon["position"] == position
+    tactics.release_control(summon)
+    tactics.advance_summons(data, characters, 21, lambda: .5, [])
+    assert summon["position"] != position
