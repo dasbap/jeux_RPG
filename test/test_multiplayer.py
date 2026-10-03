@@ -490,3 +490,124 @@ def test_chat_global_presence_group_privacy_and_rate_limit(game):
         game.send_chat(alice, "global", "a" * 401)
     game.clock.advance(61)
     assert len(game.state(outsider)["chat"]["online"]) == 1
+
+
+def test_prepared_views_remain_private_and_invalidate_on_action(game):
+    import uuid
+    alice, bob = player(game), player(game, "Bob")
+    for token in (alice, bob):
+        game.command(token, uuid.uuid4().hex, "tutorial")
+    game.tick()
+    first = game.state(alice, prepared=True)
+    second = game.state(bob, prepared=True)
+    assert first["session"]["me"] != second["session"]["me"]
+    assert first["session"]["tutorial"]["players"][0]["name"] == "Alice"
+    assert second["session"]["tutorial"]["players"][0]["name"] == "Bob"
+    first["session"]["tutorial"]["players"][0]["name"] = "Corrupted"
+    state = game.state(alice, prepared=True)["session"]
+    assert state["tutorial"]["players"][0]["name"] == "Alice"
+    game.command(alice, uuid.uuid4().hex, "explore", session_id=state["id"], revision=state["revision"])
+    assert game.state(alice, prepared=True)["session"]["tutorial"]["battle"] is not None
+
+
+def test_state_polling_does_not_write_disk_or_move_clock_backwards(game):
+    token = player(game)
+    game.state(token)
+    before = game.db.total_changes
+    game.clock.advance(1)
+    later = game.state(token)["game_time"]
+    for _ in range(30):
+        game.state(token)
+    assert game.db.total_changes == before
+    game.clock.value = 0
+    assert game.state(token)["game_time"] >= later
+
+
+def test_http_reuses_connection_and_closes_rejected_post(http_server):
+    import http.client
+    connection = http.client.HTTPConnection("127.0.0.1", http_server.server_address[1], timeout=3)
+    try:
+        connection.request("GET", "/")
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.getheader("Server-Timing")
+        response.read()
+        socket = connection.sock
+        connection.request("GET", "/app.js")
+        response = connection.getresponse()
+        assert response.status == 200
+        response.read()
+        assert connection.sock is socket
+        connection.request("POST", "/api/commands", body=b'{"unconsumed":true}', headers={"Content-Type": "application/json"})
+        response = connection.getresponse()
+        assert response.status == 401
+        assert response.getheader("Connection") == "close"
+        response.read()
+        assert connection.sock is None
+    finally:
+        connection.close()
+
+
+def test_prepared_view_failure_does_not_stop_other_sessions(game, monkeypatch):
+    import uuid
+    from jeuxRPG.multiplayer import tutorial
+    alice, bob = player(game), player(game, "Bob")
+    for token in (alice, bob):
+        game.command(token, uuid.uuid4().hex, "tutorial")
+    alice_id = game.state(alice)["player"]["id"]
+    original = tutorial.view
+    def broken(party, me, now):
+        if me == alice_id:
+            raise RuntimeError("Fixture view failure")
+        return original(party, me, now)
+    monkeypatch.setattr(tutorial, "view", broken)
+    game.tick()
+    assert game.state(bob, prepared=True)["session"]["tutorial"]["players"][0]["name"] == "Bob"
+    assert len(game._view_errors) == 1
+    assert len(game._prepared_views) == 1
+
+
+def test_command_queue_rolls_back_rejected_action_and_preserves_receipts(game, monkeypatch):
+    import uuid
+    from jeuxRPG.multiplayer.command_queue import CommandQueue
+    token = player(game)
+    dispatcher = CommandQueue(game)
+    original = game._execute
+    def rejected(actor, action, params, now):
+        game.db.execute("UPDATE players SET name='Corrupted' WHERE id=?", (actor["id"],))
+        raise GameError("fixture_rejection", "Rejected")
+    try:
+        monkeypatch.setattr(game, "_execute", rejected)
+        with pytest.raises(GameError) as failure:
+            dispatcher.execute(token, uuid.uuid4().hex, "create", {})
+        assert failure.value.code == "fixture_rejection"
+        assert game.state(token)["player"]["name"] == "Alice"
+        monkeypatch.setattr(game, "_execute", original)
+        request_id = uuid.uuid4().hex
+        created = dispatcher.execute(token, request_id, "create", {})
+        assert dispatcher.execute(token, request_id, "create", {}) == created
+        assert game.db.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 1
+        assert dispatcher.worker.is_alive()
+    finally:
+        dispatcher.close()
+
+
+def test_compact_confirmation_skips_rendering_and_keeps_action_validation(game, monkeypatch):
+    game.random = lambda: .5
+    import uuid
+    from jeuxRPG.multiplayer import tutorial
+    token = player(game)
+    state = game.command(token, uuid.uuid4().hex, "tutorial")["session"]
+    original = tutorial.view
+    def forbidden(*args):
+        raise AssertionError("Confirmation must not render the entire state")
+    monkeypatch.setattr(tutorial, "view", forbidden)
+    result = game.command(token, uuid.uuid4().hex, "explore", _compact=True, session_id=state["id"], revision=state["revision"])
+    assert result["session"]["acknowledged"]
+    assert "tutorial" not in result["session"]
+    monkeypatch.setattr(tutorial, "view", original)
+    latest = game.state(token)["session"]
+    assert latest["tutorial"]["battle"]
+    with pytest.raises(GameError) as failure:
+        game.command(token, uuid.uuid4().hex, "travel", _compact=True, session_id=latest["id"], revision=latest["revision"], destination="rosee")
+    assert failure.value.code == "in_combat"

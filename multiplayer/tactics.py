@@ -1,4 +1,5 @@
 import math
+from functools import lru_cache
 from heapq import heappop, heappush
 from copy import deepcopy
 
@@ -47,6 +48,13 @@ def step_time(source, destination, duration=MOVE_TIME):
 def path(preset, source, destination):
     if not walkable(preset, destination):
         return None
+    result = cached_path(preset["width"], preset["height"], tuple(tuple(point) for point in preset["cover"]), tuple(source), tuple(destination))
+    return None if result is None else [list(point) for point in result]
+
+
+@lru_cache(maxsize=4096)
+def cached_path(width, height, cover, source, destination):
+    preset = {"width": width, "height": height, "cover": [list(point) for point in cover]}
     queue = [(0, tuple(source), [])]
     costs = {tuple(source): 0}
     while queue:
@@ -54,7 +62,7 @@ def path(preset, source, destination):
         if cost > costs[node]:
             continue
         if list(node) == list(destination):
-            return route
+            return tuple(tuple(point) for point in route)
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
             point = (node[0] + dx, node[1] + dy)
             next_cost = cost + distance(node, point)
@@ -115,6 +123,8 @@ def begin(party, now, origin):
 
 
 def free_position(preset, wanted, occupied=()):
+    if walkable(preset, wanted) and wanted not in occupied:
+        return list(wanted)
     cells = [[x, y] for x in range(preset["width"]) for y in range(preset["height"])
              if walkable(preset, [x, y]) and [x, y] not in occupied]
     return min(cells, key=lambda p: (distance(p, wanted), p[1], p[0]))
@@ -720,14 +730,16 @@ def advance(party, now, random):
                 if candidates:
                     destination = candidates[int(now / 6) % len(candidates)]
             if destination is None:
-                patrol = mob.setdefault("patrol_route", patrol_route(preset, 0))
+                if "patrol_route" not in mob:
+                    mob["patrol_route"] = patrol_route(preset, 0)
+                patrol = mob["patrol_route"]
                 index = mob.setdefault("patrol_index", 0)
                 if mob["position"] == patrol[index]:
                     index = (index + 1) % len(patrol)
                     mob["patrol_index"] = index
                 destination = patrol[index]
-            route = path(preset, mob["position"], destination)
-            if route and mob["next_move"] <= now:
+            route = path(preset, mob["position"], destination) if mob["next_move"] <= now else None
+            if route:
                 mob["next_move"] = now + step_time(mob["position"], route[0], GOBLIN_MOVE_TIME)
                 mob["position"] = route[0]
             mob["intent"] = "Poursuit un joueur" if target else "Cherche à la dernière position connue" if mob["state"] == "search" else "Patrouille"

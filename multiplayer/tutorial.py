@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from functools import lru_cache
 
@@ -59,7 +60,8 @@ def blueprint(class_name, level):
 
 def unpack(data, master=None):
     if master is None:
-        character = deepcopy(blueprint(data["class_name"], data["level"]))
+        model = blueprint(data["class_name"], data["level"])
+        character = deepcopy(model, {id(model.class_table): model.class_table})
         character.user_id = data["id"]
         character.name = data["name"]
     else:
@@ -144,12 +146,12 @@ def status_view(party, key, effects, now):
 
 
 def view(party, me, now):
-    party = deepcopy(party)
+    party = json.loads(json.dumps(party, ensure_ascii=False, separators=(",", ":")))
     migrate(party, now)
     progression.resources(party, now)
     if party.get("battle"):
         tactics.sync_summons(party, now)
-    result = deepcopy(party)
+    result = json.loads(json.dumps({key: value for key, value in party.items() if key not in ("characters", "ready", "battle", "mobs", "mob")}, ensure_ascii=False, separators=(",", ":")))
     result["achievements"] = achievements.view(party)
     result["location"], result["objective"] = STEPS[party["step"]]
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
@@ -209,8 +211,6 @@ def view(party, me, now):
     if result["battle"]:
         for key, unit in result["battle"]["summons"].items():
             unit["effects"] = status_view(party, key, unit.get("effects", []), now)
-    for key in ("characters", "ready"):
-        del result[key]
     result["me"] = me
     return result
 
@@ -436,10 +436,21 @@ def continue_journey(party, now, random, messages):
         messages.append(f"Vous partez vers {world.point_name(destination)}.")
 
 
-def redirect_journey(party, destination, known, now, random, messages, error):
+def proposed_path(start, destination, known, paths, error):
+    if paths is None:
+        return world.path(start, destination, known)
+    proposed = paths.get(start)
+    if proposed is None:
+        return None
+    if not world.validate_path(start, destination, known, proposed):
+        raise error("invalid_path", "L’itinéraire proposé ne respecte pas les chemins connus.", 409)
+    return proposed[:]
+
+
+def redirect_journey(party, destination, known, now, random, messages, error, paths=None):
     transit = party["transit"]
     if not transit:
-        route = world.path(party["position"], destination, known)
+        route = proposed_path(party["position"], destination, known, paths, error)
         if route is None:
             raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
         party["journey"] = route
@@ -456,7 +467,7 @@ def redirect_journey(party, destination, known, now, random, messages, error):
     travelled = total - remaining
     candidates = []
     for endpoint, duration in ((source, travelled), (transit["destination"], remaining)):
-        route = world.path(endpoint, destination, known)
+        route = proposed_path(endpoint, destination, known, paths, error)
         if route is not None:
             cost = duration
             previous = endpoint
@@ -486,10 +497,16 @@ def execute(party, player_id, action, params, now, error, random):
             raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
         destination = params["destination"]
         known = {p["id"] for p in world.view(party, player_id)["places"]}
+        paths = params.get("paths")
+        sources = {party["position"]}
+        if party["transit"]:
+            sources.update((party["transit"]["source"], party["transit"]["destination"]))
+        if "paths" in params and (not isinstance(paths, dict) or not paths or set(paths) - sources):
+            raise error("invalid_path", "Origine d’itinéraire invalide.", 409)
         if party["transit"] or party["journey"]:
-            redirect_journey(party, destination, known, now, random, messages, error)
+            redirect_journey(party, destination, known, now, random, messages, error, paths)
             return messages, party["step"] == "complete"
-        path = world.path(party["position"], destination, known)
+        path = proposed_path(party["position"], destination, known, paths, error)
         if path is None:
             raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
         party["journey"] = path

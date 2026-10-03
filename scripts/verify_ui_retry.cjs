@@ -86,7 +86,7 @@ async function checkPendingMovement() {
 async function checkTunnelTransport() {
   const apiSource = source.slice(source.indexOf("async function api("), source.indexOf("function remember("));
   let timeout, deadline, options, resolveFetch, rejectFetch;
-  const context = {token: "token", location: {hostname: "example.devtunnels.ms"}, AbortController, TypeError,
+  const context = {token: "token", bundleToken: "", bundleHashes: {}, bundleValues: {}, bundleSequence: 0, appliedBundleSequence: 0, location: {hostname: "example.devtunnels.ms"}, AbortController, TypeError,
     setTimeout: (callback, delay) => {timeout = callback; deadline = delay; return 1;}, clearTimeout: () => {},
     fetch: (url, settings) => {options = settings; return new Promise((resolve,reject) => {resolveFetch = resolve; rejectFetch = reject;});}};
   vm.createContext(context);
@@ -103,4 +103,20 @@ async function checkTunnelTransport() {
   rejectFetch(new Error("aborted"));
   await assert.rejects(slow, error => error.code === "timeout");
 }
-Promise.resolve().then(checkTunnelTransport).then(checkPendingMovement).then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
+async function checkCompactAcknowledgement() {
+  let resolveCommand;
+  const adventure = {battle: {}, players: []};
+  const context = {busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room",
+    session: {id: "room", revision: 1, state: "running", tutorial: adventure}, requestId: () => "request", lastPlayer: null,
+    $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {}, renderTutorial: () => {}, message: () => {},
+    api: () => new Promise(resolve => {resolveCommand = resolve;})};
+  vm.createContext(context);
+  const pending = vm.runInContext(`${command}; command("strike", {session_id: "room", revision: 1});`, context);
+  context.session = {...context.session, revision: 7};
+  resolveCommand({session: {id: "room", revision: 2, state: "finished", acknowledged: true}});
+  await pending;
+  assert.equal(context.session.revision, 7);
+  assert.equal(context.session.state, "running");
+  assert.equal(context.session.tutorial, adventure);
+}
+Promise.resolve().then(checkCompactAcknowledgement).then(checkTunnelTransport).then(checkPendingMovement).then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });

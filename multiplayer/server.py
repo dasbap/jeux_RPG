@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import socket
 import threading
 import time
 from collections import deque
@@ -8,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from .command_queue import CommandQueue
 from .state_bundles import encode
 from .network_log import create_logger, write
 from .service import GameService, GameError, digest
@@ -43,7 +45,7 @@ class RPGServer(ThreadingHTTPServer):
         self.network_log = create_logger(log_directory)
         self.service = service
         self.limiter = RateLimiter()
-        self._slots = threading.BoundedSemaphore(32)
+        self._slots = threading.BoundedSemaphore(128)
         super().__init__(address, Handler)
         port = self.server_address[1]
         self.hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
@@ -58,6 +60,7 @@ class RPGServer(ThreadingHTTPServer):
         self._stop = threading.Event()
         self._ticker = threading.Thread(target=self._tick, daemon=True)
         self._ticker.start()
+        self.commands = CommandQueue(service)
 
     def _tick(self):
         while not self._stop.wait(0.1):
@@ -73,6 +76,8 @@ class RPGServer(ThreadingHTTPServer):
             self._stop.set()
             self._ticker.join(timeout=5)
         super().server_close()
+        if hasattr(self, "commands"):
+            self.commands.close()
         for handler in self.network_log.handlers:
             handler.close()
 
@@ -95,12 +100,14 @@ class RPGServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     server_version = "RPG"
     sys_version = ""
 
     def setup(self):
         super().setup()
         self.connection.settimeout(5)
+        self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     def log_message(self, format, *args):
         if "timed out" in format:
@@ -113,8 +120,11 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8") if isinstance(payload, (dict, list)) else payload
         self.send_response(status)
         self.send_header("Content-Type", content_type)
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Server-Timing", f"app;dur={(time.monotonic() - getattr(self, '_network_started', time.monotonic())) * 1000:.2f}")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
@@ -187,7 +197,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise GameError("invalid_path", "URL invalide.", 404)
             path = parsed.path
             self._network_route = path if path in ("/", "/app.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
-            if path.startswith("/api/") and path != "/api/register":
+            deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
+            if deferred_command:
+                combat = True
+            if path.startswith("/api/") and path != "/api/register" and not deferred_command:
                 token = self._token()
                 with self.server.service._lock:
                     player = self.server.service._authenticate(token)
@@ -209,7 +222,7 @@ class Handler(BaseHTTPRequestHandler):
                     token = self._token()
                     if not self.server.limiter.accept(("state", digest(token)), 300):
                         raise GameError("rate_limit", "Trop de requêtes d’état.", 429)
-                    state = self.server.service.state(token)
+                    state = self.server.service.state(token, prepared=self.headers.get("X-RPG-Bundles") == "1")
                     if self.headers.get("X-RPG-Bundles") == "1":
                         state = encode(state, self.headers.get("X-RPG-Bundle-Hashes", ""))
                     self._respond(200, state)
@@ -233,15 +246,23 @@ class Handler(BaseHTTPRequestHandler):
                 token = self._token()
                 if not self.server.limiter.accept(("command", digest(token)), 60):
                     raise GameError("rate_limit", "Trop de commandes.", 429)
-                if set(body) != {"request_id", "action", "params"} or not isinstance(body["params"], dict) or set(body["params"]) & {"token", "request_id", "action"}:
+                if set(body) != {"request_id", "action", "params"} or not isinstance(body["params"], dict) or set(body["params"]) & {"token", "request_id", "action", "_compact"}:
                     raise GameError("invalid_command", "Paramètres invalides.")
                 action = body["action"] if isinstance(body["action"], str) else "invalid"
-                combat = combat or action in ("strike", "skill", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill", "attack")
+                tactical = action in ("strike", "skill", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill", "attack")
+                if deferred_command and not tactical:
+                    with self.server.service._lock:
+                        player = self.server.service._authenticate(token)
+                        session = self.server.service._active(player["id"])
+                        row = self.server.service.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone() if session else None
+                        combat = bool(row and json.loads(row[0]).get("battle")) or bool(session and not row and session["state"] == "running")
+                combat = combat or tactical
                 self._network_combat = combat
                 if not combat:
                     write(self.server.network_log, "ACTION_REQUESTED", action=action, peer=self.client_address[0])
-                result = self.server.service.command(token, body["request_id"], body["action"], **body["params"])
-                if self.headers.get("X-RPG-Bundles") == "1":
+                compact = self.headers.get("X-RPG-Command-Ack") == "1" and action in {"explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"}
+                result = self.server.commands.execute(token, body["request_id"], body["action"], body["params"], compact=compact)
+                if self.headers.get("X-RPG-Bundles") == "1" and not compact:
                     result = encode(result, self.headers.get("X-RPG-Bundle-Hashes", ""))
                 self._respond(200, result)
                 if not combat:
@@ -249,7 +270,8 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 raise GameError("not_found", "Ressource introuvable.", 404)
         except GameError as error:
-            if not combat:
+            self.close_connection = True
+            if not combat or error.status in (401, 403):
                 write(self.server.network_log, "REQUEST_REJECTED", reason=error.code, status=error.status, action=action, peer=self.client_address[0])
             self._respond(error.status, {"error": error.code, "message": str(error)})
         except (ConnectionError, TimeoutError):

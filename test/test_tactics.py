@@ -1027,3 +1027,17 @@ def test_exit_resumes_suspended_trip_without_blocking_after_flee():
     assert "paused_at" not in data["transit"]
     assert data["transit"]["remaining"] == 100
     assert data["journey"] == ["brume"]
+
+
+def test_cached_paths_do_not_leak_mutations_or_ignore_cover_changes():
+    preset = {"width": 4, "height": 4, "cover": []}
+    first = tactics.path(preset, [0, 0], [2, 2])
+    first[0][0] = 99
+    assert tactics.path(preset, [0, 0], [2, 2]) == [[1, 1], [2, 2]]
+    preset["cover"] = [[1, 0]]
+    route = tactics.path(preset, [0, 0], [2, 2])
+    previous = [0, 0]
+    for point in route:
+        assert tactics.valid_step(preset, previous, point)
+        previous = point
+    assert route[0] != [1, 1]

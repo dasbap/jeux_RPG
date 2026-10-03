@@ -60,7 +60,9 @@ async function api(path, body, authenticated = true) {
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
-  const bundled = path === "/api/state" || path === "/api/commands";
+  const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
+  if (compactCommand) headers["X-RPG-Command-Ack"] = "1";
+  const bundled = path === "/api/state" || path === "/api/commands" && !compactCommand;
   if (bundled) {
     if (bundleToken !== token) { bundleToken = token; bundleHashes = {}; bundleValues = {}; }
     headers["X-RPG-Bundles"] = "1";
@@ -217,7 +219,27 @@ function render(state) {
     $("events").append(li);
   }
 }
+function worldPaths(adventure, destination) {
+  const graph = adventure.world.graph;
+  if (!graph) return null;
+  const sources = new Set([adventure.position]);
+  if (adventure.transit) { sources.add(adventure.transit.source); sources.add(adventure.transit.destination); }
+  return Object.fromEntries([...sources].map(source => {
+    const queue = [[source, []]], visited = new Set();
+    for (const [node, route] of queue) {
+      if (node === destination) return [source, route];
+      if (visited.has(node)) continue;
+      visited.add(node);
+      for (const next of graph[node] || []) if (!visited.has(next)) queue.push([next, [...route, next]]);
+    }
+    return [source, null];
+  }));
+}
 function tutorialCommand(action, params = {}) {
+  if (["move", "travel"].includes(action) && session?.tutorial) {
+    const paths = worldPaths(session.tutorial, params.destination);
+    if (paths) params = {...params, paths};
+  }
   if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
@@ -1017,6 +1039,7 @@ async function command(action, params = {}) {
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
         if (!session || session.id !== state.session.id || state.session.revision >= session.revision) session = state.session;
         currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
+        if (["move", "travel"].includes(action)) { const paths = worldPaths(session.tutorial, currentParams.destination); if (paths) currentParams.paths = paths; }
         if (action === "battle_move" && session.tutorial?.battle) {
           const battle = session.tutorial.battle;
           currentParams.path = gridPath(battle.map, battle.players[session.me].position, [currentParams.x, currentParams.y]);
@@ -1027,7 +1050,10 @@ async function command(action, params = {}) {
         }
       }
     }
-    if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
+    if (data.session.acknowledged) {
+      if (session?.id === data.session.id && data.session.revision >= session.revision) session = {...session, revision: data.session.revision, state: data.session.state};
+    } else if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
+    if (!session) return;
     sessionId = session.id;
     remember();
     if (data.invite) {

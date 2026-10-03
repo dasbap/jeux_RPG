@@ -9,6 +9,7 @@ import sqlite3
 import threading
 import time
 import unicodedata
+from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -41,6 +42,8 @@ class GameService:
 
     def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
         self._tick_errors = {}
+        self._prepared_views = OrderedDict()
+        self._view_errors = {}
         self.random = random_source or secrets.SystemRandom().random
         path = Path(database)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -51,6 +54,8 @@ class GameService:
         os.chmod(path, 0o600)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA synchronous=FULL")
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS presence (player_id TEXT PRIMARY KEY, seen REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session_id TEXT, player_id TEXT NOT NULL, name TEXT NOT NULL, message TEXT NOT NULL, sent REAL NOT NULL);
@@ -101,6 +106,7 @@ class GameService:
             self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_game', ?)", (str(anchor),))
         self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
         self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
+        self._last_game = float(checkpoint[0]) if checkpoint else 0
 
     def close(self):
         with self._lock:
@@ -110,12 +116,18 @@ class GameService:
         with self._transaction():
             now = self._now()
             self._expire(now)
-            rows = self.db.execute("SELECT t.session_id, t.data FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'").fetchall()
+            rows = self.db.execute("SELECT t.session_id FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'").fetchall()
             active = {row["session_id"] for row in rows}
             self._tick_errors = {key: value for key, value in self._tick_errors.items() if key in active}
-            for row in rows:
+            self._view_errors = {key: value for key, value in self._view_errors.items() if key[0] in active}
+        for row in rows:
+            with self._transaction():
+                current = self.db.execute("SELECT t.data FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE t.session_id=? AND s.state='running'", (row["session_id"],)).fetchone()
+                if current is None:
+                    continue
+                now = self._now()
                 try:
-                    party = json.loads(row["data"])
+                    party = json.loads(current["data"])
                     before = json.dumps(party, sort_keys=True)
                     messages = tutorial.advance(party, now, self.random)
                 except Exception:
@@ -130,25 +142,50 @@ class GameService:
                     self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", row["session_id"]))
                     for message in messages:
                         self._event(row["session_id"], now, message)
+                revision = self.db.execute("SELECT revision FROM sessions WHERE id=?", (row["session_id"],)).fetchone()[0]
+                for player_id in party["characters"]:
+                    key = (row["session_id"], player_id)
+                    try:
+                        view = tutorial.view(party, player_id, now)
+                    except Exception:
+                        self._prepared_views.pop(key, None)
+                        if time.monotonic() - self._view_errors.get(key, -60) >= 60:
+                            logging.getLogger(__name__).exception("Préparation de vue interrompue pour la session %s ; les autres vues restent actives.", row["session_id"])
+                            self._view_errors[key] = time.monotonic()
+                        continue
+                    self._view_errors.pop(key, None)
+                    view["world_context"] = world_context(party)
+                    self._prepared_views[key] = (revision, now, json.dumps(view, ensure_ascii=False, separators=(",", ":")))
+                    self._prepared_views.move_to_end(key)
+                while len(self._prepared_views) > 256:
+                    self._prepared_views.popitem(last=False)
+            time.sleep(0)
 
     @contextmanager
     def _transaction(self):
         with self._lock:
-            self.db.execute("BEGIN IMMEDIATE")
+            nested = self.db.in_transaction
+            self.db.execute("SAVEPOINT rpg_command" if nested else "BEGIN IMMEDIATE")
             try:
                 yield
-                self.db.execute("COMMIT")
+                self.db.execute("RELEASE SAVEPOINT rpg_command" if nested else "COMMIT")
             except BaseException:
-                self.db.execute("ROLLBACK")
+                if nested:
+                    self.db.execute("ROLLBACK TO SAVEPOINT rpg_command")
+                    self.db.execute("RELEASE SAVEPOINT rpg_command")
+                else:
+                    self.db.execute("ROLLBACK")
                 raise
 
-    def _now(self):
+    def _now(self, persist=True):
         now = self.clock.now()
         if not math.isfinite(now) or now < 0:
             raise RuntimeError("Horloge invalide")
         checkpoint = self.db.execute("SELECT value FROM meta WHERE key='last_game'").fetchone()
-        now = max(now, float(checkpoint[0]) if checkpoint else 0)
-        self.db.execute("INSERT INTO meta VALUES ('last_game', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(now),))
+        now = max(now, self._last_game, float(checkpoint[0]) if checkpoint else 0)
+        self._last_game = now
+        if persist:
+            self.db.execute("INSERT INTO meta VALUES ('last_game', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(now),))
         return now
 
     @staticmethod
@@ -210,7 +247,9 @@ class GameService:
             raise GameError("not_found", "Session introuvable.", 404)
         return session
 
-    def _snapshot(self, player, session, now):
+    def _snapshot(self, player, session, now, prepared=False, compact=False):
+        if compact:
+            return {"id": session["id"], "state": session["state"], "revision": session["revision"], "owner": session["owner"], "me": player["id"], "acknowledged": True}
         members = self.db.execute("""SELECT p.id, p.name, p.class_name, p.hp AS max_hp, p.damage,
             m.hp, m.ready_at FROM members m JOIN players p ON p.id=m.player_id
             WHERE m.session_id=? ORDER BY p.id""", (session["id"],)).fetchall()
@@ -224,19 +263,25 @@ class GameService:
         }
         adventure = self.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()
         if adventure:
-            party = json.loads(adventure[0])
-            result["tutorial"] = tutorial.view(party, player["id"], now)
-            result["tutorial"]["world_context"] = world_context(party)
+            cached = self._prepared_views.get((session["id"], player["id"])) if prepared else None
+            if cached and cached[0] == session["revision"] and 0 <= now - cached[1] <= .6:
+                result["tutorial"] = json.loads(cached[2])
+            else:
+                party = json.loads(adventure[0])
+                result["tutorial"] = tutorial.view(party, player["id"], now)
+                result["tutorial"]["world_context"] = world_context(party)
         return result
 
-    def state(self, token, session_id=None):
+    def state(self, token, session_id=None, prepared=False):
         with self._transaction():
             player = self._authenticate(token)
-            now = self._now()
+            now = self._now(persist=False)
             self._expire(now)
-            self.db.execute("INSERT INTO presence VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET seen=excluded.seen", (player["id"], now))
+            seen = self.db.execute("SELECT seen FROM presence WHERE player_id=?", (player["id"],)).fetchone()
+            if seen is None or now - seen[0] >= 10 * GameClock.ratio:
+                self.db.execute("INSERT INTO presence VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET seen=excluded.seen", (player["id"], now))
             if session_id is not None:
-                return self._snapshot(player, self._session(player, session_id), now)
+                return self._snapshot(player, self._session(player, session_id), now, prepared)
             session = self._active(player["id"])
             if session is None:
                 session = self.db.execute("""SELECT s.* FROM sessions s JOIN members m ON m.session_id=s.id
@@ -245,7 +290,7 @@ class GameService:
             return {"player": {"id": player["id"], "name": player["name"], "class_name": player["class_name"]},
                     "game_time": now, "ratio": GameClock.ratio,
                     "chat": self.chat_view(player, now, session["id"] if session else None),
-                    "session": self._snapshot(player, session, now) if session else None}
+                    "session": self._snapshot(player, session, now, prepared) if session else None}
 
     def chat_view(self, player, now, session_id=None):
         online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON o.player_id=p.id WHERE p.scope=? AND o.seen>=? ORDER BY p.name", (player["scope"], now - 60 * GameClock.ratio))]
@@ -274,7 +319,7 @@ class GameService:
             self.db.execute("DELETE FROM chat WHERE id NOT IN (SELECT id FROM chat WHERE scope=? AND session_id IS ? ORDER BY id DESC LIMIT 200) AND scope=? AND session_id IS ?", (player["scope"], session_id, player["scope"], session_id))
             return self.chat_view(player, now, session_id)
 
-    def command(self, token, request_id, action, **params):
+    def command(self, token, request_id, action, _compact=False, **params):
         if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", request_id):
             raise GameError("invalid_request", "Identifiant de commande invalide.")
         allowed = {"create": set(), "join": {"invite"}, "start": {"session_id", "revision"},
@@ -294,14 +339,14 @@ class GameService:
                    "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
                    "unit_order": {"session_id", "revision", "encounter", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "encounter" in params and (type(params["encounter"]) is not int or params["encounter"] < 1):
             raise GameError("invalid_encounter", "Combat invalide.")
         if "revision" in params and (type(params["revision"]) is not int or params["revision"] < 0):
             raise GameError("invalid_revision", "Version invalide.")
         try:
-            fingerprint = digest(json.dumps([action, params], sort_keys=True, allow_nan=False))
+            fingerprint = digest(json.dumps([action, params, "compact"] if _compact else [action, params], sort_keys=True, allow_nan=False))
         except (TypeError, ValueError):
             raise GameError("invalid_command", "Paramètres invalides.") from None
         with self._transaction():
@@ -315,7 +360,7 @@ class GameService:
             self._expire(now)
             if self.db.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] >= 100000:
                 raise GameError("capacity", "Capacité du journal des commandes atteinte.", 429)
-            result = self._execute(player, action, params, now)
+            result = self._execute(player, action, params, now, compact=True) if _compact else self._execute(player, action, params, now)
             self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, json.dumps(result)))
             return result
 
@@ -331,7 +376,7 @@ class GameService:
             self.db.execute("UPDATE players SET token_hash=? WHERE id=?", (digest(token), existing["id"]))
             return token
 
-    def _execute(self, player, action, params, now):
+    def _execute(self, player, action, params, now, compact=False):
         player_id = player["id"]
         if action == "tutorial":
             session = self._active(player_id)
@@ -344,7 +389,7 @@ class GameService:
             self.db.execute("INSERT INTO tutorials VALUES (?, ?)", (session["id"], json.dumps(tutorial.new_party(players))))
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
-            return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
+            return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
         if action in ("explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
@@ -365,7 +410,7 @@ class GameService:
             self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", session["id"]))
             for message in messages:
                 self._event(session["id"], now, message)
-            return {"session": self._snapshot(player, self._session(player, session["id"]), now)}
+            return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
         if action in ("create", "join") and self._active(player_id):
             raise GameError("already_active", "Quittez votre session actuelle avant d'en rejoindre une autre.", 409)
         if action == "create":
@@ -378,7 +423,7 @@ class GameService:
             self.db.execute("INSERT INTO members VALUES (?, ?, ?, 0)", (session_id, player_id, player["hp"]))
             self._event(session_id, now, "Salon créé. Partagez l'invitation avec le second joueur.")
             session = self._session(player, session_id)
-            return {"session": self._snapshot(player, session, now), "invite": invite}
+            return {"session": self._snapshot(player, session, now, compact=compact), "invite": invite}
         if action == "join":
             invite = params["invite"]
             if not isinstance(invite, str) or not 16 <= len(invite) <= 64:
@@ -433,4 +478,4 @@ class GameService:
                     self.db.execute("UPDATE sessions SET state='finished', winner=? WHERE id=?", (player_id, session["id"]))
                     self._event(session["id"], now, f"{player['name']} remporte le duel.")
         session = self._session(player, session["id"])
-        return {"session": self._snapshot(player, session, now)}
+        return {"session": self._snapshot(player, session, now, compact=compact)}

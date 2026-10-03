@@ -127,7 +127,7 @@ def view(party, me, traveller=None):
     if current_zone not in {p["id"] for p in places}:
         definition = PLACES[current_zone]
         places.append({"id": current_zone, **deepcopy(definition), "visited": True})
-    return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "bestiary": bestiary, "objectives": [{"zone": "rosee", "point": "mira", "x": PLACES["rosee"]["x"], "y": PLACES["rosee"]["y"]}, {"zone": "lisiere", "point": "hunt", "x": PLACES["lisiere"]["x"], "y": PLACES["lisiere"]["y"]}]}
+    return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "graph": graph(known), "bestiary": bestiary, "objectives": [{"zone": "rosee", "point": "mira", "x": PLACES["rosee"]["x"], "y": PLACES["rosee"]["y"]}, {"zone": "lisiere", "point": "hunt", "x": PLACES["lisiere"]["x"], "y": PLACES["lisiere"]["y"]}]}
 
 
 ROAD_POINTS = {r["id"]: {"zone": "lisiere" if r["id"] == "rosee_lisiere" else "clearing" if r["id"] == "clearing_rosee" else "rosee", "name": r["name"]} for r in ROUTES}
@@ -159,9 +159,7 @@ def hazard(point):
     return point in ROAD_POINTS or point in ("clearing", "clearing_fight", "lisiere", "hunt")
 
 
-def path(start, destination, known):
-    if not isinstance(destination, str) or zone_of(destination) not in known:
-        return None
+def graph(known):
     graph = {zone: [] for zone in known}
     for zone in known:
         for point in PLACES[zone]["points"]:
@@ -173,6 +171,29 @@ def path(start, destination, known):
             graph[middle] = [route["from"], route["to"]]
             graph[route["from"]].append(middle)
             graph[route["to"]].append(middle)
+    return graph
+
+
+def validate_path(start, destination, known, proposed):
+    if not isinstance(destination, str) or zone_of(destination) not in known or not isinstance(proposed, list):
+        return False
+    nodes = graph(known)
+    if len(proposed) > len(nodes) or not all(isinstance(point, str) for point in proposed):
+        return False
+    if len(set(proposed)) != len(proposed) or start in proposed:
+        return False
+    previous = start
+    for point in proposed:
+        if point not in nodes.get(previous, []):
+            return False
+        previous = point
+    return previous == destination
+
+
+def path(start, destination, known):
+    if not isinstance(destination, str) or zone_of(destination) not in known:
+        return None
+    nodes = graph(known)
     queue = [(start, [])]
     visited = set()
     for node, route in queue:
@@ -181,7 +202,7 @@ def path(start, destination, known):
         if node in visited:
             continue
         visited.add(node)
-        queue.extend((neighbor, route + [neighbor]) for neighbor in graph.get(node, []) if neighbor not in visited)
+        queue.extend((neighbor, route + [neighbor]) for neighbor in nodes.get(node, []) if neighbor not in visited)
     return None
 
 

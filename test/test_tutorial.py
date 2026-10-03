@@ -504,3 +504,26 @@ def test_coop_move_accepts_slow_snapshot_without_teleport(game):
     result = game.command(second, uuid.uuid4().hex, "move", session_id=snapshot["id"], revision=snapshot["revision"], world_context=snapshot["tutorial"]["world_context"], destination="clearing_fight")
     assert result["session"]["tutorial"]["transit"]["destination"] == "clearing_fight"
     assert result["session"]["tutorial"]["position"] == "clearing"
+
+
+def test_client_world_route_is_validated_without_server_search(game, monkeypatch):
+    from jeuxRPG.multiplayer import tutorial, world
+    token = game.register("Route", "Knight")["token"]
+    state = game.command(token, uuid.uuid4().hex, "tutorial")["session"]
+    data = json.loads(game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state["id"],)).fetchone()[0])
+    data["step"] = "road"
+    game.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(data), state["id"]))
+    proposed = ["clearing_rosee", "rosee"]
+    def forbidden(*args):
+        raise AssertionError("Server must not calculate the client route")
+    monkeypatch.setattr(world, "path", forbidden)
+    result = game.command(token, uuid.uuid4().hex, "travel", session_id=state["id"], revision=state["revision"], destination="rosee", paths={"clearing": proposed})
+    assert result["session"]["tutorial"]["transit"]["destination"] == "clearing_rosee"
+    assert proposed == ["clearing_rosee", "rosee"]
+    assert result["session"]["tutorial"]["journey"] == ["rosee"]
+
+
+@pytest.mark.parametrize("proposed", [["rosee"], ["clearing_rosee", "rosee", "brume"], ["clearing_rosee", "clearing", "clearing_rosee", "rosee"], [True, "rosee"]])
+def test_forged_world_routes_are_rejected(proposed):
+    from jeuxRPG.multiplayer import world
+    assert not world.validate_path("clearing", "rosee", {"clearing", "rosee"}, proposed)
