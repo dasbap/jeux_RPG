@@ -78,12 +78,30 @@ async function finishCombat(dom) {
       if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
       else await pause(50);
     } else {
+      await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.includes("Tous les ennemis sont morts"), "interface après mort du dernier mob");
+      assert.equal(el(dom, "enemy-intents").querySelectorAll("tr").length, 0);
+      assert.equal(el(dom, "combat-target").options.length, 0);
+      assert.equal(el(dom, "mob-hp").textContent, "");
+      assert(el(dom, "world-map").querySelector(".battle-map"));
+      assert(el(dom, "tactical-actions").textContent.includes("Quitter le champ de bataille"));
       const corpse = adventure.battle.corpses.find(c => !c.harvested.length);
-      if (!corpse) { await command(dom, "leave_battle"); continue; }
+      if (!corpse) {
+        const leaveButton = () => [...el(dom, "tactical-actions").querySelectorAll("button")].find(button => button.textContent === "Quitter le champ de bataille");
+        await waitFor(() => leaveButton() && !leaveButton().disabled, "bouton de sortie après victoire");
+        leaveButton().click();
+        await waitFor(async () => !(await request(dom, "/api/state")).session.tutorial.battle, "sortie effective après dépeçage");
+        continue;
+      }
       if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) <= 1.5) await command(dom, "harvest", {target: corpse.id});
       else {
         const path = dom.window.testFns.gridPath(adventure.battle.map, unit.position, corpse.position);
-        await command(dom, "battle_move", {x: corpse.position[0], y: corpse.position[1], path});
+        const position = unit.position.join(",");
+        await waitFor(() => [...el(dom, "tactical-actions").querySelectorAll("button")].some(button => button.textContent === "Quitter le champ de bataille" && !button.disabled), "déplacement après victoire disponible");
+        el(dom, "world-map").querySelector(`[data-cell="${corpse.position.join(",")}"]`).dispatchEvent(new dom.window.Event("click", {bubbles: true}));
+        await waitFor(async () => {
+          const moved = (await request(dom, "/api/state")).session.tutorial.battle.players[me.id];
+          return moved.route.length > 0 || moved.position.join(",") !== position;
+        }, "clic de déplacement vers un corps après victoire");
       }
     }
     await pause(30);

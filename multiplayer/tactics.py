@@ -17,6 +17,7 @@ PRESETS = {f"{zone}_{index + 1}": {"id": f"{zone}_{index + 1}", "name": f"{name}
 CALL_TIME = 6.0
 SEARCH_TIME = 180.0
 MOVE_TIME = 1.2
+GOBLIN_MOVE_TIME = 2.4
 
 
 def distance(a, b):
@@ -77,7 +78,7 @@ def begin(party, now, origin):
     identifiers = [m["combat_id"] for m in party["mobs"]]
     for index, mob in enumerate(party["mobs"]):
         mob.update(position=[9 + index % 2, 2 + index], home=[9 + index % 2, 2 + index], state="patrol", target=None,
-                   last_known=None, search_until=None, next_move=now, next_call=now, calling_until=None,
+                   last_known=None, search_until=None, next_move=now + GOBLIN_MOVE_TIME, next_call=now, calling_until=None,
                    windup_until=None, known_dead=[], allies=[i for i in identifiers if i != mob["combat_id"]],
                    intent="Patrouille", stunned_until=0)
         if origin != "explore":
@@ -308,7 +309,7 @@ def advance(party, now, random):
             route = path(preset, mob["position"], destination)
             if route and mob["next_move"] <= now:
                 mob["position"] = route[0]
-                mob["next_move"] = now + MOVE_TIME
+                mob["next_move"] = now + GOBLIN_MOVE_TIME
             mob["intent"] = "Poursuit un joueur" if target else "Cherche à la dernière position connue" if mob["state"] == "search" else "Patrouille"
     party["characters"] = {key: pack(character) for key, character in characters.items()}
     if not any(c.is_alive() for c in characters.values()):

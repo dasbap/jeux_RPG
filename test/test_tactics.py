@@ -274,3 +274,18 @@ def test_dead_ally_can_be_called_until_its_body_is_seen():
     tactics.advance(data, 6, lambda: .5)
     assert dead["combat_id"] in enemy["known_dead"]
     assert enemy["calling_until"] is None
+
+
+def test_goblin_combat_movement_is_three_kilometres_per_hour():
+    data = party()
+    data["battle"]["players"]["p0"].update(position=[9, 5], hidden=False)
+    enemy = data["mobs"][0]
+    enemy["position"] = [5, 5]
+    positions = []
+    for instant in (0, 1.2, 2.4, 3.6, 4.8):
+        tactics.advance(data, instant, lambda: .5)
+        positions.append(enemy["position"][:])
+    assert positions == [[5, 5], [5, 5], [5, 4], [5, 4], [6, 4]]
+    assert tactics.GOBLIN_MOVE_TIME == 2 * tactics.MOVE_TIME
+    preset = tactics.PRESETS[data["battle"]["preset"]]
+    assert preset["cell_metres"] / tactics.GOBLIN_MOVE_TIME * 3.6 == 3

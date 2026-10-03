@@ -185,7 +185,7 @@ Une rencontre tire le groupe entier avant le début du combat : si trois gobelin
 
 ## Combat tactique et progression du POC 0.8
 
-Quinze presets sont disponibles : trois terrains pour chacun des cinq contextes (clairière, lisière, route, entraînement à Rosée et bois de Brume). Une case représente deux mètres. Les couvertures bloquent la marche et la ligne de vue. Le corps à corps porte à 1,5 case ; les classes à distance et les compétences de soutien portent à six cases. L’interface affiche chaque mob, ses PV sous forme de barre, sa position et son intention. Cliquer sur sa fiche PV entoure sa position.
+Quinze presets sont disponibles : trois terrains pour chacun des cinq contextes (clairière, lisière, route, entraînement à Rosée et bois de Brume). Une case représente deux mètres. Le joueur marche à 6 km/h et le gobelin se déplace à 3 km/h en combat (respectivement 1,2 et 2,4 secondes de jeu par case). Les couvertures bloquent la marche et la ligne de vue. Le corps à corps porte à 1,5 case ; les classes à distance et les compétences de soutien portent à six cases. L’interface affiche chaque mob, ses PV sous forme de barre, sa position et son intention. Cliquer sur sa fiche PV entoure sa position.
 
 Explorer donne l’initiative : les joueurs apparaissent dissimulés et les mobs patrouillent. Un joueur visible et atteignable est poursuivi ; chaque membre du groupe garde son propre placement et sa dissimulation. Perdre un joueur de vue déclenche une recherche à sa dernière position connue, pendant 180 secondes de jeu (60 secondes réelles), puis la patrouille reprend. Un stun bloque déplacement, attaque et appel ; sans cible visible à son réveil, le mob reprend sa patrouille.
 
@@ -209,3 +209,5 @@ python scripts/verify_http_ui.py
 ```
 
 Ce script démarre un serveur de test local avec une base temporaire, une horloge accélérée et des tirages déterministes. Il accélère aussi la fenêtre du limiteur de requêtes pour suivre l’horloge du scénario. Les protections HTTP avec leurs limites réelles et les délais du jeu sont testés séparément par `python -m pytest -q`. Le scénario jsdom vérifie les comportements et le DOM ; il ne constitue pas une vérification visuelle dans un navigateur.
+
+La CI exécute également le scénario HTTP/jsdom. Il vérifie explicitement qu’après la mort du dernier ennemi, les anciennes fiches PV et intentions disparaissent, qu’un clic permet encore de marcher jusqu’au corps et que le bouton de sortie termine effectivement le combat après dépeçage.
