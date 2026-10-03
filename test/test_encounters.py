@@ -24,7 +24,7 @@ def test_sequential_group_draws_stop_at_first_failure(draws, expected):
 
 def test_ranks_limit_and_level_difference():
     assert encounters.probabilities("D", 2, 2) == encounters.GOBLIN_CHAIN
-    for rank in "SABCD":
+    for rank in tuple(encounters.RANKS)[:-1]:
         assert encounters.group_size(rank, 2, 2, lambda: 0) == 5
     assert encounters.group_size("E", 2, 2, lambda: pytest.fail("Passive creatures must not attack")) == 0
     assert encounters.probabilities("D", 10, 2)[0] < .9
@@ -207,3 +207,12 @@ def test_pending_journey_and_enemy_deadline_survive_restart(service, monkeypatch
         assert reopened.state(player["token"])["session"]["tutorial"] == before
     finally:
         reopened.close()
+
+
+def test_rank_order_and_group_difficulty():
+    ranks = ("SSS", "SS", "S", "AA", "A", "B", "C", "D", "E")
+    assert tuple(encounters.RANKS) == ranks
+    for stronger, weaker in zip(ranks[:-2], ranks[1:-1]):
+        high = encounters.probabilities(stronger, 2, 2)
+        low = encounters.probabilities(weaker, 2, 2)
+        assert all(a < b for a, b in zip(high[1:], low[1:]))
