@@ -4,7 +4,7 @@ import uuid
 import pytest
 
 from jeuxRPG.multiplayer import encounters, tutorial, world, tactics
-from test.test_tutorial import combat_fixture, win
+from test_tutorial import combat_fixture, win
 from jeuxRPG.multiplayer.service import GameError, GameService
 
 
