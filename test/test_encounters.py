@@ -216,3 +216,14 @@ def test_rank_order_and_group_difficulty():
         high = encounters.probabilities(stronger, 2, 2)
         low = encounters.probabilities(weaker, 2, 2)
         assert all(a < b for a, b in zip(high[1:], low[1:]))
+
+
+def test_village_routes_pass_through_square_street_and_successive_buildings():
+    known = {"rosee", "brume"}
+    nodes = world.graph(known)
+    assert nodes["rosee"] == ["mira", "rosee_brume"]
+    assert world.path("rosee", "training", known) == ["mira", "rosee_artisans", "forge", "training"]
+    assert world.path("forge", "rosee_inn", known) == ["rosee_artisans", "mira", "rosee_habitations", "rosee_house", "rosee_inn"]
+    assert world.path("brume", "brume_inn", known) == ["arrival", "brume_market", "brume_shop", "brume_inn"]
+    assert not world.validate_path("rosee", "forge", known, ["forge"])
+    assert world.validate_path("rosee", "forge", known, ["mira", "rosee_artisans", "forge"])

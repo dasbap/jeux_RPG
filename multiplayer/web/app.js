@@ -361,10 +361,13 @@ function renderWorld(adventure, me) {
     local.append(svgElement("circle", {cx: 70, cy: 110, r: 10, class: "visited-node"}));
     local.append(svgElement("text", {x: 70, y: 138, class: "place-label"}, "Entrée"));
     if (adventure.position === place.id) local.append(svgElement("text", {x: 70, y: 85, class: "place-label"}, "Vous êtes ici"));
-    place.points.forEach((point, index) => {
-      const x = index % 2 ? 450 : 270;
-      const y = index < 2 ? 65 : 175;
-      local.append(svgElement("line", {x1: 70, y1: 110, x2: x, y2: y, class: "known-route"}));
+    const positions = new Map([[place.id, {x: 70, y: 110}], ...place.points.map((point, index) => [point.id, {x: point.x ?? (index % 2 ? 450 : 270), y: point.y ?? (index < 2 ? 65 : 175)}])]);
+    for (const [source, position] of positions) for (const destination of world.graph[source] || []) {
+      const endpoint = positions.get(destination);
+      if (endpoint && source < destination) local.append(svgElement("line", {x1: position.x, y1: position.y, x2: endpoint.x, y2: endpoint.y, class: "known-route"}));
+    }
+    place.points.forEach(point => {
+      const {x, y} = positions.get(point.id);
       const node = svgElement("g", {role: "button", tabindex: "0", "aria-label": point.name, "aria-disabled": String(locked), "data-point": point.id, class: "map-node"});
       node.append(svgElement("circle", {cx: x, cy: y, r: adventure.position === point.id ? 15 : 10, class: "visited-node"}));
       const icons = {pnj: "●", atelier: "⚒", rencontre: "⚔", repère: "◆"};

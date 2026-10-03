@@ -21,6 +21,36 @@ PLACES = {
               "points": [{"id": "arrival", "name": "Porte du village", "type": "repère", "description": "Point d'arrivée du tutoriel."}]},
 }
 
+
+VILLAGE_STREETS = {
+    "rosee": {"square": "mira", "streets": [
+        {"id": "rosee_artisans", "name": "Rue des artisans", "buildings": ["forge", "training"]},
+        {"id": "rosee_habitations", "name": "Rue des habitations", "buildings": ["rosee_house", "rosee_inn"]},
+    ]},
+    "brume": {"square": "arrival", "streets": [
+        {"id": "brume_market", "name": "Rue du marché", "buildings": ["brume_shop", "brume_inn"]},
+        {"id": "brume_habitations", "name": "Rue des habitations", "buildings": ["brume_house"]},
+    ]},
+}
+
+for village, layout in VILLAGE_STREETS.items():
+    points = PLACES[village]["points"]
+    square = next(point for point in points if point["id"] == layout["square"])
+    square.update(x=170, y=110)
+    if village == "brume":
+        square.update(name="Place du village", description="La place centrale relie l’entrée et toutes les rues de Brume.")
+    for index, street in enumerate(layout["streets"]):
+        y = 55 + index * 110
+        points.append({"id": street["id"], "name": street["name"], "type": "rue", "description": "Les bâtiments se suivent le long de cette rue.", "x": 300, "y": y})
+        for order, building in enumerate(street["buildings"]):
+            point = next((point for point in points if point["id"] == building), None)
+            if point is None:
+                name = "Auberge" if building.endswith("inn") else "Boutique" if building.endswith("shop") else "Maison"
+                point = {"id": building, "name": name, "type": "bâtiment", "description": "Bâtiment du village, sans interaction disponible pour le moment."}
+                points.append(point)
+            point.update(x=430 + order * 130, y=y)
+
+
 ROUTES = [
     {"id": "clearing_rosee", "from": "clearing", "to": "rosee", "name": "Sentier de Rosée", "distance_km": 0.3},
     {"id": "rosee_lisiere", "from": "rosee", "to": "lisiere", "name": "Chemin de la lisière", "distance_km": 0.2},
@@ -82,7 +112,7 @@ def view(party, me, traveller=None):
                  "points": deepcopy(definition["points"]) if key in visited else []}
         if traveller and key in visited and key in ("rosee", "brume") and traveller["location"] and traveller["location"] in definition["name"]:
             place["points"].append({"id": "leon", "name": traveller["name"], "type": "pnj",
-                                    "description": "Marchand itinérant actuellement présent dans ce village. Son passage suit l'horloge du monde."})
+                                    "x": 170, "y": 175, "description": "Marchand itinérant actuellement présent sur la place du village. Son passage suit l'horloge du monde."})
         for point in place["points"]:
             point["action"] = None
             point["locked_reason"] = None
@@ -163,8 +193,13 @@ def graph(known):
     graph = {zone: [] for zone in known}
     for zone in known:
         for point in PLACES[zone]["points"]:
-            graph[point["id"]] = [zone]
-            graph[zone].append(point["id"])
+            graph[point["id"]] = []
+        layout = VILLAGE_STREETS.get(zone)
+        chains = [[zone, layout["square"]]] + [[layout["square"], street["id"], *street["buildings"]] for street in layout["streets"]] if layout else [[zone, point["id"]] for point in PLACES[zone]["points"]]
+        for chain in chains:
+            for source, destination in zip(chain, chain[1:]):
+                graph[source].append(destination)
+                graph[destination].append(source)
     for route in ROUTES:
         if route["from"] in known and route["to"] in known:
             middle = route["id"]
