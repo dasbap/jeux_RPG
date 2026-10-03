@@ -468,3 +468,29 @@ def test_autonomous_skeleton_damage_interrupts_an_ally_call():
     tactics.advance(data, 6, lambda: .5)
     assert data["mobs"][0]["calling_until"] is None
     assert data["mobs"][0]["next_call"] == 12
+
+
+
+def test_restored_necromancer_with_two_skeletons_survives_small_goblin_hit():
+    import json
+
+    data = party(class_name="Necromancien")
+    near(data)
+    act(data, "skill", skill_name="Low Skull", target="p0")
+    tactics.complete_casts(data, 6, lambda: .5)
+    second = deepcopy(data["characters"]["p0"]["invocations"][0])
+    second["id"] = "-1"
+    data["characters"]["p0"]["invocations"].append(second)
+    tactics.sync_summons(data, 6)
+    for index, unit in enumerate(data["battle"]["summons"].values()):
+        unit["position"] = [index, 0]
+    data["mobs"][0]["windup_until"] = 6
+    restored = json.loads(json.dumps(data))
+    messages = tactics.advance(restored, 6, lambda: .5)
+    assert any("utilise Entaille" in message for message in messages)
+    assert restored["mobs"][0]["windup_until"] is None
+    assert restored["mobs"][0]["next_attack"] > 6
+    character = tutorial.unpack(restored["characters"]["p0"])
+    character.lose_hp(tutorial.unpack(restored["mobs"][0]), 1)
+    assert character.is_alive()
+    assert len(character.invocations.get_all()) == 2
