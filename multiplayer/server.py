@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from .state_bundles import encode
 from .network_log import create_logger, write
 from .service import GameService, GameError, digest
 
@@ -36,6 +37,7 @@ class RateLimiter:
 class RPGServer(ThreadingHTTPServer):
     daemon_threads = False
     block_on_close = True
+    request_queue_size = 128
 
     def __init__(self, address, service, public_origin=None, log_directory=".logs"):
         self.network_log = create_logger(log_directory)
@@ -131,7 +133,7 @@ class Handler(BaseHTTPRequestHandler):
         origins = self.headers.get_all("Origin", [])
         if len(origins) > 1 or origins and origins[0] not in self.server.origins:
             raise GameError("invalid_origin", "Origine non autorisée.", 403)
-        if not self.server.limiter.accept(("ip", self.client_address[0]), 600):
+        if not self.server.limiter.accept(("ip", self.client_address[0]), 10000):
             raise GameError("rate_limit", "Trop de requêtes. Réessayez dans une minute.", 429)
 
     def _token(self):
@@ -204,7 +206,13 @@ class Handler(BaseHTTPRequestHandler):
                     name, mime = static[path]
                     self._respond(200, (Path(__file__).parent / "web" / name).read_bytes(), mime)
                 elif path == "/api/state":
-                    self._respond(200, self.server.service.state(self._token()))
+                    token = self._token()
+                    if not self.server.limiter.accept(("state", digest(token)), 300):
+                        raise GameError("rate_limit", "Trop de requêtes d’état.", 429)
+                    state = self.server.service.state(token)
+                    if self.headers.get("X-RPG-Bundles") == "1":
+                        state = encode(state, self.headers.get("X-RPG-Bundle-Hashes", ""))
+                    self._respond(200, state)
                 elif path.startswith("/api/sessions/"):
                     self._respond(200, self.server.service.state(self._token(), path.removeprefix("/api/sessions/")))
                 else:
@@ -232,7 +240,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._network_combat = combat
                 if not combat:
                     write(self.server.network_log, "ACTION_REQUESTED", action=action, peer=self.client_address[0])
-                self._respond(200, self.server.service.command(token, body["request_id"], body["action"], **body["params"]))
+                result = self.server.service.command(token, body["request_id"], body["action"], **body["params"])
+                if self.headers.get("X-RPG-Bundles") == "1":
+                    result = encode(result, self.headers.get("X-RPG-Bundle-Hashes", ""))
+                self._respond(200, result)
                 if not combat:
                     write(self.server.network_log, "ACTION_COMPLETED", action=action, milliseconds=int((time.monotonic() - started) * 1000))
             else:

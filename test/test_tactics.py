@@ -169,6 +169,7 @@ def test_skinning_requires_approach_and_only_rewards_party_once():
     with pytest.raises(GameError) as failure:
         act(data, "harvest", now=154, target="mob")
     assert failure.value.code == "already_harvested"
+    data["battle"]["players"]["p0"]["position"] = tactics.exit_cell(data)
     act(data, "leave_battle", now=154)
     assert data["battle"] is None
 
@@ -986,3 +987,43 @@ def test_bleeding_death_awards_once_and_leaves_harvestable_corpse():
     bleeding.advance(data, 12, lambda: .5)
     assert data["characters"]["p0"]["exp"] == xp
     assert any("saignement" in message for message in messages)
+
+
+def test_exit_tile_is_walkable_on_every_preset_and_direct_escape_is_rejected():
+    for preset in tactics.PRESETS.values():
+        assert tactics.walkable(preset, [0, preset["height"] // 2])
+    data = party()
+    with pytest.raises(GameError) as failure:
+        act(data, "leave_battle")
+    assert failure.value.code == "not_at_exit"
+    assert data["battle"] and data["mobs"]
+
+
+def test_walking_to_exit_flees_living_enemies_without_victory_rewards():
+    data = party(count=2, mobs=2)
+    unit = data["battle"]["players"]["p0"]
+    unit["hidden"] = False
+    before = deepcopy(data["characters"])
+    act(data, "battle_move", x=0, y=5, path=[[0, 5]])
+    tactics.advance(data, unit["next_move"] - .13, lambda: .5)
+    assert data["battle"]
+    messages = tactics.advance(data, unit["next_move"], lambda: .5)
+    assert data["battle"] is None and not data["mobs"]
+    assert data["step"] == "clearing"
+    assert all(data["characters"][key]["exp"] == character["exp"] for key, character in before.items())
+    assert not data.get("achievements", {}).get("titles")
+    assert any("fuit" in message for message in messages)
+
+
+def test_exit_resumes_suspended_trip_without_blocking_after_flee():
+    data = party()
+    data.update(step="travel", combat_step="travel", position="rosee_brume", journey=["brume"], transit={"source":"rosee", "destination":"rosee_brume", "total":300, "remaining":100, "started_at":0, "ready_at":100, "segment":100, "hazard":True, "paused_at":0})
+    unit = data["battle"]["players"]["p0"]
+    unit.update(hidden=False)
+    act(data, "battle_move", x=0, y=5, path=[[0, 5]])
+    deadline = unit["next_move"]
+    tutorial.advance(data, deadline, lambda: .999)
+    assert data["battle"] is None
+    assert "paused_at" not in data["transit"]
+    assert data["transit"]["remaining"] == 100
+    assert data["journey"] == ["brume"]

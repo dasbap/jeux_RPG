@@ -9,6 +9,18 @@ let nextRefreshAt = 0;
 let refreshFailures = 0;
 let lastPlayer = null;
 let stateEpoch = 0;
+let bundleToken = "";
+let bundleHashes = {};
+let bundleValues = {};
+let bundleSequence = 0;
+let appliedBundleSequence = 0;
+const sectionSignatures = new Map();
+function sectionChanged(name, value) {
+  const signature = JSON.stringify(value);
+  if (sectionSignatures.get(name) === signature) return false;
+  sectionSignatures.set(name, signature);
+  return true;
+}
 let pendingBattleMove = null;
 let currentView = "map";
 let viewContext = "";
@@ -48,6 +60,15 @@ async function api(path, body, authenticated = true) {
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
+  const bundled = path === "/api/state" || path === "/api/commands";
+  if (bundled) {
+    if (bundleToken !== token) { bundleToken = token; bundleHashes = {}; bundleValues = {}; }
+    headers["X-RPG-Bundles"] = "1";
+    headers["X-RPG-Bundle-Hashes"] = JSON.stringify(bundleHashes);
+  }
+  const requestToken = token;
+  const bundleBase = {...bundleValues};
+  const requestBundleSequence = ++bundleSequence;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
@@ -59,6 +80,21 @@ async function api(path, body, authenticated = true) {
       const error = new Error(data.message || "Requête refusée.");
       error.code = data.error;
       throw error;
+    }
+    if (bundled && data.bundle_protocol === 1 && requestToken === token) {
+      for (const key of data.removed) delete bundleBase[key];
+      Object.assign(bundleBase, data.bundles);
+      if (requestBundleSequence > appliedBundleSequence) {
+        bundleValues = bundleBase; bundleHashes = data.hashes; appliedBundleSequence = requestBundleSequence;
+      }
+      const assembled = {};
+      for (const [path, value] of Object.entries(bundleBase).sort((a, b) => a[0].split("/").length - b[0].split("/").length)) {
+        const parts = path.split("/");
+        let target = assembled;
+        for (const part of parts.slice(0, -1)) target = target[part] ||= {};
+        target[parts.at(-1)] = JSON.parse(JSON.stringify(value));
+      }
+      return assembled;
     }
     return data;
   } catch (error) {
@@ -91,7 +127,7 @@ function renderChat(chat) {
   }
 }
 function renderAchievements(data) {
-  if (!data) return;
+  if (!data || !sectionChanged("achievements", data)) return;
   $("achievement-summary").textContent = `Niveau maximum ${data.max_level} · ${data.kills} créature(s) vaincue(s) · meilleur temps ${data.best_seconds === null ? "—" : data.best_seconds.toFixed(1) + " s"}`;
   $("achievement-rows").replaceChildren();
   for (const item of data.rows) {
@@ -489,6 +525,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const vest = me.gear.find(piece => piece.slot === "torso");
   $("quest-description").textContent = vest && adventure.quest === "completed" ? adventure.step === "craft" ? "Veste fabriquée et équipée : votre objectif de forge est accompli. Attendez que votre compagnon fabrique sa veste." : adventure.step === "complete" ? "Veste fabriquée et équipée. Vous avez rejoint Brume : tutoriel terminé." : "Veste fabriquée et équipée : objectif accompli. Prochaine étape : rejoindre le village de Brume." : !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
   $("quest-progress").textContent += ` · ${adventure.achievements?.kills || 0} créature(s) vaincue(s) dans cette aventure`;
+  if (sectionChanged("character", [session.id, me])) {
   renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
   for (const text of [
@@ -504,6 +541,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     $("character-details").append(p);
   }
   for (const invocation of me.invocations) { const text = document.createElement("p"); text.textContent = statsText(invocation); $("character-details").append(text); }
+  }
   for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions"]) $(id).replaceChildren();
   const stableActions = new Map(["combat-actions", "skills", "self-skills", "unit-control-actions"].map(id => [id, new Set()]));
   function button(container, label, handler, disabled = false) {
@@ -530,7 +568,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  if (!fighting) { renderWorld(adventure, me); renderAchievements(adventure.achievements); }
+  if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
@@ -567,7 +605,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = !fighting;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis quittez le champ de bataille." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "Tous les ennemis sont morts. Approchez les corps pour les dépecer, puis rejoignez la case Sortie au bord de la carte." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
   if (fighting) {
     renderCombatFeedback(adventure);
     const playerUnit = adventure.battle.players[me.id];
@@ -821,7 +859,8 @@ function renderBattle(adventure, me) {
   };
   for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
     const cover = map.cover.some(p => p[0] === x && p[1] === y);
-    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
+    const exit = (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
+    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: exit ? "battle-cell battle-exit" : cover ? "battle-cover" : "battle-cell", role: "button", tabindex: "0", "aria-label": exit ? "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
       if (cover) return message("Cette case est occupée par une couverture.");
@@ -831,6 +870,7 @@ function renderBattle(adventure, me) {
     cell.ondblclick = move;
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
+    if (exit) svg.append(element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle"}, "Sortie"));
   }
   for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   for (const step of unit.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
@@ -890,6 +930,7 @@ function renderBattle(adventure, me) {
   for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
   renderVitals("combat-stats-details", adventure.players.flatMap(player => player.invocations));
   renderVitals("combat-resources", adventure.players.map(player => ({...player, hidden: battle.players[player.id].hidden, detected: battle.players[player.id].detected})));
+  if (sectionChanged("intents", battle.intents)) {
   const table = document.createElement("table");
   for (const intent of battle.intents) {
     const row = document.createElement("tr");
@@ -897,6 +938,7 @@ function renderBattle(adventure, me) {
     table.append(row);
   }
   $("enemy-intents").replaceChildren(table);
+  }
   $("tactical-actions").replaceChildren();
   const hide = document.createElement("button"); hide.textContent = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture";
   hide.disabled = disabled || unit.hidden || unit.can_hide === false || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
@@ -910,7 +952,7 @@ function renderBattle(adventure, me) {
     button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
     button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
   }
-  if (!adventure.battle.hostiles_alive) { const leave = document.createElement("button"); leave.textContent = "Quitter le champ de bataille"; leave.disabled = disabled; leave.addEventListener("click", () => tutorialCommand("leave_battle")); $("tactical-actions").append(leave); }
+
 }
 
 async function refresh(force = false) {

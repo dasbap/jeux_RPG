@@ -29,6 +29,13 @@ try {
   assert(el("skills").compareDocumentPosition(el("combat-feedback")) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   assert(el("combat-events").textContent.includes("repéré"));
   assert.equal(el("mob-cards").children.length, 3);
+  const retainedDetails = el("character-details").firstElementChild;
+  const retainedIntents = el("enemy-intents").firstElementChild;
+  const retainedMap = el("world-map").firstElementChild;
+  render(fixture);
+  assert.equal(el("character-details").firstElementChild, retainedDetails);
+  assert.equal(el("enemy-intents").firstElementChild, retainedIntents);
+  assert.equal(el("world-map").firstElementChild, retainedMap);
   event(unit("mob"), "click");
   assert.equal(el("combat-target").options.length, 1);
   assert.equal(el("combat-target").value, "mob");

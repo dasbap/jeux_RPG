@@ -90,6 +90,11 @@ def win(game, token):
         pytest.fail("Combat bloqué")
     for corpse in state["tutorial"]["battle"]["corpses"]:
         command(game, token, "harvest", target=corpse["id"])
+    from jeuxRPG.multiplayer import tactics
+    current = game.state(token)["session"]
+    party = json.loads(game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (current["id"],)).fetchone()[0])
+    party["battle"]["players"][current["me"]]["position"] = tactics.exit_cell(party)
+    game.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), current["id"]))
     return command(game, token, "leave_battle")
 
 

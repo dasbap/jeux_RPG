@@ -420,12 +420,25 @@ def unalerted_allies(party, mob):
     return [ally for ally in party["mobs"] if ally is not mob and ally["combat_id"] in mob["allies"] and not ally.get("alerted", False) and distance(ally["position"], mob["position"]) < 10]
 
 
+def exit_cell(party):
+    preset = PRESETS[party["battle"]["preset"]]
+    return [0, preset["height"] // 2]
+
+
+def leave_field(party):
+    fleeing = bool(party["mobs"])
+    if fleeing and party["combat_step"] == "first_fight":
+        party["step"] = "clearing"
+    party.update(battle=None, mobs=[], mob=None)
+    return ["Le groupe quitte le champ de bataille par la sortie" + (" et fuit les ennemis restants." if fleeing else ".")]
+
+
 def view(party, now, player=None):
     battle = party.get("battle")
     if not battle:
         return None
     preset = PRESETS[battle["preset"]]
-    result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"])}
+    result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"]), "exit": exit_cell(party)}
     for key, unit in result["players"].items():
         unit["can_hide"] = can_hide(party, key)
         unit["detected"] = any(mob.get("target") == key for mob in party["mobs"])
@@ -474,7 +487,7 @@ def execute(party, player, action, params, now, error):
     battle = party.get("battle")
     if not battle:
         raise error("not_fighting", "Aucun champ de bataille actif.", 409)
-    actor = ready(party, player, now, error, redirect=action == "battle_move")
+    actor = ready(party, player, now, error, redirect=action in ("battle_move", "leave_battle"))
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]
     if action == "battle_move":
@@ -518,10 +531,9 @@ def execute(party, player, action, params, now, error):
         corpse["harvested"].append(player)
         messages = [f"{actor.name} dépèce {corpse['name']} : " + ", ".join(f"{v} {k}" for k, v in corpse["loot"].items())]
     elif action == "leave_battle":
-        if party["mobs"]:
-            raise error("hostiles_alive", "Des ennemis sont encore présents.", 409)
-        party["battle"] = None
-        messages = ["Le groupe quitte le champ de bataille."]
+        if unit["position"] != exit_cell(party):
+            raise error("not_at_exit", "Rejoignez la case Sortie au bord de la carte.", 409)
+        return leave_field(party)
     else:
         raise error("invalid_command", "Action tactique inconnue.")
     if action != "battle_move":
@@ -600,6 +612,9 @@ def advance(party, now, random):
                 if not unit["hidden"]:
                     messages.append(f"{actor.name} quitte sa dissimulation en se déplaçant.")
             unit["next_move"] = now + (step_time(unit["position"], unit["route"][0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, key, unit["route"][0], retaining=True) else MOVE_TIME) if unit["route"] else MOVE_TIME)
+    if any(unit["position"] == exit_cell(party) and characters[key].is_alive() for key, unit in battle["players"].items()):
+        party["characters"] = {key: pack(c) for key, c in characters.items()}
+        return messages + leave_field(party)
     charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}
