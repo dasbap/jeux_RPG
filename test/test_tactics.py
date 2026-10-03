@@ -114,7 +114,7 @@ def test_hidden_coop_ally_not_focused_and_calls_interrupted_by_damage():
     assert enemy["calling_until"] is None
 
 
-def test_search_lasts_three_game_minutes_then_returns_to_patrol():
+def test_search_lasts_ten_real_seconds_then_returns_to_patrol():
     data = party()
     near(data)
     unit = data["battle"]["players"]["p0"]
@@ -125,10 +125,10 @@ def test_search_lasts_three_game_minutes_then_returns_to_patrol():
     tactics.advance(data, 1.2, lambda: .5)
     assert enemy["state"] == "search"
     assert enemy["last_known"] == [9, 5]
-    assert enemy["search_until"] == pytest.approx(181.2)
-    tactics.advance(data, 180, lambda: .5)
+    assert enemy["search_until"] == pytest.approx(31.2)
+    tactics.advance(data, 30, lambda: .5)
     assert enemy["state"] == "search"
-    tactics.advance(data, 181.2, lambda: .5)
+    tactics.advance(data, 31.2, lambda: .5)
     assert enemy["state"] == "patrol"
 
 

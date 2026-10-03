@@ -15,7 +15,7 @@ PRESETS = {f"{zone}_{index + 1}": {"id": f"{zone}_{index + 1}", "name": f"{name}
            for zone, name in (("clearing", "Clairière"), ("lisiere", "Lisière"), ("road", "Sentier"), ("rosee", "Entraînement"), ("brume", "Bois de Brume"))
            for index, layout in enumerate(LAYOUTS)}
 CALL_TIME = 6.0
-SEARCH_TIME = 180.0
+SEARCH_TIME = 10 * progression.RATIO
 MOVE_TIME = 1.2
 GOBLIN_MOVE_TIME = 2.4
 
