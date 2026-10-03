@@ -27,6 +27,7 @@ def victory(party, now):
     players = battle.get("initial_players", 1)
     if players == count == 1 and battle.get("higher_level"):
         titles.add("Briseur de limites")
+        stats["level_difference"] = max(stats.get("level_difference", 0), battle.get("level_difference", 0))
     if players > count:
         titles.add("Force du nombre")
     if players < count:
@@ -44,5 +45,9 @@ def view(party):
     for count, title in ((1, "Première victoire"), (10, "Chasseur"), (50, "Fléau des gobelins"), (100, "Gardien des chemins")):
         rows.append({"name": f"Vaincre {count} créatures", "progress": f"{stats['kills']}/{count}", "title": title, "unlocked": stats["kills"] >= count})
     for name, title in (("Victoire sans alerter d’ennemi", "Ombre silencieuse"), ("Victoire sans dégâts au groupe ni aux invocations", "Intouchable"), ("Victoire en 30 secondes réelles maximum", "Éclair de la lisière"), ("Seul contre un ennemi de niveau supérieur", "Briseur de limites"), ("Victoire en supériorité numérique", "Force du nombre"), ("Victoire en infériorité numérique", "Contre toute attente")):
-        rows.append({"name": name, "progress": "Accompli" if title in stats["titles"] else "À accomplir", "title": title, "unlocked": title in stats["titles"]})
+        unlocked = title in stats["titles"]
+        if title == "Briseur de limites":
+            difference = stats.get("level_difference", 0)
+            title += f" (+{difference} niveaux)" if difference else " (différence de niveau)"
+        rows.append({"name": name, "progress": "Accompli" if unlocked else "À accomplir", "title": title, "unlocked": unlocked})
     return {**stats, "rows": rows, "unlocked_titles": [r["title"] for r in rows if r["unlocked"]]}

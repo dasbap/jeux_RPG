@@ -1041,3 +1041,20 @@ def test_cached_paths_do_not_leak_mutations_or_ignore_cover_changes():
         assert tactics.valid_step(preset, previous, point)
         previous = point
     assert route[0] != [1, 1]
+
+
+def test_limit_breaker_remembers_starting_level_difference_and_best_victory():
+    from jeuxRPG.multiplayer import achievements
+    data = party()
+    data["mobs"][0]["level"] = data["characters"]["p0"]["level"] + 4
+    tactics.begin(data, 0, "explore")
+    assert data["battle"]["level_difference"] == 4
+    data["characters"]["p0"]["level"] += 1
+    data["mobs"].clear()
+    achievements.victory(data, 120)
+    row = next(r for r in achievements.view(data)["rows"] if r["name"] == "Seul contre un ennemi de niveau supérieur")
+    assert row["unlocked"]
+    assert row["title"] == "Briseur de limites (+4 niveaux)"
+    data["battle"].update(awarded=False, level_difference=2)
+    achievements.victory(data, 150)
+    assert achievements.view(data)["level_difference"] == 4

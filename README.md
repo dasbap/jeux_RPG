@@ -318,3 +318,5 @@ Le maximum observé pour les états est respectivement 68,22 ms et 59,97 ms. Rap
 
 
 Version 0.10.21 : les messages du général sont distribués uniquement aux connexions actives dans le même périmètre. Une nouvelle connexion de navigateur commence avec une file vide, même pour un personnage déjà connecté dans un autre onglet. Les messages du général ne sont pas stockés en base et ne reviennent pas après un redémarrage. Leur texte complet est conservé en lignes JSON dans `.logs/chat.log`, sans jeton d’accès. Les anciens messages généraux présents en base sont transférés dans ce log au démarrage, puis retirés de la table. Les files expirent après 60 secondes sans requête et sont limitées à 50 messages, huit connexions par personnage et 2 048 connexions au total. Le navigateur reçoit les messages à l’actualisation automatique suivante. Le chat du groupe garde son fonctionnement précédent.
+
+La version 0.10.22 affiche la meilleure différence de niveau remportée en duel solo dans le titre « Briseur de limites (+N niveaux) ». L’écart est enregistré au début du combat ; les victoires avec un écart inférieur ne le réduisent pas.

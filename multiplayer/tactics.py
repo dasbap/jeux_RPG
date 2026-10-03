@@ -103,6 +103,7 @@ def begin(party, now, origin):
                for index, key in enumerate(party["characters"])}
     party["battle"] = {"preset": preset["id"], "players": players, "corpses": [], "origin": origin, "started_at": now, "next_brain": now}
     party["battle"].update(initial_mobs=len(party["mobs"]), initial_players=sum(c["stats"]["hp"]["current"] > 0 for c in party["characters"].values()), higher_level=any(m["level"] > max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), enemy_alerted=False, damage_received=False)
+    party["battle"]["level_difference"] = max((m["level"] - max(c["level"] for c in party["characters"].values()) for m in party["mobs"]), default=0)
     occupied = [u["position"] for u in players.values()]
     identifiers = [m["combat_id"] for m in party["mobs"]]
     for index, mob in enumerate(party["mobs"]):
