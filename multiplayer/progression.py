@@ -52,7 +52,8 @@ def health_resources(party, now):
         hp = data["stats"]["hp"]
         minutes = max(0, int((now - timer["at"]) / 60))
         if hp["current"] <= 0 or hp["current"] >= hp["max"]:
-            timer.update(at=now, fraction=0)
+            if minutes or timer["fraction"]:
+                timer.update(at=now, fraction=0)
             continue
         if not minutes:
             continue

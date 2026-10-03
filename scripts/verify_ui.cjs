@@ -40,6 +40,7 @@ async function client(html, app, name, className) {
   dom.window.setInterval = (...args) => { const id = startInterval(...args); dom.pollTimers.push(id); return id; };
   dom.window.fetch = (url, options) => fetch(new URL(url, origin), options);
   dom.window.AbortSignal = AbortSignal;
+  dom.window.AbortController = AbortController;
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
   dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");

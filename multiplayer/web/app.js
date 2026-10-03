@@ -5,6 +5,9 @@ let session = null;
 let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
 let polling = false;
+let nextRefreshAt = 0;
+let refreshFailures = 0;
+let lastPlayer = null;
 let stateEpoch = 0;
 let pendingBattleMove = null;
 let currentView = "map";
@@ -41,23 +44,36 @@ function invitationLink(code) {
   return url.href;
 }
 async function api(path, body, authenticated = true) {
-  const headers = {};
+  const headers = {Accept: "application/json"};
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
   if (body) headers["Content-Type"] = "application/json";
-  const response = await fetch(path, {method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(5000)});
-  const data = await response.json();
-  if (!response.ok) {
-    const error = new Error(data.message || "Requête refusée.");
-    error.code = data.error;
+  if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(path, {method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: controller.signal, cache: "no-store"});
+    let data;
+    try { data = await response.json(); }
+    catch { throw Object.assign(new Error("Le tunnel ne renvoie pas l’API du jeu. Vérifiez son accès et relancez la connexion."), {code: "tunnel_response"}); }
+    if (!response.ok) {
+      const error = new Error(data.message || "Requête refusée.");
+      error.code = data.error;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (controller.signal.aborted) throw Object.assign(new Error(body ? "Réponse trop lente. L’action a peut-être été reçue ; actualisation de l’état en cours." : "Le serveur ou le tunnel répond trop lentement. Reconnexion automatique en cours."), {code: "timeout"});
+    if (error instanceof TypeError) throw Object.assign(new Error("Connexion au serveur indisponible. Vérifiez le tunnel et votre réseau."), {code: "network"});
     throw error;
-  }
-  return data;
+  } finally { clearTimeout(timeout); }
 }
+
 function remember() {
   sessionStorage.setItem("rpg-token", token);
   sessionStorage.setItem("rpg-session", sessionId);
 }
 function render(state) {
+  lastPlayer = state.player;
   $("registration").hidden = Boolean(token);
   $("lobby").hidden = !token;
   $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name]}`;
@@ -136,7 +152,7 @@ function render(state) {
   }
 }
 function tutorialCommand(action, params = {}) {
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();
@@ -871,7 +887,7 @@ async function refresh(force = false) {
     $("connection").textContent = "Prêt · créez votre personnage";
     return;
   }
-  if (polling) return;
+  if (polling || (!force && Date.now() < nextRefreshAt)) return;
   polling = true;
   const epoch = stateEpoch;
   try {
@@ -886,9 +902,13 @@ async function refresh(force = false) {
       session = updated;
     } else session = null;
     remember();
+    refreshFailures = 0;
+    nextRefreshAt = 0;
     render(state);
   } catch (error) {
-    $("connection").textContent = "Connexion interrompue";
+    refreshFailures++;
+    nextRefreshAt = Date.now() + Math.min(10000, 1000 * 2 ** Math.min(4, refreshFailures - 1));
+    $("connection").textContent = "Reconnexion automatique · " + (error.code === "timeout" ? "tunnel lent" : "serveur indisponible");
     if (error.code === "unauthorized") {
       token = "";
       sessionId = "";
@@ -923,7 +943,7 @@ async function command(action, params = {}) {
         const state = await api("/api/state");
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
         if (!session || session.id !== state.session.id || state.session.revision >= session.revision) session = state.session;
-        currentParams = {...currentParams, revision: session.revision};
+        currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
         if (action === "battle_move" && session.tutorial?.battle) {
           const battle = session.tutorial.battle;
           currentParams.path = gridPath(battle.map, battle.players[session.me].position, [currentParams.x, currentParams.y]);
@@ -953,7 +973,8 @@ async function command(action, params = {}) {
     message(error.message, true);
   } finally {
     busy = false;
-    if (session?.tutorial) renderTutorial(session.tutorial);
+    if (lastPlayer) render({player: lastPlayer});
+    else if (session?.tutorial) renderTutorial(session.tutorial);
     const pending = pendingBattleMove;
     pendingBattleMove = null;
     if (pending && session?.id === pending.sessionId && session.tutorial?.battle && session.tutorial.encounter_number === pending.encounter) {
@@ -1021,6 +1042,10 @@ const incomingInvite = location.hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.
 if (incomingInvite) { $("invite-input").value = incomingInvite; history.replaceState(null, "", location.pathname + location.search); }
 const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invite-link").value = invitationLink(invite); $("invitation").hidden = false; }
+$("refresh-state").addEventListener("click", () => refresh(true));
+window.addEventListener("online", () => refresh(true));
+window.addEventListener("pageshow", () => refresh(true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
 setInterval(refresh, 250);
 refresh();
 

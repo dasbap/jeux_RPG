@@ -9,7 +9,7 @@ async function check(conflicts, failure) {
   let reads = 0;
   const context = {
     busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room", session: {id: "room", revision: 0},
-    crypto: {randomUUID: () => "request"},
+    requestId: () => "request", lastPlayer: null, crypto: {randomUUID: () => "request"},
     $: () => ({disabled: false, hidden: false}),
     remember: () => {}, refresh: async () => {},
     message: (message, error) => messages.push({message, error}),
@@ -39,7 +39,7 @@ async function checkLateSnapshot() {
   let resolveRead;
   let renders = 0;
   const context = {token: "token", polling: false, busy: false, tacticalInteractionUntil: 0, stateEpoch: 0,
-    sessionId: "room", session: {id: "room", revision: 1}, Date,
+    sessionId: "room", session: {id: "room", revision: 1}, Date, nextRefreshAt: 0, refreshFailures: 0,
     api: () => new Promise(resolve => {resolveRead = resolve;}), remember: () => {},
     render: () => {renders++;}, $: () => ({}), message: () => {}};
   vm.createContext(context);
@@ -68,7 +68,7 @@ async function checkPendingMovement() {
   const moves = [];
   const adventure = {battle: {}, encounter_number: 1, players: [{id: "p0", hp: 10, stunned: false, casting: null}]};
   const context = {busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room",
-    session: {id: "room", me: "p0", revision: 1, tutorial: adventure}, crypto: {randomUUID: () => "request"},
+    session: {id: "room", me: "p0", revision: 1, tutorial: adventure}, requestId: () => "request", lastPlayer: null, crypto: {randomUUID: () => "request"},
     $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {},
     renderTutorial: () => {}, message: () => {}, moveControlled: async (party, actor, destination) => moves.push(destination),
     api: () => new Promise(resolve => {resolveCommand = resolve;})};
@@ -83,4 +83,24 @@ async function checkPendingMovement() {
   assert.deepEqual(moves, [[4, 5]]);
   assert.equal(context.pendingBattleMove, null);
 }
-Promise.resolve().then(checkPendingMovement).then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
+async function checkTunnelTransport() {
+  const apiSource = source.slice(source.indexOf("async function api("), source.indexOf("function remember("));
+  let timeout, deadline, options, resolveFetch, rejectFetch;
+  const context = {token: "token", location: {hostname: "example.devtunnels.ms"}, AbortController, TypeError,
+    setTimeout: (callback, delay) => {timeout = callback; deadline = delay; return 1;}, clearTimeout: () => {},
+    fetch: (url, settings) => {options = settings; return new Promise((resolve,reject) => {resolveFetch = resolve; rejectFetch = reject;});}};
+  vm.createContext(context);
+  const pending = vm.runInContext(`${apiSource}; api("/api/state");`, context);
+  assert.equal(deadline, 30000);
+  assert.equal(options.headers.Accept, "application/json");
+  assert.equal(options.headers["X-Tunnel-Skip-AntiPhishing-Page"], "true");
+  assert.equal(options.cache, "no-store");
+  assert(!options.signal.aborted);
+  resolveFetch({ok: true, json: async () => ({session: {revision: 9}})});
+  assert.equal((await pending).session.revision, 9);
+  const slow = vm.runInContext('api("/api/state");', context);
+  timeout();
+  rejectFetch(new Error("aborted"));
+  await assert.rejects(slow, error => error.code === "timeout");
+}
+Promise.resolve().then(checkTunnelTransport).then(checkPendingMovement).then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });

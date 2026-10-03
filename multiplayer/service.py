@@ -28,6 +28,11 @@ def digest(value):
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def world_context(party):
+    return digest(json.dumps([party.get("position"), party.get("step"), party.get("quest"), party.get("encounter_number", 0),
+                              bool(party.get("battle")), (party.get("transit") or {}).get("destination"), party.get("journey", [])]))
+
+
 class GameService:
     classes = ("Knight", "Mage", "Archer", "Priest", "Necromancien")
     cooldown = 3.6
@@ -216,7 +221,9 @@ class GameService:
         }
         adventure = self.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()
         if adventure:
-            result["tutorial"] = tutorial.view(json.loads(adventure[0]), player["id"], now)
+            party = json.loads(adventure[0])
+            result["tutorial"] = tutorial.view(party, player["id"], now)
+            result["tutorial"]["world_context"] = world_context(party)
         return result
 
     def state(self, token, session_id=None):
@@ -240,11 +247,11 @@ class GameService:
             raise GameError("invalid_request", "Identifiant de commande invalide.")
         allowed = {"create": set(), "join": {"invite"}, "start": {"session_id", "revision"},
                    "attack": {"session_id", "revision"}, "leave": {"session_id", "revision"},
-                   "tutorial": set(), "explore": {"session_id", "revision"},
+                   "tutorial": set(), "explore": {"session_id", "revision", "world_context"},
                    "strike": {"session_id", "revision", "target"}, "rest": {"session_id", "revision"},
                    "skill": {"session_id", "revision", "skill_name", "target"},
-                   "travel": {"session_id", "revision", "destination"},
-                   "move": {"session_id", "revision", "destination"},
+                   "travel": {"session_id", "revision", "destination", "world_context"},
+                   "move": {"session_id", "revision", "destination", "world_context"},
                    "talk": {"session_id", "revision", "npc"},
                    "craft": {"session_id", "revision", "recipe"},
                    "upgrade": {"session_id", "revision", "recipe"},
@@ -255,7 +262,7 @@ class GameService:
                    "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
                    "unit_order": {"session_id", "revision", "encounter", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "encounter" in params and (type(params["encounter"]) is not int or params["encounter"] < 1):
             raise GameError("invalid_encounter", "Combat invalide.")
@@ -316,7 +323,8 @@ class GameService:
             party = json.loads(row[0])
             movement = action == "battle_move" or action == "unit_order" and params.get("order") == "move"
             same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
-            if session["revision"] != params["revision"] and not (movement and same_encounter and params["revision"] < session["revision"]):
+            world_action = action in ("move", "travel", "explore") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
+            if session["revision"] != params["revision"] and not ((movement and same_encounter or world_action) and params["revision"] < session["revision"]):
                 raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)

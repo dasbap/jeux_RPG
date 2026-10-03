@@ -467,3 +467,35 @@ def test_travel_encounters_have_separate_lower_probability(draw, encounter, monk
     monkeypatch.setattr(tutorial, "spawn", lambda *args: calls.append(args))
     tutorial.continue_journey(data, 150, lambda: draw, [])
     assert bool(calls) is encounter
+
+
+def test_coop_world_action_survives_time_only_revision_but_not_changed_encounter(game):
+    first = game.register("Alice", "Knight")["token"]
+    second = game.register("Bob", "Mage")["token"]
+    room = game.command(first, uuid.uuid4().hex, "create")
+    game.command(second, uuid.uuid4().hex, "join", invite=room["invite"])
+    game.command(first, uuid.uuid4().hex, "tutorial")
+    snapshot = game.state(second)["session"]
+    game.clock.value = 6
+    game.tick()
+    assert game.state(second)["session"]["revision"] > snapshot["revision"]
+    params = {"session_id": snapshot["id"], "revision": snapshot["revision"], "world_context": snapshot["tutorial"]["world_context"]}
+    result = game.command(second, uuid.uuid4().hex, "explore", **params)
+    assert result["session"]["tutorial"]["battle"]
+    with pytest.raises(GameError) as failure:
+        game.command(first, uuid.uuid4().hex, "explore", **params)
+    assert failure.value.code == "stale_revision"
+
+
+def test_coop_move_accepts_slow_snapshot_without_teleport(game):
+    first = game.register("Alice", "Knight")["token"]
+    second = game.register("Bob", "Mage")["token"]
+    room = game.command(first, uuid.uuid4().hex, "create")
+    game.command(second, uuid.uuid4().hex, "join", invite=room["invite"])
+    game.command(first, uuid.uuid4().hex, "tutorial")
+    snapshot = game.state(second)["session"]
+    game.clock.value = 6
+    game.tick()
+    result = game.command(second, uuid.uuid4().hex, "move", session_id=snapshot["id"], revision=snapshot["revision"], world_context=snapshot["tutorial"]["world_context"], destination="clearing_fight")
+    assert result["session"]["tutorial"]["transit"]["destination"] == "clearing_fight"
+    assert result["session"]["tutorial"]["position"] == "clearing"
