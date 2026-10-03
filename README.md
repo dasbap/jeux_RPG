@@ -261,3 +261,7 @@ Les entités et cases de combat restent attachées au DOM pendant les actualisat
 Sur les cartes générale et détaillée, un clic consulte le lieu ou le point et un double clic lance directement le déplacement. La confirmation en haut de l’écran est supprimée. Les éléments interactifs restent attachés entre les actualisations pour préserver le double clic. Les restrictions de voyage pendant un combat ou un trajet restent appliquées par le serveur.
 
 Pendant un trajet dangereux, chaque point de contrôle ne tente désormais une rencontre que dans 25 % des cas, avant le calcul existant lié au niveau et au rang. Les combats de trajet sont ainsi environ quatre fois moins fréquents, sans modifier la recherche volontaire de monstres ni la taille des groupes.
+
+### Affichage des ressources 0.10.7
+
+Les fiches de personnage, d’invocations et d’ennemis affichent le nom, une barre avec la valeur courante/maximale pour les PV et chaque énergie, puis les statuts à droite avec leur durée restante en secondes réelles à une décimale. La durée affichée correspond au prochain tick d’effet et aux cycles restants ; les effets sur les invocations expirent désormais sur le même rythme.

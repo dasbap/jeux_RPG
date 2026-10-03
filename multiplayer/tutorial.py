@@ -135,6 +135,12 @@ def can_target(actor, skill, target, mob):
     return skill.skill_type == SkillType.BUFF
 
 
+def status_view(party, key, effects, now):
+    interval = progression.ACTION_SECONDS * progression.RATIO
+    next_tick = party.get("effect_at", {}).get(key, now + interval)
+    return [{**deepcopy(effect), "remaining_seconds": max(0, (next_tick - now + max(0, effect["duration"] - 1) * interval) / progression.RATIO)} for effect in effects]
+
+
 def view(party, me, now):
     party = deepcopy(party)
     migrate(party, now)
@@ -152,6 +158,7 @@ def view(party, me, now):
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
+        enemy["effects"] = status_view(party, enemy["combat_id"], enemy["effects"], now)
         enemy["stunned"] = enemy.get("stunned_until", 0) > now
     result["mob"] = result["mobs"][0] if result["mobs"] else None
     result["players"] = []
@@ -170,7 +177,7 @@ def view(party, me, now):
                                   "level": character.level, "exp": character.exp, "next_level_exp": progression.required(character.level),
                                   "hp": character.hp.current_value, "max_hp": character.hp.value,
                                   "stats": {key: getattr(character, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-                                  "effects": deepcopy(data["effects"]), "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
+                                  "effects": status_view(party, player_id, data["effects"], now), "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
                                   "can_attack": actionable and not party["battle"]["players"][player_id].get("casting") if party["battle"] else False,
                                   "casting": tactics.cast_view(party, player_id, now),
                                   "energies": data["energies"], "inventory": party["inventory"][player_id],
@@ -194,8 +201,11 @@ def view(party, me, now):
                                                       for s in skills.values()],
                                   "invocations": [{"id": i.user_id, "name": i.name, "hp": i.hp.current_value, "max_hp": i.hp.value,
                                                    "stats": {key: getattr(i, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-                                                   "energies": pack(i)["energies"], "control_cost": deepcopy(tactics.CONTROL_RULES.get(i.char_class, {"energy": None, "per_second": 0}))}
+                                                   "effects": status_view(party, i.user_id, pack(i)["effects"], now), "energies": pack(i)["energies"], "control_cost": deepcopy(tactics.CONTROL_RULES.get(i.char_class, {"energy": None, "per_second": 0}))}
                                                   for i in character.invocations.get_all()]})
+    if result["battle"]:
+        for key, unit in result["battle"]["summons"].items():
+            unit["effects"] = status_view(party, key, unit.get("effects", []), now)
     for key in ("characters", "ready"):
         del result[key]
     result["me"] = me
@@ -466,8 +476,10 @@ def advance(party, now, random):
     progression.resources(party, now)
     messages = tactics.complete_casts(party, now, random)
     messages.extend(tactics.advance(party, now, random))
-    timed_units = [*party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
+    timed_units = [*((invocation["id"], invocation) for character in party["characters"].values() for invocation in character["invocations"]), *party["characters"].items(), *((mob["combat_id"], mob) for mob in party["mobs"])]
     for key, data in timed_units:
+        if data["effects"]:
+            party["effect_at"].setdefault(key, now + progression.ACTION_SECONDS * progression.RATIO)
         if data["effects"] and party["effect_at"].get(key, now + 1) <= now:
             character = unpack(data)
             character._update_status()

@@ -391,11 +391,11 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = !hasQuest ? "Aucune quête acceptée." : `Quête de Mira : ${{unaccepted: "à accepter", active: `${adventure.kills}/3 gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
   $("quest-description").textContent = !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : "Battez trois gobelins de la lisière, puis revenez parler à Mira à Rosée. Gardez les matériaux pour fabriquer votre veste.";
+  renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
   for (const text of [
     `Expérience : ${me.exp}/${me.next_level_exp} · niveau ${me.level}`,
-    `PV : ${me.hp}/${me.max_hp} · Force ${me.stats.force} · Endurance ${me.stats.endurance} · Intelligence ${me.stats.intelligence} · Sagesse ${me.stats.sagesse}`,
-    `Énergie : ${me.energies.map(e => `${e.type} ${e.current}/${e.max}`).join(" · ")}`,
+    `Force ${me.stats.force} · Endurance ${me.stats.endurance} · Intelligence ${me.stats.intelligence} · Sagesse ${me.stats.sagesse}`,
     `Invocations : ${me.invocations.map(i => `${i.name} (${i.hp} PV)`).join(", ") || "aucune"}`,
     `Statuts : ${statusText(me)}`,
     `Compétences acquises : ${me.skills.map(s => `${s.name} (${s.cost} ${s.energy})`).join(", ")}`,
@@ -548,8 +548,43 @@ function unitName(unit) {
   const number = unit.id?.match(/:summon:(\d+)$/);
   return number ? `${unit.name} · #${Number(number[1]) + 1}` : unit.name;
 }
+function renderVitals(container, units) {
+  const parent = typeof container === "string" ? $(container) : container, kept = new Set();
+  for (const unit of units) {
+    const key = unit.id || unit.name;
+    let card = [...parent.children].find(node => node.dataset.vitals === key);
+    if (!card) {
+      card = document.createElement("article"); card.className = "vitals-card"; card.dataset.vitals = key;
+      const name = document.createElement("strong"); name.className = "vitals-name";
+      const resources = document.createElement("div"); resources.className = "vitals-resources";
+      const statuses = document.createElement("div"); statuses.className = "vitals-statuses";
+      card.append(name, resources, statuses); parent.append(card);
+    }
+    kept.add(card); card.querySelector(".vitals-name").textContent = unitName(unit);
+    const resources = [{type: "PV", current: unit.hp, max: unit.max_hp}, ...(unit.energies || [])];
+    const rows = card.querySelector(".vitals-resources");
+    for (let index = 0; index < resources.length; index++) {
+      const resource = resources[index];
+      let row = rows.children[index];
+      if (!row) { row = document.createElement("div"); row.className = "vitals-row"; row.append(document.createElement("progress"), document.createElement("span")); rows.append(row); }
+      const bar = row.querySelector("progress"); bar.max = Math.max(1, resource.max); bar.value = Math.max(0, resource.current); bar.className = resource.type === "PV" ? "vitals-hp" : "vitals-energy"; bar.setAttribute("aria-label", `${resource.type} de ${unitName(unit)}`);
+      row.querySelector("span").textContent = `${Number(resource.current.toFixed(1))}/${resource.max} ${resource.type}`;
+    }
+    while (rows.children.length > resources.length) rows.lastChild.remove();
+    const statuses = card.querySelector(".vitals-statuses");
+    statuses.replaceChildren();
+    const heading = document.createElement("span"); heading.className = "vitals-status-label"; heading.textContent = "Statuts :"; statuses.append(heading);
+    for (const effect of unit.effects || []) {
+      const badge = document.createElement("span"); badge.className = "status-badge";
+      const seconds = effect.remaining_seconds ?? effect.duration * 1.2;
+      badge.textContent = `${effect.name || effect.type} (${Math.max(0, seconds).toFixed(1)} s)`; statuses.append(badge);
+    }
+    if (!(unit.effects || []).length) { const empty = document.createElement("span"); empty.textContent = unit.stunned ? "Étourdi" : "aucun"; statuses.append(empty); }
+  }
+  for (const card of [...parent.children]) if (!kept.has(card)) card.remove();
+}
 function statusText(unit) {
-  const effects = (unit.effects || []).map(effect => `${effect.name || effect.type} (${effect.duration})`);
+  const effects = (unit.effects || []).map(effect => `${effect.name || effect.type} (${Math.max(0, effect.remaining_seconds ?? effect.duration * 1.2).toFixed(1)} s)`);
   if (unit.stunned && !(unit.effects || []).some(effect => effect.group === "stun")) effects.push("Étourdi");
   return effects.length ? effects.join(" · ") : "aucun";
 }
@@ -612,7 +647,7 @@ function renderSelection(adventure, me) {
   }
   for (const button of [...$("cell-entities").children]) if (!retained.has(button)) button.remove();
   const selected = battle.summons?.[focusedMob];
-  paragraphs("selected-unit-stats", selected ? [combatVitals({...selected,id:focusedMob}), selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
+  paragraphs("selected-unit-stats", selected ? [selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
   let [x, y] = source;
@@ -729,18 +764,17 @@ function renderBattle(adventure, me) {
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
     const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("button"); retainedCards.add(card); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
-    const title = card.querySelector("strong") || document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
-    const bar = card.querySelector("progress") || document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
-    const statuses = card.querySelector("span") || document.createElement("span"); statuses.textContent = `Statuts : ${statusText(mob)}`;
-    for (const child of [title, bar, statuses]) if (child.parentElement !== card) card.append(child);
+    let vitals = card.querySelector(".enemy-vitals");
+    if (!vitals) { vitals = document.createElement("div"); vitals.className = "enemy-vitals"; card.append(vitals); }
+    renderVitals(vitals, [{...mob, id: mob.combat_id, hp: mob.stats.hp.current, max_hp: mob.stats.hp.max}]);
     card.classList.toggle("selected", focusedMob === mob.combat_id);
     card.onclick = () => selectEntity(mob.combat_id);
     card.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, mob.combat_id); if (current) approachEntity(current); };
     if (card.parentElement !== $("mob-cards")) $("mob-cards").append(card);
   }
   for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
-  paragraphs("combat-stats-details", adventure.players.flatMap(player => player.invocations.map(combatVitals)));
-  paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"} · Statuts : ${statusText(p)}`));
+  renderVitals("combat-stats-details", adventure.players.flatMap(player => player.invocations));
+  renderVitals("combat-resources", adventure.players);
   const table = document.createElement("table");
   for (const intent of battle.intents) {
     const row = document.createElement("tr");

@@ -708,3 +708,23 @@ def test_delayed_route_skips_only_steps_already_reached_without_teleport():
     assert unit["position"] == [1, 5]
     assert unit["route"] == [[1, 4], [1, 3]]
     assert unit["next_move"] == timer
+
+
+def test_status_seconds_follow_effect_tick_and_invocation_effects_expire():
+    data = summoned_party()
+    effect = {"group": "stun", "type": "STUN", "name": "Étourdi", "value": 0, "duration": 2, "stat": None}
+    data["characters"]["p0"]["effects"] = [deepcopy(effect)]
+    invocation = data["characters"]["p0"]["invocations"][0]
+    invocation["effects"] = [deepcopy(effect)]
+    key = invocation["id"]
+    data["effect_at"] = {"p0": 9.6, key: 9.6}
+    first = tutorial.view(data, "p0", 6)
+    assert first["players"][0]["effects"][0]["remaining_seconds"] == pytest.approx(2.4)
+    assert first["players"][0]["invocations"][0]["effects"][0]["remaining_seconds"] == pytest.approx(2.4)
+    assert tutorial.view(data, "p0", 7.5)["players"][0]["effects"][0]["remaining_seconds"] == pytest.approx(1.9)
+    tutorial.advance(data, 9.61, lambda: .5)
+    assert data["characters"]["p0"]["effects"][0]["duration"] == 1
+    assert data["characters"]["p0"]["invocations"][0]["effects"][0]["duration"] == 1
+    tutorial.advance(data, 13.22, lambda: .5)
+    assert data["characters"]["p0"]["effects"] == []
+    assert data["characters"]["p0"]["invocations"][0]["effects"] == []
