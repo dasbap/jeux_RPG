@@ -11,7 +11,7 @@ virtualConsole.on("jsdomError", error => errors.push(error.message));
 const dom = new JSDOM(fs.readFileSync(path.join(root, "multiplayer/web/index.html"), "utf8"), {url: "http://127.0.0.1:8080", runScripts: "outside-only", virtualConsole});
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/app.js"), "utf8") + `
-window.uiTest = {calls: [], render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
+window.uiTest = {gridPath, calls: [], render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
 `);
 const el = id => dom.window.document.getElementById(id);
@@ -19,6 +19,10 @@ const render = (value, events = []) => dom.window.uiTest.render(JSON.parse(JSON.
 const event = (node, name) => node.dispatchEvent(new dom.window.MouseEvent(name, {bubbles: true}));
 const unit = id => el("world-map").querySelector(`[data-unit="${id}"]`);
 try {
+  const openMap = {width: 4, height: 4, cover: []};
+  assert.equal(JSON.stringify(dom.window.uiTest.gridPath(openMap, [0,0], [2,2])), "[[1,1],[2,2]]");
+  openMap.cover = [[1,0]];
+  assert.equal(JSON.stringify(dom.window.uiTest.gridPath(openMap, [0,0], [1,1])), "[[0,1],[1,1]]");
   render(fixture, [{id: 1, game_time: 99, message: "Joueur repéré par Gobelin."}, {id: 2, game_time: 100, message: "Gobelin utilise Entaille : 3 PV perdus."}]);
   assert(el("combat-notice").textContent.includes("3 PV perdus"));
   assert(el("combat-events").textContent.includes("repéré"));

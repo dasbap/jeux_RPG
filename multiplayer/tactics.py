@@ -1,5 +1,5 @@
 import math
-from collections import deque
+from heapq import heappop, heappush
 from copy import deepcopy
 
 from . import forge, progression
@@ -31,19 +31,36 @@ def walkable(preset, position):
             and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"] and list(position) not in preset["cover"])
 
 
+def valid_step(preset, source, destination):
+    if not walkable(preset, destination):
+        return False
+    dx, dy = destination[0] - source[0], destination[1] - source[1]
+    return (max(abs(dx), abs(dy)) == 1
+            and (not dx or not dy or (walkable(preset, [source[0] + dx, source[1]])
+                                     and walkable(preset, [source[0], source[1] + dy]))))
+
+
+def step_time(source, destination, duration=MOVE_TIME):
+    return duration * distance(source, destination)
+
+
 def path(preset, source, destination):
     if not walkable(preset, destination):
         return None
-    queue = deque([(tuple(source), [])])
-    seen = {tuple(source)}
+    queue = [(0, tuple(source), [])]
+    costs = {tuple(source): 0}
     while queue:
-        node, route = queue.popleft()
+        cost, node, route = heappop(queue)
+        if cost > costs[node]:
+            continue
         if list(node) == list(destination):
             return route
-        for point in ((node[0] + 1, node[1]), (node[0] - 1, node[1]), (node[0], node[1] + 1), (node[0], node[1] - 1)):
-            if point not in seen and walkable(preset, point):
-                seen.add(point)
-                queue.append((point, route + [list(point)]))
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+            point = (node[0] + dx, node[1] + dy)
+            next_cost = cost + distance(node, point)
+            if valid_step(preset, node, point) and next_cost < costs.get(point, math.inf):
+                costs[point] = next_cost
+                heappush(queue, (next_cost, point, route + [list(point)]))
     return None
 
 
@@ -222,7 +239,7 @@ def advance_summons(party, characters, now, random, messages):
             if order["type"] == "move":
                 if unit["route"] and unit["next_move"] <= now:
                     unit["position"] = unit["route"].pop(0)
-                    unit["next_move"] = now + MOVE_TIME
+                    unit["next_move"] = now + (step_time(unit["position"], unit["route"][0]) if unit["route"] else MOVE_TIME)
                 continue
             if order["type"] != "attack":
                 continue
@@ -253,8 +270,8 @@ def advance_summons(party, characters, now, random, messages):
         elif unit["next_move"] <= now:
             route = path(preset, unit["position"], target["position"])
             if route:
+                unit["next_move"] = now + step_time(unit["position"], route[0])
                 unit["position"] = route[0]
-                unit["next_move"] = now + MOVE_TIME
 
 
 def release_control(unit):
@@ -362,7 +379,7 @@ def control(party, player, action, params, now, error):
                 raise error("invalid_path", "Chemin d’allié invalide.")
             previous = unit["position"]
             for point in route:
-                if not walkable(preset, point) or abs(previous[0] - point[0]) + abs(previous[1] - point[1]) != 1:
+                if not valid_step(preset, previous, point):
                     raise error("invalid_path", "Chemin d’allié bloqué ou vitesse impossible.")
                 previous = point
     elif order == "attack":
@@ -378,9 +395,12 @@ def control(party, player, action, params, now, error):
         raise error("control_energy", "Le contrôle a expiré faute d’énergie.", 409)
     party["characters"] = {key: pack(c) for key, c in characters.items()}
     for key, unit in zip(ids, units):
+        old_route = unit["route"]
         unit["order"] = {"type": order, "target": deepcopy(target)}
         unit["route"] = deepcopy(routes.get(key, []))
-        unit["next_move"] = max(unit["next_move"], now)
+        if unit["route"]:
+            duration = step_time(unit["position"], unit["route"][0])
+            unit["next_move"] = now + (max(0, unit["next_move"] - now) * duration / step_time(unit["position"], old_route[0]) if old_route else duration)
     if order != "move":
         party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
     return [f"Ordre {order} transmis à {len(ids)} allié(s)."]
@@ -465,13 +485,16 @@ def execute(party, player, action, params, now, error):
             route = route[route.index(unit["position"]) + 1:]
         previous = unit["position"]
         for point in route:
-            if not walkable(preset, point) or abs(point[0] - previous[0]) + abs(point[1] - previous[1]) != 1:
+            if not valid_step(preset, previous, point):
                 raise error("invalid_path", "Trajet bloqué ou vitesse impossible.")
             previous = point
         moving = bool(unit["route"])
+        previous_duration = step_time(unit["position"], unit["route"][0]) if moving else MOVE_TIME
         unit["route"] = deepcopy(route)
+        if moving and route:
+            unit["next_move"] = now + max(0, unit["next_move"] - now) * step_time(unit["position"], route[0]) / previous_duration
         if not moving:
-            unit["next_move"] = now + (STEALTH_MOVE_TIME if unit.get("hidden") and route and can_hide(party, player, route[0]) else MOVE_TIME)
+            unit["next_move"] = now + (step_time(unit["position"], route[0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, player, route[0]) else MOVE_TIME) if route else MOVE_TIME)
         messages = [f"{actor.name} se déplace sur le champ de bataille."]
     elif action == "hide":
         if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
@@ -557,7 +580,7 @@ def advance(party, now, random):
     battle = party.get("battle")
     if not battle or now < battle.get("next_brain", 0):
         return []
-    battle["next_brain"] = now + MOVE_TIME
+    battle["next_brain"] = now + .12
     preset = PRESETS[battle["preset"]]
     messages = []
     sync_summons(party, now)
@@ -570,7 +593,7 @@ def advance(party, now, random):
                 unit["hidden"] = can_hide(party, key)
                 if not unit["hidden"]:
                     messages.append(f"{actor.name} quitte sa dissimulation en se déplaçant.")
-            unit["next_move"] = now + (STEALTH_MOVE_TIME if unit.get("hidden") and unit["route"] and can_hide(party, key, unit["route"][0]) else MOVE_TIME)
+            unit["next_move"] = now + (step_time(unit["position"], unit["route"][0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, key, unit["route"][0]) else MOVE_TIME) if unit["route"] else MOVE_TIME)
     charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}
@@ -680,8 +703,8 @@ def advance(party, now, random):
                 destination = patrol[index]
             route = path(preset, mob["position"], destination)
             if route and mob["next_move"] <= now:
+                mob["next_move"] = now + step_time(mob["position"], route[0], GOBLIN_MOVE_TIME)
                 mob["position"] = route[0]
-                mob["next_move"] = now + GOBLIN_MOVE_TIME
             mob["intent"] = "Poursuit un joueur" if target else "Cherche à la dernière position connue" if mob["state"] == "search" else "Patrouille"
     party["characters"] = {key: pack(characters[key]) for key in party["characters"]}
     sync_summons(party, now)

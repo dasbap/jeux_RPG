@@ -762,3 +762,40 @@ def test_detection_cancels_hidden_and_cover_does_not_hide_known_position():
     with pytest.raises(GameError) as failure:
         act(data, "hide", now=4)
     assert failure.value.code == "still_detected"
+
+
+@pytest.mark.parametrize("hidden,duration", [(False, tactics.MOVE_TIME), (True, tactics.STEALTH_MOVE_TIME)])
+def test_diagonal_step_scales_time_and_cannot_finish_early(hidden, duration):
+    data = party()
+    unit = data["battle"]["players"]["p0"]
+    unit.update(position=[0, 6], hidden=hidden)
+    act(data, "battle_move", x=1, y=5, path=[[1, 5]])
+    deadline = duration * 2 ** .5
+    assert unit["next_move"] == pytest.approx(deadline)
+    tactics.advance(data, deadline - .13, lambda: .5)
+    assert unit["position"] == [0, 6]
+    tactics.advance(data, deadline, lambda: .5)
+    assert unit["position"] == [1, 5]
+    assert unit["hidden"] == hidden
+
+
+def test_diagonal_path_uses_shortest_distance_and_rejects_cover_corners():
+    preset = {"width": 4, "height": 4, "cover": []}
+    assert tactics.path(preset, [0, 0], [2, 2]) == [[1, 1], [2, 2]]
+    preset["cover"] = [[1, 0]]
+    assert not tactics.valid_step(preset, [0, 0], [1, 1])
+    assert tactics.path(preset, [0, 0], [1, 1]) == [[0, 1], [1, 1]]
+    data = party()
+    data["battle"]["players"]["p0"]["position"] = [1, 5]
+    with pytest.raises(GameError) as failure:
+        act(data, "battle_move", x=2, y=7, path=[[2, 7]])
+    assert failure.value.code == "invalid_path"
+
+
+def test_redirecting_to_diagonal_scales_remaining_time_without_resetting_it():
+    data = party()
+    unit = data["battle"]["players"]["p0"]
+    unit.update(position=[0, 6], hidden=False)
+    act(data, "battle_move", x=0, y=5, path=[[0, 5]])
+    act(data, "battle_move", now=.6, x=1, y=5, path=[[1, 5]])
+    assert unit["next_move"] == pytest.approx(.6 + .6 * 2 ** .5)

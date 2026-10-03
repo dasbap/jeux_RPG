@@ -707,18 +707,22 @@ function gridPath(map, source, destination) {
   const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || map.cover.some(p => p[0] === x && p[1] === y);
   if (blocked(...destination)) return null;
   const key = p => p.join(",");
-  const queue = [source];
-  const parents = new Map([[key(source), null]]);
-  for (let index = 0; index < queue.length; index++) {
-    const node = queue[index];
+  const queue = [{point: source, cost: 0}];
+  const parents = new Map([[key(source), null]]), costs = new Map([[key(source), 0]]);
+  while (queue.length) {
+    queue.sort((a,b) => a.cost - b.cost);
+    const {point: node, cost} = queue.shift();
+    if (cost > costs.get(key(node))) continue;
     if (key(node) === key(destination)) {
       const result = [];
       let point = node;
       while (parents.get(key(point)) !== null) { result.unshift(point); point = parents.get(key(point)); }
       return result;
     }
-    for (const point of [[node[0] + 1, node[1]], [node[0] - 1, node[1]], [node[0], node[1] + 1], [node[0], node[1] - 1]]) {
-      if (!blocked(...point) && !parents.has(key(point))) { parents.set(key(point), node); queue.push(point); }
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+      const point = [node[0] + dx, node[1] + dy], nextCost = cost + Math.hypot(dx,dy);
+      if (blocked(...point) || (dx && dy && (blocked(node[0] + dx,node[1]) || blocked(node[0],node[1] + dy)))) continue;
+      if (nextCost < (costs.get(key(point)) ?? Infinity)) { costs.set(key(point), nextCost); parents.set(key(point), node); queue.push({point, cost: nextCost}); }
     }
   }
   return null;

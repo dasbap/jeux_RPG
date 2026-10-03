@@ -271,3 +271,5 @@ Les fiches de personnage, d’invocations et d’ennemis affichent le nom, une b
 La fabrication de la veste est marquée comme accomplie dans le journal de quête et la forge ; en groupe, l’interface précise si un compagnon doit encore fabriquer sa veste. Le combat affiche les derniers événements et un journal : lancement et fin de sorts, attaques, dégâts reçus, repérage et perte de ligne de vue. Une perte de PV apparaît aussi sur la fiche concernée.
 
 Un personnage repéré perd sa dissimulation et ne peut pas se cacher simplement à sa dernière position connue. Il doit rompre la ligne de vue et quitter cette position. Un déplacement entre des cases couvertes conserve la dissimulation à vitesse réduite de moitié ; entrer à découvert ou être vu la supprime.
+
+Les déplacements tactiques autorisent les diagonales pour les joueurs, invocations et mobs. Chaque pas diagonal prend √2 fois la durée d’un pas droit, également en marche dissimulée. Les chemins privilégient la distance parcourue et ne permettent pas de traverser le coin d’une couverture.
