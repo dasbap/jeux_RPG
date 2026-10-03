@@ -581,13 +581,17 @@ async function command(action, params = {}) {
   $("attack").disabled = true;
   try {
     let data;
-    try {
-      data = await api("/api/commands", {request_id: crypto.randomUUID(), action, params});
-    } catch (error) {
-      if (error.code !== "stale_revision" || !params.session_id) throw error;
-      const state = await api("/api/state");
-      if (!state.session || state.session.id !== params.session_id) throw error;
-      data = await api("/api/commands", {request_id: crypto.randomUUID(), action, params: {...params, revision: state.session.revision}});
+    let currentParams = params;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        data = await api("/api/commands", {request_id: crypto.randomUUID(), action, params: currentParams});
+        break;
+      } catch (error) {
+        if (error.code !== "stale_revision" || !currentParams.session_id || attempt === 4) throw error;
+        const state = await api("/api/state");
+        if (!state.session || state.session.id !== currentParams.session_id) throw error;
+        currentParams = {...currentParams, revision: state.session.revision};
+      }
     }
     session = data.session;
     sessionId = session.id;

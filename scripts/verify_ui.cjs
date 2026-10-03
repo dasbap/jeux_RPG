@@ -39,7 +39,7 @@ async function client(html, app, name, className) {
   dom.window.AbortSignal = AbortSignal;
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
-  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel};");
+  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session.revision})};");
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
@@ -89,7 +89,14 @@ async function finishCombat(dom) {
         const leaveButton = () => [...el(dom, "tactical-actions").querySelectorAll("button")].find(button => button.textContent === "Quitter le champ de bataille");
         await waitFor(() => leaveButton() && !leaveButton().disabled, "bouton de sortie après victoire");
         leaveButton().click();
-        await waitFor(async () => !(await request(dom, "/api/state")).session.tutorial.battle, "sortie effective après dépeçage");
+        try {
+          await waitFor(async () => {
+            const next = (await request(dom, "/api/state")).session.tutorial;
+            return !next.battle || next.encounter_number !== adventure.encounter_number;
+          }, "sortie effective après dépeçage");
+        } catch (error) {
+          throw new Error(`${error.message} · ${el(dom, "message").textContent} · ${JSON.stringify(dom.window.testFns.flags())}`);
+        }
         continue;
       }
       if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) <= 1.5) await command(dom, "harvest", {target: corpse.id});
