@@ -140,7 +140,11 @@ try {
   const stableCircle = stableUnit.querySelector("circle");
   const stableMap = el("world-map").querySelector("svg");
   event(unit("mob"), "click");
+  const observer = new dom.window.MutationObserver(() => {});
+  observer.observe(el("world-map"), {subtree: true, childList: true});
   render(control);
+  assert(!observer.takeRecords().some(record => [...record.removedNodes].includes(stableUnit) || [...record.removedNodes].includes(stableCircle)));
+  observer.disconnect();
   assert.equal(unit("mob"), stableUnit);
   assert.equal(unit("mob").querySelector("circle"), stableCircle);
   assert.equal(el("world-map").querySelector("svg"), stableMap);

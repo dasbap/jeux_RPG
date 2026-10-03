@@ -8,7 +8,7 @@ async function check(conflicts, failure) {
   const revisions = [], messages = [];
   let reads = 0;
   const context = {
-    busy: false, stateEpoch: 0, sessionId: "room", session: {id: "room", revision: 0},
+    busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room", session: {id: "room", revision: 0},
     crypto: {randomUUID: () => "request"},
     $: () => ({disabled: false, hidden: false}),
     remember: () => {}, refresh: async () => {},
@@ -63,4 +63,24 @@ async function checkLateSnapshot() {
   assert.equal(context.session.revision, 4);
   assert.equal(renders, 1);
 }
-Promise.resolve().then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
+async function checkPendingMovement() {
+  let resolveCommand;
+  const moves = [];
+  const adventure = {battle: {}, encounter_number: 1, players: [{id: "p0", hp: 10, stunned: false, casting: null}]};
+  const context = {busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room",
+    session: {id: "room", me: "p0", revision: 1, tutorial: adventure}, crypto: {randomUUID: () => "request"},
+    $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {},
+    renderTutorial: () => {}, message: () => {}, moveControlled: async (party, actor, destination) => moves.push(destination),
+    api: () => new Promise(resolve => {resolveCommand = resolve;})};
+  vm.createContext(context);
+  const pending = vm.runInContext(`${command}; command("strike", {session_id: "room", revision: 1});`, context);
+  assert(context.busy);
+  context.pendingBattleMove = {sessionId: "room", encounter: 1, destination: [2, 3]};
+  context.pendingBattleMove = {sessionId: "room", encounter: 1, destination: [4, 5]};
+  resolveCommand({session: {...context.session, revision: 2, state: "running"}});
+  await pending;
+  assert.equal(context.busy, false);
+  assert.deepEqual(moves, [[4, 5]]);
+  assert.equal(context.pendingBattleMove, null);
+}
+Promise.resolve().then(checkPendingMovement).then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });

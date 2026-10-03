@@ -434,3 +434,24 @@ def test_travelling_npc_appears_only_in_visited_current_village(game):
     game.clock.value = 8 * 3600 + 1
     places = game.state(player["token"])["session"]["tutorial"]["world"]["places"]
     assert not any(point["id"] == "leon" for place in places for point in place["points"])
+
+
+def test_delayed_movement_is_validated_in_current_encounter_without_revision_retry(game):
+    token = game.register("Marcheur", "Knight")["token"]
+    game.command(token, uuid.uuid4().hex, "tutorial")
+    state = command(game, token, "explore")
+    stale = state["revision"]
+    encounter = state["tutorial"]["encounter_number"]
+    for _ in range(40):
+        game.clock.value += .3
+        game.tick()
+    latest = game.state(token)["session"]
+    assert latest["revision"] > stale
+    result = game.command(token, uuid.uuid4().hex, "battle_move", session_id=state["id"], revision=stale, encounter=encounter, x=1, y=4, path=[[1, 5], [1, 4]])
+    assert result["session"]["tutorial"]["battle"]["players"][result["session"]["me"]]["route"] == [[1, 5], [1, 4]]
+    with pytest.raises(GameError) as failure:
+        game.command(token, uuid.uuid4().hex, "battle_move", session_id=state["id"], revision=stale, encounter=encounter + 1, x=1, y=4, path=[[1, 5], [1, 4]])
+    assert failure.value.code in ("stale_revision", "stale_encounter")
+    with pytest.raises(GameError) as failure:
+        game.command(token, uuid.uuid4().hex, "battle_move", session_id=state["id"], revision=stale, encounter=encounter, x=12, y=8, path=[[12, 8]])
+    assert failure.value.code == "invalid_path"

@@ -695,3 +695,16 @@ def test_movement_cannot_bypass_casting_or_stun():
     with pytest.raises(GameError) as failure:
         act(data, "battle_move", now=.1, x=8, y=5, path=[[8, 5]])
     assert failure.value.code == "casting"
+
+
+def test_delayed_route_skips_only_steps_already_reached_without_teleport():
+    data = party()
+    act(data, "battle_move", x=1, y=4, path=[[1, 5], [1, 4]])
+    tactics.advance(data, 1.2, lambda: .5)
+    unit = data["battle"]["players"]["p0"]
+    assert unit["position"] == [1, 5]
+    timer = unit["next_move"]
+    act(data, "battle_move", now=1.3, encounter=data["encounter_number"], x=1, y=3, path=[[1, 5], [1, 4], [1, 3]])
+    assert unit["position"] == [1, 5]
+    assert unit["route"] == [[1, 4], [1, 3]]
+    assert unit["next_move"] == timer

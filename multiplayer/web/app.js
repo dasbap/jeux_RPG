@@ -6,6 +6,7 @@ let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
 let polling = false;
 let stateEpoch = 0;
+let pendingBattleMove = null;
 let currentView = "map";
 let viewContext = "";
 let combatTarget = "";
@@ -111,7 +112,7 @@ function render(state) {
   }
 }
 function tutorialCommand(action, params = {}) {
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();
@@ -509,7 +510,7 @@ function selectEntity(id) {
 }
 function approachEntity(position) {
   const adventure = session.tutorial, me = adventure.players.find(p => p.id === session.me);
-  if (busy || me.casting || me.hp <= 0 || me.stunned) return;
+  if (me.casting || me.hp <= 0 || me.stunned) return;
   const unit = controlledUnits(adventure, me.id)[0]?.[1] || adventure.battle.players[me.id], map = adventure.battle.map;
   if (Math.hypot(unit.position[0] - position[0], unit.position[1] - position[1]) <= 1.5) return;
   const candidates = [[position[0] - 1, position[1]], [position[0] + 1, position[1]], [position[0], position[1] - 1], [position[0], position[1] + 1]];
@@ -542,6 +543,7 @@ function statsText(unit) {
   return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV · Force ${value("force")} · Endurance ${value("endurance")} · Intelligence ${value("intelligence")} · Sagesse ${value("sagesse")}${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""}`;
 }
 function moveControlled(adventure, me, destination) {
+  if (busy) { pendingBattleMove = {destination, sessionId: session.id, encounter: session.tutorial.encounter_number, controlledIds: controlledUnits(session.tutorial, session.me).map(([id]) => id).sort()}; return; }
   adventure = session.tutorial;
   me = adventure.players.find(player => player.id === session.me);
   const controlled = controlledUnits(adventure, me.id);
@@ -635,7 +637,7 @@ function gridPath(map, source, destination) {
 function renderBattle(adventure, me) {
   const battle = adventure.battle, map = battle.map;
   const unit = battle.players[me.id];
-  const disabled = busy || Boolean(me.casting) || me.hp <= 0 || me.stunned;
+  const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", `0 0 ${map.width * 40} ${map.height * 40}`);
@@ -697,23 +699,25 @@ function renderBattle(adventure, me) {
         oldChild.textContent = child.textContent;
         return oldChild;
       });
-      retained.replaceChildren(...children);
+      for (const child of [...retained.children]) if (!children.includes(child)) child.remove();
+      for (const child of children) if (child.parentElement !== retained) retained.append(child);
       retained.onclick = node.onclick; retained.ondblclick = node.ondblclick; retained.onkeydown = node.onkeydown;
       return retained;
     });
-    previousMap.replaceChildren(...nodes);
+    for (const child of [...previousMap.children]) if (!nodes.includes(child)) child.remove();
+    for (const child of nodes) if (child.parentElement !== previousMap) previousMap.append(child);
   } else $("world-map").replaceChildren(svg);
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
-    const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("button"); retainedCards.add(card); card.replaceChildren(); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
-    const title = document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
-    const bar = document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
-    const statuses = document.createElement("span"); statuses.textContent = `Statuts : ${statusText(mob)}`;
-    card.append(title, bar, statuses);
+    const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("button"); retainedCards.add(card); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
+    const title = card.querySelector("strong") || document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
+    const bar = card.querySelector("progress") || document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
+    const statuses = card.querySelector("span") || document.createElement("span"); statuses.textContent = `Statuts : ${statusText(mob)}`;
+    for (const child of [title, bar, statuses]) if (child.parentElement !== card) card.append(child);
     card.classList.toggle("selected", focusedMob === mob.combat_id);
     card.onclick = () => selectEntity(mob.combat_id);
     card.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, mob.combat_id); if (current) approachEntity(current); };
-    $("mob-cards").append(card);
+    if (card.parentElement !== $("mob-cards")) $("mob-cards").append(card);
   }
   for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
   paragraphs("combat-stats-details", adventure.players.flatMap(player => player.invocations.map(combatVitals)));
@@ -821,7 +825,17 @@ async function command(action, params = {}) {
     if (session.state !== "lobby") $("invitation").hidden = true;
   } catch (error) {
     message(error.message, true);
-  } finally { busy = false; if (session?.tutorial) renderTutorial(session.tutorial); await refresh(true); }
+  } finally {
+    busy = false;
+    if (session?.tutorial) renderTutorial(session.tutorial);
+    const pending = pendingBattleMove;
+    pendingBattleMove = null;
+    if (pending && session?.id === pending.sessionId && session.tutorial?.battle && session.tutorial.encounter_number === pending.encounter) {
+      const actor = session.tutorial.players.find(player => player.id === session.me);
+      if (actor.hp > 0 && !actor.stunned && !actor.casting && (!pending.controlledIds || JSON.stringify(pending.controlledIds) === JSON.stringify(controlledUnits(session.tutorial, session.me).map(([id]) => id).sort()))) await moveControlled(session.tutorial, actor, pending.destination);
+    }
+    await refresh(true);
+  }
 }
 $("register-form").addEventListener("submit", async event => {
   event.preventDefault();

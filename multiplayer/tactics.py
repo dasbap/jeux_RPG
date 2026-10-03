@@ -353,6 +353,9 @@ def control(party, player, action, params, now, error):
             raise error("invalid_path", "Destination ou chemins invalides.")
         for key, unit in zip(ids, units):
             route = routes[key]
+            if isinstance(route, list) and len(route) <= preset["width"] * preset["height"] and params.get("encounter") is not None and unit["position"] in route and all(walkable(preset, point) for point in route):
+                route = route[route.index(unit["position"]) + 1:]
+                routes = {**routes, key: route}
             if not isinstance(route, list) or len(route) > preset["width"] * preset["height"] or (route[-1] if route else unit["position"]) != target:
                 raise error("invalid_path", "Chemin d’allié invalide.")
             previous = unit["position"]
@@ -440,6 +443,8 @@ def execute(party, player, action, params, now, error):
         route = params["path"]
         if not walkable(preset, destination) or not isinstance(route, list) or len(route) > preset["width"] * preset["height"] or not route or route[-1] != destination:
             raise error("invalid_path", "Trajet invalide.")
+        if params.get("encounter") is not None and unit["position"] in route and all(walkable(preset, point) for point in route):
+            route = route[route.index(unit["position"]) + 1:]
         previous = unit["position"]
         for point in route:
             if not walkable(preset, point) or abs(point[0] - previous[0]) + abs(point[1] - previous[1]) != 1:

@@ -251,3 +251,7 @@ La cible sélectionnée reste conservée lors d’un clic de déplacement. Les a
 ### Déplacements et accès à Rosée 0.10.4
 
 Les ordres de marche ne déclenchent ni ne prolongent le délai d’attaque de 1,2 seconde. La marche reste autorisée pendant ce délai, mais les incantations et étourdissements immobilisent toujours les personnages. Le ciblage des ennemis visibles reste disponible pendant la marche et le délai d’action. Le bouton « Rejoindre Village de Rosée » lance directement le trajet annoncé ; les boutons de route redondants sont supprimés. Le déplacement vers un point d’une autre zone depuis la consultation de carte conserve sa confirmation.
+
+### Fiabilité des déplacements 0.10.5
+
+Les entités et cases de combat restent attachées au DOM pendant les actualisations, afin de préserver les doubles clics. Pendant une requête, le dernier ordre de déplacement est conservé puis exécuté si le combat est toujours le même. Un ordre de marche peut utiliser une révision antérieure lorsque son numéro de combat correspond au combat actuel ; le serveur valide toujours le propriétaire, les contraintes d’action et le chemin depuis la position courante. Les cases du chemin déjà atteintes sont retirées sans déplacement instantané ni accélération. Les anciens clients sans numéro de combat conservent la vérification stricte de révision.

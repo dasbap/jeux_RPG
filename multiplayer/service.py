@@ -248,15 +248,17 @@ class GameService:
                    "talk": {"session_id", "revision", "npc"},
                    "craft": {"session_id", "revision", "recipe"},
                    "upgrade": {"session_id", "revision", "recipe"},
-                   "battle_move": {"session_id", "revision", "x", "y", "path"},
+                   "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
                    "hide": {"session_id", "revision"},
                    "harvest": {"session_id", "revision", "target"},
                    "control_units": {"session_id", "revision", "units"},
                    "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
-                   "unit_order": {"session_id", "revision", "units", "order", "target", "paths"},
+                   "unit_order": {"session_id", "revision", "encounter", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
+        if "encounter" in params and (type(params["encounter"]) is not int or params["encounter"] < 1):
+            raise GameError("invalid_encounter", "Combat invalide.")
         if "revision" in params and (type(params["revision"]) is not int or params["revision"] < 0):
             raise GameError("invalid_revision", "Version invalide.")
         try:
@@ -308,12 +310,16 @@ class GameService:
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)
-            if session["revision"] != params["revision"]:
-                raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
             row = self.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()
             if row is None:
                 raise GameError("not_tutorial", "Cette session n'est pas un tutoriel.", 409)
             party = json.loads(row[0])
+            movement = action == "battle_move" or action == "unit_order" and params.get("order") == "move"
+            same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
+            if session["revision"] != params["revision"] and not (movement and same_encounter and params["revision"] < session["revision"]):
+                raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
+            if "encounter" in params and not same_encounter:
+                raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
             self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", session["id"]))
