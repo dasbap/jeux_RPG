@@ -143,8 +143,11 @@ function mountWorldMap(source) {
   update(retained, source);
   return retained;
 }
+function equipmentBonuses(piece) {
+  return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
+}
 function renderWorld(adventure, me) {
-  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · +${p.hp} PV · +${p.endurance} endurance`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
+  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
@@ -468,7 +471,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     const card = document.createElement("article"); card.className = "codex-card";
     const title = document.createElement("h4"); title.textContent = recipe.equipped ? `${recipe.equipped.name} +${recipe.equipped.level}` : recipe.name; card.append(title);
     const info = document.createElement("p"); info.textContent = recipe.cost ? `Coût : ${Object.entries(recipe.cost).map(([k,v]) => `${v} ${k}`).join(", ")}` : "Amélioration maximale +10 atteinte."; card.append(info);
-    const bonus = document.createElement("p"); bonus.textContent = `Bonus : +${recipe.equipped?.hp ?? recipe.hp} PV, +${recipe.equipped?.endurance ?? recipe.endurance} endurance.`; card.append(bonus);
+    const bonus = document.createElement("p"); bonus.textContent = `Bonus : ${equipmentBonuses(recipe.equipped || recipe)}.`; card.append(bonus);
     const adjective = document.createElement("p"); adjective.textContent = `À +10 : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
     if (recipe.cost) { const craft = document.createElement("button"); craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);

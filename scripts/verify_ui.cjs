@@ -261,6 +261,9 @@ async function main() {
     await move(first, "forge");
     await waitFor(() => !el(first, "craft-view").hidden && !el(second, "craft-view").hidden, "forge partagée");
     assert.equal(el(first, "forge-catalogue").children.length, 6);
+    assert(el(first, "forge-catalogue").textContent.includes("+2 intelligence"));
+    assert(el(first, "forge-catalogue").textContent.includes("+2 force"));
+    assert(el(first, "forge-catalogue").textContent.includes("+2 sagesse"));
     await command(first, "craft", {recipe: "veste"});
     await waitFor(() => el(first, "quest-description").textContent.includes("Veste fabriquée et équipée") && el(first, "quest-description").textContent.includes("compagnon"), "fabrication personnelle validée dans la quête");
     await command(second, "craft", {recipe: "veste"});

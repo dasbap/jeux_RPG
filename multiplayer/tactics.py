@@ -444,7 +444,7 @@ def allowed(party, player, target, attack_range):
     return bool(other and (enemy is None or visible(party, player, enemy)) and distance(unit["position"], other["position"]) <= attack_range and sight(PRESETS[battle["preset"]], unit["position"], other["position"]))
 
 
-def can_hide(party, player, position=None):
+def can_hide(party, player, position=None, retaining=False):
     battle = party.get("battle")
     if not battle:
         return False
@@ -454,7 +454,7 @@ def can_hide(party, player, position=None):
     preset = PRESETS[battle["preset"]]
     if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
         return False
-    return not any((distance(mob["position"], unit["position"]) <= 6 and sight(preset, mob["position"], unit["position"])) or (mob.get("state") in ("chase", "search") and mob.get("last_known") == unit["position"]) for mob in party["mobs"])
+    return not any((distance(mob["position"], unit["position"]) <= (1.5 if retaining else 6) and sight(preset, mob["position"], unit["position"])) or (mob.get("state") in ("chase", "search") and mob.get("last_known") == unit["position"]) for mob in party["mobs"])
 
 
 def ready(party, player, now, error, redirect=False):
@@ -494,7 +494,7 @@ def execute(party, player, action, params, now, error):
         if moving and route:
             unit["next_move"] = now + max(0, unit["next_move"] - now) * step_time(unit["position"], route[0]) / previous_duration
         if not moving:
-            unit["next_move"] = now + (step_time(unit["position"], route[0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, player, route[0]) else MOVE_TIME) if route else MOVE_TIME)
+            unit["next_move"] = now + (step_time(unit["position"], route[0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, player, route[0], retaining=True) else MOVE_TIME) if route else MOVE_TIME)
         messages = [f"{actor.name} se déplace sur le champ de bataille."]
     elif action == "hide":
         if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
@@ -590,10 +590,10 @@ def advance(party, now, random):
         if unit["route"] and actor.is_alive() and not actor.is_stunned() and unit["next_move"] <= now:
             unit["position"] = unit["route"].pop(0)
             if unit.get("hidden"):
-                unit["hidden"] = can_hide(party, key)
+                unit["hidden"] = can_hide(party, key, retaining=True)
                 if not unit["hidden"]:
                     messages.append(f"{actor.name} quitte sa dissimulation en se déplaçant.")
-            unit["next_move"] = now + (step_time(unit["position"], unit["route"][0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, key, unit["route"][0]) else MOVE_TIME) if unit["route"] else MOVE_TIME)
+            unit["next_move"] = now + (step_time(unit["position"], unit["route"][0], STEALTH_MOVE_TIME if unit.get("hidden") and can_hide(party, key, unit["route"][0], retaining=True) else MOVE_TIME) if unit["route"] else MOVE_TIME)
     charge_control(party, characters, now, messages)
     advance_summons(party, characters, now, random, messages)
     units = {**battle["players"], **battle.get("summons", {})}

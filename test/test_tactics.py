@@ -843,3 +843,47 @@ def test_health_regeneration_preserves_fractions_caps_and_never_revives():
     progression.resources(data, 1200)
     assert data["characters"]["p0"]["stats"]["hp"]["current"] == 0
     assert data["mobs"][0]["stats"]["hp"]["current"] == 0
+
+
+@pytest.mark.parametrize("enemy_position,hidden", [([5, 5], True), ([1, 4], False)])
+def test_covered_hidden_movement_uses_close_detection_not_visible_range(enemy_position, hidden):
+    data = party()
+    unit = data["battle"]["players"]["p0"]
+    enemy = data["mobs"][0]
+    enemy.update(position=enemy_position, next_move=1000, needs_call=False)
+    assert tactics.sight(tactics.PRESETS[data["battle"]["preset"]], enemy_position, [1, 5])
+    act(data, "battle_move", x=1, y=5, path=[[1, 5]])
+    tactics.advance(data, unit["next_move"], lambda: .5)
+    assert unit["position"] == [1, 5]
+    assert unit["hidden"] == hidden
+    assert (enemy.get("target") == "p0") == (not hidden)
+
+
+@pytest.mark.parametrize("recipe", forge.RECIPES)
+def test_forge_piece_applies_own_stats_and_upgrades_without_duplicate_bonus(recipe):
+    data = party()
+    data.update(quest="completed", position="forge", step="craft", battle=None, mobs=[], mob=None)
+    data["inventory"]["p0"] = {item: 10000 for item in ("peau", "croc", *forge.RARE_DROPS)}
+    before = deepcopy(data["characters"]["p0"]["stats"])
+    act(data, "craft", recipe=recipe)
+    act(data, "upgrade", recipe=recipe)
+    item = forge.piece(recipe, 1)
+    for stat in forge.BONUS_STATS:
+        assert data["characters"]["p0"]["stats"][stat]["max"] == before[stat]["max"] + item[stat]
+    snapshot = deepcopy(data)
+    forge.migrate(data)
+    assert data == snapshot
+
+
+def test_existing_equipment_receives_new_stats_once():
+    data = party()
+    old = forge.piece("casque", 4)
+    for stat in ("force", "intelligence", "sagesse"):
+        old.pop(stat)
+    data["equipment"]["p0"] = {"head": old}
+    before = data["characters"]["p0"]["stats"]["intelligence"]["max"]
+    forge.migrate(data)
+    assert data["characters"]["p0"]["stats"]["intelligence"]["max"] == before + 4
+    snapshot = deepcopy(data)
+    forge.migrate(data)
+    assert data == snapshot

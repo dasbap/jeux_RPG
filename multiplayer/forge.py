@@ -2,13 +2,14 @@ from copy import deepcopy
 
 
 RECIPES = {
-    "casque": {"slot": "head", "name": "Casque de la lisière", "adjective": "raffiné", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1},
+    "casque": {"slot": "head", "name": "Casque de la lisière", "adjective": "raffiné", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1, "intelligence": 2, "sagesse": 1},
     "veste": {"slot": "torso", "name": "Veste de la lisière", "adjective": "solide", "cost": {"peau": 2, "croc": 3}, "hp": 10, "endurance": 3},
-    "gants": {"slot": "hands", "name": "Gants de la lisière", "adjective": "précis", "cost": {"peau": 2, "croc": 2}, "hp": 2, "endurance": 1},
-    "jambieres": {"slot": "legs", "name": "Jambières de la lisière", "adjective": "robustes", "cost": {"peau": 3, "croc": 2}, "hp": 5, "endurance": 2},
-    "bottes": {"slot": "feet", "name": "Bottes de la lisière", "adjective": "agiles", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1},
-    "ceinture": {"slot": "waist", "name": "Ceinture de la lisière", "adjective": "renforcée", "cost": {"peau": 1, "croc": 2}, "hp": 2, "endurance": 1},
+    "gants": {"slot": "hands", "name": "Gants de la lisière", "adjective": "précis", "cost": {"peau": 2, "croc": 2}, "hp": 2, "endurance": 1, "force": 2},
+    "jambieres": {"slot": "legs", "name": "Jambières de la lisière", "adjective": "robustes", "cost": {"peau": 3, "croc": 2}, "hp": 5, "endurance": 2, "force": 1},
+    "bottes": {"slot": "feet", "name": "Bottes de la lisière", "adjective": "agiles", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1, "sagesse": 1},
+    "ceinture": {"slot": "waist", "name": "Ceinture de la lisière", "adjective": "renforcée", "cost": {"peau": 1, "croc": 2}, "hp": 2, "endurance": 1, "intelligence": 1, "sagesse": 2},
 }
+BONUS_STATS = ("hp", "endurance", "force", "intelligence", "sagesse")
 RARE_DROPS = {"cristal_gobelin": .08, "noyau_gobelin": .02}
 
 
@@ -26,13 +27,27 @@ def piece(recipe, level=0):
     definition = RECIPES[recipe]
     return {"recipe": recipe, "slot": definition["slot"], "level": level,
             "name": definition["name"] + (" " + definition["adjective"] if level == 10 else ""),
-            "hp": definition["hp"] + level * 2, "endurance": definition["endurance"] + level // 2}
+            **{stat: definition.get(stat, 0) + (level * 2 if stat == "hp" else level // 2 if definition.get(stat, 0) else 0) for stat in BONUS_STATS}}
 
 
 def migrate(party):
     for key, equipment in list(party["equipment"].items()):
         if isinstance(equipment, str):
             party["equipment"][key] = {"torso": piece("veste")}
+
+    for key, equipment in party["equipment"].items():
+        if not isinstance(equipment, dict):
+            continue
+        for slot, old in list(equipment.items()):
+            if all(stat in old for stat in BONUS_STATS):
+                continue
+            new = piece(old["recipe"], old["level"])
+            for stat in BONUS_STATS:
+                delta = new[stat] - old.get(stat, 0)
+                values = party["characters"][key]["stats"][stat]
+                values["max"] += delta
+                values["current"] = min(values["max"], values["current"] + delta) if stat == "hp" else values["current"] + delta
+            equipment[slot] = new
 
 
 def catalogue(party, player):
@@ -75,12 +90,11 @@ def execute(party, player, action, recipe, error):
         inventory[item] -= quantity
     new = piece(recipe, level)
     actor = unpack(party["characters"][player])
-    hp_delta = new["hp"] - (old["hp"] if old else 0)
-    endurance_delta = new["endurance"] - (old["endurance"] if old else 0)
-    actor.hp.value += hp_delta
-    actor.hp.current_value = min(actor.hp.value, actor.hp.current_value + hp_delta)
-    actor.endurance.value += endurance_delta
-    actor.endurance.current_value += endurance_delta
+    for name in BONUS_STATS:
+        delta = new[name] - (old.get(name, 0) if old else 0)
+        stat = getattr(actor, name)
+        stat.value += delta
+        stat.current_value = min(stat.value, stat.current_value + delta) if name == "hp" else stat.current_value + delta
     gear[slot] = new
     party["characters"][player] = pack(actor)
     previous_step = party["step"]
