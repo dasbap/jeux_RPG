@@ -243,3 +243,7 @@ La carte reste au centre, les statistiques des joueurs et invocations et leur co
 Les réponses d’actualisation périmées ne remplacent plus l’état d’une commande plus récente. Les déplacements utilisent la dernière position reçue et une actualisation est demandée après chaque commande. En combat, les alliés et invocations n’affichent que leurs PV et ressources ; les caractéristiques détaillées restent dans la consultation hors combat.
 
 La barre d’actions affiche les actions de l’entité contrôlée : personnage, invocation unique ou groupe. Une invocation unique peut lancer ses compétences offensives acquises avec son propre coût, sa portée, son incantation et son délai, validés par le serveur. Les personnages des autres joueurs ne peuvent pas être contrôlés.
+
+### Actualisation et statuts 0.10.3
+
+La cible sélectionnée reste conservée lors d’un clic de déplacement. Les actualisations continuent pendant les commandes ; les réponses périmées sont ignorées. Les cases, entités et cartes d’ennemis conservent leurs éléments interactifs entre les actualisations, ce qui permet de recevoir les positions sans suspendre les mises à jour pendant un double clic. Les statuts actifs sont visibles dans les informations du personnage et des ennemis.

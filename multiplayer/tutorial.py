@@ -149,6 +149,8 @@ def view(party, me, now):
     result["world"] = world.view(party, me, result["traveller"])
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
+    for enemy in result["mobs"]:
+        enemy["stunned"] = enemy.get("stunned_until", 0) > now
     result["mob"] = result["mobs"][0] if result["mobs"] else None
     result["players"] = []
     characters = {key: unpack(value) for key, value in party["characters"].items()}
@@ -166,7 +168,7 @@ def view(party, me, now):
                                   "level": character.level, "exp": character.exp, "next_level_exp": progression.required(character.level),
                                   "hp": character.hp.current_value, "max_hp": character.hp.value,
                                   "stats": {key: getattr(character, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-                                  "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
+                                  "effects": deepcopy(data["effects"]), "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
                                   "can_attack": actionable and not party["battle"]["players"][player_id].get("casting") if party["battle"] else False,
                                   "casting": tactics.cast_view(party, player_id, now),
                                   "energies": data["energies"], "inventory": party["inventory"][player_id],

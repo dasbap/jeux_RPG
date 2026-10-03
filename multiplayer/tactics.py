@@ -164,7 +164,7 @@ def sync_summons(party, now):
                                 "next_move": now, "next_attack": now, "hidden": False, "route": []}
                 occupied.append(summons[key]["position"])
             summons[key].update(index=index, name=invocation["name"], hp=invocation["stats"]["hp"]["current"], max_hp=invocation["stats"]["hp"]["max"],
-                                stats=deepcopy(invocation["stats"]), energies=deepcopy(invocation["energies"]),
+                                stats=deepcopy(invocation["stats"]), energies=deepcopy(invocation["energies"]), effects=deepcopy(invocation["effects"]),
                                 control_cost=deepcopy(CONTROL_RULES.get(invocation["class_name"], {"energy": None, "per_second": 0})))
             from .tutorial import unpack
             actor = unpack(invocation)

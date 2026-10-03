@@ -374,6 +374,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     `PV : ${me.hp}/${me.max_hp} · Force ${me.stats.force} · Endurance ${me.stats.endurance} · Intelligence ${me.stats.intelligence} · Sagesse ${me.stats.sagesse}`,
     `Énergie : ${me.energies.map(e => `${e.type} ${e.current}/${e.max}`).join(" · ")}`,
     `Invocations : ${me.invocations.map(i => `${i.name} (${i.hp} PV)`).join(", ") || "aucune"}`,
+    `Statuts : ${statusText(me)}`,
     `Compétences acquises : ${me.skills.map(s => `${s.name} (${s.cost} ${s.energy})`).join(", ")}`,
     `Prochaines compétences : ${me.upcoming_skills.map(s => `${s.name} au niveau ${s.level}`).join(", ") || "toutes acquises"}`,
   ]) {
@@ -408,7 +409,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     }
     if (["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  if (!fighting || !preserveBattle) renderWorld(adventure, me);
+  if (!fighting) renderWorld(adventure, me);
   $("npc-dialogue").textContent = adventure.step === "village" ? "Mira : des gobelins menacent notre lisière. Pourriez-vous en battre trois ? Gardez leurs peaux et leurs crocs pour la forge." : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < 3 ? `Mira : il reste ${3 - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
   if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === 3)) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < 3 ? "lisiere" : "rosee", point: hasQuest && adventure.kills < 3 ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
@@ -533,8 +534,13 @@ function unitName(unit) {
   const number = unit.id?.match(/:summon:(\d+)$/);
   return number ? `${unit.name} · #${Number(number[1]) + 1}` : unit.name;
 }
+function statusText(unit) {
+  const effects = (unit.effects || []).map(effect => `${effect.name || effect.type} (${effect.duration})`);
+  if (unit.stunned && !(unit.effects || []).some(effect => effect.group === "stun")) effects.push("Étourdi");
+  return effects.length ? effects.join(" · ") : "aucun";
+}
 function combatVitals(unit) {
-  return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""}`;
+  return `${unitName(unit)} · ${unit.hp}/${unit.max_hp} PV${unit.energies?.length ? " · " + unit.energies.map(e => `${e.type} ${e.current.toFixed(1)}/${e.max}`).join(" · ") : ""} · Statuts : ${statusText(unit)}`;
 }
 function statsText(unit) {
   const stats = unit.stats || {};
@@ -656,9 +662,9 @@ function renderBattle(adventure, me) {
       if (cover) return message("Cette case est occupée par une couverture.");
       moveControlled(adventure, me, [x, y]);
     };
-    cell.addEventListener("click", () => { tacticalInteractionUntil = Date.now() + 500; inspectedCell = [x, y]; focusedMob = ""; combatTarget = ""; renderTutorial(session.tutorial, true); });
-    cell.addEventListener("dblclick", move);
-    cell.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } });
+    cell.onclick = () => { inspectedCell = [x, y]; renderTutorial(session.tutorial, true); };
+    cell.ondblclick = move;
+    cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
   }
   for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
@@ -668,8 +674,8 @@ function renderBattle(adventure, me) {
     group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
     group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
-    group.addEventListener("click", () => selectEntity(id));
-    group.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(position); });
+    group.onclick = () => selectEntity(id);
+    group.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, id); if (current) approachEntity(current); };
     svg.append(group);
   };
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
@@ -681,20 +687,43 @@ function renderBattle(adventure, me) {
     svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
-  $("world-map").replaceChildren(svg);
-  $("mob-cards").replaceChildren();
+  const previousMap = $("world-map").querySelector(".battle-map");
+  if (previousMap && previousMap.getAttribute("viewBox") === svg.getAttribute("viewBox")) {
+    const nodes = [...svg.children].map(node => {
+      const selector = node.dataset.unit ? `[data-unit="${node.dataset.unit}"]` : node.dataset.cell ? `[data-cell="${node.dataset.cell}"]` : null;
+      const retained = selector && previousMap.querySelector(selector);
+      if (!retained) return node;
+      for (const attr of [...retained.attributes]) retained.removeAttribute(attr.name);
+      for (const attr of node.attributes) retained.setAttribute(attr.name, attr.value);
+      const children = [...node.children].map((child, index) => {
+        const oldChild = retained.children[index];
+        if (!oldChild || oldChild.tagName !== child.tagName) return child;
+        for (const attr of [...oldChild.attributes]) oldChild.removeAttribute(attr.name);
+        for (const attr of child.attributes) oldChild.setAttribute(attr.name, attr.value);
+        oldChild.textContent = child.textContent;
+        return oldChild;
+      });
+      retained.replaceChildren(...children);
+      retained.onclick = node.onclick; retained.ondblclick = node.ondblclick; retained.onkeydown = node.onkeydown;
+      return retained;
+    });
+    previousMap.replaceChildren(...nodes);
+  } else $("world-map").replaceChildren(svg);
+  const retainedCards = new Set();
   for (const mob of adventure.mobs) {
-    const card = document.createElement("button"); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
+    const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("button"); retainedCards.add(card); card.replaceChildren(); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
     const title = document.createElement("strong"); title.textContent = `${mob.name} · ${mob.stats.hp.current}/${mob.stats.hp.max} PV`;
     const bar = document.createElement("progress"); bar.max = mob.stats.hp.max; bar.value = mob.stats.hp.current; bar.setAttribute("aria-label", `PV de ${mob.name}`);
-    card.append(title, bar);
+    const statuses = document.createElement("span"); statuses.textContent = `Statuts : ${statusText(mob)}`;
+    card.append(title, bar, statuses);
     card.classList.toggle("selected", focusedMob === mob.combat_id);
-    card.addEventListener("click", () => selectEntity(mob.combat_id));
-    card.addEventListener("dblclick", event => { event.preventDefault(); approachEntity(mob.position); });
+    card.onclick = () => selectEntity(mob.combat_id);
+    card.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, mob.combat_id); if (current) approachEntity(current); };
     $("mob-cards").append(card);
   }
+  for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
   paragraphs("combat-stats-details", adventure.players.flatMap(player => player.invocations.map(combatVitals)));
-  paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"}`));
+  paragraphs("combat-resources", adventure.players.map(p => `${p.name} · ${p.hp}/${p.max_hp} PV · ${p.energies.map(e => `${e.type} ${e.current.toFixed(0)}/${e.max}`).join(" · ")}${battle.players[p.id].hidden ? " · dissimulé" : " · visible"} · Statuts : ${statusText(p)}`));
   const table = document.createElement("table");
   for (const intent of battle.intents) {
     const row = document.createElement("tr");
@@ -723,18 +752,18 @@ async function refresh(force = false) {
     $("connection").textContent = "Prêt · créez votre personnage";
     return;
   }
-  if (polling || busy || (!force && Date.now() < tacticalInteractionUntil)) return;
+  if (polling) return;
   polling = true;
   const epoch = stateEpoch;
   try {
     const state = await api("/api/state");
-    if (epoch !== stateEpoch || busy || (state.session && session && state.session.id === session.id && state.session.revision < session.revision)) return;
+    if (epoch !== stateEpoch || (state.session && session && state.session.id === session.id && state.session.revision < session.revision)) return;
     if (state.session) {
       session = state.session;
       sessionId = session.id;
     } else if (sessionId) {
       const updated = await api(`/api/sessions/${sessionId}`);
-      if (epoch !== stateEpoch || busy || (updated.id === session?.id && updated.revision < session.revision)) return;
+      if (epoch !== stateEpoch || (updated.id === session?.id && updated.revision < session.revision)) return;
       session = updated;
     } else session = null;
     remember();
@@ -774,8 +803,8 @@ async function command(action, params = {}) {
         if (error.code !== "stale_revision" || !currentParams.session_id || attempt === 4) throw error;
         const state = await api("/api/state");
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
-        session = state.session;
-        currentParams = {...currentParams, revision: state.session.revision};
+        if (!session || session.id !== state.session.id || state.session.revision >= session.revision) session = state.session;
+        currentParams = {...currentParams, revision: session.revision};
         if (action === "battle_move" && session.tutorial?.battle) {
           const battle = session.tutorial.battle;
           currentParams.path = gridPath(battle.map, battle.players[session.me].position, [currentParams.x, currentParams.y]);
@@ -786,7 +815,7 @@ async function command(action, params = {}) {
         }
       }
     }
-    session = data.session;
+    if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
     sessionId = session.id;
     remember();
     if (data.invite) {
@@ -855,7 +884,7 @@ $("copy-token").addEventListener("click", () => copy(token, "token-output"));
 $("copy-invite").addEventListener("click", () => copy($("invite-code").textContent, "invite-code"));
 const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invitation").hidden = false; }
-setInterval(refresh, 500);
+setInterval(refresh, 250);
 refresh();
 
 for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });

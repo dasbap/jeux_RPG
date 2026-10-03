@@ -56,5 +56,11 @@ async function checkLateSnapshot() {
   await oldRevision;
   assert.equal(context.session.revision, 3);
   assert.equal(renders, 0);
+  context.busy = true;
+  const duringCommand = vm.runInContext("refresh();", context);
+  resolveRead({session: {id: "room", revision: 4}});
+  await duringCommand;
+  assert.equal(context.session.revision, 4);
+  assert.equal(renders, 1);
 }
 Promise.resolve().then(checkLateSnapshot).then(() => check(3, false)).then(() => check(0, true)).then(() => console.log("UI : sortie après trois conflits de révision et refus métier sans répétition vérifiés.")).catch(error => { console.error(error); process.exitCode = 1; });
