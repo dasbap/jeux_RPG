@@ -9,12 +9,15 @@ import sqlite3
 import threading
 import time
 import unicodedata
-from collections import OrderedDict
+import uuid
+from datetime import datetime, timezone
+from collections import OrderedDict, deque
 from contextlib import contextmanager
 from pathlib import Path
 
 from jeuxRPG._class.character import Character
 from .clock import GameClock
+from .network_log import create_chat_logger
 from . import tutorial
 
 
@@ -40,7 +43,7 @@ class GameService:
     match_duration = 3 * 300.0
     lobby_duration = GameClock.ratio * 1800.0
 
-    def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None):
+    def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None, log_directory=None):
         self._tick_errors = {}
         self._prepared_views = OrderedDict()
         self._view_errors = {}
@@ -50,6 +53,10 @@ class GameService:
         if path.is_symlink():
             raise ValueError("La base ne peut pas être un lien symbolique")
         self._lock = threading.RLock()
+        self._chat_connections = {}
+        self._chat_sent = {}
+        self._chat_cleanup_at = 0
+        self.chat_log = create_chat_logger(log_directory or path.parent / ".logs")
         self.db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
         os.chmod(path, 0o600)
         self.db.row_factory = sqlite3.Row
@@ -107,10 +114,16 @@ class GameService:
         self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
         self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
         self._last_game = float(checkpoint[0]) if checkpoint else 0
+        with self._transaction():
+            for row in self.db.execute("SELECT id,scope,player_id,name,message,sent FROM chat WHERE session_id IS NULL"):
+                self._log_global_chat(dict(row), "legacy_global_chat")
+            self.db.execute("DELETE FROM chat WHERE session_id IS NULL")
 
     def close(self):
         with self._lock:
             self.db.close()
+            for handler in self.chat_log.handlers:
+                handler.close()
 
     def tick(self):
         with self._transaction():
@@ -272,10 +285,11 @@ class GameService:
                 result["tutorial"]["world_context"] = world_context(party)
         return result
 
-    def state(self, token, session_id=None, prepared=False):
+    def state(self, token, session_id=None, prepared=False, chat_connection=None):
         with self._transaction():
             player = self._authenticate(token)
             now = self._now(persist=False)
+            self._touch_chat(player, now, chat_connection)
             self._expire(now)
             seen = self.db.execute("SELECT seen FROM presence WHERE player_id=?", (player["id"],)).fetchone()
             if seen is None or now - seen[0] >= 10 * GameClock.ratio:
@@ -289,35 +303,75 @@ class GameService:
                     ORDER BY s.created DESC LIMIT 1""", (player["id"],)).fetchone()
             return {"player": {"id": player["id"], "name": player["name"], "class_name": player["class_name"]},
                     "game_time": now, "ratio": GameClock.ratio,
-                    "chat": self.chat_view(player, now, session["id"] if session else None),
+                    "chat": self.chat_view(player, now, session["id"] if session else None, chat_connection),
                     "session": self._snapshot(player, session, now, prepared) if session else None}
 
-    def chat_view(self, player, now, session_id=None):
-        online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON o.player_id=p.id WHERE p.scope=? AND o.seen>=? ORDER BY p.name", (player["scope"], now - 60 * GameClock.ratio))]
-        def messages(group):
-            condition = "session_id=?" if group else "session_id IS NULL"
-            args = (player["scope"], session_id) if group else (player["scope"],)
-            return [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND " + condition + " ORDER BY id DESC LIMIT 50", args).fetchall())]
-        return {"online": online, "global": messages(False), "group": messages(True) if session_id else []}
+    def configure_chat_log(self, directory):
+        with self._lock:
+            destination = Path(directory).resolve() / "chat.log"
+            if Path(self.chat_log.handlers[0].baseFilename) != destination:
+                for handler in self.chat_log.handlers:
+                    handler.close()
+                self.chat_log = create_chat_logger(directory)
 
-    def send_chat(self, token, channel, message, session_id=None):
+    def _log_global_chat(self, item, event="global_chat"):
+        self.chat_log.info(json.dumps({"time": datetime.now(timezone.utc).isoformat(), "event": event, **item}, ensure_ascii=False))
+
+    def _touch_chat(self, player, now, connection=None):
+        if connection is not None and (not isinstance(connection, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", connection)):
+            raise GameError("invalid_chat_connection", "Connexion de chat invalide.")
+        if now >= self._chat_cleanup_at:
+            self._chat_connections = {key: value for key, value in self._chat_connections.items() if now - value["seen"] < 60 * GameClock.ratio}
+            self._chat_sent = {key: value for key, value in self._chat_sent.items() if now - value < 60 * GameClock.ratio}
+            self._chat_cleanup_at = now + GameClock.ratio
+        key = (player["id"], connection or "default")
+        stream = self._chat_connections.get(key)
+        if stream is None or now - stream["seen"] >= 60 * GameClock.ratio:
+            owned = [key for key in self._chat_connections if key[0] == player["id"]]
+            if len(owned) >= 8:
+                oldest = min(owned, key=lambda key: self._chat_connections[key]["seen"])
+                del self._chat_connections[oldest]
+            if key not in self._chat_connections and len(self._chat_connections) >= 2048:
+                raise GameError("chat_capacity", "Trop de connexions de chat actives.", 429)
+            stream = {"scope": player["scope"], "seen": now, "messages": deque(maxlen=50)}
+            self._chat_connections[key] = stream
+        stream["seen"] = now
+        return stream
+
+    def chat_view(self, player, now, session_id=None, chat_connection=None):
+        stream = self._touch_chat(player, now, chat_connection)
+        online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON o.player_id=p.id WHERE p.scope=? AND o.seen>=? ORDER BY p.name", (player["scope"], now - 60 * GameClock.ratio))]
+        group = [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND session_id=? ORDER BY id DESC LIMIT 50", (player["scope"], session_id)).fetchall())] if session_id else []
+        return {"online": online, "global": [dict(item) for item in stream["messages"]], "group": group}
+
+    def send_chat(self, token, channel, message, session_id=None, chat_connection=None):
         if channel not in ("global", "group") or not isinstance(message, str) or not 1 <= len(message.strip()) <= 400 or any(ord(c) < 32 and c not in "\n\t" for c in message):
             raise GameError("invalid_chat", "Message invalide (1 à 400 caractères).")
         with self._transaction():
             player = self._authenticate(token)
-            now = self._now()
+            now = self._now(persist=False)
             if channel == "group":
                 if not isinstance(session_id, str):
                     raise GameError("not_in_group", "Rejoignez un groupe avant de discuter.", 409)
                 self._session(player, session_id)
             else:
                 session_id = None
-            last = self.db.execute("SELECT sent FROM chat WHERE player_id=? ORDER BY id DESC LIMIT 1", (player["id"],)).fetchone()
-            if last and now - last[0] < GameClock.ratio:
+            self._touch_chat(player, now, chat_connection)
+            saved = self.db.execute("SELECT sent FROM chat WHERE player_id=? ORDER BY id DESC LIMIT 1", (player["id"],)).fetchone()
+            last = max(self._chat_sent.get(player["id"], -math.inf), saved[0] if saved else -math.inf)
+            if now - last < GameClock.ratio:
                 raise GameError("chat_rate_limit", "Attendez une seconde entre deux messages.", 429)
-            self.db.execute("INSERT INTO chat(scope,session_id,player_id,name,message,sent) VALUES(?,?,?,?,?,?)", (player["scope"], session_id, player["id"], player["name"], message.strip(), now))
-            self.db.execute("DELETE FROM chat WHERE id NOT IN (SELECT id FROM chat WHERE scope=? AND session_id IS ? ORDER BY id DESC LIMIT 200) AND scope=? AND session_id IS ?", (player["scope"], session_id, player["scope"], session_id))
-            return self.chat_view(player, now, session_id)
+            if channel == "global":
+                item = {"id": uuid.uuid4().hex, "name": player["name"], "message": message.strip()}
+                self._log_global_chat({**item, "scope": player["scope"], "player_id": player["id"]})
+                for stream in self._chat_connections.values():
+                    if stream["scope"] == player["scope"] and now - stream["seen"] < 60 * GameClock.ratio:
+                        stream["messages"].append(item)
+            else:
+                self.db.execute("INSERT INTO chat(scope,session_id,player_id,name,message,sent) VALUES(?,?,?,?,?,?)", (player["scope"], session_id, player["id"], player["name"], message.strip(), now))
+                self.db.execute("DELETE FROM chat WHERE id NOT IN (SELECT id FROM chat WHERE scope=? AND session_id=? ORDER BY id DESC LIMIT 200) AND scope=? AND session_id=?", (player["scope"], session_id, player["scope"], session_id))
+            self._chat_sent[player["id"]] = now
+            return self.chat_view(player, now, session_id, chat_connection)
 
     def command(self, token, request_id, action, _compact=False, **params):
         if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", request_id):

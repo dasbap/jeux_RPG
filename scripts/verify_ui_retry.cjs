@@ -86,7 +86,7 @@ async function checkPendingMovement() {
 async function checkTunnelTransport() {
   const apiSource = source.slice(source.indexOf("async function api("), source.indexOf("function remember("));
   let timeout, deadline, options, resolveFetch, rejectFetch;
-  const context = {token: "token", bundleToken: "", bundleHashes: {}, bundleValues: {}, bundleSequence: 0, appliedBundleSequence: 0, location: {hostname: "example.devtunnels.ms"}, AbortController, TypeError,
+  const context = {token: "token", chatToken: "token", chatConnection: "test-chat-connection", bundleToken: "", bundleHashes: {}, bundleValues: {}, bundleSequence: 0, appliedBundleSequence: 0, location: {hostname: "example.devtunnels.ms"}, AbortController, TypeError,
     setTimeout: (callback, delay) => {timeout = callback; deadline = delay; return 1;}, clearTimeout: () => {},
     fetch: (url, settings) => {options = settings; return new Promise((resolve,reject) => {resolveFetch = resolve; rejectFetch = reject;});}};
   vm.createContext(context);

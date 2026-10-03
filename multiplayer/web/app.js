@@ -1,6 +1,8 @@
 "use strict";
 const $ = id => document.getElementById(id);
 let token = sessionStorage.getItem("rpg-token") || "";
+let chatToken = token;
+let chatConnection = requestId();
 let session = null;
 let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
@@ -58,6 +60,10 @@ function invitationLink(code) {
 async function api(path, body, authenticated = true) {
   const headers = {Accept: "application/json"};
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
+  if (authenticated && (path === "/api/state" || path === "/api/chat")) {
+    if (chatToken !== token) { chatToken = token; chatConnection = requestId(); }
+    headers["X-RPG-Chat-Connection"] = chatConnection;
+  }
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
   const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);

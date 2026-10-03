@@ -611,3 +611,78 @@ def test_compact_confirmation_skips_rendering_and_keeps_action_validation(game, 
     with pytest.raises(GameError) as failure:
         game.command(token, uuid.uuid4().hex, "travel", _compact=True, session_id=latest["id"], revision=latest["revision"], destination="rosee")
     assert failure.value.code == "in_combat"
+
+
+def test_global_chat_is_live_only_per_browser_connection_and_logged(game):
+    alice, bob, late = player(game), player(game, "Bob"), player(game, "Late")
+    game.state(alice, chat_connection="alice-browser")
+    game.state(bob, chat_connection="bob-browser")
+    text = "Bonjour <script>\n" + "x" * 360
+    sent = game.send_chat(alice, "global", text, chat_connection="alice-browser")
+    assert sent["global"][-1]["message"] == text
+    assert game.state(bob, chat_connection="bob-browser")["chat"]["global"][-1]["message"] == text
+    assert game.state(late, chat_connection="late-browser")["chat"]["global"] == []
+    assert game.state(bob, chat_connection="bob-new-browser")["chat"]["global"] == []
+    assert game.state(bob, chat_connection="bob-browser")["chat"]["global"][-1]["message"] == text
+    assert game.db.execute("SELECT COUNT(*) FROM chat WHERE session_id IS NULL").fetchone()[0] == 0
+    rows = [json.loads(line) for line in Path(game.chat_log.handlers[0].baseFilename).read_text().splitlines()]
+    assert rows[-1]["message"] == text
+    assert rows[-1]["event"] == "global_chat"
+    assert alice not in json.dumps(rows)
+
+
+def test_global_chat_does_not_queue_messages_for_disconnected_clients(game):
+    alice, bob = player(game), player(game, "Bob")
+    game.state(alice, chat_connection="alice-browser")
+    game.state(bob, chat_connection="bob-browser")
+    game.send_chat(alice, "global", "Before", chat_connection="alice-browser")
+    game.clock.advance(61)
+    game.state(alice, chat_connection="alice-browser")
+    game.send_chat(alice, "global", "During absence", chat_connection="alice-browser")
+    assert game.state(bob, chat_connection="bob-browser")["chat"]["global"] == []
+
+
+def test_global_chat_cannot_cross_scopes_and_its_buffers_are_bounded(game):
+    alice = player(game)
+    other = game._bind_discord("123", "456", "Discord", "Knight")
+    game.state(alice, chat_connection="alice-browser")
+    game.state(other, chat_connection="discord-browser")
+    for index in range(60):
+        game.clock.advance(1)
+        game.state(alice, chat_connection="alice-browser")
+        game.state(other, chat_connection="discord-browser")
+        game.send_chat(alice, "global", str(index), chat_connection="alice-browser")
+    assert game.state(other, chat_connection="discord-browser")["chat"]["global"] == []
+    history = game.state(alice, chat_connection="alice-browser")["chat"]["global"]
+    assert len(history) == 50
+    assert history[0]["message"] == "10"
+    for index in range(20):
+        game.state(alice, chat_connection=f"alice-browser-{index}")
+    assert sum(key[0] == game.state(alice)["player"]["id"] for key in game._chat_connections) <= 8
+
+
+def test_restart_archives_legacy_global_chat_and_never_replays_it(tmp_path):
+    database = tmp_path / "chat.sqlite3"
+    clock = Clock()
+    first = GameService(database, clock)
+    try:
+        token = player(first)
+        actor = first.state(token)["player"]
+        first.db.execute("INSERT INTO chat(scope,session_id,player_id,name,message,sent) VALUES('public',NULL,?,?,?,0)", (actor["id"], actor["name"], "Legacy"))
+    finally:
+        first.close()
+    second = GameService(database, clock)
+    try:
+        assert second.state(token)["chat"]["global"] == []
+        assert second.db.execute("SELECT COUNT(*) FROM chat WHERE session_id IS NULL").fetchone()[0] == 0
+        second.send_chat(token, "global", "Live")
+        assert second.state(token)["chat"]["global"][-1]["message"] == "Live"
+    finally:
+        second.close()
+    third = GameService(database, clock)
+    try:
+        assert third.state(token)["chat"]["global"] == []
+        logs = [json.loads(line) for line in Path(third.chat_log.handlers[0].baseFilename).read_text().splitlines()]
+        assert [row["message"] for row in logs] == ["Legacy", "Live"]
+    finally:
+        third.close()

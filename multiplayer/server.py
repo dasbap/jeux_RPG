@@ -43,6 +43,7 @@ class RPGServer(ThreadingHTTPServer):
 
     def __init__(self, address, service, public_origin=None, log_directory=".logs"):
         self.network_log = create_logger(log_directory)
+        service.configure_chat_log(log_directory)
         self.service = service
         self.limiter = RateLimiter()
         self._slots = threading.BoundedSemaphore(128)
@@ -222,7 +223,7 @@ class Handler(BaseHTTPRequestHandler):
                     token = self._token()
                     if not self.server.limiter.accept(("state", digest(token)), 300):
                         raise GameError("rate_limit", "Trop de requêtes d’état.", 429)
-                    state = self.server.service.state(token, prepared=self.headers.get("X-RPG-Bundles") == "1")
+                    state = self.server.service.state(token, prepared=self.headers.get("X-RPG-Bundles") == "1", chat_connection=self.headers.get("X-RPG-Chat-Connection"))
                     if self.headers.get("X-RPG-Bundles") == "1":
                         state = encode(state, self.headers.get("X-RPG-Bundle-Hashes", ""))
                     self._respond(200, state)
@@ -241,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/chat":
                 if set(body) != {"channel", "message", "session_id"}:
                     raise GameError("invalid_chat", "Paramètres de chat invalides.")
-                self._respond(200, self.server.service.send_chat(self._token(), body["channel"], body["message"], body["session_id"]))
+                self._respond(200, self.server.service.send_chat(self._token(), body["channel"], body["message"], body["session_id"], self.headers.get("X-RPG-Chat-Connection")))
             elif path == "/api/commands":
                 token = self._token()
                 if not self.server.limiter.accept(("command", digest(token)), 60):
@@ -291,7 +292,7 @@ def main():
     parser.add_argument("--database", default=".data/multiplayer.sqlite3")
     parser.add_argument("--public-origin", help="Origine HTTPS du proxy, par exemple https://rpg.example.com")
     args = parser.parse_args()
-    service = GameService(args.database)
+    service = GameService(args.database, log_directory=args.log_directory)
     server = RPGServer(("127.0.0.1", args.port), service, args.public_origin, args.log_directory)
     print(f"RPG multijoueur : http://127.0.0.1:{server.server_address[1]}", flush=True)
     try:
