@@ -394,7 +394,7 @@ function renderWorld(adventure, me) {
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
     const p = document.createElement("p");
-    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 6 * 3600 / 3).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ↔ ${places.find(p => p.id === route.to).name}`;
+    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 6 * 3600 / 3).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ${route.bidirectional === false ? "→" : "↔"} ${places.find(p => p.id === route.to).name}`;
     $("map-routes").append(p);
 
   }

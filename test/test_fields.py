@@ -13,6 +13,12 @@ from jeuxRPG.multiplayer.service import GameError, GameService
 def stable_field_scenarios(monkeypatch):
     maps = json.loads((Path(__file__).parent / "fixtures" / "fields.json").read_text())
     monkeypatch.setattr(fields, "MAPS", maps)
+    places = deepcopy(world.PLACES)
+    for key, definition in maps.items():
+        zone = fields.zone_of(maps, key)
+        if key != zone and not any(point['id'] == key for place in places.values() for point in place['points']):
+            places[zone]['points'].append({'id': key, 'name': definition['name'], 'kind': 'field'})
+    monkeypatch.setattr(world, 'PLACES', places)
     for definition in maps.values():
         monkeypatch.setitem(tactics.PRESETS, definition["id"], definition)
 
@@ -336,3 +342,17 @@ def test_initial_forest_route_can_be_crossed_reversed_and_rejoined_after_full_ex
     tutorial.execute(data, "p", "enter_zone", {}, 6, GameError, lambda: .99)
     assert data["field_map"] == "clearing_road"
     assert data["battle"]["players"]["p"]["position"] == [28, 10]
+
+
+def test_timed_map_link_waits_and_arrives_at_chosen_cell():
+    data = party()
+    gate = {'position': [0, 10], 'destination': 'rosee', 'entry': [3, 20], 'name': 'Sentier', 'travel_minutes': 2}
+    fields.transition(data, gate, 'p', 1)
+    assert data['battle'] is None
+    assert data['transit']['ready_at'] == 121
+    tutorial.advance(data, 120, lambda: .99)
+    assert data['battle'] is None
+    tutorial.advance(data, 121, lambda: .99)
+    assert data['field_map'] == 'rosee'
+    assert data['battle']['players']['p']['position'] == [3, 20]
+    assert data['transit'] is None

@@ -66,8 +66,10 @@ class MapEditor:
             ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
         advanced = ttk.Frame(root, padding=4)
         advanced.pack(fill="x")
-        for index, (label, command) in enumerate((("Aperçu rendu final", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
+        for index, (label, command) in enumerate((("Aperçu rendu final", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize))):
             ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
+        self.patrol_button = ttk.Button(advanced, text="Terminer la patrouille", command=self.end_patrol)
+        self.tool.trace_add("write", lambda *args: self.update_patrol_button())
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
         tools = ttk.Frame(body, padding=10)
@@ -89,6 +91,9 @@ class MapEditor:
         self.canvas.bind("<Button-1>", self.click)
         self.canvas.bind("<B1-Motion>", self.drag)
         self.canvas.bind("<Motion>", self.hover)
+        self.canvas.bind("<MouseWheel>", lambda e: self.zoom(4 if e.delta > 0 else -4, e))
+        self.canvas.bind("<Button-4>", lambda e: self.zoom(4, e))
+        self.canvas.bind("<Button-5>", lambda e: self.zoom(-4, e))
         self.canvas.bind("<ButtonRelease-1>", self.drop_object)
         root.bind("<Control-z>", lambda event: self.undo())
         root.bind("<Control-s>", lambda event: self.save())
@@ -114,13 +119,21 @@ class MapEditor:
         if self.displayed_map.get() not in self.map_labels:
             return
         self.selected.set(self.map_labels[self.displayed_map.get()])
+        self.update_patrol_button()
         self.draw()
 
     def visible_layer(self, name):
         return not hasattr(self, "layers") or self.layers[name].get()
 
+    def update_patrol_button(self):
+        if self.tool.get() == "Patrouille" and getattr(self, "patrol_spawn", None) and self.patrol_spawn[0] == self.selected.get():
+            self.patrol_button.grid(row=2, column=0, padx=3, pady=2, sticky="w")
+        else:
+            self.patrol_button.grid_remove()
+
     def end_patrol(self):
         self.patrol_spawn = None
+        self.update_patrol_button()
         self.status.set("Patrouille terminée. Recliquer un spawner avec l’outil Patrouille pour éditer son trajet.")
 
     def duplicate(self):
@@ -191,9 +204,11 @@ class MapEditor:
         x, y = self.coordinates(event)
         self.status.set(f"{self.selected.get()} · case {x}, {y} · {self.tool.get()} · {self.path or 'non enregistré'}")
 
-    def zoom(self, delta):
+    def zoom(self, delta, event=None):
+        from .map_viewport import zoom_canvas
+        previous = self.size
         self.size = max(12, min(64, self.size + delta))
-        self.draw()
+        zoom_canvas(self.canvas, previous, self.size, self.draw, event.x if event else None, event.y if event else None)
 
     def draw(self):
         self.canvas.delete("all")
@@ -288,6 +303,8 @@ class MapEditor:
             config = next((item for item in data.get("spawners", []) if item["position"] == point), None)
             if config is not None:
                 self.patrol_spawn = (self.selected.get(), point[:])
+                if hasattr(self, "patrol_button"):
+                    self.update_patrol_button()
                 if messagebox.askyesno("Patrouille", "Remplacer les points actuels ?"):
                     self.remember()
                     config["patrol"] = []
@@ -408,6 +425,11 @@ class MapEditor:
         if reverse and (not destination or destination == self.selected.get()):
             raise ValueError("Le retour automatique nécessite une autre carte destination.")
         gate = {"name": result["name"].strip(), "position": point[:], "destination": destination, "entry": entry}
+        if "travel_minutes" in result:
+            gate["travel_minutes"] = float(result["travel_minutes"])
+        previous = next((item for item in source["exits"] if item["position"] == point), {})
+        if previous.get("link_id"):
+            gate["link_id"] = previous["link_id"]
         if fast_destination and not destination:
             gate["fast_destination"] = fast_destination
         reverse_gate = None
@@ -428,16 +450,16 @@ class MapEditor:
         window.title(title)
         entries = {}
         for row, (key, value) in enumerate(values.items()):
-            if key == "position":
+            if key in ("position", "link_id"):
                 continue
-            labels = {"route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            labels = {"remove_reverse": "Supprimer aussi le sens inverse", "link_mode": "Type : passage immédiat / trajet à pied / rapide sur carte générale", "route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
             ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
-            if key in ("bidirectional", "pick_points"):
+            if key in ("bidirectional", "pick_points", "remove_reverse"):
                 variable = tk.BooleanVar(value=bool(value))
                 ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
                 entries[key] = variable
                 continue
-            choices = list(self.object_choices) if key == "object_choice" else ["est", "ouest", "nord", "sud"] if key == "direction" else sorted({zone_of(self.maps, key) for key in self.maps}) if key in ("from_zone", "to_zone") else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map", "from_zone", "to_zone") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
+            choices = ["passage", "trajet", "rapide"] if key == "link_mode" else list(self.object_choices) if key == "object_choice" else ["est", "ouest", "nord", "sud"] if key == "direction" else sorted({zone_of(self.maps, key) for key in self.maps}) if key in ("from_zone", "to_zone") else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map", "from_zone", "to_zone") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
             entry = ttk.Combobox(window, values=choices, width=48) if choices is not None else ttk.Entry(window, width=50)
             entry.insert(0, ",".join(map(str, value)) if isinstance(value, list) else str(value) if value is not None else "")
             entry.grid(row=row, column=1, padx=8, pady=5)

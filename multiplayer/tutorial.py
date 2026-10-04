@@ -399,7 +399,7 @@ def arrive(party, destination, messages):
     world.record(party)
     if party.get("field_mode") and not party.get("journey") and destination in fields.MAPS:
         party["journey"] = []
-        messages.extend(fields.enter(party, destination, fields.arrival_point(destination, party.get("transit", {}).get("source") if party.get("transit") else None), party.get("field_now", 0)))
+        messages.extend(fields.enter(party, destination, (party.get("transit") or {}).get("field_entry") or fields.arrival_point(destination, party.get("transit", {}).get("source") if party.get("transit") else None), party.get("field_now", 0)))
 
 
 def continue_journey(party, now, random, messages):

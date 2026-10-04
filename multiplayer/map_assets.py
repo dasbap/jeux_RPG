@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 import os
 import re
 from copy import deepcopy
@@ -75,6 +76,9 @@ def validate(maps):
         if not definition.get("exits"):
             raise ValueError(f"{key} : au moins un passage est nécessaire.")
         for exit in definition["exits"]:
+            minutes = exit.get("travel_minutes", 0)
+            if type(minutes) not in (int, float) or not math.isfinite(minutes) or not 0 <= minutes <= 10000:
+                raise ValueError(f"{key} : durée du passage invalide.")
             origin = exit.get("fast_destination")
             if origin is not None and (not isinstance(origin, str) or origin not in maps):
                 raise ValueError(f"{key} : provenance du chemin rapide invalide.")

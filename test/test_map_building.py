@@ -1,10 +1,26 @@
 from copy import deepcopy
 from types import SimpleNamespace
+import json
+from pathlib import Path
 
 import pytest
 
-from jeuxRPG.multiplayer import fields, map_assets, map_building, tactics, tutorial
+from jeuxRPG.multiplayer import fields, map_assets, map_building, tactics, tutorial, world
 from jeuxRPG.multiplayer.map_editor import MapEditor
+
+
+@pytest.fixture(autouse=True)
+def stable_builder_scenarios(monkeypatch):
+    data = json.loads((Path(__file__).parent / 'fixtures' / 'fields.json').read_text())
+    monkeypatch.setattr(fields, 'MAPS', data)
+    places = deepcopy(world.PLACES)
+    for key, definition in data.items():
+        zone = fields.zone_of(data, key)
+        if key != zone and not any(point['id'] == key for place in places.values() for point in place['points']):
+            places[zone]['points'].append({'id': key, 'name': definition['name'], 'kind': 'field'})
+    monkeypatch.setattr(world, 'PLACES', places)
+    for definition in data.values():
+        monkeypatch.setitem(tactics.PRESETS, definition['id'], definition)
 
 
 def editor():

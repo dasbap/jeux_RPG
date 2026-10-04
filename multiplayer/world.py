@@ -124,6 +124,12 @@ def view(party, me, traveller=None):
         known.add("lisiere")
     if step in ("craft", "travel", "complete"):
         known.add("brume")
+    for route in ROUTES:
+        if 'bidirectional' in route:
+            if route['from'] in visited:
+                known.add(route['to'])
+            if route.get('bidirectional') and route['to'] in visited:
+                known.add(route['from'])
     fighting = bool(party.get("battle") or party["mob"] or party.get("mobs"))
     moving = bool(party.get("transit") or party.get("journey"))
     places = []
@@ -240,9 +246,11 @@ def graph(known):
     for route in ROUTES:
         if route["from"] in known and route["to"] in known:
             middle = route["id"]
-            graph[middle] = [route["from"], route["to"]]
+            graph[middle] = [route["to"]]
             graph[route["from"]].append(middle)
-            graph[route["to"]].append(middle)
+            if route.get("bidirectional", True):
+                graph[middle].append(route["from"])
+                graph[route["to"]].append(middle)
     return graph
 
 

@@ -28,6 +28,8 @@ def world_metadata(maps, streets, routes):
     for route in routes:
         if not isinstance(route, dict) or not isinstance(route.get('id'), str) or not re.fullmatch(r'[a-z0-9_]{1,64}', route['id']) or route['id'] in seen or route.get('from') not in maps or route.get('to') not in maps or route['from'] == route['to'] or not isinstance(route.get('name'), str) or not 1 <= len(route['name']) <= 100:
             raise ValueError('Chemin rapide invalide ou dupliqué.')
+        if 'bidirectional' in route and type(route['bidirectional']) is not bool:
+            raise ValueError('Sens de chemin invalide.')
         distance = route.get('distance_km')
         if type(distance) not in (int, float) or not math.isfinite(distance) or not .0001 <= distance <= 1000:
             raise ValueError('Distance de chemin comprise entre 0.0001 et 1000 km.')
@@ -89,7 +91,7 @@ class WorldEditor:
             distance = float(values['distance_km'])
             if float(values['travel_minutes']) != minutes:
                 distance = float(values['travel_minutes'])/10
-            item = {'id':values['route_id'], 'name':values['name'], 'from':values['from_zone'], 'to':values['to_zone'], 'distance_km':distance}
+            item = {**old, 'id':values['route_id'], 'name':values['name'], 'from':values['from_zone'], 'to':values['to_zone'], 'distance_km':distance}
             routes = deepcopy(self.routes)
             if new:
                 routes.append(item)

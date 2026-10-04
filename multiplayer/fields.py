@@ -155,9 +155,16 @@ def transition(party, gate, player, now):
     battle = party["battle"]
     definition = MAPS[party["field_map"]]
     unit = battle["players"][player]
-    pursuers = [mob for mob in party["mobs"] if mob.get("alerted") and not mob.get("stunned_until", 0) > now and tactics.sees(definition, mob, unit) and tactics.path(definition, mob["position"], unit["position"]) is not None] if gate["destination"] else []
+    pursuers = [mob for mob in party["mobs"] if mob.get("alerted") and not mob.get("stunned_until", 0) > now and tactics.sees(definition, mob, unit) and tactics.path(definition, mob["position"], unit["position"]) is not None] if gate["destination"] and not gate.get("travel_minutes", 0) else []
     remaining = [mob for mob in party["mobs"] if mob not in pursuers]
     party["fields"][party["field_map"]] = snapshot(party, now, remaining)
+    if gate["destination"] and gate.get("travel_minutes", 0) > 0:
+        duration = gate["travel_minutes"] * 60
+        party["linked_companions"] = deepcopy(battle.get("companions", {}))
+        party.update(battle=None, mobs=[], mob=None, journey=[])
+        party.pop("field_map", None)
+        party["transit"] = {"source": party["position"], "destination": gate["destination"], "field_entry": gate["entry"][:], "remaining": duration, "total": duration, "segment": duration, "started_at": now, "ready_at": now + duration, "hazard": False}
+        return [f"Vous empruntez {gate['name']} ({gate['travel_minutes']:g} min en jeu)."]
     if gate["destination"]:
         followers = []
         for mob in pursuers:

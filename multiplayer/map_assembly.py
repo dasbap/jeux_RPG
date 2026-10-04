@@ -119,11 +119,13 @@ class AssemblyWindow:
         self.selected = editor.selected.get()
         self.scale = 8
         self.dragging = None
+        self.link_source = None
+        self.bounds = None
         self.info = tk.StringVar(value='Glissez un bloc pour le déplacer sur la grille. Molette : zoom. Double clic : éditer.')
         bar = ttk.Frame(self.window, padding=5)
         bar.pack(fill='x')
-        for label, command in (('Coller / espacer', self.place), ('Relier par un passage', self.connect), ('Fusionner dans la sélection', self.fuse), ('Annuler', self.undo), ('Enregistrer', editor.save)):
-            ttk.Button(bar, text=label, command=command).pack(side='left', padx=3)
+        for index, (label, command) in enumerate((('Coller / espacer', self.place), ('Créer une zone', self.new_zone), ('Raccorder', self.connect), ('Supprimer un raccord', self.disconnect), ('Annuler raccord', self.cancel_connect), ('Fusionner dans la sélection', self.fuse), ('Annuler', self.undo), ('Enregistrer', editor.save))):
+            ttk.Button(bar, text=label, command=command).grid(row=index//5, column=index%5, padx=3, pady=3, sticky='w')
         selector = ttk.Frame(self.window, padding=4)
         selector.pack(fill='x')
         ttk.Label(selector, text='Bloc sélectionné').pack(side='left')
@@ -147,9 +149,12 @@ class AssemblyWindow:
         self.canvas.bind('<B1-Motion>', self.drag)
         self.canvas.bind('<ButtonRelease-1>', self.release)
         self.canvas.bind('<Double-Button-1>', self.edit)
-        self.canvas.bind('<MouseWheel>', lambda e: self.zoom(1 if e.delta > 0 else -1))
-        self.canvas.bind('<Button-4>', lambda e: self.zoom(1))
-        self.canvas.bind('<Button-5>', lambda e: self.zoom(-1))
+        self.canvas.bind('<MouseWheel>', lambda e: self.zoom(1 if e.delta > 0 else -1, e))
+        self.canvas.bind('<Button-4>', lambda e: self.zoom(1, e))
+        self.canvas.bind('<Button-5>', lambda e: self.zoom(-1, e))
+        self.canvas.bind('<Button-2>', lambda e: self.canvas.scan_mark(e.x, e.y))
+        self.canvas.bind('<B2-Motion>', lambda e: self.canvas.scan_dragto(e.x, e.y, gain=1))
+        self.window.bind('<Escape>', lambda e: self.cancel_connect())
         self.draw()
 
     def choose(self, event=None):
@@ -161,7 +166,7 @@ class AssemblyWindow:
         self.selection.set(self.selected)
         self.canvas.delete('all')
         layout = positions(self.editor.maps)
-        self.offset = [min(p[0] for p in layout.values())-6, min(p[1] for p in layout.values())-6]
+        self.offset = [0, 0]
         for key, data in self.editor.maps.items():
             x, y = layout[key]
             for gate in data['exits']:
@@ -182,7 +187,19 @@ class AssemblyWindow:
                 for px, py in data.get(field, []):
                     self.canvas.create_rectangle(x+px*self.scale, y+py*self.scale, x+(px+1)*self.scale, y+(py+1)*self.scale, fill=color, outline='', tags=(tag,))
             self.canvas.create_text(x+4, y+4, text=f"{data['name']}\n[{key}] {layout[key]}", anchor='nw', fill='white', width=max(50, data['width']*self.scale-8), tags=(tag,))
-        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+        from . import world
+        for route in self.editor.maps['clearing'].get('travel_routes', world.ROUTES) if 'clearing' in self.editor.maps else []:
+            if route['from'] not in layout or route['to'] not in layout:
+                continue
+            source, target = self.editor.maps[route['from']], self.editor.maps[route['to']]
+            x, y = layout[route['from']]
+            dx, dy = layout[route['to']]
+            start = ((x+source['width']/2)*self.scale, (y+source['height']/2)*self.scale)
+            end = ((dx+target['width']/2)*self.scale, (dy+target['height']/2)*self.scale)
+            self.canvas.create_line(*start, *end, fill='#ffe080', dash=(6, 4), width=2, arrow='both' if route.get('bidirectional', True) else 'last')
+        from .map_viewport import assembly_bounds
+        self.bounds = assembly_bounds(self.editor.maps, layout, getattr(self, 'bounds', None))
+        self.canvas.configure(scrollregion=tuple(value*self.scale for value in self.bounds))
 
     def press(self, event):
         items = self.canvas.find_overlapping(self.canvas.canvasx(event.x), self.canvas.canvasy(event.y), self.canvas.canvasx(event.x), self.canvas.canvasy(event.y))
@@ -191,6 +208,10 @@ class AssemblyWindow:
         tags = self.canvas.gettags(items[-1])
         key = next((tag[4:] for tag in tags if tag.startswith('map:')), None)
         if key:
+            if getattr(self, "link_source", None):
+                if key != self.link_source:
+                    self.finish_connect(key)
+                return
             self.selected = key
             self.dragging = (self.canvas.canvasx(event.x), self.canvas.canvasy(event.y), positions(self.editor.maps)[key], False)
             self.info.set(f"{key} : glissez pour déplacer. Coller / espacer règle une distance exacte ; fusion conserve ce bloc.")
@@ -216,9 +237,11 @@ class AssemblyWindow:
         self.last_dx = self.last_dy = 0
         self.draw()
 
-    def zoom(self, amount):
-        self.scale = max(2, min(20, self.scale+amount))
-        self.draw()
+    def zoom(self, amount, event=None):
+        from .map_viewport import zoom_canvas
+        previous = self.scale
+        self.scale = max(2, min(32, self.scale+amount))
+        zoom_canvas(self.canvas, previous, self.scale, self.draw, event.x if event else None, event.y if event else None)
 
     def edit(self, event=None):
         self.editor.selected.set(self.selected)
@@ -249,24 +272,87 @@ class AssemblyWindow:
         except (ValueError, KeyError) as exc:
             self.messagebox.showerror('Assemblage', str(exc), parent=self.window)
 
-    def connect(self):
-        values = self.editor.form('Relier la sélection', {'name': 'Passage', 'position_text': '0,0', 'destination': '', 'entry': '1,1', 'bidirectional': True})
+    def new_zone(self):
+        from .map_links import create_zone
+        values = self.editor.form('Créer une zone', {'map_id': '', 'name': 'Nouvelle zone', 'width': 30, 'height': 20, 'biome': 'forest', 'zone_level': 1})
         if not values:
             return
-        previous = deepcopy(self.editor.maps)
-        previous_selected = self.editor.selected.get()
         try:
-            point = [int(n.strip()) for n in values.pop('position_text').split(',')]
-            self.editor.selected.set(self.selected)
-            self.editor.set_gate(point, values)
-            validate(self.editor.maps)
-            updated = deepcopy(self.editor.maps)
-            self.editor.maps = previous
-            self.apply(updated)
+            anchor = self.editor.maps[self.selected]
+            origin = positions(self.editor.maps)[self.selected]
+            result = create_zone(self.editor.maps, values['map_id'], values['name'], int(values['width']), int(values['height']), values['biome'], int(values['zone_level']), [origin[0]+anchor['width']+8, origin[1]])
+            self.selected = values['map_id']
+            self.apply(result)
         except (ValueError, KeyError) as exc:
-            self.editor.maps = previous
-            self.editor.selected.set(previous_selected)
-            self.messagebox.showerror('Passage', str(exc), parent=self.window)
+            self.messagebox.showerror('Zone', str(exc), parent=self.window)
+
+    def connect(self):
+        self.link_source = self.selected
+        self.dragging = None
+        self.info.set(f"Raccorder {self.selected} : cliquez le bloc destination. Échap pour annuler.")
+
+    def cancel_connect(self):
+        self.link_source = None
+        self.info.set('Glissez un bloc pour le déplacer. Molette : zoom au pointeur. Bouton central : déplacer la vue.')
+
+    def finish_connect(self, destination):
+        from .map_objects import pick_cell
+        from .map_links import connect_maps
+        source = self.link_source
+        self.cancel_connect()
+        values = self.editor.form('Type de raccord', {'link_mode': 'trajet', 'name': 'Chemin'})
+        if not values:
+            return
+        mode = values['link_mode']
+        point = entry = reverse = returning = None
+        if mode != 'rapide':
+            first = pick_cell(self.editor, '1 · Départ sur '+self.editor.maps[source]['name'], source)
+            if not first:
+                return
+            second = pick_cell(self.editor, '2 · Arrivée sur '+self.editor.maps[destination]['name'], destination)
+            if not second:
+                return
+            point, entry = first[1], second[1]
+        both = self.messagebox.askyesno('Sens du raccord', 'Créer aussi le trajet de retour ?', parent=self.window)
+        if both and mode != 'rapide':
+            third = pick_cell(self.editor, '3 · Départ du retour sur '+self.editor.maps[destination]['name'], destination)
+            if not third:
+                return
+            fourth = pick_cell(self.editor, '4 · Arrivée du retour sur '+self.editor.maps[source]['name'], source)
+            if not fourth:
+                return
+            reverse, returning = third[1], fourth[1]
+        minutes = 0
+        if mode != 'passage':
+            timing = self.editor.form('Durée du trajet', {'travel_minutes': 1})
+            if not timing:
+                return
+            try:
+                minutes = float(timing['travel_minutes'])
+            except ValueError:
+                self.messagebox.showerror('Raccord', 'Durée numérique requise.', parent=self.window)
+                return
+        try:
+            self.apply(connect_maps(self.editor.maps, source, destination, values['name'], minutes, mode, point, entry, reverse, returning, both))
+            self.info.set('Raccord créé. Enregistrez pour le conserver ; redémarrez le serveur pour appliquer les chemins rapides.')
+        except (ValueError, KeyError, TypeError) as exc:
+            self.messagebox.showerror('Raccord', str(exc), parent=self.window)
+
+    def disconnect(self):
+        from .map_links import links_from, remove_link
+        links = links_from(self.editor.maps, self.selected)
+        if not links:
+            self.info.set('Aucun raccord sortant pour ce bloc.')
+            return
+        self.editor.object_choices = {f"{index+1} · {name} → {destination} ({kind})": (kind, item) for index, (kind, item, destination, name) in enumerate(links)}
+        values = self.editor.form('Supprimer un raccord', {'object_choice': next(iter(self.editor.object_choices)), 'remove_reverse': False})
+        if not values:
+            return
+        try:
+            kind, index = self.editor.object_choices[values['object_choice']]
+            self.apply(remove_link(self.editor.maps, self.selected, kind, index, values['remove_reverse']))
+        except (ValueError, KeyError) as exc:
+            self.messagebox.showerror('Raccord', str(exc), parent=self.window)
 
     def fuse(self):
         values = self.editor.form('Fusionner dans la sélection', {'source_map': ''})
