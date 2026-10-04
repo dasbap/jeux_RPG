@@ -225,6 +225,9 @@ class Project:
                 self.maps[replacement]['previous_ids'] = list(dict.fromkeys([*self.maps[replacement].get('previous_ids',[]),identifier]))
                 self.maps[replacement]['id'] = 'field_'+replacement
                 for data in self.maps.values():
+                    points = data.get('world_view', {}).get('points', {})
+                    if identifier in points:
+                        points[replacement] = points.pop(identifier)
                     for key in ('zone_id', 'world_zone', 'fast_travel_origin'):
                         if data.get(key) == identifier:
                             data[key] = replacement
@@ -1018,7 +1021,9 @@ class Controller:
         from tkinter import filedialog
         for name, value in [('tk',self.tk), ('ttk',self.ttk), ('messagebox',self.messagebox), ('simpledialog',self.simpledialog), ('filedialog',filedialog)]:
             setattr(map_editor, name, value)
-        window = self.tk.Toplevel(self.root)
+        from .editor_ui import EditorPanel
+        window = EditorPanel(self.root, "Builder")
+        window.content.pack_forget()
         previous_mobs = map_building.MOBS
         previous_editor_mobs = map_editor.MOBS
         map_building.MOBS = map_editor.MOBS = self.project.mobs
@@ -1040,7 +1045,7 @@ class Controller:
                 editor.status.set('Projet enregistré. Redémarrez le serveur pour appliquer.')
             except (ValueError, OSError) as exc:
                 self.project.maps = old
-                self.messagebox.showerror('Projet', str(exc), parent=window)
+                editor.messages.showerror('Projet', str(exc), parent=window)
         editor.on_save = sync_save
         window.transient(self.root)
         window.grab_set()
@@ -1048,7 +1053,7 @@ class Controller:
             editor.new()
         def close_builder():
             if editor.maps != editor.saved:
-                answer = self.messagebox.askyesnocancel('Builder', 'Garder les modifications dans le contrôleur ? Elles pourront être enregistrées depuis celui-ci.', parent=window)
+                answer = editor.messages.askyesnocancel('Builder', 'Garder les modifications dans le contrôleur ? Elles pourront être enregistrées depuis celui-ci.', parent=window)
                 if answer is None:
                     return
                 if not answer:

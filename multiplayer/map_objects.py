@@ -70,9 +70,9 @@ def place_portal(maps, source, point, destination, entry, name, reverse=None, re
 def pick_cell(editor, title, fixed_map=None):
     import tkinter as tk
     from tkinter import ttk
-    window = tk.Toplevel(editor.root)
-    window.title(title)
-    window.geometry('960x720')
+    from .editor_ui import EditorPanel
+    panel = EditorPanel(editor.root, title)
+    window = panel.content
     selected = tk.StringVar(value=fixed_map or editor.selected.get())
     bar = ttk.Frame(window)
     bar.pack(fill='x')
@@ -114,17 +114,15 @@ def pick_cell(editor, title, fixed_map=None):
         point = [int(canvas.canvasx(event.x)//size[0]), int(canvas.canvasy(event.y)//size[0])]
         if tactics.walkable(editor.maps[selected.get()], point):
             answer.append((selected.get(), point))
-            window.destroy()
+            panel.destroy()
     def zoom(delta):
         size[0] = max(12,min(48,size[0]+delta))
         draw()
     ttk.Button(bar, text='−', command=lambda:zoom(-4)).pack(side='left')
     ttk.Button(bar, text='+', command=lambda:zoom(4)).pack(side='left')
-    ttk.Button(bar, text='Annuler', command=window.destroy).pack(side='left')
+    ttk.Button(bar, text='Annuler', command=panel.destroy).pack(side='left')
     choice.bind('<<ComboboxSelected>>', draw)
     canvas.bind('<Button-1>', click)
-    window.transient(editor.root)
-    window.grab_set()
     draw()
-    editor.root.wait_window(window)
+    editor.root.wait_window(panel)
     return answer[0] if answer else None

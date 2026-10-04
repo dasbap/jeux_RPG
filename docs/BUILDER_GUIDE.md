@@ -357,3 +357,14 @@ Les orientations sont stockées dans `bridge_rotations` sous forme de `{ "positi
 Le builder vérifie les déplacements depuis chaque arrivée de téléportation. Une sortie, un spawner ou l'accès à un PNJ/atelier séparé par une rivière sans pont ou par un obstacle empêche l'enregistrement. Le message indique la carte, l'arrivée concernée et la position inaccessible. Une carte sans sortie est également refusée. Les déplacements en diagonale ne permettent pas de couper les coins des obstacles.
 
 Les secteurs rattachés à un village participent au réseau des déplacements rapides. Le rattachement à Rosée ne signifie pas que le personnage est déjà sur la place du village : quitter la forêt puis sélectionner Rosée rejoint bien l'entrée du village.
+
+
+## Interface a21 : une seule fenêtre
+
+Le builder intégré au contrôleur, ses formulaires, l’assemblage, les trajets et rues et la sélection graphique des TP utilisent la même fenêtre. **← Retour** revient à la vue précédente ; dans un formulaire, revenir annule la saisie. Les dialogues système pour choisir un fichier restent ceux de votre système.
+
+La palette est repliable : **Décoration → Végétaux / Minéraux / Constructions**, **Terrain et eau**, **PNJ et créatures → PNJ / Spawn / Patrouille**, **Passages**. Le pinceau apparaît pour les outils de peinture ; la rotation apparaît pour les ponts. Recherche, filtres, calques et actions avancées sont repliés à l’ouverture. Le panneau des outils possède sa propre barre de défilement.
+
+Dans **Cartes, monde et validation → Carte générale / points**, choisissez la carte générale ou les points d’un lieu. Glissez un cercle pour modifier sa position, y compris l’entrée du lieu. Sélectionnez un point puis **Modifier le nom** ou double-cliquez pour changer son nom affiché. Les positions sont enregistrées dans `world_view` du JSON de la zone ; elles ne déplacent pas les cases physiques, les PNJ ou les TP de la carte d’exploration. Les connexions restent définies par **Trajets / rues**. Le jeu ajuste le cadre du plan aux positions choisies.
+
+Enregistrez le projet puis redémarrez le serveur pour voir ces modifications en jeu. **Annuler modification** permet de revenir sur un déplacement du plan. L’aperçu rendu final ouvre explicitement le navigateur pour utiliser le rendu du client.

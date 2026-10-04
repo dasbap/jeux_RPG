@@ -12,7 +12,7 @@ const dom = new JSDOM(fs.readFileSync(path.join(root, "multiplayer/web/index.htm
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/map_artwork.js"), "utf8"));
 dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/app.js"), "utf8") + `
-window.uiTest = {gridPath, calls: [], render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
+window.uiTest = {gridPath, calls: [], world: adventure => {worldCameras.clear(); mapPlace = adventure.world.places[0].id; renderWorld(adventure, adventure.players[0]);}, render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
 `);
 const el = id => dom.window.document.getElementById(id);
@@ -243,6 +243,18 @@ try {
     event(detail, "click"); el("field-zoom-in").click();
     assert.notEqual(detail.getAttribute("viewBox"), detailBox);
   }
+  const authoredPlan = JSON.parse(JSON.stringify(peaceful));
+  const authoredPlace = authoredPlan.world.places[0];
+  authoredPlace.x = 800; authoredPlace.y = 500; authoredPlace.entry = [120, 230];
+  authoredPlace.points = [{id: "clearing_fight", name: "Point modifié", type: "rencontre", x: 900, y: 700}];
+  dom.window.uiTest.world(authoredPlan);
+  const authoredGeneral = el("world-map").querySelector('[data-map="general"]');
+  const authoredDetail = el("world-map").querySelector('[data-map^="detail:"]');
+  assert(Number(authoredGeneral.getAttribute("viewBox").split(" ")[2]) > 800);
+  assert(Number(authoredDetail.getAttribute("viewBox").split(" ")[3]) > 700);
+  assert.equal(authoredDetail.querySelector("circle").getAttribute("cx"), "120");
+  assert.equal(authoredDetail.querySelector('[data-point="clearing_fight"] circle').getAttribute("cy"), "700");
+  assert(authoredDetail.textContent.includes("Point modifié"));
   if (fixtures.field_village) {
     render(fixtures.field_village);
     assert.equal(el("field-camera").hidden, false);

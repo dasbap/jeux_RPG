@@ -44,10 +44,12 @@ class WorldEditor:
         import tkinter as tk
         from tkinter import ttk, messagebox
         from . import world
-        self.editor, self.tk, self.messagebox = editor, tk, messagebox
-        self.window = tk.Toplevel(editor.root)
-        self.window.title('Trajets et rues')
-        self.window.geometry('850x580')
+        self.editor, self.tk, self.messagebox = editor, tk, editor.messages
+        from .editor_ui import EditorPanel
+        self.panel = EditorPanel(editor.root)
+        self.window = self.panel.content
+        self.panel.title('Trajets et rues')
+        self.panel.geometry('850x580')
         self.streets, self.routes = world_metadata(editor.maps, world.VILLAGE_STREETS, world.ROUTES)
         self.zone = tk.StringVar(value=editor.selected.get())
         ttk.Label(self.window, text='Les chemins rapides utilisent 6 km/h et le ratio 1:3. Les rues définissent la topologie de la carte générale ; le décor se peint séparément.').pack(fill='x', padx=8, pady=8)
@@ -161,6 +163,6 @@ class WorldEditor:
             self.editor.maps = candidate
             self.editor.draw()
             self.editor.status.set('Trajets et rues appliqués. Enregistrez et redémarrez le serveur.')
-            self.window.destroy()
+            self.panel.destroy()
         except ValueError as exc:
             self.messagebox.showerror('Plan',str(exc),parent=self.window)

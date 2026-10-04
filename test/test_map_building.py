@@ -165,7 +165,7 @@ def test_duplicate_does_not_share_mutable_data_or_overlap_origin(monkeypatch):
     e = editor()
     selection = ["clearing"]
     e.selected = SimpleNamespace(get=lambda: selection[0], set=lambda value: selection.__setitem__(0, value))
-    monkeypatch.setattr(map_editor, "simpledialog", SimpleNamespace(askstring=lambda *args: "copie"), raising=False)
+    monkeypatch.setattr(e, "form", lambda *args: {"map_id": "copie"})
     e.duplicate()
     clone = e.maps["copie"]
     assert clone["id"] == "field_copie"

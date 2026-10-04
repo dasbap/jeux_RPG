@@ -22,6 +22,8 @@ def validate(maps):
     for key, definition in maps.items():
         if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9_]{1,64}", key) or not isinstance(definition, dict):
             raise ValueError("Identifiant de carte invalide.")
+        from .map_layout_editor import validate_layout
+        validate_layout(definition.get("world_view", {}))
         for field in ("world_zone", "fast_travel_origin"):
             if field in definition and (not isinstance(definition[field], str) or definition[field] not in maps):
                 raise ValueError(f"{key} : référence {field} invalide.")

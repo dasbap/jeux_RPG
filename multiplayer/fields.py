@@ -65,6 +65,9 @@ for identifier in MAPS:
     if root_zone in world.LEVELS:
         world.LEVELS[root_zone] = MAPS[root_zone].get("zone_level", world.LEVELS[root_zone])
 
+from .map_layout_editor import apply_layout
+apply_layout(world.PLACES, MAPS)
+
 
 def start(party, now):
     from . import tutorial

@@ -112,10 +112,12 @@ class AssemblyWindow:
     def __init__(self, editor):
         import tkinter as tk
         from tkinter import ttk, messagebox
-        self.editor, self.tk, self.messagebox = editor, tk, messagebox
-        self.window = tk.Toplevel(editor.root)
-        self.window.title('Assemblage des cartes')
-        self.window.geometry('1150x760')
+        self.editor, self.tk, self.messagebox = editor, tk, editor.messages
+        from .editor_ui import EditorPanel
+        self.panel = EditorPanel(editor.root)
+        self.window = self.panel.content
+        self.panel.title('Assemblage des cartes')
+        self.panel.geometry('1150x760')
         self.selected = editor.selected.get()
         self.scale = 8
         self.dragging = None
@@ -247,7 +249,7 @@ class AssemblyWindow:
         self.editor.selected.set(self.selected)
         self.editor.refresh_choice()
         self.editor.draw()
-        self.window.destroy()
+        self.panel.destroy()
 
     def undo(self):
         self.editor.undo()

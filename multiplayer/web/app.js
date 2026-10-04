@@ -323,7 +323,8 @@ function renderWorld(adventure, me) {
     if (text) element.textContent = text;
     return element;
   }
-  const svg = svgElement("svg", {viewBox: "0 0 610 260", role: "group", "aria-label": "Carte des lieux et chemins découverts", class: "zone-map"});
+  const generalWidth = Math.max(610, ...places.map(p => p.x + 130)), generalHeight = Math.max(260, ...places.map(p => p.y + 70));
+  const svg = svgElement("svg", {viewBox: `0 0 ${generalWidth} ${generalHeight}`, role: "group", "aria-label": "Carte des lieux et chemins découverts", class: "zone-map"});
   for (const route of world.routes) {
     const from = places.find(p => p.id === route.from);
     const to = places.find(p => p.id === route.to);
@@ -361,12 +362,14 @@ function renderWorld(adventure, me) {
   svg.dataset.map = "general";
   const worldMapNodes = [mountWorldMap(svg)];
   if (place.points.length) {
-    const local = svgElement("svg", {viewBox: "0 0 610 220", role: "group", "aria-label": `Points de ${place.name}`, class: "zone-map"});
-    local.append(svgElement("text", {x: 305, y: 20, class: "place-label"}, `Points de ${place.name}`));
-    local.append(svgElement("circle", {cx: 70, cy: 110, r: 10, class: "visited-node"}));
-    local.append(svgElement("text", {x: 70, y: 138, class: "place-label"}, "Entrée"));
-    if (adventure.position === place.id) local.append(svgElement("text", {x: 70, y: 85, class: "place-label"}, "Vous êtes ici"));
-    const positions = new Map([[place.id, {x: 70, y: 110}], ...place.points.map((point, index) => [point.id, {x: point.x ?? (index % 2 ? 450 : 270), y: point.y ?? (index < 2 ? 65 : 175)}])]);
+    const entry = place.entry || [70, 110];
+    const localWidth = Math.max(610, entry[0] + 130, ...place.points.map(p => (p.x ?? 450) + 130)), localHeight = Math.max(220, entry[1] + 70, ...place.points.map(p => (p.y ?? 175) + 70));
+    const local = svgElement("svg", {viewBox: `0 0 ${localWidth} ${localHeight}`, role: "group", "aria-label": `Points de ${place.name}`, class: "zone-map"});
+    local.append(svgElement("text", {x: localWidth / 2, y: 20, class: "place-label"}, `Points de ${place.name}`));
+    local.append(svgElement("circle", {cx: entry[0], cy: entry[1], r: 10, class: "visited-node"}));
+    local.append(svgElement("text", {x: entry[0], y: entry[1] + 28, class: "place-label"}, "Entrée"));
+    if (adventure.position === place.id) local.append(svgElement("text", {x: entry[0], y: entry[1] - 25, class: "place-label"}, "Vous êtes ici"));
+    const positions = new Map([[place.id, {x: entry[0], y: entry[1]}], ...place.points.map((point, index) => [point.id, {x: point.x ?? (index % 2 ? 450 : 270), y: point.y ?? (index < 2 ? 65 : 175)}])]);
     for (const [source, position] of positions) for (const destination of world.graph[source] || []) {
       const endpoint = positions.get(destination);
       if (endpoint && source < destination) local.append(svgElement("line", {x1: position.x, y1: position.y, x2: endpoint.x, y2: endpoint.y, class: "known-route"}));

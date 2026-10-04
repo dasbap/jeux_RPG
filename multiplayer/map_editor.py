@@ -11,6 +11,8 @@ from .map_building import MOBS, map_level, zone_of, sync_overlap, linked_sector
 class MapEditor:
     def __init__(self, root, path=None):
         self.root = root
+        from .editor_ui import InlineMessages
+        self._messages = InlineMessages(root)
         self.maps = deepcopy(fields.MAPS)
         self.path = Path(path) if path else Path.cwd() / "maps" / "world.json" if (Path.cwd() / "maps" / "world.json").exists() else None
         if self.path and self.path.exists():
@@ -35,7 +37,7 @@ class MapEditor:
         root.geometry("1200x800")
         bar = ttk.Frame(root, padding=6)
         bar.pack(fill="x")
-        for label, command in (("Ouvrir", self.open), ("Enregistrer", self.save), ("Enregistrer sous", lambda: self.save(True)), ("Annuler", self.undo), ("Nouvelle carte", self.new), ("Propriétés carte", self.properties)):
+        for label, command in (("Ouvrir", self.open), ("Enregistrer", self.save), ("Annuler", self.undo), ("Propriétés carte", self.properties)):
             ttk.Button(bar, text=label, command=command).pack(side="left", padx=2)
         self.displayed_map = tk.StringVar()
         self.choice = ttk.Combobox(bar, textvariable=self.displayed_map, state="readonly", width=32)
@@ -44,8 +46,8 @@ class MapEditor:
         self.choice.bind("<<ComboboxSelected>>", self.select_map)
         ttk.Button(bar, text="−", command=lambda: self.zoom(-4)).pack(side="left")
         ttk.Button(bar, text="+", command=lambda: self.zoom(4)).pack(side="left")
-        options = ttk.Frame(root, padding=6)
-        options.pack(fill="x")
+        from .editor_ui import fold
+        options = fold(root, "Recherche et filtres")
         ttk.Label(options, text="Rechercher").pack(side="left")
         ttk.Entry(options, textvariable=self.search, width=22).pack(side="left", padx=4)
         ttk.Label(options, text="Zone").pack(side="left")
@@ -58,25 +60,45 @@ class MapEditor:
         self.max_level.trace_add("write", lambda *args: self.refresh_choice())
         self.search.trace_add("write", lambda *args: self.refresh_choice())
         self.zone_filter.trace_add("write", lambda *args: self.refresh_choice())
-        ttk.Label(options, text="Pinceau").pack(side="left")
-        ttk.Combobox(options, textvariable=self.brush, values=["1", "3", "5"], width=3, state="readonly").pack(side="left")
-        ttk.Label(options, text="Pont °").pack(side="left")
-        ttk.Combobox(options, textvariable=self.bridge_rotation, values=["0", "90", "180", "270"], width=4, state="readonly").pack(side="left")
+        layers = fold(root, "Calques visibles")
         for name, variable in self.layers.items():
-            ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
-        advanced = ttk.Frame(root, padding=4)
-        advanced.pack(fill="x")
-        for index, (label, command) in enumerate((("Aperçu rendu final", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize))):
+            ttk.Checkbutton(layers, text=name, variable=variable, command=self.draw).pack(side="left")
+        from .editor_ui import fold
+        advanced = fold(root, "Cartes, monde et validation")
+        for index, (label, command) in enumerate((("Nouvelle carte", self.new), ("Enregistrer sous", lambda: self.save(True)), ("Aperçu navigateur", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Carte générale / points", self.edit_layout), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize))):
             ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
-        self.patrol_button = ttk.Button(advanced, text="Terminer la patrouille", command=self.end_patrol)
-        self.tool.trace_add("write", lambda *args: self.update_patrol_button())
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
-        tools = ttk.Frame(body, padding=10)
-        tools.pack(side="left", fill="y")
-        for label in ("Sol", "Déplacer", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Rotation pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Spawn", "Patrouille", "Téléportation", "PNJ", "Effacer", "Inspecter"):
-            ttk.Radiobutton(tools, text=label, variable=self.tool, value=label).pack(anchor="w", pady=3)
-        ttk.Label(tools, text="Clic : placer / modifier\nGlisser : peindre\nCtrl+Z : annuler\nCtrl+S : enregistrer\n\nPNJ lié : propriétaire\nleader ou ID joueur.\nVide : PNJ fixe.", justify="left").pack(pady=20)
+        sidebar = ttk.Frame(body, width=230)
+        sidebar.pack(side="left", fill="y")
+        tool_canvas = tk.Canvas(sidebar, width=210, highlightthickness=0)
+        tool_scroll = ttk.Scrollbar(sidebar, orient="vertical", command=tool_canvas.yview)
+        tool_canvas.configure(yscrollcommand=tool_scroll.set)
+        tool_scroll.pack(side="right", fill="y")
+        tool_canvas.pack(side="left", fill="both", expand=True)
+        tools = ttk.Frame(tool_canvas, padding=8)
+        tool_canvas.create_window((0, 0), window=tools, anchor="nw", width=210)
+        tools.bind("<Configure>", lambda e: tool_canvas.configure(scrollregion=tool_canvas.bbox("all")))
+        from .editor_ui import fold
+        for label in ("Déplacer", "Inspecter", "Effacer"):
+            ttk.Radiobutton(tools, text=label, variable=self.tool, value=label).pack(anchor="w")
+        decoration = fold(tools, "Décoration")
+        groups = [(decoration, "Végétaux", ("Arbre", "Fleurs", "Herbe")), (decoration, "Minéraux", ("Rocher", "Cristal")), (decoration, "Constructions", ("Maison", "Camp", "Rempart X", "Mur M")), (tools, "Terrain et eau", ("Sol", "Chemin", "Eau", "Pont", "Rotation pont")), (tools, "PNJ et créatures", ("PNJ", "Spawn", "Patrouille")), (tools, "Passages", ("Téléportation",))]
+        for parent, title, labels in groups:
+            group = fold(parent, title)
+            for label in labels:
+                ttk.Radiobutton(group, text="Spawner" if label == "Spawn" else label, variable=self.tool, value=label).pack(anchor="w", pady=2)
+        self.tool_options = fold(tools, "Réglages de l’outil", True)
+        self.brush_controls = ttk.Frame(self.tool_options)
+        ttk.Label(self.brush_controls, text="Pinceau").pack(side="left")
+        ttk.Combobox(self.brush_controls, textvariable=self.brush, values=["1", "3", "5"], width=3, state="readonly").pack(side="left")
+        self.bridge_controls = ttk.Frame(self.tool_options)
+        ttk.Label(self.bridge_controls, text="Rotation °").pack(side="left")
+        ttk.Combobox(self.bridge_controls, textvariable=self.bridge_rotation, values=["0", "90", "180", "270"], width=4, state="readonly").pack(side="left")
+        self.patrol_button = ttk.Button(self.tool_options, text="Terminer la patrouille", command=self.end_patrol)
+        self.tool.trace_add("write", lambda *args: self.update_patrol_button())
+        self.tool.trace_add("write", lambda *args: self.update_tool_options())
+        self.update_tool_options()
         viewport = ttk.Frame(body)
         viewport.pack(fill="both", expand=True)
         self.canvas = tk.Canvas(viewport, background="#15201b")
@@ -99,6 +121,19 @@ class MapEditor:
         root.bind("<Control-s>", lambda event: self.save())
         ttk.Label(root, textvariable=self.status, padding=6).pack(fill="x")
         self.draw()
+
+    @property
+    def messages(self):
+        return self._messages if hasattr(self, "_messages") else globals()["messagebox"]
+
+    def update_tool_options(self):
+        painting = self.tool.get() in ("Sol", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Effacer")
+        for widget, visible in ((self.brush_controls, painting), (self.bridge_controls, self.tool.get() in ("Pont", "Rotation pont"))):
+            widget.pack(fill="x") if visible else widget.pack_forget()
+
+    def edit_layout(self):
+        from .map_layout_editor import LayoutEditor
+        LayoutEditor(self)
 
     def refresh_choice(self):
         query = self.search.get().casefold() if hasattr(self, "search") else ""
@@ -127,9 +162,9 @@ class MapEditor:
 
     def update_patrol_button(self):
         if self.tool.get() == "Patrouille" and getattr(self, "patrol_spawn", None) and self.patrol_spawn[0] == self.selected.get():
-            self.patrol_button.grid(row=2, column=0, padx=3, pady=2, sticky="w")
+            self.patrol_button.pack(fill="x", pady=4)
         else:
-            self.patrol_button.grid_remove()
+            self.patrol_button.pack_forget()
 
     def end_patrol(self):
         self.patrol_spawn = None
@@ -137,7 +172,8 @@ class MapEditor:
         self.status.set("Patrouille terminée. Recliquer un spawner avec l’outil Patrouille pour éditer son trajet.")
 
     def duplicate(self):
-        key = simpledialog.askstring("Dupliquer", "Nouvel identifiant unique")
+        values = self.form("Dupliquer", {"map_id": ""})
+        key = values["map_id"].strip() if values else None
         if not key or key in self.maps:
             return
         self.remember()
@@ -155,10 +191,10 @@ class MapEditor:
     def delete(self):
         key = self.selected.get()
         if key in {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "cave_2", "cave_3", "brume"}:
-            messagebox.showerror("Suppression", "Cette carte est nécessaire au tutoriel.")
+            self.messages.showerror("Suppression", "Cette carte est nécessaire au tutoriel.")
             return
         if any(item.get("destination") == key or item.get("fast_destination") == key for value in self.maps.values() for item in value["exits"]) or any(other != key and (zone_of(self.maps, other) == key or any(value.get(field) == key for field in ("zone_id", "world_zone", "fast_travel_origin"))) for other, value in self.maps.items()):
-            messagebox.showerror("Suppression", "Retirez d’abord les passages et rattachements vers cette carte.")
+            self.messages.showerror("Suppression", "Retirez d’abord les passages et rattachements vers cette carte.")
             return
         self.remember()
         del self.maps[key]
@@ -172,18 +208,18 @@ class MapEditor:
             validate(self.maps)
             from .map_playability import validate as playable
             playable(self.maps)
-            messagebox.showinfo("Validation", "Cartes, niveaux, spawners et chemins valides.")
+            self.messages.showinfo("Validation", "Cartes, niveaux, spawners et chemins valides.")
         except ValueError as exc:
-            messagebox.showerror("Validation", str(exc))
+            self.messages.showerror("Validation", str(exc))
 
     def synchronize(self):
         self.remember()
         count = sync_overlap(self.maps, self.selected.get())
         self.draw()
-        messagebox.showinfo("Raccords", f"{count} carte(s) voisine(s) synchronisée(s). Les entités et passages sont conservés. Validez avant d’enregistrer.")
+        self.messages.showinfo("Raccords", f"{count} carte(s) voisine(s) synchronisée(s). Les entités et passages sont conservés. Validez avant d’enregistrer.")
 
     def close(self):
-        if self.maps != self.saved and not messagebox.askyesno("Modifications non enregistrées", "Fermer sans enregistrer ?"):
+        if self.maps != self.saved and not self.messages.askyesno("Modifications non enregistrées", "Fermer sans enregistrer ?"):
             return
         self.root.destroy()
 
@@ -269,7 +305,7 @@ class MapEditor:
                 self.maps[self.selected.get()] = updated
                 self.draw()
             except ValueError as exc:
-                messagebox.showerror("Pont", str(exc))
+                self.messages.showerror("Pont", str(exc))
             return
         if tool == "Déplacer":
             from .map_objects import objects_at
@@ -307,21 +343,21 @@ class MapEditor:
                 self.patrol_spawn = (self.selected.get(), point[:])
                 if hasattr(self, "patrol_button"):
                     self.update_patrol_button()
-                if messagebox.askyesno("Patrouille", "Remplacer les points actuels ?"):
+                if self.messages.askyesno("Patrouille", "Remplacer les points actuels ?"):
                     self.remember()
                     config["patrol"] = []
                 self.draw()
                 return
             if not active or active[0] != self.selected.get():
-                messagebox.showinfo("Patrouille", "Sélectionnez d’abord un spawner avec cet outil.")
+                self.messages.showinfo("Patrouille", "Sélectionnez d’abord un spawner avec cet outil.")
                 return
             config = next((item for item in data.get("spawners", []) if item["position"] == active[1]), None)
             if config is None or not tactics.walkable(data, point) or len(config.get("patrol", [])) >= 32:
-                messagebox.showerror("Patrouille", "Point praticable requis ; 32 points maximum.")
+                self.messages.showerror("Patrouille", "Point praticable requis ; 32 points maximum.")
                 return
             previous = config.get("patrol", [])[-1] if config.get("patrol") else config["position"]
             if tactics.path(data, previous, point) is None:
-                messagebox.showerror("Patrouille", "Point inaccessible depuis le point précédent.")
+                self.messages.showerror("Patrouille", "Point inaccessible depuis le point précédent.")
                 return
             self.remember()
             config.setdefault("patrol", []).append(point)
@@ -329,7 +365,7 @@ class MapEditor:
             return
         if tool == "Inspecter":
             objects = [item for field in ("sites", "exits", "decorations", "spawners") for item in data.get(field, []) if item["position"] == point]
-            messagebox.showinfo("Case", str(objects or point))
+            self.messages.showinfo("Case", str(objects or point))
             return
         if record:
             self.remember()
@@ -348,14 +384,14 @@ class MapEditor:
                 try:
                     self.set_gate(point, result)
                 except ValueError as exc:
-                    messagebox.showerror("Téléportation", str(exc))
+                    self.messages.showerror("Téléportation", str(exc))
                     return
             else:
                 result["owner"] = result.get("owner") or None
                 data[field] = [item for item in data.get(field, []) if item["position"] != point] + [result]
         elif tool in ("Spawn", "Spawn gobelin"):
             if not tactics.walkable(data, point):
-                messagebox.showerror("Spawn", "Choisissez une case praticable.")
+                self.messages.showerror("Spawn", "Choisissez une case praticable.")
                 return
             existing = next((item for item in data.get("spawners", []) if item["position"] == point), {})
             values = {"mob_id": "goblin", "level": "", "count": 1, "name": "", **{key: value for key, value in existing.items() if key != "patrol"}}
@@ -369,7 +405,7 @@ class MapEditor:
                 if result["mob_id"] not in MOBS or not 1 <= result["count"] <= 5 or result["level"] is not None and not 1 <= result["level"] <= 100:
                     raise ValueError()
             except ValueError:
-                messagebox.showerror("Spawn", "Espèce valide, groupe 1–5, niveau 1–100 ou vide pour hériter.")
+                self.messages.showerror("Spawn", "Espèce valide, groupe 1–5, niveau 1–100 ou vide pour hériter.")
                 return
             if point not in data.get("spawns", []):
                 data.setdefault("spawns", []).append(point)
@@ -448,8 +484,9 @@ class MapEditor:
             self.maps[destination]["exits"].append(reverse_gate)
 
     def form(self, title, values):
-        window = tk.Toplevel(self.root)
-        window.title(title)
+        from .editor_ui import EditorPanel
+        panel = EditorPanel(self.root, title)
+        window = panel.content
         entries = {}
         for row, (key, value) in enumerate(values.items()):
             if key in ("position", "link_id"):
@@ -469,16 +506,15 @@ class MapEditor:
         result = []
         def accept():
             result.append({key: entry.get() for key, entry in entries.items()})
-            window.destroy()
+            panel.destroy()
         ttk.Button(window, text="Valider", command=accept).grid(row=len(values), column=0)
-        ttk.Button(window, text="Annuler", command=window.destroy).grid(row=len(values), column=1)
-        window.transient(self.root)
-        window.grab_set()
-        self.root.wait_window(window)
+        ttk.Button(window, text="Annuler", command=panel.destroy).grid(row=len(values), column=1)
+        self.root.wait_window(panel)
         return result[0] if result else None
 
     def new(self):
-        key = simpledialog.askstring("Nouvelle carte", "Identifiant : lettres minuscules, chiffres, underscore")
+        values = self.form("Nouvelle carte", {"map_id": ""})
+        key = values["map_id"].strip() if values else None
         if not key or key in self.maps:
             return
         self.remember()
@@ -503,7 +539,7 @@ class MapEditor:
             self.draw()
             self.status.set("Objet déplacé. Ctrl+Z pour annuler.")
         except (ValueError, IndexError) as exc:
-            messagebox.showerror("Déplacement", str(exc))
+            self.messages.showerror("Déplacement", str(exc))
 
     def portal_by_click(self):
         from .map_objects import pick_cell
@@ -522,7 +558,7 @@ class MapEditor:
         destination = result.get("destination") or None
         entry, reverse, returning = None, None, None
         if destination and destination not in self.maps:
-            messagebox.showerror("TP", "Carte destination inconnue.")
+            self.messages.showerror("TP", "Carte destination inconnue.")
             return
         if destination:
             chosen = pick_cell(self, "TP · cliquez l’arrivée sur la destination", destination)
@@ -544,7 +580,7 @@ class MapEditor:
             self.maps = updated
             self.draw()
         except (ValueError, KeyError) as exc:
-            messagebox.showerror("TP", str(exc))
+            self.messages.showerror("TP", str(exc))
 
     def edit_world(self):
         from .map_world_editor import WorldEditor
@@ -572,7 +608,7 @@ class MapEditor:
             self.draw()
             self.status.set("Secteur créé : raccord copié et passages aller-retour ajoutés. Peignez le reste puis enregistrez.")
         except (ValueError, KeyError) as exc:
-            messagebox.showerror("Secteur relié", str(exc))
+            self.messages.showerror("Secteur relié", str(exc))
 
     def properties(self):
         data = self.maps[self.selected.get()]
@@ -600,7 +636,7 @@ class MapEditor:
                 self.refresh_choice()
                 self.draw()
             except ValueError:
-                messagebox.showerror("Carte", "Dimensions 4–128 ; niveaux 1–100 ; zone existante sans cycle ; nom non vide.")
+                self.messages.showerror("Carte", "Dimensions 4–128 ; niveaux 1–100 ; zone existante sans cycle ; nom non vide.")
 
     def open(self):
         path = filedialog.askopenfilename(filetypes=[("Cartes JSON", "*.json")])
@@ -614,7 +650,7 @@ class MapEditor:
                 self.refresh_choice()
                 self.draw()
             except (ValueError, OSError) as exc:
-                messagebox.showerror("Ouverture", str(exc))
+                self.messages.showerror("Ouverture", str(exc))
 
     def save(self, choose=False):
         from .map_playability import validate as playable
@@ -622,7 +658,7 @@ class MapEditor:
             from .map_assets import validate
             playable(validate(self.maps))
         except ValueError as exc:
-            messagebox.showerror("Carte non jouable", str(exc))
+            self.messages.showerror("Carte non jouable", str(exc))
             return
         if getattr(self, "on_save", None):
             return self.on_save(choose)
@@ -638,7 +674,7 @@ class MapEditor:
             self.saved = deepcopy(self.maps)
             self.status.set(f"Enregistré : {path}. Redémarrez le serveur avec RPG_MAPS_FILE.")
         except (ValueError, OSError) as exc:
-            messagebox.showerror("Enregistrement", str(exc))
+            self.messages.showerror("Enregistrement", str(exc))
 
 
 def main():

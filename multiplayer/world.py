@@ -140,7 +140,7 @@ def view(party, me, traveller=None):
         place = {"id": key, "name": definition["name"], "type": definition["type"],
                  "x": definition["x"], "y": definition["y"], "visited": key in visited,
                  "description": definition["description"] if key in visited else "Lieu connu, encore non visité. Ses détails seront révélés à votre arrivée.",
-                 "points": deepcopy(definition["points"]) if key in visited else []}
+                 "points": deepcopy(definition["points"]) if key in visited else [], "entry": deepcopy(definition.get("entry", [70, 110]))}
         if traveller and key in visited and key in ("rosee", "brume") and traveller["location"] and traveller["location"] in definition["name"]:
             place["points"].append({"id": "leon", "name": traveller["name"], "type": "pnj",
                                     "x": 170, "y": 175, "description": "Marchand itinérant actuellement présent sur la place du village. Son passage suit l'horloge du monde."})
