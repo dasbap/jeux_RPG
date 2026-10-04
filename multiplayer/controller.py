@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import shutil
 
-from .content import load_content, validate_content, CONDITIONS
+from .content import load_content, validate_content, CONDITIONS, is_hunt
 from .map_assets import load, validate
 from .map_building import zone_of
 
@@ -65,6 +65,77 @@ class Project:
             if quest['npc'] not in npcs or quest.get('zone') and quest['zone'] not in self.maps or quest['kind'] == 'kill' and quest['target'] not in self.mobs or quest['kind'] == 'craft' and quest['target'] not in forge.RECIPES:
                 raise ValueError(f"{quest['name']} : PNJ, zone ou cible introuvable.")
         return True
+
+    def rename(self, section, identifier, replacement):
+        import re
+        if not isinstance(replacement, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', replacement):
+            raise ValueError('Identifiant : 1–64 lettres minuscules, chiffres ou underscores (ex. mira_hunt_2).')
+        if identifier == replacement:
+            return
+        before = self.state()
+        try:
+            if section in ('quests', 'achievements'):
+                item = next(item for item in self.content[section] if item['id'] == identifier)
+                if any(other['id'] == replacement or replacement in other.get('previous_ids', []) for other in self.content[section] if other is not item):
+                    raise ValueError('Identifiant déjà utilisé.')
+                if section == 'quests' and is_hunt(item):
+                    item['role'] = 'tutorial_hunt'
+                item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids', []), identifier]))
+                item['id'] = replacement
+            elif section == 'mobs':
+                if identifier == 'goblin':
+                    raise ValueError('goblin est une référence interne du tutoriel ; créez une nouvelle espèce pour un autre identifiant.')
+                if replacement in self.mobs:
+                    raise ValueError('Identifiant déjà utilisé.')
+                self.mobs[replacement] = self.mobs.pop(identifier)
+                for data in self.maps.values():
+                    for spawn in data.get('spawners', []):
+                        if spawn['mob_id'] == identifier:
+                            spawn['mob_id'] = replacement
+                for quest in self.content['quests']:
+                    if quest['kind'] == 'kill' and quest['target'] == identifier:
+                        quest['target'] = replacement
+            elif section == 'npcs':
+                if identifier in ('mira', 'forge'):
+                    raise ValueError('Cet identifiant est une référence interne du tutoriel.')
+                if any(site['id'] == replacement for data in self.maps.values() for site in data['sites']):
+                    raise ValueError('Identifiant PNJ déjà utilisé.')
+                for data in self.maps.values():
+                    for site in data['sites']:
+                        if site['id'] == identifier:
+                            site['id'] = replacement
+                for quest in self.content['quests']:
+                    if quest['npc'] == identifier:
+                        quest['npc'] = replacement
+            elif section == 'maps':
+                from .map_assembly import CORE
+                if identifier in CORE:
+                    raise ValueError('Cette carte est une référence interne du tutoriel.')
+                if replacement in self.maps:
+                    raise ValueError('Identifiant de carte déjà utilisé.')
+                self.maps[replacement] = self.maps.pop(identifier)
+                self.maps[replacement]['id'] = 'field_'+replacement
+                for data in self.maps.values():
+                    for key in ('zone_id', 'world_zone', 'fast_travel_origin'):
+                        if data.get(key) == identifier:
+                            data[key] = replacement
+                    for gate in data['exits']:
+                        for key in ('destination', 'fast_destination'):
+                            if gate.get(key) == identifier:
+                                gate[key] = replacement
+                    for route in data.get('travel_routes', []):
+                        for key in ('from', 'to'):
+                            if route[key] == identifier:
+                                route[key] = replacement
+                for quest in self.content['quests']:
+                    if quest.get('zone') == identifier:
+                        quest['zone'] = replacement
+            else:
+                raise ValueError('Ce type de définition ne possède pas d’identifiant modifiable.')
+            self.validate()
+        except Exception:
+            self.maps, self.mobs, self.content = before
+            raise
 
     def save(self):
         self.validate()
@@ -238,17 +309,19 @@ class Controller:
                 if identifier != key and identifier in p.mobs:
                     raise ValueError('Identifiant déjà utilisé.')
                 if not new and identifier != key:
-                    raise ValueError('Conservez l’identifiant utilisé par les spawners et les quêtes.')
+                    p.rename('mobs', key, identifier)
                 p.mobs[identifier] = {**values, 'loot':loot}
             elif section in ('quests', 'achievements'):
                 default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre'}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
                 choices = {'npc':sorted({site['id'] for data in p.maps.values() for site in data['sites']}), 'kind':['kill','craft'], 'target':list(p.mobs), 'zone':['', *p.maps], 'condition':CONDITIONS}
-                values = self.form('Quête' if section == 'quests' else 'Succès et titre', old, choices)
+                values = self.form('Quête' if section == 'quests' else 'Succès et titre', {k:v for k,v in old.items() if k not in ('role', 'previous_ids')}, choices)
                 if values:
                     if not new and values['id'] != key:
-                        raise ValueError('Conservez l’identifiant pour préserver la progression des sessions.')
-                    p.content[section] = [item for item in p.content[section] if item['id'] != key] + [values]
+                        p.rename(section, key, values['id'])
+                    metadata = next((item for item in p.content[section] if item['id'] == values['id']), {}) if not new else {}
+                    values.update({k:v for k,v in metadata.items() if k in ('role', 'previous_ids')})
+                    p.content[section] = [item for item in p.content[section] if item['id'] != (values['id'] if not new else None)] + [values]
             else:
                 map_id, index = key.rsplit(':',1) if key else (next(iter(p.maps)), None)
                 old = {'id':'', 'name':'Nouveau PNJ', 'dialogue':'Bonjour !', 'owner':''} if new else {k:v for k,v in p.maps[map_id]['sites'][int(index)].items() if k != 'position'}
@@ -261,6 +334,9 @@ class Controller:
                 if not chosen:
                     return
                 if not new:
+                    previous_id = p.maps[map_id]['sites'][int(index)]['id']
+                    if values['id'] != previous_id:
+                        p.rename('npcs', previous_id, values['id'])
                     p.maps[map_id]['sites'].pop(int(index))
                 p.maps[destination]['sites'].append({**values, 'position':chosen[1]})
             p.validate()
@@ -271,6 +347,26 @@ class Controller:
         except (ValueError, KeyError, TypeError) as exc:
             p.maps, p.mobs, p.content = before
             self.messagebox.showerror('Modification refusée', str(exc), parent=self.root)
+
+    def rename(self, section):
+        selected = self.tables[section].selection()
+        if not selected:
+            return
+        key = selected[0]
+        if section == 'npcs':
+            map_id, index = key.rsplit(':', 1)
+            key = self.project.maps[map_id]['sites'][int(index)]['id']
+        replacement = self.simpledialog.askstring('Renommer identifiant', 'Nouvel identifiant (ex. mira_hunt_2)', initialvalue=key, parent=self.root)
+        if not replacement or replacement == key:
+            return
+        before = self.project.state()
+        try:
+            self.project.rename(section, key, replacement)
+            self.remember(before)
+            self.refresh()
+            self.status.set('Identifiant renommé, références mises à jour. Enregistrez puis redémarrez le serveur.')
+        except (ValueError, KeyError) as exc:
+            self.messagebox.showerror('Renommage refusé', str(exc), parent=self.root)
 
     def edit_loot(self, initial):
         window = self.tk.Toplevel(self.root)

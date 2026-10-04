@@ -55,7 +55,7 @@ Créer d’abord le PNJ donneur, puis ajouter la quête. Les objectifs disponibl
 
 La quête est acceptée en parlant au PNJ, à proximité, hors menace ennemie, sur la carte de terrain. Le compteur démarre à l’acceptation. Les membres du groupe partagent la progression. Revenir parler au PNJ une fois l’objectif rempli accorde l’XP à chaque joueur, une seule fois. Le journal affiche les quêtes acceptées, leur avancement et leur état.
 
-La quête `mira_hunt` contrôle le tutoriel : son nombre de gobelins, sa description et son XP sont modifiables. Son identifiant, son PNJ Mira et sa cible dans la lisière sont nécessaires au déroulement du tutoriel. Elle ne peut pas être supprimée. Les étapes du tutoriel et le verrouillage de la forge restent les mécanismes existants.
+La quête `mira_hunt` contrôle le tutoriel : son nombre de gobelins, sa description et son XP sont modifiables. Son identifiant peut être renommé, par exemple en `mira_hunt_2` : son rôle de quête du tutoriel est conservé séparément. Son PNJ Mira et sa cible dans la lisière restent nécessaires au déroulement du tutoriel. Elle ne peut pas être supprimée. Les étapes du tutoriel et le verrouillage de la forge restent les mécanismes existants.
 
 Les objectifs ne déclenchent pas de scripts libres, de nouvelles étapes de tutoriel ou des dialogues à branches. Les PNJ peuvent proposer plusieurs quêtes ; leur interaction accepte ou rend celles qui sont disponibles.
 
@@ -65,7 +65,7 @@ Les classes de base disponibles sont Goblin, Orc et DragonWhelp. Une nouvelle es
 
 Dans le tableau du butin, ajouter/modifier une ligne ou la retirer, puis cliquer **Appliquer**. Les matériaux sont récupérés en dépeçant le corps. Les probabilités des matériaux rares et les recettes d’équipement conservent leurs règles actuelles ; cet écran édite les matériaux garantis.
 
-Une espèce utilisée par un spawner ou une quête ne peut pas être supprimée. Le gobelin de référence est protégé. L’identifiant d’une espèce existante est conservé afin de préserver ses références.
+Une espèce utilisée par un spawner ou une quête ne peut pas être supprimée. Le gobelin de référence est protégé. Renommer une espèce personnalisée met automatiquement à jour les spawners et les cibles de quêtes.
 
 ## Succès et titres
 
@@ -86,7 +86,7 @@ Le champ Seuil est masqué pour les conditions qui n’en utilisent pas. Les dé
 
 Créer/modifier un PNJ puis cliquer sa case sur la carte sélectionnée. La case doit être praticable et accessible. Le dialogue est du texte, sans exécution de code. Laisser le joueur lié vide pour un PNJ fixe ; `leader` ou un identifiant joueur lie le PNJ à ce joueur et utilise le suivi existant.
 
-Supprimer un PNJ requis par une quête est refusé. Modifier son identifiant nécessite de mettre à jour les quêtes correspondantes avant l’enregistrement ; conserver son identifiant est préférable.
+Supprimer un PNJ requis par une quête est refusé. Renommer son identifiant met automatiquement à jour les quêtes correspondantes.
 
 ## Monde et fichiers
 
@@ -102,3 +102,11 @@ python main.py
 ```
 
 Le jeu lit `content.json` et `mobs.json` dans ce dossier. On peut sélectionner le contenu séparément avec `RPG_CONTENT_FILE`. Redémarrer le serveur après l’enregistrement. Tester les changements d’objectifs, de titres ou de cartes fusionnées avec de nouvelles sessions ; les anciennes sessions conservent leur progression.
+
+## Renommer les identifiants — alpha 0.11.0a13
+
+Sélectionner une ligne puis **Renommer identifiant**, ou modifier directement le champ **Identifiant** dans le formulaire des quêtes, succès, mobs et PNJ. Les IDs acceptent 1 à 64 lettres minuscules, chiffres et underscores : `mira_hunt_2` est valide. Le nom affiché est du texte libre et accepte aussi ce nom. Les doublons sont refusés.
+
+Les références aux espèces, PNJ et cartes personnalisées sont mises à jour. Pour une quête renommée, les anciens identifiants sont conservés dans `previous_ids` : après redémarrage du serveur, les quêtes déjà acceptées ou terminées retrouvent leur progression, sans seconde récompense. Un ancien identifiant ne peut pas être réutilisé pour une autre quête.
+
+La quête initiale de Mira peut être renommée. Les IDs `goblin`, `mira`, `forge` et les sept cartes obligatoires restent des références internes protégées ; créer une définition personnalisée pour un autre ID. Enregistrer le projet puis redémarrer le serveur. Tester les renommages de cartes ou de mobs dans une nouvelle session : les scènes déjà chargées conservent leurs anciennes références.
