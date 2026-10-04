@@ -12,15 +12,30 @@
     },
     "quests": [
       {
-        "id": "mira_hunt",
+        "id": "mira_hunt_1",
         "name": "Protéger la lisière",
         "npc": "mira",
         "kind": "kill",
         "target": "goblin",
         "zone": "lisiere",
-        "count": 3,
-        "reward_xp": 300,
-        "description": "Battez les gobelins puis rapportez la nouvelle à Mira."
+        "count": 10,
+        "reward_xp": 750,
+        "description": "Battez les gobelins puis rapportez la nouvelle à Mira.",
+        "role": "tutorial_hunt",
+        "previous_ids": [
+          "mira_hunt"
+        ]
+      },
+      {
+        "id": "mira_hunt_2",
+        "name": "Le chef Gobelin",
+        "npc": "mira",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "hunt",
+        "count": 1,
+        "reward_xp": 1200,
+        "description": "il y a un nouveau chef gobelin au dessus de la foret, occupe t'en"
       }
     ],
     "achievements": [

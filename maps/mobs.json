@@ -1,1 +1,136 @@
-{"kind":"mobs","maps":{"goblin":{"class_name":"Goblin","name":"Gobelin des bois","rank":"D","damage":3,"loot":{"peau":1,"croc":1}},"orc":{"class_name":"Orc","name":"Orc","rank":"C","damage":5,"loot":{"peau":2,"croc":2}},"dragon_whelp":{"class_name":"DragonWhelp","name":"Dragonnet","rank":"B","damage":8,"loot":{"peau":3,"croc":3}}}}
+{
+  "kind": "mobs",
+  "maps": {
+    "goblin": {
+      "class_name": "Goblin",
+      "name": "Gobelin des bois",
+      "rank": "D",
+      "damage": 3,
+      "loot": {
+        "peau": 1,
+        "croc": 1
+      }
+    },
+    "orc": {
+      "class_name": "Orc",
+      "name": "Orc",
+      "rank": "C",
+      "damage": 5,
+      "loot": {
+        "peau": 2,
+        "croc": 2
+      }
+    },
+    "dragon_whelp": {
+      "class_name": "DragonWhelp",
+      "name": "Dragonnet",
+      "rank": "B",
+      "damage": 8,
+      "loot": {
+        "peau": 3,
+        "croc": 3
+      }
+    },
+    "gobelin_boss": {
+      "name": "chef gobelin",
+      "class_name": "Goblin",
+      "rank": "B",
+      "damage": 5,
+      "damage_growth": 0.8,
+      "xp_class": "boss",
+      "xp_multiplier": 1.5,
+      "parent": "goblin",
+      "stats": {
+        "hp": {
+          "base": 30.0,
+          "growth": 4.0
+        },
+        "force": {
+          "base": 6.0,
+          "growth": 1.2
+        },
+        "endurance": {
+          "base": 5.0,
+          "growth": 1.1
+        },
+        "intelligence": {
+          "base": 2.0,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 1.0,
+          "growth": 0.1
+        }
+      },
+      "drops": [
+        {
+          "item": "peau_gobelin",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_gobelin",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "cristal_gobelin",
+          "chance": 0.08,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        },
+        {
+          "item": "noyau_gobelin",
+          "chance": 0.02,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        },
+        {
+          "item": "oreille_gobelin",
+          "chance": 0.8,
+          "attempts": 2,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ],
+      "loot": {},
+      "abilities": [
+        {
+          "name": "Frappe",
+          "type": "damage",
+          "level": 1,
+          "power": 3.0,
+          "growth": 0.5,
+          "cooldown": 5.0,
+          "cast": 0.6,
+          "range": 1.5,
+          "duration": 2.0,
+          "concentration": true
+        },
+        {
+          "name": "brochette d'humain",
+          "type": "heal",
+          "level": 5,
+          "power": 12.0,
+          "growth": 2.3,
+          "cooldown": 30.0,
+          "cast": 8.5,
+          "range": 1.0,
+          "duration": 2.0,
+          "concentration": true
+        }
+      ]
+    }
+  }
+}
