@@ -73,6 +73,32 @@ function support(dom) {
   return false;
 }
 
+function hasEquipment(dom, recipe) {
+  const s = state(dom);
+  const me = s?.tutorial?.players.find(p => p.id === s.me);
+  return Boolean(me?.gear.some(g => g.recipe === recipe));
+}
+function craftStep(dom, recipe) {
+  const s = state(dom), a = s?.tutorial;
+  if (!a?.battle || !dom.window.demoReady() || hasEquipment(dom, recipe)) return false;
+  const me = a.players.find(p => p.id === s.me);
+  const catalogue = me.forge.find(item => item.recipe === recipe);
+  if (!catalogue) throw new Error(`Recette ${recipe} absente de la forge`);
+  if (catalogue.equipped) return false;
+  const site = a.battle.map.sites.find(n => n.id === 'forge');
+  if (!site) throw new Error('Forge absente du lieu actuel');
+  const unit = a.battle.players[s.me];
+  if (Math.hypot(...site.position.map((n, i) => n - unit.position[i])) > 1.5) {
+    const occupied = Object.entries(a.battle.players).filter(([id]) => id !== s.me).map(([, actor]) => actor.position.join());
+    const candidates = [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].map(([x,y]) => [site.position[0]+x,site.position[1]+y]).filter(point => !occupied.includes(point.join()) && dom.window.demoPath(a.battle.map, unit.position, point));
+    candidates.sort((x, y) => Math.hypot(...x.map((n,i) => n-unit.position[i])) - Math.hypot(...y.map((n,i) => n-unit.position[i])));
+    if (!candidates.length) throw new Error(`Forge inaccessible pour ${me.name}`);
+    return walk(dom, candidates[0]);
+  }
+  if (!catalogue.affordable) throw new Error(`${me.name} : matériaux insuffisants pour fabriquer ${catalogue.name}. Coût : ${JSON.stringify(catalogue.cost)}, sac : ${JSON.stringify(me.inventory)}`);
+  return press(dom, '#forge-catalogue [data-recipe] button[data-action="craft"]', button => button.closest('[data-recipe]').dataset.recipe === recipe);
+}
+
 async function runUntil(dom, predicate, label, target, limit=600000) {
   console.log(label);
   const deadline=Date.now()+limit;
@@ -181,13 +207,8 @@ async function main() {
         if(node && Math.hypot(...site.position.map((n,i)=>n-a.battle.players[state(hero).me].position[i]))<=1.5) node.dispatchEvent(new hero.window.MouseEvent('click',{bubbles:true})); else walk(hero,site.position);
       }
     });
-    await runUntil(hero,a=>a.players.every(p=>p.gear.some(g=>g.recipe==='veste')),'Forge : fabriquer et équiper',a=>{
-      const site=a.battle.map.sites.find(n=>n.id==='forge');
-      walk(hero,site.position);
-      for(const c of clients) {
-        const card=[...$(c,'forge-catalogue').children].find(n=>n.textContent.includes('Veste'));
-        const button=card?.querySelector('button'); if(visible(button)) button.click();
-      }
+    await runUntil(hero,()=>clients.every(c=>hasEquipment(c,'veste')),'Forge : fabriquer et équiper',()=>{
+      for (const c of clients) craftStep(c, 'veste');
     });
     await runUntil(hero,a=>!a.battle,'Rejoindre le chemin de Brume',()=>exitTo(hero,null));
     await runUntil(hero,a=>a.field_map==='brume' && a.step==='complete','Arrivée à Brume',()=>travel(hero,'brume'),300000);
@@ -195,4 +216,5 @@ async function main() {
     console.log('DÉMO RÉUSSIE : données réelles, interface uniquement, quête, craft, équipement et Brume.');
   } finally { for(const c of clients) { for(const timer of c.timers) c.window.clearInterval(timer); await wait(()=>c.window.demoIdle(),'fermeture'); c.window.close(); } }
 }
-main().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports = {craftStep, hasEquipment};
+if (require.main === module) main().catch(error=>{console.error(error);process.exitCode=1;});

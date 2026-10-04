@@ -1,0 +1,72 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {JSDOM, VirtualConsole} = require('jsdom');
+const {craftStep, hasEquipment} = require('./demo_authored_ui.cjs');
+const root = path.resolve(__dirname, '..');
+const fixtures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const errors = [], calls = [];
+const console = new VirtualConsole();
+console.on('jsdomError', error => errors.push(error.message));
+const dom = new JSDOM(fs.readFileSync(path.join(root,'multiplayer/web/index.html'),'utf8'), {url:'http://127.0.0.1:8080',runScripts:'outside-only',virtualConsole:console});
+dom.actions = [];
+dom.window.setInterval = () => 0;
+dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/map_artwork.js'),'utf8'));
+dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/app.js'),'utf8') + `
+window.demoSnapshot = () => session;
+window.demoReady = () => !busy;
+window.demoPath = gridPath;
+window.driverRender = adventure => {session = {id:'demo',me:'p0',tutorial:adventure,events:[]};renderTutorial(adventure);};
+window.driverCalls = [];
+tutorialCommand = async (action,params) => window.driverCalls.push({action,params});
+`);
+dom.window.document.getElementById('battle').hidden = false;
+dom.window.document.getElementById('tutorial-panel').hidden = false;
+function scenario(equipped=false) {
+  const adventure = JSON.parse(JSON.stringify(fixtures.field_village));
+  adventure.quest = 'completed'; adventure.step = 'craft';
+  const me = adventure.players.find(p=>p.id==='p0');
+  const forge = adventure.battle.map.sites.find(p=>p.id==='forge');
+  adventure.battle.players.p0.position = [...forge.position];
+  adventure.field_interactions = [forge];
+  const recipe = me.forge.find(r=>r.recipe==='veste');
+  recipe.affordable = true;
+  if(equipped) {
+    const gear = {recipe:'veste',slot:'torso',level:0,name:recipe.name};
+    me.gear = [gear]; recipe.equipped = gear;
+  }
+  dom.window.driverCalls.length=0;
+  dom.window.driverRender(adventure);
+  return adventure;
+}
+try {
+  scenario();
+  assert.equal(hasEquipment(dom,'veste'),false);
+  assert.equal(craftStep(dom,'veste'),true);
+  assert.equal(dom.window.driverCalls.length,1);
+  assert.equal(dom.window.driverCalls[0].action,'craft');
+  assert.equal(dom.window.driverCalls[0].params.recipe,'veste');
+  scenario(true);
+  assert.equal(hasEquipment(dom,'veste'),true);
+  assert.equal(craftStep(dom,'veste'),false);
+  assert.equal(dom.window.driverCalls.length,0);
+  const distant = scenario();
+  const site = distant.battle.map.sites.find(p=>p.id==='forge');
+  const map = distant.battle.map;
+  distant.battle.players.p0.position = [site.position[0]-4,site.position[1]];
+  distant.field_interactions = [];
+  dom.window.driverRender(distant);
+  craftStep(dom,'veste');
+  assert.equal(dom.window.driverCalls[0].action,'battle_move');
+  const endpoint = dom.window.driverCalls[0].params;
+  assert(Math.hypot(endpoint.x-site.position[0],endpoint.y-site.position[1])<=1.5);
+  const poor = scenario();
+  poor.players.find(p=>p.id==='p0').forge.find(r=>r.recipe==='veste').affordable = false;
+  dom.window.driverRender(poor);
+  assert.throws(()=>craftStep(dom,'veste'),/matériaux insuffisants/);
+  assert.equal(dom.window.driverCalls.length,0);
+  assert.deepEqual(errors,[]);
+  process.stdout.write('Pilote UI : fabrication ciblée, équipement déjà présent, approche de la forge et manque de matériaux vérifiés.\n');
+} finally {
+  dom.window.close();
+}

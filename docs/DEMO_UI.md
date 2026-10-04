@@ -26,3 +26,6 @@ Le parcours crée un chevalier et un prêtre, explore la clairière et la forêt
 Par défaut, les durées du jeu sont conservées. `RPG_DEMO_SPEED` permet d'accélérer uniformément l'horloge pour le diagnostic ; une exécution accélérée ne remplace pas la vérification aux durées normales.
 
 jsdom vérifie les interactions et l'état de l'interface, pas les pixels rendus par un navigateur. Les régressions des textures sont contrôlées séparément par `verify_http_ui.py`, qui vérifie la conservation des définitions SVG et des cases de pont lors des actualisations. Ce parcours complète les tests déterministes sur le monde de référence, il ne les remplace pas.
+
+
+À la forge, chaque personnage rejoint une case libre à portée de l’atelier et fabrique sa propre veste. Une veste déjà équipée est ignorée : le pilote ne clique jamais sur l’amélioration pour accomplir cette étape. Si les matériaux nécessaires manquent, il signale le coût et le sac du personnage concerné au lieu de répéter des commandes impossibles.
