@@ -527,3 +527,24 @@ def test_client_world_route_is_validated_without_server_search(game, monkeypatch
 def test_forged_world_routes_are_rejected(proposed):
     from jeuxRPG.multiplayer import world
     assert not world.validate_path("clearing", "rosee", {"clearing", "rosee"}, proposed)
+
+
+def test_delayed_strike_rechecks_current_combat_and_cooldown(game):
+    token = game.register('Réactif', 'Knight')['token']
+    game.command(token, uuid.uuid4().hex, 'tutorial')
+    state = command(game, token, 'explore')
+    combat_fixture(game, token)
+    state = game.state(token)['session']
+    encounter = state['tutorial']['encounter_number']
+    stale = state['revision']
+    game.clock.value += .3
+    game.tick()
+    params = {'session_id': state['id'], 'revision': stale, 'encounter': encounter, 'target': state['tutorial']['mobs'][0]['combat_id']}
+    game.command(token, uuid.uuid4().hex, 'strike', **params)
+    with pytest.raises(GameError) as failure:
+        game.command(token, uuid.uuid4().hex, 'strike', **params)
+    assert failure.value.code == 'cooldown'
+    params['encounter'] += 1
+    with pytest.raises(GameError) as failure:
+        game.command(token, uuid.uuid4().hex, 'strike', **params)
+    assert failure.value.code in ('stale_encounter', 'stale_revision')

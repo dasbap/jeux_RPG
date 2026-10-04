@@ -351,3 +351,9 @@ Les orientations sont stockées dans `bridge_rotations` sous forme de `{ "positi
 ## Outils contextuels — alpha 0.11.0a11
 
 **Terminer la patrouille** apparaît uniquement quand l’outil Patrouille est actif et qu’un spawner de la carte courante est en cours d’édition. Changer d’outil masque ce bouton. Le zoom de l’éditeur de terrain conserve également le point visé (molette), ou le centre de la vue (boutons +/−).
+
+### Contrôle des accès avant enregistrement
+
+Le builder vérifie les déplacements depuis chaque arrivée de téléportation. Une sortie, un spawner ou l'accès à un PNJ/atelier séparé par une rivière sans pont ou par un obstacle empêche l'enregistrement. Le message indique la carte, l'arrivée concernée et la position inaccessible. Une carte sans sortie est également refusée. Les déplacements en diagonale ne permettent pas de couper les coins des obstacles.
+
+Les secteurs rattachés à un village participent au réseau des déplacements rapides. Le rattachement à Rosée ne signifie pas que le personnage est déjà sur la place du village : quitter la forêt puis sélectionner Rosée rejoint bien l'entrée du village.

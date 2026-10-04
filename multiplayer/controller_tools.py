@@ -123,7 +123,11 @@ def report(project):
     for quest in project.content['quests']:
         if quest['npc'] not in npcs:
             errors.append(quest['name'] + ' : PNJ donneur introuvable.')
-    warnings = []
+    from .map_playability import issues
+    try:
+        warnings = issues(project.maps)
+    except (ValueError, KeyError, TypeError):
+        warnings = ["Contrôle des accès impossible : corrigez les erreurs de structure des cartes."]
     for identifier, species in project.mobs.items():
         for drop in mob_rules.resolve(project.mobs, identifier).get('drops', []):
             if drop['chance'] == 0:

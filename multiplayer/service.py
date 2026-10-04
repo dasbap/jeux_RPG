@@ -403,7 +403,10 @@ class GameService:
                    "unit_skill": {"session_id", "revision", "units", "skill_name", "target"},
                    "unit_order": {"session_id", "revision", "encounter", "units", "order", "target", "paths"},
                    "leave_battle": {"session_id", "revision"}}
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in ("battle_move", "unit_order") and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "tutorial" and not params) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        tactical_actions = {"battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
+        for tactical_action in tactical_actions:
+            allowed[tactical_action].add("encounter")
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in tactical_actions and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "tutorial" and not params) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "field_mode" in params and type(params["field_mode"]) is not bool:
             raise GameError("invalid_command", "Mode de zone invalide.")
@@ -467,10 +470,10 @@ class GameService:
             if row is None:
                 raise GameError("not_tutorial", "Cette session n'est pas un tutoriel.", 409)
             party = json.loads(row[0])
-            movement = action == "battle_move" or action == "unit_order" and params.get("order") == "move"
+            tactical_action = action in {"battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
             same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
             world_action = action in ("move", "travel", "explore") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
-            if session["revision"] != params["revision"] and not ((movement and same_encounter or world_action) and params["revision"] < session["revision"]):
+            if session["revision"] != params["revision"] and not ((tactical_action and same_encounter or world_action) and params["revision"] < session["revision"]):
                 raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)

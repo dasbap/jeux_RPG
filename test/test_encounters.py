@@ -221,7 +221,8 @@ def test_rank_order_and_group_difficulty():
 def test_village_routes_pass_through_square_street_and_successive_buildings():
     known = {"rosee", "brume"}
     nodes = world.graph(known)
-    assert nodes["rosee"] == ["mira", "rosee_brume"]
+    assert {"mira", "rosee_brume"} <= set(nodes["rosee"])
+    assert all(point in nodes["rosee"] for point in ("forest", "cave_1"))
     assert world.path("rosee", "training", known) == ["mira", "rosee_artisans", "forge", "training"]
     assert world.path("forge", "rosee_inn", known) == ["rosee_artisans", "mira", "rosee_habitations", "rosee_house", "rosee_inn"]
     assert world.path("brume", "brume_inn", known) == ["arrival", "brume_market", "brume_shop", "brume_inn"]

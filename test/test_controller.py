@@ -132,12 +132,18 @@ def test_world_xp_curve_and_merchant_schedule_are_used(monkeypatch):
     assert tutorial.npc(3601)['travelling']
 
 
-def test_builder_save_delegates_to_controller():
+def test_builder_save_delegates_to_controller(monkeypatch):
     editor = map_editor.MapEditor.__new__(map_editor.MapEditor)
+    from jeuxRPG.multiplayer import map_assets, map_playability
+    editor.maps = {"valid": {}}
+    validations = []
+    monkeypatch.setattr(map_assets, "validate", lambda maps: maps)
+    monkeypatch.setattr(map_playability, "validate", lambda maps: validations.append(maps))
     calls = []
     editor.on_save = lambda choose: calls.append(choose)
     editor.save(True)
     assert calls == [True]
+    assert validations == [editor.maps]
 
 
 def test_saved_project_is_loaded_by_game_in_separate_process(tmp_path):

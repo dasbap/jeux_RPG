@@ -156,6 +156,7 @@ def view(party, me, now):
     result = json.loads(json.dumps({key: value for key, value in party.items() if key not in ("characters", "ready", "battle", "mobs", "mob")}, ensure_ascii=False, separators=(",", ":")))
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party)
+    result["hunt_objective"] = {key: content.HUNT.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
     result["hunt_goal"] = content.HUNT["count"]
     result["hunt_name"] = content.HUNT["name"]
     result["hunt_description"] = content.HUNT["description"]
@@ -548,6 +549,9 @@ def execute(party, player_id, action, params, now, error, random):
         if path is None:
             raise error("invalid_destination", "Ce point n'est pas accessible par les chemins connus.", 409)
         party["journey"] = path
+        if not path:
+            arrive(party, destination, messages)
+            return messages, party["step"] == "complete"
         continue_journey(party, now, random, messages)
         return messages, party["step"] == "complete"
     if action in ("control_units", "unit_order", "unit_skill"):

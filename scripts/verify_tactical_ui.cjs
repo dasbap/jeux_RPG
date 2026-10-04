@@ -284,6 +284,11 @@ try {
       const cell = el("world-map").querySelector(`[data-cell="${bridge.join(",")}"]`);
       assert.equal(cell.dataset.rotation, "90");
       assert(cell.style.fill.includes("river-bridge-90"));
+      const textures = el("world-map").querySelector("defs");
+      render(scene);
+      assert.strictEqual(el("world-map").querySelector("defs"), textures);
+      assert.strictEqual(el("world-map").querySelector(`[data-cell="${bridge.join(",")}"]`), cell);
+      assert(el("world-map").querySelector("#river-bridge-90"));
     }
     let requested = 0;
     el("battle").requestFullscreen = () => { requested++; return Promise.resolve(); };

@@ -170,6 +170,8 @@ class MapEditor:
         from .map_assets import validate
         try:
             validate(self.maps)
+            from .map_playability import validate as playable
+            playable(self.maps)
             messagebox.showinfo("Validation", "Cartes, niveaux, spawners et chemins valides.")
         except ValueError as exc:
             messagebox.showerror("Validation", str(exc))
@@ -615,6 +617,13 @@ class MapEditor:
                 messagebox.showerror("Ouverture", str(exc))
 
     def save(self, choose=False):
+        from .map_playability import validate as playable
+        try:
+            from .map_assets import validate
+            playable(validate(self.maps))
+        except ValueError as exc:
+            messagebox.showerror("Carte non jouable", str(exc))
+            return
         if getattr(self, "on_save", None):
             return self.on_save(choose)
         path = self.path

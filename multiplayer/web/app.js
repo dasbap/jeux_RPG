@@ -250,7 +250,7 @@ function tutorialCommand(action, params = {}) {
     const paths = worldPaths(session.tutorial, params.destination);
     if (paths) params = {...params, paths};
   }
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();
@@ -800,8 +800,11 @@ function moveControlled(adventure, me, destination) {
     if (Object.values(paths).some(path => path === null)) return message("Ce chemin est bloqué pour un allié.");
     return tutorialCommand("unit_order", {units: controlled.map(([id]) => id), order: "move", target: destination, paths});
   }
-  const path = gridPath(adventure.battle.map, adventure.battle.players[me.id].position, destination);
-  if (path?.length) return tutorialCommand("battle_move", {x, y, path});
+  const unit = adventure.battle.players[me.id];
+  if (unit.route.length && unit.route.at(-1).join(",") === destination.join(",")) return;
+  const path = gridPath(adventure.battle.map, unit.position, destination);
+  if (path === null) return message("Ce chemin est inaccessible : vérifiez les passages sur la carte.", true);
+  if (path.length) return tutorialCommand("battle_move", {x, y, path});
 }
 function canPayControl(adventure, me, unit) {
   const cost = unit.control_cost;
@@ -862,7 +865,8 @@ function battleAllowed(adventure, player, target, range) {
   return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
 }
 function gridPath(map, source, destination) {
-  const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || map.cover.some(p => p[0] === x && p[1] === y) || (map.blocked || []).some(p => p[0] === x && p[1] === y);
+  const obstacles = new Set([...(map.cover || []), ...(map.blocked || [])].map(p => p.join(",")));
+  const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || obstacles.has(`${x},${y}`);
   if (blocked(...destination)) return null;
   const key = p => p.join(",");
   const queue = [{point: source, cost: 0}];
@@ -987,10 +991,11 @@ function renderBattle(adventure, me) {
   if (previousMap && previousMap.getAttribute("viewBox") === svg.getAttribute("viewBox")) {
     const nodes = [...svg.children].map(node => {
       const selector = node.dataset.unit ? `[data-unit="${node.dataset.unit}"]` : node.dataset.cell ? `[data-cell="${node.dataset.cell}"]` : null;
-      const retained = selector && previousMap.querySelector(selector);
+      const retained = node.tagName.toLowerCase() === "defs" ? previousMap.querySelector("defs") : selector && previousMap.querySelector(selector);
+      if (retained && node.tagName.toLowerCase() === "defs") return retained;
       if (!retained) return node;
-      for (const attr of [...retained.attributes]) retained.removeAttribute(attr.name);
-      for (const attr of node.attributes) retained.setAttribute(attr.name, attr.value);
+      for (const attr of [...retained.attributes]) if (!node.hasAttribute(attr.name)) retained.removeAttribute(attr.name);
+      for (const attr of node.attributes) if (retained.getAttribute(attr.name) !== attr.value) retained.setAttribute(attr.name, attr.value);
       const children = [...node.children].map((child, index) => {
         const oldChild = retained.children[index];
         if (!oldChild || oldChild.tagName !== child.tagName) return child;

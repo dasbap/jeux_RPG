@@ -254,6 +254,9 @@ def graph(known):
             graph[point["id"]] = []
         layout = VILLAGE_STREETS.get(zone)
         chains = [[zone, layout["square"]]] + [[layout["square"], street["id"], *street["buildings"]] for street in layout["streets"]] if layout else [[zone, point["id"]] for point in PLACES[zone]["points"]]
+        if layout:
+            connected = {point for chain in chains for point in chain}
+            chains.extend([zone, point["id"]] for point in PLACES[zone]["points"] if point["id"] not in connected)
         for chain in chains:
             for source, destination in zip(chain, chain[1:]):
                 graph[source].append(destination)

@@ -190,7 +190,7 @@ def transition(party, gate, player, now):
     party.update(battle=None, mobs=[], mob=None)
     party.pop("field_map", None)
     party["position"] = definition.get("fast_travel_origin", party["position"])
-    if party["position"] == "clearing" and party["step"] in ("clearing", "first_fight"):
+    if party["step"] in ("clearing", "first_fight"):
         party["step"] = "road"
     return ["Vous quittez complètement la zone et rejoignez les chemins rapides. Les ennemis cessent la poursuite."]
 

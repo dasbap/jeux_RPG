@@ -401,3 +401,11 @@ Le builder ouvre un **Aperçu rendu final** autonome dans le navigateur, avec le
 ## Contrôleur du projet
 
 `python controller.py` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.
+
+## Alpha 0.11.0a20 — accès du builder et parcours client
+
+Les textures des ponts restent attachées au SVG pendant les actualisations. Les secteurs associés à un village sont reliés aux chemins rapides ; sortir de la forêt permet de rejoindre Rosée. Les actions tactiques identifient le combat en cours et sont vérifiées sur l'état actuel, sans être bloquées par une simple révision de simulation.
+
+Le builder refuse les cartes dont une arrivée de TP, l'apparition initiale, un PNJ, un atelier, un spawner ou une sortie est inaccessible. Le contrôleur affiche ces problèmes dans son diagnostic. Voir le [guide du builder](docs/BUILDER_GUIDE.md).
+
+Le [parcours client sur les données actuelles](docs/DEMO_UI.md) utilise des clics de l'interface et une base temporaire, sans injection d'état de jeu. Il complète les tests sur le monde de référence. Le workflow **Parcours UI du monde actuel** permet aussi de le lancer manuellement dans GitHub Actions.
