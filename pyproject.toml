@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jeux-rpg"
-version = "0.11.0a2"
+version = "0.11.0a3"
 description = "Prototype RPG multijoueur autonome"
 requires-python = ">=3.11"
 dependencies = ["python-dotenv>=1.0,<2"]

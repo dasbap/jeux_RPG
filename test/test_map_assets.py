@@ -173,3 +173,48 @@ def test_modified_terrain_relocates_existing_companion(monkeypatch):
     fields.migrate_terrain(data)
     assert data["battle"]["terrain_version"] == "edited"
     assert tactics.walkable(definition, data["battle"]["companions"]["guide"]["position"])
+
+
+def test_editor_renames_display_name_and_keeps_map_identifier():
+    from jeuxRPG.multiplayer.map_editor import MapEditor
+    from types import SimpleNamespace
+    editor = MapEditor.__new__(MapEditor)
+    editor.maps = maps()
+    editor.selected = SimpleNamespace(get=lambda: "rosee")
+    editor.choice = SimpleNamespace(configure=lambda **values: None)
+    editor.history = []
+    editor.draw = lambda: None
+    editor.form = lambda title, values: {"name": "Rosée renommée", "width": "64", "height": "40", "biome": "village"}
+    editor.properties()
+    assert editor.maps["rosee"]["name"] == "Rosée renommée"
+    assert editor.map_labels["Rosée renommée [rosee]"] == "rosee"
+    assert editor.maps["rosee"]["id"] == "field_rosee"
+
+
+def test_editor_creates_practicable_bidirectional_gate():
+    from jeuxRPG.multiplayer.map_editor import MapEditor
+    from types import SimpleNamespace
+    editor = MapEditor.__new__(MapEditor)
+    editor.maps = maps()
+    editor.selected = SimpleNamespace(get=lambda: "clearing")
+    editor.set_gate([2, 10], {"name": "Rosée", "destination": "rosee", "entry": "2,20", "bidirectional": True})
+    reverse = editor.maps["rosee"]["exits"][-1]
+    assert reverse["destination"] == "clearing"
+    assert reverse["position"] != [2, 20]
+    assert reverse["entry"] != [2, 10]
+    map_assets.validate(editor.maps)
+
+
+def test_editor_complete_exit_ignores_unused_arrival_and_preserves_origin():
+    from jeuxRPG.multiplayer.map_editor import MapEditor
+    from types import SimpleNamespace
+    editor = MapEditor.__new__(MapEditor)
+    editor.maps = maps()
+    editor.selected = SimpleNamespace(get=lambda: "clearing")
+    editor.set_gate([2, 10], {"name": "Sortie", "destination": "", "entry": "", "fast_destination": "rosee"})
+    assert editor.maps["clearing"]["exits"][-1]["entry"] is None
+    assert editor.maps["clearing"]["exits"][-1]["fast_destination"] == "rosee"
+    before = deepcopy(editor.maps)
+    with pytest.raises(ValueError):
+        editor.set_gate([3, 10], {"name": "Erreur", "destination": "rosee", "entry": "0,20"})
+    assert editor.maps == before

@@ -91,7 +91,14 @@ from .map_assets import configured
 MAPS = configured(MAPS)
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
 for identifier, definition in MAPS.items():
-    if world.zone_of(identifier) is None:
+    zone = world.zone_of(identifier)
+    if identifier in world.PLACES:
+        world.PLACES[identifier]["name"] = definition["name"]
+    elif zone:
+        for point in world.PLACES[zone]["points"]:
+            if point["id"] == identifier:
+                point["name"] = definition["name"]
+    if zone is None:
         world.PLACES[identifier] = {"name": definition["name"], "type": "zone", "x": 70, "y": 300 + 30 * len(world.PLACES), "description": "Zone personnalisée.", "points": []}
         world.LEVELS[identifier] = 1
 
