@@ -109,7 +109,7 @@ def species_details(identifier):
         getattr(actor,key).current_value = formula['base']
     advantages = actor.class_table["advantage"]
     return {"hp": actor.hp.value, "stats": {key: getattr(actor, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-            "weaknesses": [value.name for value in advantages["weakness"]], "resistances": [value.name for value in advantages["resilience"]]}
+            "weaknesses": [value.name for value in (advantages['weakness'] if isinstance(advantages,dict) else advantages.weakness)], "resistances": [value.name for value in (advantages['resilience'] if isinstance(advantages,dict) else advantages.resilience)]}
 
 
 def linked_sector(maps, source_id, identifier, direction, overlap=4):

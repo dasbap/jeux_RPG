@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from jeuxRPG._class.character import Character
+from jeuxRPG._class.res.character.class_models import playable
 from .clock import GameClock
 from .network_log import create_chat_logger
 from . import tutorial
@@ -38,7 +39,8 @@ def world_context(party):
 
 
 class GameService:
-    classes = ("Knight", "Mage", "Archer", "Priest", "Necromancien")
+    from jeuxRPG._class.res.character.class_models import playable
+    classes = tuple(playable())
     cooldown = 3.6
     match_duration = 3 * 300.0
     lobby_duration = GameClock.ratio * 1800.0
@@ -47,7 +49,8 @@ class GameService:
         from .skill_catalog import install
         from .content import DATA
         from .map_building import MOBS
-        self.classes = (*type(self).classes, *install(DATA,MOBS))
+        extra_classes = install(DATA,MOBS)
+        self.classes = (*playable(DATA.get('templates')), *extra_classes)
         self._tick_errors = {}
         self._prepared_views = OrderedDict()
         self._view_errors = {}

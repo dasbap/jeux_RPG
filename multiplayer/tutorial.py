@@ -298,7 +298,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             enemy = enemies[data["combat_id"]]
             data.update(pack(enemy))
             if data["combat_id"] == target_id:
-                if action == "skill" and resolved and getattr(actor,'catalog_base_class',actor.char_class) == "Knight" and skill.name == "Sword Slash" and enemy.is_alive():
+                if action == "skill" and resolved and getattr(skill,'balance',{}).get('bleeding',False) and enemy.is_alive():
                     bleeding.apply(data, player_id, actor.force.current_value, now)
                     messages.append(f"{enemy.name} saigne : {len(data['bleeding'])} cumul(s).")
                 tactics.damaged(party, data, player_id, now)

@@ -32,7 +32,7 @@ def is_hunt(quest):
 
 
 def validate_content(data):
-    if not isinstance(data, dict) or set(data)-{'classes','skills'} != set(DEFAULTS):
+    if not isinstance(data, dict) or set(data)-{'classes','skills','templates'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
     limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64)}
     if not isinstance(data['world'], dict) or set(data['world']) != set(limits):
@@ -99,6 +99,9 @@ def validate_content(data):
     for section in ('classes','skills'):
         if section in data and not isinstance(data[section],list):
             raise ValueError('Catalogue de classes/compétences invalide.')
+    if 'templates' in data:
+        from jeuxRPG._class.res.character.class_models import validate as validate_templates
+        validate_templates(data['templates'])
     return deepcopy(data)
 
 
@@ -123,7 +126,10 @@ def load_content(path=None):
     if path.stat().st_size > 1024*1024:
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
-    return validate_content(data.get('content', data))
+    result = data.get('content',data)
+    from jeuxRPG._class.res.character.class_models import load as load_templates
+    result['templates'] = load_templates(None if os.environ.get('RPG_CLASSES_FILE') else path.parent)
+    return validate_content(result)
 
 
 DATA = load_content()

@@ -213,6 +213,7 @@ class Character(
         self.intelligence = Intelligence(base_stats["intelligence"])
         self.sagesse = Sagesse(base_stats["sagesse"])
         self.class_table = deepcopy(class_table)
+        self.combat_profile = deepcopy(class_table.get("combat",{}))
         
         # Initialize energy systems
         self.energie: List[Energie] = []

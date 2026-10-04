@@ -11,18 +11,15 @@ from jeuxRPG._class.res.character.stats.basic_stat import Mana, HP, Force, Endur
 from .mob_rules import STATS, finite, resolve, validate_mobs
 
 
-BASE_CLASSES = ('Knight','Mage','Archer','Priest','Necromancien')
+from jeuxRPG._class.res.character.class_models import MODELS, playable, skill_from_data
+
+
+BASE_CLASSES = tuple(playable())
 
 
 @lru_cache(maxsize=1)
 def builtins():
-    result = {}
-    for name in (*BASE_CLASSES,'Goblin','Orc','DragonWhelp'):
-        actor = Character.create(name,'catalog','Catalogue')
-        for skills in actor.class_skills_dict.values():
-            for skill in skills.values():
-                result[f'native:{name}:{skill.name}'] = deepcopy(skill)
-    return result
+    return {identifier:skill_from_data(definition) for identifier,definition in MODELS['skills'].items()}
 
 
 def library(data, mobs):
@@ -37,7 +34,7 @@ def library(data, mobs):
 
 
 def validate(data, mobs):
-    validate_mobs(mobs)
+    validate_mobs(mobs,classes=[model['id'] for model in data.get('templates',MODELS)['classes'] if model['class_type'] != 'INVOCATION'])
     skills = data.get('skills',[])
     classes = data.get('classes',[])
     for values in (skills,classes):
@@ -49,7 +46,7 @@ def validate(data, mobs):
                 raise ValueError('Identifiant ou nom de classe/compétence invalide.')
             ids.add(item['id'])
     for skill in skills:
-        validate_mobs({'goblin':{'class_name':'Goblin','name':'Test','rank':'D','damage':1,'abilities':[skill]}})
+        validate_mobs({'goblin':{'class_name':next(model['id'] for model in data.get('templates',MODELS)['classes'] if model['class_type'] != 'INVOCATION'),'name':'Test','rank':'D','damage':1,'abilities':[skill]}},classes=[model['id'] for model in data.get('templates',MODELS)['classes']])
     available = library(data,mobs)
     owners = {}
     for definition in classes:
@@ -64,7 +61,7 @@ def validate(data, mobs):
             raise ValueError('Identifiant réservé ou modèle de classe inconnu.')
         if not finite(definition.get('energy_capacity',30),1,10000):
             raise ValueError('Capacité d’énergie invalide.')
-        validate_mobs({'goblin':{'class_name':'Goblin','name':'Test','rank':'D','damage':1,'stats':definition.get('stats',{})}})
+        validate_mobs({'goblin':{'class_name':definition['base_class'],'name':'Test','rank':'D','damage':1,'stats':definition.get('stats',{})}},classes=[model['id'] for model in data.get('templates',MODELS)['classes']])
         assigned = definition.get('skills',[])
         if not isinstance(assigned,list) or len(assigned) > 32:
             raise ValueError('32 compétences maximum par classe.')
@@ -120,6 +117,12 @@ def mob_ability(entry, assignment):
 
 
 def install(data, mobs):
+    from jeuxRPG._class.universal_character import register_model
+    models = data.get('templates',MODELS)
+    for model in models['classes']:
+        existing = CharacterMeta._classes.get(model['id'].lower())
+        if model['playable'] or existing is None or getattr(existing,'universal_class',False):
+            register_model(model,models)
     available = validate(data,mobs)
     installed = []
     stat_types = {'hp':HP,'force':Force,'endurance':Endurance,'intelligence':Intelligence,'sagesse':Sagesse}

@@ -37,7 +37,7 @@ let mapMarker = null;
 let focusedMob = "";
 let tacticalInteractionUntil = 0;
 let inspectedCell = null;
-const classes = {Knight: "Chevalier", Mage: "Mage", Archer: "Archer", Priest: "Prêtre", Necromancien: "Nécromancien"};
+const classes = Object.create(null);
 function message(text, error = false) {
   $("message").textContent = text;
   $("message").classList.toggle("error", error);
@@ -154,7 +154,7 @@ function render(state) {
   renderChat(state.chat);
   $("registration").hidden = Boolean(token);
   $("lobby").hidden = !token;
-  $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name]}`;
+  $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name] || state.player.class_name}`;
   $("connection").textContent = "Connecté · état partagé";
   $("room-controls").hidden = Boolean(session && session.state !== "finished");
   $("battle").hidden = !session;
@@ -181,7 +181,7 @@ function render(state) {
     title.textContent = `${player.name}${player.id === session.me ? " · vous" : ""}`;
     const type = document.createElement("div");
     type.className = "class";
-    type.textContent = `${classes[player.class_name]}${player.level ? ` · niveau ${player.level}` : ""}`;
+    type.textContent = `${classes[player.class_name] || player.class_name}${player.level ? ` · niveau ${player.level}` : ""}`;
     const bar = document.createElement("div");
     bar.className = "health";
     bar.setAttribute("role", "meter");
@@ -1279,7 +1279,8 @@ document.addEventListener("pointerdown", enterCombatFullscreen, {capture: true})
 
 if (typeof fetch === 'function') fetch('/api/classes').then(response => { if (!response.ok) throw new Error('Classes indisponibles'); return response.json(); }).then(available => {
   for (const item of available) {
-    if (!Object.hasOwn(classes, item.id)) {
+    classes[item.id] = item.name;
+    if (![...$('class-name').options].some(option => option.value === item.id)) {
       classes[item.id] = item.name;
       const option = document.createElement('option');
       option.value = item.id;

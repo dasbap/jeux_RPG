@@ -38,7 +38,8 @@ class Project:
             target = self.directory/source.name
             if not target.exists():
                 shutil.copyfile(source, target)
-        self.mobs = validate_mobs(json.loads((self.directory/'mobs.json').read_text(encoding='utf-8'))['maps'])
+        self.content = load_content(self.directory/'content.json')
+        self.mobs = validate_mobs(json.loads((self.directory/'mobs.json').read_text(encoding='utf-8'))['maps'],classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
         from . import map_building
         previous = map_building.MOBS
         try:
@@ -46,14 +47,50 @@ class Project:
             self.maps = load(self.directory/'world.json')
         finally:
             map_building.MOBS = previous
-        self.content = load_content(self.directory/'content.json')
+        self.migrate_classes()
         self.snapshot = self.state()
+
+    def migrate_classes(self):
+        definitions = self.content.get('classes',[])
+        if not definitions:
+            return
+        from .skill_catalog import install
+        from .tutorial import blueprint
+        from jeuxRPG._class.character import Character, CharacterMeta
+        from jeuxRPG._class.res.character.class_models import model_from_actor
+        old = CharacterMeta._classes.copy()
+        try:
+            install(self.content,self.mobs)
+            for definition in definitions:
+                actor = Character.create(definition['id'],'migration',definition['name'])
+                model = model_from_actor(actor,definition['id'],definition['name'],self.content['templates'])
+                model['formulas'] = deepcopy(definition.get('stats',{}))
+                if definition.get('previous_ids'):
+                    model['previous_ids'] = deepcopy(definition['previous_ids'])
+                self.content['templates']['classes'].append(model)
+            self.content['classes'] = []
+        finally:
+            CharacterMeta._classes.clear()
+            CharacterMeta._classes.update(old)
+            blueprint.cache_clear()
 
     def state(self):
         return deepcopy((self.maps, self.mobs, self.content))
 
     def validate(self):
-        validate_mobs(self.mobs)
+        validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
+        from .skill_catalog import library, make_skill
+        from jeuxRPG._class.res.character.class_models import skill_to_data
+        available = library(self.content,self.mobs)
+        definitions = self.content['templates']['skills']
+        for identifier in list(definitions):
+            if identifier.startswith(('skill:','mob:')):
+                if identifier not in available:
+                    if any(entry['skill_id'] == identifier for model in self.content['templates']['classes'] for entry in model['skills']):
+                        raise ValueError('Compétence référencée introuvable : '+identifier)
+                    del definitions[identifier]
+                else:
+                    definitions[identifier] = skill_to_data(make_skill(available[identifier],{}))
         validate_content(self.content)
         from .skill_catalog import validate as validate_catalog
         validate_catalog(self.content,self.mobs)
@@ -72,13 +109,27 @@ class Project:
 
     def rename(self, section, identifier, replacement):
         import re
-        if not isinstance(replacement, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', replacement):
+        if not isinstance(replacement, str) or not re.fullmatch(r'[a-zA-Z0-9_]{1,64}' if section == 'classes' else r'[a-z0-9_]{1,64}', replacement):
             raise ValueError('Identifiant : 1–64 lettres minuscules, chiffres ou underscores (ex. mira_hunt_2).')
         if identifier == replacement:
             return
         before = self.state()
         try:
-            if section in ('classes','skills'):
+            if section == 'classes' and any(item['id'] == identifier for item in self.content['templates']['classes']):
+                item = next(item for item in self.content['templates']['classes'] if item['id'] == identifier)
+                item['id'] = replacement
+                item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids',[]),identifier]))
+                for definition in self.content['templates']['skills'].values():
+                    for effect in definition['effects'].values():
+                        if effect.get('invocation',{} ) and effect['invocation'].get('class') == identifier:
+                            effect['invocation']['class'] = replacement
+                for species in self.mobs.values():
+                    if species['class_name'] == identifier:
+                        species['class_name'] = replacement
+                for definition in self.content.get('classes',[]):
+                    if definition['base_class'] == identifier:
+                        definition['base_class'] = replacement
+            elif section in ('classes','skills'):
                 item = next(item for item in self.content.get(section,[]) if item['id'] == identifier)
                 if any(other['id'] == replacement for other in self.content[section]):
                     raise ValueError('Identifiant déjà utilisé.')
@@ -86,7 +137,10 @@ class Project:
                 if section == 'classes':
                     item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids',[]),identifier]))
                 if section == 'skills':
-                    for definition in [*self.content.get('classes',[]), *self.mobs.values()]:
+                    cached = self.content['templates']['skills'].pop('skill:'+identifier,None)
+                    if cached is not None:
+                        self.content['templates']['skills']['skill:'+replacement] = cached
+                    for definition in [*self.content.get('classes',[]), *self.content['templates']['classes'], *self.mobs.values()]:
                         for assignment in definition.get('skills',definition.get('abilities',[])):
                             if assignment.get('skill_id') == 'skill:'+identifier:
                                 assignment['skill_id'] = 'skill:'+replacement
@@ -168,7 +222,7 @@ class Project:
 
     def save(self):
         self.validate()
-        payloads = {'world.json': self.maps, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': self.content}}
+        payloads = {'world.json': self.maps, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': {key:value for key,value in self.content.items() if key != 'templates'}}, 'classes.json':self.content['templates']}
         originals, staged, replaced = {}, {}, []
         try:
             for name, value in payloads.items():
@@ -256,7 +310,7 @@ class Controller:
             'quests': [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q['reward_xp']} XP") for q in p.content['quests']],
             'achievements': [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} → {a['title']}") for a in p.content['achievements']],
             'npcs': [(f'{key}:{index}', site['name'], f"{key} · {site['id']} · case {site['position']}") for key, data in p.maps.items() for index, site in enumerate(data.get('sites', []))],
-            'classes': [(item['id'],item['name'],item['base_class']+' · '+str(len(item.get('skills',[])))+' compétences') for item in p.content.get('classes',[])],
+            'classes': [(item['id'],item['name'], 'Format universel · '+str(len(item['skills']))+' compétences') for item in p.content['templates']['classes'] if item['playable']] + [(item['id'],item['name'],'Ancien format · '+item['base_class']) for item in p.content.get('classes',[])],
             'skills': [(item['id'],item['name'],item['type']+' · portée '+str(item['range'])) for item in p.content.get('skills',[])],
             'world': [(key, self.label(key), str(value)) for key, value in p.content['world'].items()],
         }
@@ -279,7 +333,7 @@ class Controller:
         labels = {}
         choices = choices or {}
         for row, (key, value) in enumerate(values.items()):
-            labels[key] = self.ttk.Label(window, text=self.label(key))
+            labels[key] = self.ttk.Label(window, text=(self.label(key)+' (−1 : automatique)' if title == 'Compétences universelles' and key in ('range','cost') else self.label(key)))
             labels[key].grid(row=row, column=0, padx=8, pady=5, sticky='w')
             if type(value) is bool:
                 choices[key] = ['Oui','Non']
@@ -338,11 +392,20 @@ class Controller:
                 values = self.form('Paramètres du monde', p.content['world'])
                 if values:
                     p.content['world'] = values
+            elif section == 'classes' and (new or any(item['id'] == key for item in p.content['templates']['classes'])):
+                values = self.edit_template(key,new)
+                if values is None:
+                    return
+                if new and any(item['id'].lower() == values['id'].lower() for item in p.content['templates']['classes']):
+                    raise ValueError('Identifiant déjà utilisé.')
+                if not new and values['id'] != key:
+                    p.rename('classes',key,values['id'])
+                p.content['templates']['classes'] = [item for item in p.content['templates']['classes'] if item['id'] not in (key,values['id'])] + [values]
             elif section in ('classes','skills'):
                 from .skill_catalog import BASE_CLASSES, library
                 available = library(p.content,p.mobs)
                 if section == 'classes':
-                    old = {'id':'','name':'Nouvelle classe','base_class':'Knight','energy_capacity':30} if new else next(item for item in p.content.get('classes',[]) if item['id'] == key)
+                    old = next(item for item in p.content.get('classes',[]) if item['id'] == key)
                     values = self.form('Classe humaine',{k:v for k,v in old.items() if k not in ('stats','skills','previous_ids')},{'base_class':BASE_CLASSES})
                     if not values:
                         return
@@ -358,6 +421,8 @@ class Controller:
                     values = self.form('Compétence réutilisable',old,{'type':['damage','heal','stun']})
                     if not values:
                         return
+                if new and any(item['id'].lower() == values['id'].lower() for item in p.content['templates']['classes']):
+                    raise ValueError('Identifiant déjà utilisé.')
                 if not new and values['id'] != key:
                     p.rename(section,key,values['id'])
                 elif new and any(item['id'] == values['id'] for item in p.content.get(section,[])):
@@ -369,9 +434,9 @@ class Controller:
                 p.content[section] = [item for item in p.content.get(section,[]) if item['id'] != values['id']] + [values]
             elif section == 'mobs':
                 from . import forge
-                old = resolve(p.mobs, key) if not new else {'name':'Nouvelle créature','class_name':'Goblin','rank':'D','damage':3,'loot':{'peau':1}}
-                public = {'id':key or '', 'name':old['name'], 'class_name':old['class_name'], 'rank':old['rank'], 'damage':old['damage'], 'damage_growth':float(old.get('damage_growth',.5)), 'xp_class':old.get('xp_class', 'normal' if old['class_name'] == 'Goblin' else 'warrior' if old['class_name'] == 'Orc' else 'elite'), 'xp_multiplier':float(old.get('xp_multiplier',1)), 'parent':p.mobs[key].get('parent','') if not new else ''}
-                values = self.form('Espèce / sous-espèce', public, {'class_name':['Goblin','Orc','DragonWhelp'], 'rank':RANKS, 'xp_class':list(CLASS_XP), 'parent':['', *p.mobs]})
+                old = resolve(p.mobs, key) if not new else {'name':'Nouvelle créature','class_name':next(item['id'] for item in p.content['templates']['classes'] if not item['playable'] and item['class_type'] != 'INVOCATION'),'rank':'D','damage':3,'loot':{'peau':1}}
+                public = {'id':key or '', 'name':old['name'], 'class_name':old['class_name'], 'rank':old['rank'], 'damage':old['damage'], 'damage_growth':float(old.get('damage_growth',.5)), 'xp_class':old.get('xp_class', 'normal'), 'xp_multiplier':float(old.get('xp_multiplier',1)), 'parent':p.mobs[key].get('parent','') if not new else ''}
+                values = self.form('Espèce / sous-espèce', public, {'class_name':[item['id'] for item in p.content['templates']['classes'] if item['class_type'] != 'INVOCATION'], 'rank':RANKS, 'xp_class':list(CLASS_XP), 'parent':['', *p.mobs]})
                 if not values:
                     return
                 stats = self.edit_stats(old)
@@ -474,6 +539,84 @@ class Controller:
         except ValueError as exc:
             self.project.maps, self.project.mobs, self.project.content = before
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
+
+    def edit_template(self,key,new):
+        from jeuxRPG._class.res.character.class_models import MODELS, STAT_NAMES, ENERGY_NAMES
+        from jeuxRPG._class.res.classType import ClassType
+        models = self.project.content['templates']
+        if new:
+            choice = self.form('Créer une classe : copier une définition',{'template':next(item['id'] for item in models['classes'] if item['playable'])},{'template':[item['id'] for item in models['classes'] if item['playable']]})
+            if not choice:
+                return None
+            result = deepcopy(next(item for item in models['classes'] if item['id'] == choice['template']))
+            result.update(id='',name='Nouvelle classe')
+            result.pop('previous_ids',None)
+            result.pop('table_id',None)
+        else:
+            result = deepcopy(next(item for item in models['classes'] if item['id'] == key))
+        values = self.form('Classe universelle',{'id':result['id'],'name':result['name'],'playable':result['playable'],'class_type':result['class_type']},{'class_type':list(ClassType.__members__)})
+        if not values:
+            return None
+        result.update(values)
+        stats = self.form('Statistiques initiales',result['base_stats'])
+        if stats is None:
+            return None
+        result['base_stats'] = stats
+        energies = self.edit_records('Énergies de classe',result['energies'],{'type':'Mana','value':30,'regen_rate':.3},{'type':ENERGY_NAMES})
+        if energies is None:
+            return None
+        result['energies'] = energies
+        growth = self.edit_growth(result['growth'])
+        if growth is None:
+            return None
+        result['growth'] = growth
+        from .skill_catalog import library, make_skill
+        from jeuxRPG._class.res.character.class_models import skill_to_data
+        for identifier,entry in library(self.project.content,self.project.mobs).items():
+            if identifier not in models['skills']:
+                models['skills'][identifier] = skill_to_data(make_skill(entry,{}))
+        rows = [{**entry,'level':int(entry['level'].split()[1]),'range':entry.get('range',-1.0),'cost':entry.get('cost',-1)} for entry in result['skills']]
+        skills = self.edit_records('Compétences universelles',rows,{'skill_id':next(iter(models['skills'])),'level':1,'range':-1.0,'cost':-1},{'skill_id':list(models['skills'])})
+        if skills is None:
+            return None
+        result['skills'] = [{**{key:value for key,value in entry.items() if key not in ('level','range','cost') or key in ('range','cost') and value != -1},'level':'level '+str(entry['level'])} for entry in skills]
+        from jeuxRPG._class.res.character.class_models import skill_from_data
+        energy_names = {entry['type'] for entry in result['energies']}
+        for assignment in result['skills']:
+            skill = skill_from_data(models['skills'][assignment['skill_id']])
+            name = skill.energie_target.__name__
+            level = int(assignment['level'].split()[1])
+            available = name in energy_names or any(entry['level'] <= level and name in entry.get('unlock_energies',{}) for entry in result['growth'])
+            if not available:
+                result['energies'].append({'type':name,'value':max(30,skill.energie_cost),'regen_rate':.3})
+                energy_names.add(name)
+                for entry in result['growth']:
+                    entry.get('unlock_energies',{}).pop(name,None)
+        if result.get('formulas'):
+            initial = {field:float(value) for stat,formula in result['formulas'].items() for field,value in [(stat+'_base',result['base_stats'][stat]),(stat+'_growth',formula['growth'])]}
+            formulas = self.form('Formules de progression héritées',initial)
+            if formulas is None:
+                return None
+            result['formulas'] = {stat:{'base':formulas[stat+'_base'],'growth':formulas[stat+'_growth']} for stat in result['formulas']}
+        combat = self.form('Profil de combat',result['combat'],{'attack_stat':STAT_NAMES})
+        if combat is None:
+            return None
+        result['combat'] = combat
+        if not new and result['id'] != key:
+            result['previous_ids'] = list(dict.fromkeys([*result.get('previous_ids',[]),key]))
+        return result
+
+    def edit_growth(self,initial):
+        names = ('HP','Force','Endurance','Intelligence','Sagesse')
+        energies = ('Mana','Aura','Foie')
+        rows = []
+        for entry in initial:
+            rows.append({'level':entry['level'],**{name:entry.get('stats',{}).get(name,0) for name in names},**{'energy_'+name:entry.get('energies',{}).get(name,0) for name in energies},**{'unlock_'+name:entry.get('unlock_energies',{}).get(name,0) for name in energies}})
+        default = {'level':1,**{name:0 for name in names},**{'energy_'+name:0 for name in energies},**{'unlock_'+name:0 for name in energies}}
+        values = self.edit_records('Paliers cumulés de progression',rows,default)
+        if values is None:
+            return None
+        return [{'level':entry['level'],'stats':{name:entry[name] for name in names if entry[name]},'energies':{name:entry['energy_'+name] for name in energies if entry['energy_'+name]},'unlock_energies':{name:entry['unlock_'+name] for name in energies if entry['unlock_'+name]}} for entry in values]
 
     def edit_requirements(self, initial):
         window = self.tk.Toplevel(self.root)
@@ -630,7 +773,9 @@ class Controller:
             return
         before = self.project.state()
         try:
-            if section == 'mobs':
+            if section == 'classes' and any(item['id'] == key for item in self.project.content['templates']['classes']):
+                self.project.content['templates']['classes'] = [item for item in self.project.content['templates']['classes'] if item['id'] != key]
+            elif section == 'mobs':
                 self.project.mobs.pop(key)
             elif section == 'npcs':
                 map_id, index = key.rsplit(':',1)
