@@ -16,31 +16,33 @@ def configure(character):
         base_cost = getattr(skill, "_poc_cost", skill.energie_cost)
         skill._poc_cost = base_cost
         capacity = next(energy.value for energy in character.energie if isinstance(energy, skill.energie_target))
-        skill.energie_cost = 10 if skill.name == "Sword Slash" else min(capacity, max(5, math.ceil(base_cost * 1.5)))
+        balance = getattr(skill,"balance",{})
+        skill.energie_cost = skill.catalog_cost if hasattr(skill,"catalog_cost") else balance.get("cost_fixed") if balance.get("cost_fixed") is not None else min(capacity,max(balance.get("cost_min",5),math.ceil(base_cost*balance.get("cost_factor",1.5))))
     return character
 
 
 def simple_damage(character):
-    stat = character.intelligence if character.char_class in ("Mage", "Necromancien", "Priest") else character.force
-    if character.char_class == "Knight":
-        return max(3, int(3 + stat.current_value * .3))
-    return max(2, int(2 + stat.current_value * .2))
+    profile = character.combat_profile
+    stat = getattr(character,profile.get('attack_stat','force'))
+    return max(profile.get('attack_min',2),int(profile.get('attack_base',2)+stat.current_value*profile.get('attack_factor',.2)))
 
 
-def attack_range(character, skill=None):
-    if skill and skill.skill_type.name not in ("DAMAGE", "DEBUFF"):
+def attack_range(character,skill=None):
+    if skill and hasattr(skill,'catalog_range'):
+        return skill.catalog_range
+    if skill and skill.skill_type.name not in ('DAMAGE','DEBUFF'):
         return 6
-    return 6 if character.char_class in ("Mage", "Archer", "Priest", "Necromancien") else 1.5
+    return character.combat_profile.get('attack_range',1.5)
 
 
 def scale_skill(character, skill):
     stat = character.force if skill.DamageType and skill.DamageType.name == "PHYSICAL" else character.sagesse if skill.DamageType and skill.DamageType.name == "SACRED" or skill.skill_type.name == "HEAL" else character.intelligence
     for name, effect in skill.effects.items():
         if effect.value and name.lower() in ("damage", "heal"):
-            if character.char_class == "Knight" and skill.name == "Sword Slash" and name.lower() == "damage":
-                effect.value = max(1, int(effect.value * .8 + stat.current_value * .45))
-            else:
-                effect.value = max(1, int(effect.value * .55 + stat.current_value * .25))
+            if hasattr(skill,'catalog_growth'):
+                effect.value += round(skill.catalog_growth*(character.level-1))
+            balance = getattr(skill,'balance',{})
+            effect.value = max(1,int(effect.value*balance.get('effect_factor',.55)+stat.current_value*balance.get('stat_factor',.25)))
 
 
 def health_resources(party, now):
@@ -98,6 +100,8 @@ def resources(party, now):
 
 
 def casting(skill):
+    if hasattr(skill,'catalog_cast'):
+        return skill.catalog_cast.copy()
     physical = skill.DamageType and skill.DamageType.name == "PHYSICAL"
     duration = .4 if physical else 2.0 if skill.skill_type.name == "INVOCATION" else 1.5
     return {"seconds": duration, "concentration": not bool(physical)}

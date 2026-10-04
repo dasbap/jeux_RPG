@@ -50,7 +50,17 @@ def create_mob(maps, identifier, config, index, first=False):
     from jeuxRPG._class.character import Character
     from . import tutorial, world
     definition = resolve(MOBS, config["mob_id"])
+    from .skill_catalog import library, mob_ability
+    from .content import DATA
+    available = library(DATA,MOBS)
+    abilities = [mob_ability(available[item['skill_id']],item) if 'skill_id' in item else deepcopy(item) for item in definition.get('abilities',[])]
     actor = Character.create(definition["class_name"], "tutorial-mob", config.get("name") or f"{definition['name']} {index + 1}")
+    from .skill_catalog import builtins
+    for ability in abilities:
+        if ability.get('native'):
+            skill = builtins()[ability['native']]
+            if not any(isinstance(energy,skill.energie_target) for energy in actor.energie):
+                actor.add_energie(skill.energie_target(max(30,skill.energie_cost),.3))
     base_hp = actor.hp.value
     level = config.get("level") or map_level(maps, identifier)
     while actor.level < level:
@@ -64,7 +74,7 @@ def create_mob(maps, identifier, config, index, first=False):
     actor.hp.current_value = actor.hp.value
     return {**tutorial.pack(actor), "mob_id": config["mob_id"], "rank": definition["rank"], "attack_damage": round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
             "loot": deepcopy(definition.get("loot", {})), 'drops':drop_rules(definition, tutorial.forge.RARE_DROPS),
-            'abilities':[deepcopy(ability) for ability in definition.get('abilities',[]) if ability['level'] <= level],
+            'abilities':[deepcopy(ability) for ability in abilities if ability['level'] <= level],
             'xp_multiplier':definition.get('xp_multiplier',1), **({'xp_class':definition['xp_class']} if 'xp_class' in definition else {})}
 
 
@@ -99,7 +109,7 @@ def species_details(identifier):
         getattr(actor,key).current_value = formula['base']
     advantages = actor.class_table["advantage"]
     return {"hp": actor.hp.value, "stats": {key: getattr(actor, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-            "weaknesses": [value.name for value in advantages["weakness"]], "resistances": [value.name for value in advantages["resilience"]]}
+            "weaknesses": [value.name for value in (advantages['weakness'] if isinstance(advantages,dict) else advantages.weakness)], "resistances": [value.name for value in (advantages['resilience'] if isinstance(advantages,dict) else advantages.resilience)]}
 
 
 def linked_sector(maps, source_id, identifier, direction, overlap=4):

@@ -124,6 +124,8 @@ def npc(now):
 def can_target(actor, skill, target, mob):
     if target is None or not actor.is_alive() or actor.is_stunned() or not skill.is_ready() or not skill.can_afford(actor):
         return False
+    if progression.attack_range(actor,skill) == 0 and target is not actor:
+        return False
     if skill.skill_type in (SkillType.DAMAGE, SkillType.DEBUFF):
         return target is mob and target.is_alive()
     if skill.skill_type == SkillType.INVOCATION:
@@ -296,7 +298,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             enemy = enemies[data["combat_id"]]
             data.update(pack(enemy))
             if data["combat_id"] == target_id:
-                if action == "skill" and resolved and actor.char_class == "Knight" and skill.name == "Sword Slash" and enemy.is_alive():
+                if action == "skill" and resolved and getattr(skill,'balance',{}).get('bleeding',False) and enemy.is_alive():
                     bleeding.apply(data, player_id, actor.force.current_value, now)
                     messages.append(f"{enemy.name} saigne : {len(data['bleeding'])} cumul(s).")
                 tactics.damaged(party, data, player_id, now)

@@ -1,21 +1,3 @@
-from jeuxRPG._class.character import Character
+from jeuxRPG._class.universal_character import get_class
 
-from jeuxRPG.i18n import t
-from jeuxRPG._class.res.dictType import ClassSkills
-from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-
-from jeuxRPG._class.res.character.table_stat_subclass import squelette_table
-
-class Squelette(Invocation):
-    class_skills_dict : ClassSkills = squelette_table["class_skills_dict"]
-    def __init__(self, master : Character, name=None, level : str = "BL"):
-        self.level = level
-        super().__init__(master,squelette_table,name,
-                        skills = Squelette.class_skills_dict[level].copy())
-    
-    def can_level_up(self):
-        return False
-    def _required_exp_for_next_level(self):
-        return 0
-    def level_up(self):
-        return t("invocation.cannot_level_up", name=self.name)
+Squelette = get_class('Squelette')

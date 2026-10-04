@@ -201,7 +201,7 @@ class Handler(BaseHTTPRequestHandler):
             deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
             if deferred_command:
                 combat = True
-            if path.startswith("/api/") and path != "/api/register" and not deferred_command:
+            if path.startswith("/api/") and path not in ("/api/register", "/api/classes") and not deferred_command:
                 token = self._token()
                 with self.server.service._lock:
                     player = self.server.service._authenticate(token)
@@ -219,7 +219,18 @@ class Handler(BaseHTTPRequestHandler):
                           "/style.css": ("style.css", "text/css; charset=utf-8")}
                 if path in static:
                     name, mime = static[path]
-                    self._respond(200, (Path(__file__).parent / "web" / name).read_bytes(), mime)
+                    payload = (Path(__file__).parent/'web'/name).read_bytes()
+                    if name == 'index.html':
+                        from html import escape
+                        from .content import DATA
+                        labels = {item['id']:item['name'] for item in [*DATA.get('templates',{}).get('classes',[]),*DATA.get('classes',[])]}
+                        options = ''.join('<option value="'+escape(identifier,quote=True)+'">'+escape(labels.get(identifier,identifier))+'</option>' for identifier in self.server.service.classes)
+                        payload = payload.replace(b'{{CLASS_OPTIONS}}',options.encode('utf-8'))
+                    self._respond(200,payload,mime)
+                elif path == "/api/classes":
+                    from .content import DATA
+                    names = {item['id']:item['name'] for item in [*DATA.get('templates',{}).get('classes',[]),*DATA.get('classes',[])]}
+                    self._respond(200,[{'id':identifier,'name':names.get(identifier,identifier)} for identifier in self.server.service.classes])
                 elif path == "/api/state":
                     token = self._token()
                     if not self.server.limiter.accept(("state", digest(token)), 300):

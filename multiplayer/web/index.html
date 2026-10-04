@@ -22,7 +22,7 @@
       <p>Chaque onglet possède sa propre identité. Ouvrez un second onglet pour tester à deux.</p>
       <form id="register-form">
         <label for="name">Nom du personnage</label><input id="name" maxlength="32" required autocomplete="off" placeholder="Votre nom">
-        <label for="class-name">Classe</label><select id="class-name"><option value="Knight">Chevalier</option><option value="Mage">Mage</option><option value="Archer">Archer</option><option value="Priest">Prêtre</option><option value="Necromancien">Nécromancien</option></select>
+        <label for="class-name">Classe</label><select id="class-name">{{CLASS_OPTIONS}}</select>
         <button type="submit">Créer mon personnage</button>
       </form>
       <details><summary>Retrouver mon personnage</summary><form id="restore-form"><label for="restore-token">Clé personnelle</label><input id="restore-token" type="password" autocomplete="off" required><button type="submit" class="secondary">Se connecter</button></form></details>

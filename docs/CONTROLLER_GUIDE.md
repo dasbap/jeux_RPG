@@ -147,3 +147,26 @@ Le catalogue utilise par exemple `"requirements": {"level": 5, "achievements": [
 
 
 Les probabilités de drop acceptent un point ou une virgule : `0.8` et `0,8` valent 80 %, même lorsque la valeur précédente était `1` ou `0`. Les nombres de tirages et les quantités d’objets restent entiers.
+
+
+## Bibliothèque de compétences et classes humaines
+
+L’onglet **Compétences** permet de créer et modifier des capacités réutilisables de dégâts, soin personnel ou étourdissement. Les capacités créées sur un mob et les compétences humaines et monstres intégrées au jeu sont également proposées dans les listes de sélection. Les références portent les préfixes `skill:`, `mob:` ou `native:` ; elles incluent le nom de leur source et de la compétence.
+
+Dans **Mobs → Modifier → Capacités**, utilisez **Réutiliser une compétence**, sélectionnez la source puis définissez le niveau de déblocage et la portée. Les attaques humaines natives conservent leurs effets et leur coût d’énergie ; le mob reçoit l’énergie requise et la régénère. Les invocations et résurrections natives sont actuellement proposées aux classes humaines uniquement : l’IA des mobs ne gère pas ces cibles et propriétaires spécifiques. Les capacités directement créées dans le contrôleur restent disponibles comme auparavant.
+
+Dans **Classes humaines**, **Ajouter** copie une définition existante. Cette copie devient une classe indépendante : elle ne dépend plus d’une sous-classe Python ou d’un modèle imposé à l’exécution.
+
+1. Définissez l’identifiant, le nom, le type et les statistiques initiales.
+2. Réglez les énergies, leur capacité et leur régénération.
+3. Configurez les paliers de croissance. Chaque palier ajoute ses gains à chaque niveau à partir de son seuil ; un déblocage d’énergie ne se produit qu’une fois.
+4. Choisissez les compétences existantes, leurs niveaux de déblocage, portée et coût. `−1` conserve automatiquement la valeur de la compétence ; `0` est une valeur explicite.
+5. Réglez le profil d’attaque : statistique utilisée, base, coefficient, minimum et portée. Le profil invocateur conserve le comportement de protection et d’attaque des invocations.
+
+Une énergie requise par une compétence et absente de la progression est ajoutée par l’éditeur. Les invocations natives restent utilisables avec le moteur existant. Les anciennes classes personnalisées sont converties lors de l’ouverture du projet ; **Sauvegarder** écrit leur définition universelle. Les anciennes formules de croissance sont conservées pour éviter de changer leurs résultats.
+
+**Portée 0 signifie soi-même uniquement** : aucune autre entité ne peut être ciblée, même sur la même case. Cela convient aux soins, protections et invocations personnelles. Une attaque offensive de portée 0 n’a pas de cible valide, car le moteur interdit de s’attaquer soi-même. Les contrôles s’appliquent dans le client et le serveur.
+
+Après sauvegarde et redémarrage du serveur, les classes jouables apparaissent dans la sélection de personnage du navigateur. Les définitions universelles, compétences intégrées et progressions sont stockées dans `maps/classes.json`. Les quêtes, PNJ et compétences partagées du contrôleur restent dans `maps/content.json`. Le renommage d’une classe conserve ses anciens identifiants et met à jour les références aux mobs et invocations. Ne supprimez pas une classe utilisée par des sauvegardes.
+
+Les anciens imports Python (`Knight`, `Mage`, etc.) restent des alias de compatibilité ; ils ne contiennent plus de statistiques, compétences ou progression spécifiques. Le moteur générique construit les personnages depuis le catalogue. Le format détaillé est décrit dans [CLASS_FORMAT.md](CLASS_FORMAT.md).

@@ -489,6 +489,8 @@ def allowed(party, player, target, attack_range):
     battle = party.get("battle")
     if not battle or player not in battle["players"]:
         return False
+    if attack_range == 0 and target != player:
+        return False
     unit = battle["players"][player]
     enemy = next((m for m in party["mobs"] if m["combat_id"] == target), None)
     other = enemy or battle["players"].get(target)

@@ -1,0 +1,2436 @@
+{
+  "Knight:1": {
+    "stats": {
+      "hp": 25,
+      "force": 5,
+      "endurance": 9,
+      "intelligence": 2,
+      "sagesse": 6
+    },
+    "energies": [
+      [
+        "Aura",
+        14,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Knight:2": {
+    "stats": {
+      "hp": 40,
+      "force": 8,
+      "endurance": 14,
+      "intelligence": 3,
+      "sagesse": 8
+    },
+    "energies": [
+      [
+        "Aura",
+        17,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Knight:5": {
+    "stats": {
+      "hp": 85,
+      "force": 17,
+      "endurance": 29,
+      "intelligence": 6,
+      "sagesse": 14
+    },
+    "energies": [
+      [
+        "Aura",
+        26,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Shield Bash": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 4,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "Knight:15": {
+    "stats": {
+      "hp": 238,
+      "force": 48,
+      "endurance": 80,
+      "intelligence": 16,
+      "sagesse": 40
+    },
+    "energies": [
+      [
+        "Aura",
+        57,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Shield Bash": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 4,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      },
+      "Charge": {
+        "cost": 5,
+        "cooldown": 3,
+        "effects": {
+          "Buff": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          },
+          "Debuff": {
+            "value": 5,
+            "duration": 3,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Knight:20": {
+    "stats": {
+      "hp": 328,
+      "force": 68,
+      "endurance": 112,
+      "intelligence": 21,
+      "sagesse": 84
+    },
+    "energies": [
+      [
+        "Aura",
+        102,
+        0.3
+      ],
+      [
+        "Foie",
+        90,
+        0.05
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Shield Bash": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 4,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      },
+      "Charge": {
+        "cost": 5,
+        "cooldown": 3,
+        "effects": {
+          "Buff": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          },
+          "Debuff": {
+            "value": 5,
+            "duration": 3,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      },
+      "Holy Strike": {
+        "cost": 12,
+        "cooldown": 4,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Knight:21": {
+    "stats": {
+      "hp": 348,
+      "force": 72,
+      "endurance": 121,
+      "intelligence": 22,
+      "sagesse": 97
+    },
+    "energies": [
+      [
+        "Aura",
+        132,
+        0.3
+      ],
+      [
+        "Foie",
+        100,
+        0.05
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Shield Bash": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 4,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      },
+      "Charge": {
+        "cost": 5,
+        "cooldown": 3,
+        "effects": {
+          "Buff": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          },
+          "Debuff": {
+            "value": 5,
+            "duration": 3,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      },
+      "Holy Strike": {
+        "cost": 12,
+        "cooldown": 4,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Knight:30": {
+    "stats": {
+      "hp": 528,
+      "force": 108,
+      "endurance": 202,
+      "intelligence": 31,
+      "sagesse": 214
+    },
+    "energies": [
+      [
+        "Aura",
+        402,
+        0.3
+      ],
+      [
+        "Foie",
+        190,
+        0.05
+      ]
+    ],
+    "skills": {
+      "Sword Slash": {
+        "cost": 10,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Shield Bash": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 4,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      },
+      "Charge": {
+        "cost": 5,
+        "cooldown": 3,
+        "effects": {
+          "Buff": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          },
+          "Debuff": {
+            "value": 5,
+            "duration": 3,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      },
+      "Holy Strike": {
+        "cost": 12,
+        "cooldown": 4,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:1": {
+    "stats": {
+      "hp": 18,
+      "force": 3,
+      "endurance": 2,
+      "intelligence": 16,
+      "sagesse": 8
+    },
+    "energies": [
+      [
+        "Mana",
+        35,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:2": {
+    "stats": {
+      "hp": 21,
+      "force": 4,
+      "endurance": 3,
+      "intelligence": 21,
+      "sagesse": 10
+    },
+    "energies": [
+      [
+        "Mana",
+        41,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:5": {
+    "stats": {
+      "hp": 30,
+      "force": 7,
+      "endurance": 6,
+      "intelligence": 36,
+      "sagesse": 16
+    },
+    "energies": [
+      [
+        "Mana",
+        59,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Thunder": {
+        "cost": 12,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:15": {
+    "stats": {
+      "hp": 61,
+      "force": 17,
+      "endurance": 16,
+      "intelligence": 89,
+      "sagesse": 38
+    },
+    "energies": [
+      [
+        "Mana",
+        122,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Thunder": {
+        "cost": 12,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:20": {
+    "stats": {
+      "hp": 81,
+      "force": 22,
+      "endurance": 21,
+      "intelligence": 131,
+      "sagesse": 58
+    },
+    "energies": [
+      [
+        "Mana",
+        171,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Thunder": {
+        "cost": 12,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Arcane Blast": {
+        "cost": 30,
+        "cooldown": 5,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:21": {
+    "stats": {
+      "hp": 85,
+      "force": 23,
+      "endurance": 22,
+      "intelligence": 141,
+      "sagesse": 62
+    },
+    "energies": [
+      [
+        "Mana",
+        184,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Thunder": {
+        "cost": 12,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Arcane Blast": {
+        "cost": 30,
+        "cooldown": 5,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Mage:30": {
+    "stats": {
+      "hp": 121,
+      "force": 32,
+      "endurance": 31,
+      "intelligence": 231,
+      "sagesse": 98
+    },
+    "energies": [
+      [
+        "Mana",
+        301,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Fire Ball": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 15,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Thunder": {
+        "cost": 12,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Arcane Blast": {
+        "cost": 30,
+        "cooldown": 5,
+        "effects": {
+          "damage": {
+            "value": 40,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:1": {
+    "stats": {
+      "hp": 22,
+      "force": 10,
+      "endurance": 6,
+      "intelligence": 4,
+      "sagesse": 7
+    },
+    "energies": [
+      [
+        "Mana",
+        15,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:2": {
+    "stats": {
+      "hp": 26,
+      "force": 13,
+      "endurance": 8,
+      "intelligence": 5,
+      "sagesse": 9
+    },
+    "energies": [
+      [
+        "Mana",
+        18,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:5": {
+    "stats": {
+      "hp": 38,
+      "force": 22,
+      "endurance": 14,
+      "intelligence": 8,
+      "sagesse": 15
+    },
+    "energies": [
+      [
+        "Mana",
+        27,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Piercing Shot": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:15": {
+    "stats": {
+      "hp": 80,
+      "force": 54,
+      "endurance": 34,
+      "intelligence": 19,
+      "sagesse": 35
+    },
+    "energies": [
+      [
+        "Mana",
+        59,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Piercing Shot": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Camouflage": {
+        "cost": 8,
+        "cooldown": 0,
+        "effects": {
+          "evasion": {
+            "value": 15,
+            "duration": 3,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:20": {
+    "stats": {
+      "hp": 110,
+      "force": 81,
+      "endurance": 46,
+      "intelligence": 29,
+      "sagesse": 45
+    },
+    "energies": [
+      [
+        "Mana",
+        86,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Piercing Shot": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Camouflage": {
+        "cost": 8,
+        "cooldown": 0,
+        "effects": {
+          "evasion": {
+            "value": 15,
+            "duration": 3,
+            "alteration": null
+          }
+        }
+      },
+      "Explosive Arrow": {
+        "cost": 25,
+        "cooldown": 3,
+        "effects": {
+          "damage": {
+            "value": 50,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:21": {
+    "stats": {
+      "hp": 116,
+      "force": 88,
+      "endurance": 50,
+      "intelligence": 31,
+      "sagesse": 47
+    },
+    "energies": [
+      [
+        "Mana",
+        93,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Piercing Shot": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Camouflage": {
+        "cost": 8,
+        "cooldown": 0,
+        "effects": {
+          "evasion": {
+            "value": 15,
+            "duration": 3,
+            "alteration": null
+          }
+        }
+      },
+      "Explosive Arrow": {
+        "cost": 25,
+        "cooldown": 3,
+        "effects": {
+          "damage": {
+            "value": 50,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Archer:30": {
+    "stats": {
+      "hp": 170,
+      "force": 151,
+      "endurance": 86,
+      "intelligence": 49,
+      "sagesse": 65
+    },
+    "energies": [
+      [
+        "Mana",
+        156,
+        0.25
+      ]
+    ],
+    "skills": {
+      "Arrow Rain": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 20,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Piercing Shot": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Camouflage": {
+        "cost": 8,
+        "cooldown": 0,
+        "effects": {
+          "evasion": {
+            "value": 15,
+            "duration": 3,
+            "alteration": null
+          }
+        }
+      },
+      "Explosive Arrow": {
+        "cost": 25,
+        "cooldown": 3,
+        "effects": {
+          "damage": {
+            "value": 50,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:1": {
+    "stats": {
+      "hp": 20,
+      "force": 3,
+      "endurance": 4,
+      "intelligence": 10,
+      "sagesse": 14
+    },
+    "energies": [
+      [
+        "Foie",
+        30,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:2": {
+    "stats": {
+      "hp": 25,
+      "force": 4,
+      "endurance": 6,
+      "intelligence": 13,
+      "sagesse": 19
+    },
+    "energies": [
+      [
+        "Foie",
+        35,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:5": {
+    "stats": {
+      "hp": 40,
+      "force": 7,
+      "endurance": 12,
+      "intelligence": 22,
+      "sagesse": 34
+    },
+    "energies": [
+      [
+        "Foie",
+        50,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Blessing": {
+        "cost": 5,
+        "cooldown": 2,
+        "effects": {
+          "defense": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Priest:15": {
+    "stats": {
+      "hp": 92,
+      "force": 17,
+      "endurance": 32,
+      "intelligence": 54,
+      "sagesse": 87
+    },
+    "energies": [
+      [
+        "Foie",
+        102,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Blessing": {
+        "cost": 5,
+        "cooldown": 2,
+        "effects": {
+          "defense": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      },
+      "Divine Shield": {
+        "cost": 8,
+        "cooldown": 3,
+        "effects": {
+          "shield": {
+            "value": 15,
+            "duration": 2,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:20": {
+    "stats": {
+      "hp": 127,
+      "force": 22,
+      "endurance": 45,
+      "intelligence": 79,
+      "sagesse": 131
+    },
+    "energies": [
+      [
+        "Foie",
+        140,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Blessing": {
+        "cost": 5,
+        "cooldown": 2,
+        "effects": {
+          "defense": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      },
+      "Divine Shield": {
+        "cost": 8,
+        "cooldown": 3,
+        "effects": {
+          "shield": {
+            "value": 15,
+            "duration": 2,
+            "alteration": null
+          }
+        }
+      },
+      "Resurrection": {
+        "cost": 50,
+        "cooldown": 10,
+        "effects": {
+          "resurrect": {
+            "value": 1,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:21": {
+    "stats": {
+      "hp": 134,
+      "force": 23,
+      "endurance": 50,
+      "intelligence": 84,
+      "sagesse": 143
+    },
+    "energies": [
+      [
+        "Foie",
+        150,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Blessing": {
+        "cost": 5,
+        "cooldown": 2,
+        "effects": {
+          "defense": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      },
+      "Divine Shield": {
+        "cost": 8,
+        "cooldown": 3,
+        "effects": {
+          "shield": {
+            "value": 15,
+            "duration": 2,
+            "alteration": null
+          }
+        }
+      },
+      "Resurrection": {
+        "cost": 50,
+        "cooldown": 10,
+        "effects": {
+          "resurrect": {
+            "value": 1,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Priest:30": {
+    "stats": {
+      "hp": 197,
+      "force": 32,
+      "endurance": 95,
+      "intelligence": 129,
+      "sagesse": 251
+    },
+    "energies": [
+      [
+        "Foie",
+        240,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Heal": {
+        "cost": 15,
+        "cooldown": 0,
+        "effects": {
+          "heal": {
+            "value": 30,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Blessing": {
+        "cost": 5,
+        "cooldown": 2,
+        "effects": {
+          "defense": {
+            "value": 10,
+            "duration": 3,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      },
+      "Divine Shield": {
+        "cost": 8,
+        "cooldown": 3,
+        "effects": {
+          "shield": {
+            "value": 15,
+            "duration": 2,
+            "alteration": null
+          }
+        }
+      },
+      "Resurrection": {
+        "cost": 50,
+        "cooldown": 10,
+        "effects": {
+          "resurrect": {
+            "value": 1,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:1": {
+    "stats": {
+      "hp": 15,
+      "force": 3,
+      "endurance": 2,
+      "intelligence": 16,
+      "sagesse": 4
+    },
+    "energies": [
+      [
+        "Mana",
+        21,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:2": {
+    "stats": {
+      "hp": 17,
+      "force": 5,
+      "endurance": 3,
+      "intelligence": 19,
+      "sagesse": 5
+    },
+    "energies": [
+      [
+        "Mana",
+        25,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:5": {
+    "stats": {
+      "hp": 23,
+      "force": 11,
+      "endurance": 6,
+      "intelligence": 28,
+      "sagesse": 8
+    },
+    "energies": [
+      [
+        "Mana",
+        37,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:15": {
+    "stats": {
+      "hp": 45,
+      "force": 31,
+      "endurance": 16,
+      "intelligence": 60,
+      "sagesse": 24
+    },
+    "energies": [
+      [
+        "Mana",
+        78,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:20": {
+    "stats": {
+      "hp": 65,
+      "force": 41,
+      "endurance": 23,
+      "intelligence": 85,
+      "sagesse": 63
+    },
+    "energies": [
+      [
+        "Mana",
+        112,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:21": {
+    "stats": {
+      "hp": 73,
+      "force": 43,
+      "endurance": 27,
+      "intelligence": 92,
+      "sagesse": 74
+    },
+    "energies": [
+      [
+        "Mana",
+        127,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Necromancien:30": {
+    "stats": {
+      "hp": 145,
+      "force": 61,
+      "endurance": 63,
+      "intelligence": 155,
+      "sagesse": 173
+    },
+    "energies": [
+      [
+        "Mana",
+        262,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Low Skull": {
+        "cost": 21,
+        "cooldown": 0,
+        "effects": {
+          "invocation": {
+            "value": 1,
+            "duration": 4,
+            "alteration": null
+          }
+        }
+      }
+    }
+  },
+  "Goblin:1": {
+    "stats": {
+      "hp": 14,
+      "force": 6,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        10,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:2": {
+    "stats": {
+      "hp": 16,
+      "force": 7,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        11,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:5": {
+    "stats": {
+      "hp": 23,
+      "force": 11,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        14,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:15": {
+    "stats": {
+      "hp": 53,
+      "force": 31,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        24,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:20": {
+    "stats": {
+      "hp": 68,
+      "force": 41,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        29,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:21": {
+    "stats": {
+      "hp": 71,
+      "force": 43,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        30,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Goblin:30": {
+    "stats": {
+      "hp": 98,
+      "force": 61,
+      "endurance": 2,
+      "intelligence": 2,
+      "sagesse": 1
+    },
+    "energies": [
+      [
+        "Mana",
+        39,
+        0.2
+      ]
+    ],
+    "skills": {
+      "Stab": {
+        "cost": 5,
+        "cooldown": 0,
+        "effects": {
+          "damage": {
+            "value": 6,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Dirty Tricks": {
+        "cost": 5,
+        "cooldown": 1,
+        "effects": {
+          "Debuff": {
+            "value": 2,
+            "duration": 2,
+            "alteration": "DEBUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:1": {
+    "stats": {
+      "hp": 28,
+      "force": 10,
+      "endurance": 6,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        12,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:2": {
+    "stats": {
+      "hp": 34,
+      "force": 13,
+      "endurance": 8,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        14,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:5": {
+    "stats": {
+      "hp": 52,
+      "force": 22,
+      "endurance": 14,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        20,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:15": {
+    "stats": {
+      "hp": 130,
+      "force": 64,
+      "endurance": 34,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        40,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:20": {
+    "stats": {
+      "hp": 175,
+      "force": 89,
+      "endurance": 44,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        50,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:21": {
+    "stats": {
+      "hp": 184,
+      "force": 94,
+      "endurance": 46,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        52,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "Orc:30": {
+    "stats": {
+      "hp": 265,
+      "force": 139,
+      "endurance": 64,
+      "intelligence": 1,
+      "sagesse": 2
+    },
+    "energies": [
+      [
+        "Aura",
+        70,
+        0.3
+      ]
+    ],
+    "skills": {
+      "Cleave": {
+        "cost": 8,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 12,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Rally": {
+        "cost": 6,
+        "cooldown": 2,
+        "effects": {
+          "Buff": {
+            "value": 3,
+            "duration": 2,
+            "alteration": "BUFFSTAT"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:1": {
+    "stats": {
+      "hp": 22,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 9,
+      "sagesse": 6
+    },
+    "energies": [
+      [
+        "Mana",
+        24,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:2": {
+    "stats": {
+      "hp": 25,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 11,
+      "sagesse": 7
+    },
+    "energies": [
+      [
+        "Mana",
+        27,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:5": {
+    "stats": {
+      "hp": 34,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 17,
+      "sagesse": 10
+    },
+    "energies": [
+      [
+        "Mana",
+        36,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:15": {
+    "stats": {
+      "hp": 76,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 49,
+      "sagesse": 20
+    },
+    "energies": [
+      [
+        "Mana",
+        66,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:20": {
+    "stats": {
+      "hp": 101,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 69,
+      "sagesse": 25
+    },
+    "energies": [
+      [
+        "Mana",
+        81,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:21": {
+    "stats": {
+      "hp": 106,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 73,
+      "sagesse": 26
+    },
+    "energies": [
+      [
+        "Mana",
+        84,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  },
+  "DragonWhelp:30": {
+    "stats": {
+      "hp": 151,
+      "force": 4,
+      "endurance": 4,
+      "intelligence": 109,
+      "sagesse": 35
+    },
+    "energies": [
+      [
+        "Mana",
+        111,
+        0.4
+      ]
+    ],
+    "skills": {
+      "Small Breath": {
+        "cost": 9,
+        "cooldown": 1,
+        "effects": {
+          "damage": {
+            "value": 11,
+            "duration": 0,
+            "alteration": null
+          }
+        }
+      },
+      "Wing Buffet": {
+        "cost": 8,
+        "cooldown": 2,
+        "effects": {
+          "damage": {
+            "value": 3,
+            "duration": 0,
+            "alteration": null
+          },
+          "Stun": {
+            "value": null,
+            "duration": 1,
+            "alteration": "STUN"
+          }
+        }
+      }
+    }
+  }
+}

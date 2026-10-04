@@ -4,7 +4,8 @@ import re
 
 
 RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
-CLASSES = ('Goblin', 'Orc', 'DragonWhelp')
+from jeuxRPG._class.res.character.class_models import MODELS
+CLASSES = tuple(model['id'] for model in MODELS['classes'] if model['class_type'] != 'INVOCATION')
 STATS = ('hp', 'force', 'endurance', 'intelligence', 'sagesse')
 CLASS_XP = {'normal':1, 'warrior':1.5, 'caster':1.8, 'elite':2.5, 'boss':4}
 
@@ -27,7 +28,8 @@ def resolve(mobs, identifier, visited=None):
     return item
 
 
-def validate_mobs(mobs):
+def validate_mobs(mobs,classes=None):
+    classes = CLASSES if classes is None else classes
     if not isinstance(mobs, dict) or not 1 <= len(mobs) <= 200 or 'goblin' not in mobs:
         raise ValueError('De 1 à 200 espèces requises, dont goblin.')
     for identifier, raw in mobs.items():
@@ -36,7 +38,7 @@ def validate_mobs(mobs):
         if raw.get('parent') is not None and not isinstance(raw['parent'], str):
             raise ValueError('Parent invalide.')
         item = resolve(mobs, identifier)
-        if item.get('class_name') not in CLASSES or not isinstance(item.get('name'), str) or not 1 <= len(item['name']) <= 100 or item.get('rank') not in RANKS or type(item.get('damage')) is not int or not 0 <= item['damage'] <= 10000:
+        if item.get('class_name') not in classes or not isinstance(item.get('name'), str) or not 1 <= len(item['name']) <= 100 or item.get('rank') not in RANKS or type(item.get('damage')) is not int or not 0 <= item['damage'] <= 10000:
             raise ValueError('Classe de base, nom, rang ou dégâts invalides.')
         if item.get('xp_class', 'normal') not in CLASS_XP or not finite(item.get('xp_multiplier', 1), 0, 100) or not finite(item.get('damage_growth', .5), 0, 1000):
             raise ValueError('Classe XP, multiplicateur ou progression des dégâts invalides.')
@@ -60,10 +62,16 @@ def validate_mobs(mobs):
             raise ValueError('16 capacités maximum.')
         names = set()
         for ability in abilities:
+            if isinstance(ability,dict) and 'native' in ability:
+                raise ValueError('Utilisez une référence skill_id pour une compétence native.')
+            if isinstance(ability,dict) and 'skill_id' in ability:
+                if not isinstance(ability['skill_id'],str) or type(ability.get('level')) is not int or not 1 <= ability['level'] <= 100 or not finite(ability.get('range',6),0,20):
+                    raise ValueError('Référence de compétence, niveau ou portée invalide.')
+                continue
             if not isinstance(ability, dict) or not isinstance(ability.get('name'), str) or not 1 <= len(ability['name']) <= 100 or ability['name'] in names or ability.get('type') not in ('damage','heal','stun'):
                 raise ValueError('Nom ou type de capacité invalide.')
             names.add(ability['name'])
-            for key, low, high in [('power',0,10000),('growth',0,1000),('cooldown',.2,600),('cast',0,30),('range',.5,20),('duration',.1,60)]:
+            for key, low, high in [('power',0,10000),('growth',0,1000),('cooldown',.2,600),('cast',0,30),('range',0,20),('duration',.1,60)]:
                 if not finite(ability.get(key, {'duration':2}.get(key)), low, high):
                     raise ValueError(f'Capacité : {key} invalide.')
             if type(ability.get('level')) is not int or not 1 <= ability['level'] <= 100 or type(ability.get('concentration', True)) is not bool:
@@ -77,7 +85,8 @@ def level_factor(mob_level, player_level):
 
 def experience(mob, player_level, base):
     classification = mob.get('xp_class')
-    class_factor = CLASS_XP.get(classification, {'Goblin':1, 'Orc':1.6, 'DragonWhelp':2.5}.get(mob.get('class_name'), 1))
+    model = next((item for item in MODELS['classes'] if item['id'] == mob.get('class_name') or mob.get('class_name') in item.get('previous_ids',[])),{})
+    class_factor = CLASS_XP.get(classification,model.get('combat',{}).get('xp_factor',1))
     level = max(1, mob.get('level',1))
     return max(0, round(base*level*class_factor*mob.get('xp_multiplier',1)*level_factor(level,player_level)))
 
