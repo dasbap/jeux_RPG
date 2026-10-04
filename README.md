@@ -365,3 +365,9 @@ Redémarrer le serveur après une modification. Tester les cartes dans une nouve
 Par défaut, les invocations suivent leur propriétaire à distance de deux cases quand elles n’ont aucune cible. Elles conservent leurs attaques automatiques ; le contrôle manuel et les incantations prennent la priorité. Les PNJ liés suivent aussi leur joueur et accompagnent le groupe lors des changements de zone. Les PNJ fixes, comme Mira et Léon, restent fixes ou conservent leur itinéraire propre. Les PNJ d’escorte ajoutés par l’éditeur sont pacifiques et ne disposent pas encore d’une IA de combat.
 
 Le [guide complet du builder](docs/BUILDER_GUIDE.md) décrit les outils, les noms de cartes, les options de téléportation, les retours automatiques et le chargement des fichiers. Depuis l’alpha 0.11.0a3, la liste affiche les noms avec leurs identifiants stables et les noms modifiés sont repris dans les vues du monde.
+
+## Alpha 0.11.0a4 — catalogue JSON et forêt de départ
+
+Les définitions des cartes fixes et des quinze presets de rencontre sont maintenant dans le dossier [maps](maps/README.md), sous forme de JSON. Elles sont incluses dans le paquet installé. Le builder lancé depuis le dépôt ouvre `maps/world.json` par défaut ; le serveur peut aussi charger un dossier de plusieurs JSON via `RPG_MAPS_FILE`.
+
+La forêt de départ comporte trois secteurs raccordés : sentier oublié, vieux pont et route entretenue. Ils reprennent le terrain des références, avec quatre colonnes de chevauchement identiques. La troisième carte dispose d’un chemin en bon état et de la sortie vers les chemins rapides ; les retours restent possibles. [Vue d’ensemble](docs/STARTING_MAPS.svg).

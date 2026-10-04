@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from jeuxRPG.multiplayer import forge, progression, tactics, tutorial
+from jeuxRPG.multiplayer import fields, forge, progression, tactics, tutorial
 from jeuxRPG.multiplayer.service import GameError
 
 
@@ -224,10 +224,12 @@ def test_missing_rare_material_cannot_upgrade_or_change_stats():
 
 
 def test_presets_have_valid_cover_and_traversable_spawn_positions():
-    assert len(tactics.PRESETS) == 24
+    assert len(tactics.PRESETS) == 15 + len(fields.MAPS)
     for preset in tactics.PRESETS.values():
-        assert tactics.walkable(preset, [1, 6])
-        assert tactics.path(preset, [1, 6], [9, 5])
+        source = preset["exits"][0]["position"] if preset.get("exits") else [1, 6]
+        destination = preset["exits"][-1]["position"] if preset.get("exits") else [9, 5]
+        assert tactics.walkable(preset, source)
+        assert tactics.path(preset, source, destination) is not None
         assert all(not tactics.walkable(preset, cover) for cover in preset["cover"])
 
 

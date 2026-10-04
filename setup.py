@@ -5,5 +5,5 @@ if __name__ == "__main__":
     setup(
         packages=["jeuxRPG", *[f"jeuxRPG.{name}" for name in packages]],
         package_dir={"jeuxRPG": "."},
-        package_data={"jeuxRPG": ["_class/**/*.json", "i18n/translations/*.json", "multiplayer/web/*", "_balance/**/*.json"]},
+        package_data={"jeuxRPG": ["_class/**/*.json", "i18n/translations/*.json", "multiplayer/web/*", "maps/*.json", "_balance/**/*.json"]},
     )

@@ -11,9 +11,11 @@ class MapEditor:
     def __init__(self, root, path=None):
         self.root = root
         self.maps = deepcopy(fields.MAPS)
-        self.path = Path(path) if path else None
+        self.path = Path(path) if path else Path.cwd() / "maps" / "world.json" if (Path.cwd() / "maps" / "world.json").exists() else None
         if self.path and self.path.exists():
             self.maps = load(self.path)
+            if self.path.is_dir():
+                self.path = None
         self.saved = deepcopy(self.maps)
         self.history = []
         self.size = 24

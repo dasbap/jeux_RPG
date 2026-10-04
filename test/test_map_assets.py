@@ -62,7 +62,10 @@ def test_configured_maps_require_valid_json(tmp_path, monkeypatch):
     monkeypatch.setenv("RPG_MAPS_FILE", str(path))
     configured = map_assets.configured({})
     assert all(definition.pop("terrain_version") for definition in configured.values())
-    assert configured == maps()
+    expected = maps()
+    for definition in expected.values():
+        definition.pop("terrain_version", None)
+    assert configured == expected
     path.write_text('{}')
     with pytest.raises(ValueError):
         map_assets.configured(maps())
@@ -218,3 +221,16 @@ def test_editor_complete_exit_ignores_unused_arrival_and_preserves_origin():
     with pytest.raises(ValueError):
         editor.set_gate([3, 10], {"name": "Erreur", "destination": "rosee", "entry": "0,20"})
     assert editor.maps == before
+
+
+def test_json_directory_combines_field_files_and_excludes_encounters(tmp_path):
+    data = maps()
+    forest = {key: value for key, value in data.items() if key.startswith("clearing")}
+    rest = {key: value for key, value in data.items() if key not in forest}
+    (tmp_path / "forest.json").write_text(json.dumps(forest))
+    (tmp_path / "villages.json").write_text(json.dumps(rest))
+    (tmp_path / "encounters.json").write_text(json.dumps({"kind": "encounters", "maps": {"test": {}}}))
+    assert map_assets.load(tmp_path) == data
+    (tmp_path / "duplicate.json").write_text(json.dumps(forest))
+    with pytest.raises(ValueError, match="dupliquée"):
+        map_assets.load(tmp_path)

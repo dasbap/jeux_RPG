@@ -15,6 +15,11 @@ def validate(maps):
     for key, definition in maps.items():
         if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9_]{1,64}", key) or not isinstance(definition, dict):
             raise ValueError("Identifiant de carte invalide.")
+        for field in ("world_zone", "fast_travel_origin"):
+            if field in definition and (not isinstance(definition[field], str) or definition[field] not in maps):
+                raise ValueError(f"{key} : référence {field} invalide.")
+        if "world_origin" in definition and (not isinstance(definition["world_origin"], list) or len(definition["world_origin"]) != 2 or any(type(n) is not int for n in definition["world_origin"])):
+            raise ValueError(f"{key} : origine du secteur invalide.")
         width, height = definition.get("width"), definition.get("height")
         if type(width) is not int or type(height) is not int or not 4 <= width <= 128 or not 4 <= height <= 128:
             raise ValueError(f"{key} : dimensions comprises entre 4 et 128.")
@@ -83,6 +88,8 @@ def validate(maps):
 
 def load(path):
     path = Path(path)
+    if path.is_dir():
+        return validate(read_catalog("fields", path))
     if path.stat().st_size > 8 * 1024 * 1024:
         raise ValueError("Fichier de cartes trop volumineux.")
     return validate(json.loads(path.read_text(encoding="utf-8")))
@@ -96,11 +103,31 @@ def save(path, maps):
     os.replace(temporary, target)
 
 
+def read_catalog(kind, directory=None):
+    directory = Path(directory) if directory else Path(__file__).resolve().parents[1] / "maps"
+    result = {}
+    for path in sorted(directory.glob("*.json")):
+        if path.stat().st_size > 8 * 1024 * 1024:
+            raise ValueError(f"Fichier trop volumineux : {path.name}")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or not isinstance(data.get("maps", data), dict):
+            raise ValueError(f"Catalogue invalide : {path.name}")
+        category = data.get("kind", "fields")
+        definitions = data.get("maps", data)
+        if category != kind:
+            continue
+        for key, definition in definitions.items():
+            if key in result:
+                raise ValueError(f"Carte dupliquée dans {path.name} : {key}")
+            result[key] = definition
+    if not result:
+        raise ValueError(f"Aucune carte {kind} dans {directory}.")
+    return result
+
+
 def configured(defaults):
     path = os.environ.get("RPG_MAPS_FILE")
-    if not path:
-        return defaults
-    maps = load(path)
+    maps = load(path) if path else validate(defaults)
     for definition in maps.values():
         geometry = {key: definition.get(key, []) for key in ("width", "height", "cover", "blocked")}
         definition["terrain_version"] = hashlib.sha256(json.dumps(geometry, sort_keys=True).encode()).hexdigest()[:16]

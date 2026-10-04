@@ -219,3 +219,20 @@ python main.py
 | Tkinter ne démarre pas | Vérifier l’installation Tcl/Tk et la présence d’un affichage de bureau |
 
 Le builder ne modifie actuellement ni les classes, ni les compétences, ni l’équilibrage, ni le graphe des routes rapides. Ces éléments restent définis dans le moteur.
+
+## 13. Catalogue JSON du dépôt — alpha 0.11.0a4
+
+Les cartes ne sont plus définies dans le code Python. Le dossier `maps/` contient `world.json` pour les cartes fixes et `encounters.json` pour les terrains de rencontres rapides. Le builder lancé depuis le dépôt ouvre et enregistre `maps/world.json` par défaut.
+
+Pour un dossier de cartes fixes réparties entre plusieurs JSON, chaque identifiant doit être unique. On peut charger le dossier avec `python map_editor.py maps`. Enregistrer ensuite l’export complet dans un autre fichier, hors du catalogue initial, puis charger cet export dans le jeu. Ne pas laisser un export complet à côté des fichiers qui contiennent déjà les mêmes cartes.
+
+Le serveur accepte aussi un dossier dans `RPG_MAPS_FILE` :
+
+```powershell
+$env:RPG_MAPS_FILE = (Resolve-Path .\maps).Path
+python main.py
+```
+
+Les trois secteurs initiaux sont `clearing`, `clearing_trail` et `clearing_road`. Leurs quatre colonnes communes sont identiques ; les passages permettent d’avancer et de revenir. Seul le dernier secteur rejoint les chemins rapides. Les champs `world_origin` et `overlap_columns` gardent la référence du chevauchement. Le builder conserve ces champs, mais ne synchronise pas automatiquement les modifications des bords communs : reporter le terrain dans les deux cartes concernées.
+
+Consulter le [dossier des cartes](../maps/README.md) et la [vue d’ensemble](STARTING_MAPS.svg).

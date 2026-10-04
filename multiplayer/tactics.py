@@ -6,15 +6,9 @@ from copy import deepcopy
 from . import forge, progression, achievements
 
 
-LAYOUTS = (
-    [(3, 2), (3, 3), (6, 5), (6, 6), (10, 7), (2, 6)],
-    [(4, 1), (4, 2), (5, 5), (6, 5), (9, 7), (2, 6)],
-    [(3, 4), (4, 4), (7, 2), (7, 3), (10, 6), (2, 6)],
-)
-PRESETS = {f"{zone}_{index + 1}": {"id": f"{zone}_{index + 1}", "name": f"{name} · terrain {index + 1}",
-           "width": 14, "height": 10, "cell_metres": 2, "cover": [list(p) for p in layout]}
-           for zone, name in (("clearing", "Clairière"), ("lisiere", "Lisière"), ("road", "Sentier"), ("rosee", "Entraînement"), ("brume", "Bois de Brume"))
-           for index, layout in enumerate(LAYOUTS)}
+from .map_assets import read_catalog
+
+PRESETS = read_catalog("encounters")
 PLAYER_VISION = 12
 SUMMON_VISION = 6
 CALL_TIME = 6.0

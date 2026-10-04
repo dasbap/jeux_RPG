@@ -13,42 +13,6 @@ def gate(x, y, destination, entry, name):
     return {"position": [x, y], "destination": destination, "entry": entry, "name": name}
 
 
-MAPS = {
-    "clearing": terrain("clearing", "Forêt des Éveillés", 30, 20,
-        [(x, y) for x in (5, 10, 20, 24) for y in (2, 3, 6, 7, 14, 15)],
-        [gate(29, 10, None, None, "Chemin rapide vers Rosée")], [(17, 10)]),
-    "rosee": terrain("rosee", "Village de Rosée", 64, 40,
-        [(x, y) for left, top in ((15, 5), (28, 5), (41, 5), (15, 27), (28, 27), (41, 27)) for x in range(left, left + 6) for y in range(top, top + 6)],
-        [gate(0, 20, None, None, "Chemin rapide"), gate(63, 20, "lisiere", [1, 10], "Lisière"), gate(32, 0, "cave_1", [1, 7], "Grotte"), gate(32, 39, "forest", [1, 12], "Forêt")],
-        sites=[{"id": "mira", "name": "Place · Mira", "position": [32, 20]}, {"id": "forge", "name": "Forge · rue des artisans", "position": [44, 12]}]),
-    "lisiere": terrain("lisiere", "Entrée de la lisière", 30, 20,
-        [(x, y) for x in (7, 14, 23) for y in (3, 4, 14, 15)],
-        [gate(0, 10, "rosee", [62, 20], "Village de Rosée"), gate(29, 10, "hunt", [1, 10], "Campement gobelin"), gate(15, 0, "cave_1", [11, 1], "Grotte"), gate(15, 19, "forest", [20, 1], "Forêt")]),
-    "hunt": terrain("hunt", "Campement gobelin", 30, 20,
-        [(12, 5), (12, 6), (18, 13), (19, 13), (22, 4)],
-        [gate(0, 10, "lisiere", [28, 10], "Entrée de la lisière"), gate(29, 10, "forest", [20, 24], "Forêt")], [(17, 8), (21, 11), (24, 7)]),
-    "forest": terrain("forest", "Forêt de Rosée", 40, 26,
-        [(x, y) for x in (8, 15, 24, 31) for y in (3, 4, 8, 9, 18, 19)],
-        [gate(0, 12, "rosee", [32, 38], "Village de Rosée"), gate(20, 0, "lisiere", [15, 18], "Lisière"), gate(20, 25, "hunt", [28, 10], "Campement gobelin"), gate(39, 12, None, None, "Sortie complète · chemins rapides")], [(18, 12), (28, 16)]),
-    "cave_1": terrain("cave_1", "Grotte · salle 1", 22, 16,
-        [(8, 3), (8, 4), (13, 11), (14, 11)],
-        [gate(0, 7, "rosee", [32, 1], "Village de Rosée"), gate(21, 7, "cave_2", [1, 7], "Salle 2"), gate(11, 0, "lisiere", [15, 1], "Lisière")], [(13, 7)]),
-    "cave_2": terrain("cave_2", "Grotte · salle 2", 22, 16,
-        [(7, 3), (7, 4), (14, 11), (14, 12)],
-        [gate(0, 7, "cave_1", [20, 7], "Salle 1"), gate(21, 7, "cave_3", [1, 7], "Salle 3")], [(12, 7), (16, 9)]),
-    "cave_3": terrain("cave_3", "Grotte · salle 3 · impasse", 22, 16,
-        [(7, 3), (7, 4), (14, 11), (14, 12)],
-        [gate(0, 7, "cave_2", [20, 7], "Salle 2")], [(14, 7)]),
-    "brume": terrain("brume", "Village de Brume", 48, 32,
-        [(x, y) for left, top in ((12, 5), (25, 5), (12, 23), (25, 23)) for x in range(left, left + 5) for y in range(top, top + 5)],
-        [gate(0, 16, None, None, "Chemins rapides")]),
-}
-
-MAPS["rosee"]["exits"].append(gate(63, 30, None, None, "Route rapide vers Brume"))
-MAPS["rosee"]["exits"][-1]["fast_destination"] = "brume"
-MAPS["rosee"]["exits"][0]["fast_destination"] = "clearing"
-
-
 def arrival_point(identifier, source=None):
     definition = MAPS[identifier]
     origin = world.zone_of(source)
@@ -61,37 +25,16 @@ def arrival_point(identifier, source=None):
             1 if y == 0 else definition["height"] - 2 if y == definition["height"] - 1 else y]
 
 
-def decorate(definition):
-    width, height = definition["width"], definition["height"]
-    village = "Village" in definition["name"] or definition["id"].startswith("rosee_")
-    cave = "cave" in definition["id"]
-    crossing = width - 10 if village else width // 2
-    bridges = {height // 2, 5, 6, 1, height - 2, *[item["position"][1] for item in definition.get("exits", [])], *[item[1] for item in definition.get("spawns", [])]}
-    cover = {tuple(point) for point in definition["cover"]}
-    water = [[crossing, y] for y in range(height) if (crossing, y) not in cover]
-    definition.update(water=water, bridges=[point for point in water if point[1] in bridges],
-                      blocked=[point for point in water if point[1] not in bridges], biome="village" if village else "cave" if cave else "forest",
-                      paths=[[x, height // 2] for x in range(width)] + ([[width // 2, y] for y in range(height)] if village else []),
-                      decorations=[{"position": point, "kind": "house" if village else "rock" if cave else "tree"} for point in definition["cover"]])
-    occupied = cover | {tuple(point) for point in water} | {tuple(point) for point in definition["paths"]}
-    for y in range(1, height - 1):
-        for x in range(1, width - 1):
-            if (x, y) not in occupied and (x * 17 + y * 11) % 29 == 0:
-                definition["decorations"].append({"position": [x, y], "kind": "crystal" if cave else "flowers" if village else "grass"})
-    for position in definition.get("spawns", []):
-        if "hunt" in definition["id"]:
-            definition["decorations"].append({"position": [position[0], max(0, position[1] - 1)], "kind": "camp"})
+from .map_assets import configured, read_catalog
 
-
-for definition in [*tactics.PRESETS.values(), *MAPS.values()]:
-    decorate(definition)
-
-from .map_assets import configured
-
-MAPS = configured(MAPS)
+MAPS = configured(read_catalog("fields"))
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
 for identifier, definition in MAPS.items():
     zone = world.zone_of(identifier)
+    parent_zone = definition.get("world_zone")
+    if zone is None and parent_zone in world.PLACES:
+        world.PLACES[parent_zone]["points"].append({"id": identifier, "name": definition["name"], "type": "rencontre", "description": "Secteur de forêt à explorer à pied."})
+        zone = parent_zone
     if identifier in world.PLACES:
         world.PLACES[identifier]["name"] = definition["name"]
     elif zone:
@@ -215,6 +158,7 @@ def transition(party, gate, player, now):
     party["linked_companions"] = deepcopy(battle.get("companions", {}))
     party.update(battle=None, mobs=[], mob=None)
     party.pop("field_map", None)
+    party["position"] = definition.get("fast_travel_origin", party["position"])
     if party["position"] == "clearing" and party["step"] in ("clearing", "first_fight"):
         party["step"] = "road"
     return ["Vous quittez complètement la zone et rejoignez les chemins rapides. Les ennemis cessent la poursuite."]

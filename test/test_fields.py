@@ -37,7 +37,7 @@ def test_fixed_mobs_and_terrain_survive_return_without_respawn():
     data["mobs"][0]["stats"]["hp"]["current"] = 5
     gate = fields.MAPS["clearing"]["exits"][0]
     fields.transition(data, gate, "p", 1)
-    assert data["battle"] is None
+    assert data["field_map"] == "clearing_trail"
     fields.enter(data, "clearing", [1, 10], 2)
     assert data["mobs"][0]["combat_id"] == first_id
     assert data["mobs"][0]["stats"]["hp"]["current"] == 5
@@ -227,9 +227,11 @@ def test_repop_keeps_survivors_and_does_not_duplicate_a_pursuer():
     assert origins.count(dead["combat_id"]) == 1
 
 
-def test_player_vision_is_twelve_cells_and_does_not_increase_mob_detection():
+def test_player_vision_is_twelve_cells_and_does_not_increase_mob_detection(monkeypatch):
     data = party()
-    definition = fields.MAPS["clearing"]
+    definition = deepcopy(fields.MAPS["clearing"])
+    definition["cover"] = [p for p in definition["cover"] if p[1] != 10]
+    monkeypatch.setitem(tactics.PRESETS, definition["id"], definition)
     data["battle"]["players"]["p"]["position"] = [1, 10]
     enemy = data["mobs"][0]
     enemy["position"] = [13, 10]
@@ -240,13 +242,14 @@ def test_player_vision_is_twelve_cells_and_does_not_increase_mob_detection():
     fields.reveal(data)
     assert [13, 10] in data["battle"]["explored"]
     assert [14, 10] not in data["battle"]["explored"]
-    enemy["position"] = [5, 2]
+    enemy["position"] = [29, 2]
     assert not tactics.visible(data, "p", enemy)
 
 
 def test_fast_travel_reaches_camp_without_entering_intermediate_village():
     data = party()
-    fields.transition(data, fields.MAPS["clearing"]["exits"][0], "p", 1)
+    fields.enter(data, "clearing_road", [28, 10], 1)
+    fields.transition(data, fields.MAPS["clearing_road"]["exits"][-1], "p", 1)
     data.update(step="hunt", quest="active", visited=["clearing", "rosee", "lisiere"])
     tutorial.execute(data, "p", "travel", {"destination": "hunt"}, 2, GameError, lambda: .99)
     for instant in range(1000, 31000, 1000):
@@ -270,15 +273,15 @@ def test_complete_exit_and_reentry_return_through_the_same_gate():
 
 def test_river_blocks_player_and_mob_routes_but_not_line_of_sight():
     definition = fields.MAPS["clearing"]
-    river = next(point for point in definition["blocked"] if point[1] == 8)
-    source = [river[0] - 1, river[1]]
-    target = [river[0] + 1, river[1]]
+    river = next(point for point in definition["blocked"] if tactics.walkable(definition, [point[0] - 3, point[1]]) and tactics.walkable(definition, [point[0] + 3, point[1]]) and tactics.sight(definition, [point[0] - 3, point[1]], [point[0] + 3, point[1]]))
+    source = [river[0] - 3, river[1]]
+    target = [river[0] + 3, river[1]]
     assert not tactics.walkable(definition, river)
     assert tactics.sight(definition, source, target)
     route = tactics.path(definition, source, target)
     assert route and river not in route
     assert all(tactics.walkable(definition, point) for point in route)
-    bridge = next(point for point in definition["bridges"] if point[1] == 10)
+    bridge = definition["bridges"][0]
     assert tactics.walkable(definition, bridge)
     data = party()
     data["battle"]["players"]["p"]["position"] = source
@@ -294,3 +297,32 @@ def test_existing_save_migrates_entities_off_new_water_and_clears_old_routes():
     tutorial.migrate(data, 1)
     assert tactics.walkable(fields.MAPS["clearing"], data["battle"]["players"]["p"]["position"])
     assert data["battle"]["players"]["p"]["route"] == []
+
+
+def test_three_starting_maps_overlap_with_identical_terrain_and_decorations():
+    for first, second in (("clearing", "clearing_trail"), ("clearing_trail", "clearing_road")):
+        left, right = fields.MAPS[first], fields.MAPS[second]
+        assert right["world_origin"][0] - left["world_origin"][0] == 26
+        for field in ("cover", "water", "bridges", "blocked", "paths"):
+            assert {(x - 26, y) for x, y in left[field] if x >= 26} == {(x, y) for x, y in right[field] if x < 4}
+        assert {(item["position"][0] - 26, item["position"][1], item["kind"]) for item in left["decorations"] if item["position"][0] >= 26} == {(item["position"][0], item["position"][1], item["kind"]) for item in right["decorations"] if item["position"][0] < 4}
+        assert left["bridges"] and right["bridges"]
+
+
+def test_initial_forest_route_can_be_crossed_reversed_and_rejoined_after_full_exit():
+    data = party()
+    data["mobs"] = []
+    fields.transition(data, fields.MAPS["clearing"]["exits"][0], "p", 1)
+    assert data["field_map"] == "clearing_trail"
+    fields.transition(data, fields.MAPS["clearing_trail"]["exits"][0], "p", 2)
+    assert data["field_map"] == "clearing"
+    fields.transition(data, fields.MAPS["clearing"]["exits"][0], "p", 3)
+    fields.transition(data, fields.MAPS["clearing_trail"]["exits"][-1], "p", 4)
+    assert data["field_map"] == "clearing_road"
+    fields.transition(data, fields.MAPS["clearing_road"]["exits"][-1], "p", 5)
+    assert data["battle"] is None
+    assert data["position"] == "clearing"
+    assert data["step"] == "road"
+    tutorial.execute(data, "p", "enter_zone", {}, 6, GameError, lambda: .99)
+    assert data["field_map"] == "clearing_road"
+    assert data["battle"]["players"]["p"]["position"] == [28, 10]

@@ -919,7 +919,7 @@ function renderBattle(adventure, me) {
     const road = (map.paths || []).some(p => p[0] === x && p[1] === y);
     const gate = map.exits?.find(gate => gate.position[0] === x && gate.position[1] === y);
     const exit = adventure.field_map ? Boolean(gate) && discovered : (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
-    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : bridge ? "battle-cell terrain-bridge" : water ? "battle-cell terrain-water" : road ? "battle-cell terrain-path" : `battle-cell terrain-${map.biome || "forest"}`, role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
+    const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : bridge ? "battle-cell terrain-bridge" : water ? "battle-cell terrain-water" : road ? "battle-cell terrain-path" : `battle-cell terrain-${map.biome || "forest"}${(x + y + (map.world_origin?.[0] || 0) + (map.world_origin?.[1] || 0)) % 2 ? " terrain-shade" : ""}`, role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
       if (water && !bridge) return message("La rivière est infranchissable : rejoignez un pont.");
