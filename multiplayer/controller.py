@@ -71,6 +71,11 @@ class Project:
                     item['role'] = 'tutorial_hunt'
                 item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids', []), identifier]))
                 item['id'] = replacement
+                requirement_key = 'quests' if section == 'quests' else 'achievements'
+                for quest in self.content['quests']:
+                    requirements = quest.get('requirements', {})
+                    if requirement_key in requirements:
+                        requirements[requirement_key] = [replacement if value == identifier else value for value in requirements[requirement_key]]
             elif section == 'mobs':
                 if identifier == 'goblin':
                     raise ValueError('goblin est une référence interne du tutoriel ; créez une nouvelle espèce pour un autre identifiant.')
@@ -327,8 +332,13 @@ class Controller:
                 default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre'}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
                 choices = {'npc':sorted({site['id'] for data in p.maps.values() for site in data['sites']}), 'kind':['kill','craft'], 'target':list(p.mobs), 'zone':['', *p.maps], 'condition':CONDITIONS}
-                values = self.form('Quête' if section == 'quests' else 'Succès et titre', {k:v for k,v in old.items() if k not in ('role', 'previous_ids')}, choices)
+                values = self.form('Quête' if section == 'quests' else 'Succès et titre', {k:v for k,v in old.items() if k not in ('role', 'previous_ids', 'requirements')}, choices)
                 if values:
+                    if section == 'quests':
+                        requirements = self.edit_requirements(old.get('requirements',{}))
+                        if requirements is None:
+                            return
+                        values['requirements'] = requirements
                     if not new and values['id'] != key:
                         p.rename(section, key, values['id'])
                     metadata = next((item for item in p.content[section] if item['id'] == values['id']), {}) if not new else {}
@@ -401,6 +411,41 @@ class Controller:
         except ValueError as exc:
             self.project.maps, self.project.mobs, self.project.content = before
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
+
+    def edit_requirements(self, initial):
+        window = self.tk.Toplevel(self.root)
+        window.title('Prérequis de quête : toutes les conditions sont requises')
+        self.ttk.Label(window,text='Niveau minimum de chaque joueur du groupe').pack(padx=10,pady=5)
+        level = self.ttk.Entry(window)
+        level.insert(0,str(initial.get('level',1)))
+        level.pack(padx=10,pady=5)
+        boxes = {}
+        for key, title in [('achievements','Succès obtenus'),('quests','Quêtes terminées')]:
+            self.ttk.Label(window,text=title+' · sélection multiple').pack(padx=10,pady=5)
+            box = self.tk.Listbox(window,selectmode='multiple',exportselection=False,width=65,height=8)
+            definitions = self.project.content[key]
+            for index, definition in enumerate(definitions):
+                box.insert('end',definition['name']+' · '+definition['id'])
+                if definition['id'] in initial.get(key,[]):
+                    box.selection_set(index)
+            box.pack(fill='both',expand=True,padx=10,pady=5)
+            boxes[key] = (box,definitions)
+        result = []
+        def accept():
+            try:
+                minimum = int(level.get())
+                if not 1 <= minimum <= 100:
+                    raise ValueError()
+                result.append({'level':minimum, **{key:[definitions[index]['id'] for index in box.curselection()] for key,(box,definitions) in boxes.items()}})
+                window.destroy()
+            except ValueError:
+                self.messagebox.showerror('Prérequis','Niveau entier entre 1 et 100 requis.',parent=window)
+        self.ttk.Button(window,text='Appliquer',command=accept).pack(pady=5)
+        self.ttk.Button(window,text='Annuler',command=window.destroy).pack(pady=5)
+        window.transient(self.root)
+        window.grab_set()
+        self.root.wait_window(window)
+        return result[0] if result else None
 
     def edit_stats(self, definition):
         from jeuxRPG._class.character import Character

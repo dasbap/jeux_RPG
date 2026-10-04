@@ -72,6 +72,27 @@ def validate_content(data):
                 if identifier in owners and owners[identifier] != item['id']:
                     raise ValueError('Identifiant déjà utilisé ou réservé par un renommage.')
                 owners[identifier] = item['id']
+    quests = {q['id']:q for q in data['quests']}
+    achievements = {a['id'] for a in data['achievements']}
+    for quest in quests.values():
+        requirements = quest.get('requirements', {})
+        if not isinstance(requirements, dict) or set(requirements)-{'level','achievements','quests'} or type(requirements.get('level',1)) is not int or not 1 <= requirements.get('level',1) <= 100:
+            raise ValueError('Prérequis de quête : niveau entier entre 1 et 100.')
+        for key, known in [('quests',quests),('achievements',achievements)]:
+            identifiers = requirements.get(key, [])
+            if not isinstance(identifiers,list) or len(identifiers) > 200 or any(not isinstance(identifier,str) or identifier not in known for identifier in identifiers) or len(set(identifiers)) != len(identifiers):
+                raise ValueError('Prérequis : quête ou succès inconnu ou dupliqué.')
+    visited = set()
+    def check(identifier, pending):
+        if identifier in pending:
+            raise ValueError('Cycle dans les prérequis de quêtes.')
+        if identifier in visited:
+            return
+        for dependency in quests[identifier].get('requirements',{}).get('quests',[]):
+            check(dependency,pending | {identifier})
+        visited.add(identifier)
+    for identifier in quests:
+        check(identifier,set())
     hunts = [q for q in data['quests'] if is_hunt(q)]
     if len(hunts) != 1 or not any(q['npc'] == 'mira' and q['kind'] == 'kill' and q['target'] == 'goblin' and q.get('zone') == 'lisiere' for q in hunts):
         raise ValueError('La quête de chasse de Mira est nécessaire au tutoriel.')
@@ -132,6 +153,33 @@ def quest_event(party, kind, target, zone=None):
             state['progress'] = min(quest['count'], state['progress']+1)
 
 
+def missing_requirements(party, quest):
+    from . import achievements
+    requirements = quest.get('requirements', {})
+    missing = []
+    level = requirements.get('level',1)
+    below = [character['name'] for character in party['characters'].values() if character['level'] < level]
+    if below:
+        missing.append(f"niveau {level} requis pour : {', '.join(below)}")
+    stats = achievements.record(party)
+    definitions = {item['id']:item for item in DATA['achievements']}
+    for identifier in requirements.get('achievements',[]):
+        definition = definitions[identifier]
+        condition = definition['condition']
+        value = stats['max_level'] if condition == 'level' else stats['kills'] if condition == 'kills' else None
+        unlocked = value >= definition['threshold'] if value is not None else definition['title'] in stats['titles']
+        if not unlocked:
+            missing.append('succès requis : '+definition['name'])
+    states = quest_states(party)
+    definitions = {item['id']:item for item in DATA['quests']}
+    for identifier in requirements.get('quests',[]):
+        definition = definitions[identifier]
+        completed = party.get('quest') == 'completed' if is_hunt(definition) else states.get(identifier,{}).get('status') == 'completed'
+        if not completed:
+            missing.append('quête à terminer : '+definition['name'])
+    return missing
+
+
 def quest_dialogue(party, npc):
     from .tutorial import unpack, pack
     messages = []
@@ -141,13 +189,18 @@ def quest_dialogue(party, npc):
             continue
         state = states.get(quest['id'])
         if state is None:
+            missing = missing_requirements(party,quest)
+            if missing:
+                messages.append(f"{quest['name']} inaccessible : {' ; '.join(missing)}.")
+                continue
             states[quest['id']] = {'status': 'active', 'progress': 0}
             messages.append(f"Quête acceptée : {quest['name']} · {quest['description']}")
         elif state['status'] == 'active' and state['progress'] >= quest['count']:
             state['status'] = 'completed'
             for key, data in party['characters'].items():
                 actor = unpack(data)
-                actor.gain_exp(quest['reward_xp'])
+                if quest['reward_xp']:
+                    actor.gain_exp(quest['reward_xp'])
                 party['characters'][key] = pack(actor)
             messages.append(f"Quête terminée : {quest['name']} · {quest['reward_xp']} XP par joueur.")
         elif state['status'] == 'active':

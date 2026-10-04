@@ -131,3 +131,16 @@ La récompense est arrondie à l’entier :
 L’écart est `niveau du mob − niveau du tueur`, plafonné entre −10 et +10. Le facteur de niveau vaut donc ×4 dès +10 et ÷4 dès −10. Les classes XP configurables sont normal (1), guerrier (1,5), lanceur de sorts (1,8), élite (2,5) et boss (4). Les anciennes espèces sans classe XP explicite conservent les facteurs de modèle Goblin (1), Orc (1,6) et DragonWhelp (2,5).
 
 Le dernier coup identifie le tueur ; une invocation est attribuée à son propriétaire, un saignement à sa source. La récompense calculée est accordée à chaque membre du groupe, comme auparavant. Un multiplicateur nul supprime l’XP. L’entraînement ne donne ni XP ni butin. Sauvegardez les catalogues et redémarrez le serveur pour appliquer les modifications.
+
+
+## Conditions d’acceptation des quêtes
+
+Lors de l’ajout ou de la modification d’une quête, la fenêtre **Prérequis de quête** permet de définir :
+
+- Le niveau minimum, de 1 à 100 ; chaque joueur du groupe doit l’atteindre.
+- Les succès requis, sélectionnables par leur nom et identifiant.
+- Les quêtes qui doivent être terminées, sélectionnables par leur nom et identifiant.
+
+Les listes permettent plusieurs sélections par clic. Toutes les conditions sélectionnées sont obligatoires ; une liste vide n’impose aucune condition de ce type. Les succès et quêtes utilisent la progression partagée du groupe. Le PNJ explique les conditions manquantes et le serveur refuse l’acceptation tant qu’elles ne sont pas remplies. Les quêtes déjà acceptées restent actives même si les prérequis sont modifiés.
+
+Le catalogue utilise par exemple `"requirements": {"level": 5, "achievements": ["kills_10"], "quests": ["mira_hunt"]}`. Les références inconnues, les doublons et les dépendances circulaires sont refusés à la sauvegarde. Renommer une quête ou un succès met à jour ses références dans les prérequis. L’absence de `requirements` conserve l’accès sans condition des anciens catalogues. Sauvegardez puis redémarrez le serveur.

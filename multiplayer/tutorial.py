@@ -315,6 +315,9 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         if party["battle"] or params["npc"] != "mira":
             raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
         if party["step"] == "village":
+            missing = content.missing_requirements(party, content.HUNT)
+            if missing:
+                return [f"{content.HUNT['name']} inaccessible : {'; '.join(missing)}."], False
             party.update(step="hunt", quest="active")
             if party.get("field_mode"):
                 party["kills"] = min(content.HUNT["count"], party.get("zone_kills", {}).get("lisiere", 0))
@@ -323,7 +326,8 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
             party.update(step="craft", quest="completed")
             for key, character in characters.items():
-                character.gain_exp(content.HUNT["reward_xp"])
+                if content.HUNT["reward_xp"]:
+                    character.gain_exp(content.HUNT["reward_xp"])
                 party["characters"][key] = pack(character)
             messages.append(f"Mira : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
         else:

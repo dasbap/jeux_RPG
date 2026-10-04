@@ -217,6 +217,7 @@ def test_edit_form_allows_tutorial_quest_id_change(tmp_path):
     screen.history = []
     screen.tables = {'quests':SimpleNamespace(selection=lambda:['mira_hunt'])}
     screen.form = lambda title, values, choices: {**values, 'id':'mira_hunt_2'}
+    screen.edit_requirements = lambda initial: initial
     screen.refresh = lambda: None
     screen.status = SimpleNamespace(set=lambda value: None)
     screen.messagebox = SimpleNamespace(showerror=lambda *args, **kwargs: pytest.fail(str(args)))
