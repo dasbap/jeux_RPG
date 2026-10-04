@@ -97,6 +97,9 @@ def execute(party, player, action, recipe, error):
         stat.current_value = min(stat.value, stat.current_value + delta) if name == "hp" else stat.current_value + delta
     gear[slot] = new
     party["characters"][player] = pack(actor)
+    from . import content, world
+    if action == "craft":
+        content.quest_event(party, "craft", recipe, world.zone_of(party["position"]))
     previous_step = party["step"]
     if party["step"] == "craft" and all("torso" in party["equipment"].get(key, {}) for key in party["characters"]):
         party["step"] = "travel"

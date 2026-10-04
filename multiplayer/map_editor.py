@@ -615,6 +615,8 @@ class MapEditor:
                 messagebox.showerror("Ouverture", str(exc))
 
     def save(self, choose=False):
+        if getattr(self, "on_save", None):
+            return self.on_save(choose)
         path = self.path
         if choose or not path:
             value = filedialog.asksaveasfilename(defaultextension=".json", initialfile="maps.json", filetypes=[("Cartes JSON", "*.json")])

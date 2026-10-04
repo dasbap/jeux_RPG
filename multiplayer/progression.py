@@ -1,4 +1,5 @@
 import math
+from .content import WORLD
 
 
 RATIO = 3.0
@@ -6,7 +7,7 @@ ACTION_SECONDS = 1.2
 
 
 def required(level):
-    return int(500 * level ** 1.8)
+    return int(WORLD['xp_base'] * level ** WORLD['xp_exponent'])
 
 
 def configure(character):

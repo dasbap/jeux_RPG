@@ -1,7 +1,7 @@
 from copy import deepcopy
 import uuid
 
-from . import tactics, world, progression
+from . import tactics, world, progression, content
 from .map_building import spawners, create_mob, map_level, zone_of
 
 
@@ -110,7 +110,7 @@ def enter(party, identifier, entry, now, pursuers=()):
             position = tactics.free_position(definition, config["position"], occupied)
             occupied.append(position)
             mob.update(position=position, home=position[:], patrol_route=deepcopy(config.get("patrol")) or [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], patrol_index=0)
-    if saved and now - saved["saved_at"] >= 180:
+    if saved and now - saved["saved_at"] >= content.WORLD["repop_seconds"]:
         progression.health_resources(party, now)
         repop(party, identifier, now, pursuers)
     occupied = []
@@ -213,7 +213,10 @@ def execute(party, player, action, params, now, error, random):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
     if action == "talk" and site != "mira":
         npc = next(item for item in nearby if item["id"] == site)
-        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}"], False
+        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
+    if action == 'talk' and site == 'mira' and (party['step'] not in ('village', 'hunt') or party['step'] == 'hunt' and party['kills'] < content.HUNT['count'] and any(q['npc'] == 'mira' and q['id'] != 'mira_hunt' for q in content.DATA['quests'])):
+        npc = next(item for item in nearby if item['id'] == site)
+        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour !'}", *content.quest_dialogue(party, site)], False
     battle, position = party["battle"], party["position"]
     party.update(battle=None, position=site)
     try:

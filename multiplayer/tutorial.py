@@ -7,7 +7,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields
+from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content
 
 TRAVEL_ENCOUNTER_CHANCE = .25
 
@@ -114,7 +114,7 @@ def new_party(players):
 
 
 def npc(now):
-    stay = 8 * 3600
+    stay = content.WORLD["merchant_stay_hours"] * 3600
     crossing = next(r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume") / 6 * 3600
     phase = now % (2 * (stay + crossing))
     location = "Rosée" if phase < stay else "Brume" if stay + crossing <= phase < 2 * stay + crossing else None
@@ -153,7 +153,13 @@ def view(party, me, now):
         tactics.sync_summons(party, now)
     result = json.loads(json.dumps({key: value for key, value in party.items() if key not in ("characters", "ready", "battle", "mobs", "mob")}, ensure_ascii=False, separators=(",", ":")))
     result["achievements"] = achievements.view(party)
+    result["quest_journal"] = content.quest_journal(party)
+    result["hunt_goal"] = content.HUNT["count"]
+    result["hunt_name"] = content.HUNT["name"]
+    result["hunt_description"] = content.HUNT["description"]
     result["location"], result["objective"] = STEPS[party["step"]]
+    if party["step"] == "hunt":
+        result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
     result["moving"] = bool(transit and not party["battle"])
@@ -311,16 +317,17 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         if party["step"] == "village":
             party.update(step="hunt", quest="active")
             if party.get("field_mode"):
-                party["kills"] = min(3, party.get("zone_kills", {}).get("lisiere", 0))
-            messages.append("Mira : battez trois gobelins, puis dépecez les corps pour récupérer les matériaux de la forge.")
-        elif party["step"] == "hunt" and party["kills"] >= 3:
+                party["kills"] = min(content.HUNT["count"], party.get("zone_kills", {}).get("lisiere", 0))
+            messages.extend(content.quest_dialogue(party, "mira"))
+            messages.append(f"Mira : {content.HUNT['description']} · {content.HUNT['count']} gobelin(s).")
+        elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
             party.update(step="craft", quest="completed")
             for key, character in characters.items():
-                character.gain_exp(300)
+                character.gain_exp(content.HUNT["reward_xp"])
                 party["characters"][key] = pack(character)
-            messages.append("Mira : merci ! Chaque aventurier reçoit 300 XP. La forge est désormais ouverte.")
+            messages.append(f"Mira : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
         else:
-            raise error("quest_incomplete", "Mira attend trois gobelins vaincus.", 409)
+            raise error("quest_incomplete", f"Mira attend {content.HUNT['count']} gobelin(s) vaincu(s).", 409)
         return messages, False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
@@ -552,7 +559,7 @@ def execute(party, player_id, action, params, now, error, random):
         merchant = npc(now)
         if party["battle"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
             raise error("invalid_npc", "Léon n'est pas présent dans votre zone.", 409)
-        return ["Léon : je séjourne huit heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
+        return [f"Léon : je séjourne {content.WORLD['merchant_stay_hours']:g} heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
     if action == "craft" and party["quest"] != "completed":
         raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
     if action == "talk" and position != "mira" or action == "craft" and position != "forge":

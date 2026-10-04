@@ -356,3 +356,24 @@ def test_timed_map_link_waits_and_arrives_at_chosen_cell():
     assert data['field_map'] == 'rosee'
     assert data['battle']['players']['p']['position'] == [3, 20]
     assert data['transit'] is None
+
+
+def test_custom_npc_quest_requires_proximity_and_rewards_once(monkeypatch):
+    from jeuxRPG.multiplayer import content
+    configuration = deepcopy(content.DEFAULTS)
+    configuration['quests'].append({'id':'guide_hunt','name':'Chasse du guide','npc':'guide','kind':'kill','target':'orc','zone':'lisiere','count':1,'reward_xp':75,'description':'Vaincre un orc.'})
+    monkeypatch.setattr(content, 'DATA', configuration)
+    fields.MAPS['rosee']['sites'].append({'position':[3,20], 'id':'guide', 'name':'Guide', 'dialogue':'Bonjour !'})
+    data = party()
+    fields.enter(data, 'rosee', [10,20], 1)
+    with pytest.raises(GameError, match='Approchez'):
+        fields.execute(data, 'p', 'talk', {'npc':'guide'}, 1, GameError, lambda: .99)
+    assert not data.get('custom_quests')
+    data['battle']['players']['p']['position'] = [3,20]
+    messages, _ = fields.execute(data, 'p', 'talk', {'npc':'guide'}, 2, GameError, lambda: .99)
+    assert any('Quête acceptée' in message for message in messages)
+    content.quest_event(data, 'kill', 'orc', 'lisiere')
+    xp = data['characters']['p']['exp']
+    fields.execute(data, 'p', 'talk', {'npc':'guide'}, 3, GameError, lambda: .99)
+    fields.execute(data, 'p', 'talk', {'npc':'guide'}, 4, GameError, lambda: .99)
+    assert data['characters']['p']['exp'] == xp + 75

@@ -397,3 +397,7 @@ Le builder ajoute **Trajets / rues**, la configuration des distances et durées 
 ## Alpha 0.11.0a9 — aperçu du rendu et rotation des ponts
 
 Le builder ouvre un **Aperçu rendu final** autonome dans le navigateur, avec le rendu de terrain partagé avec le jeu, zoom, déplacement de la vue et repères facultatifs. Les modifications non enregistrées sont incluses. **Pont °** règle l’orientation au placement ; **Rotation pont** tourne un pont existant par pas de 90°. L’orientation est enregistrée dans les JSON et préservée dans les raccords et fusions.
+
+## Contrôleur du projet
+
+`python controller.py` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.

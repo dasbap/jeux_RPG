@@ -3,13 +3,13 @@ from functools import lru_cache
 from heapq import heappop, heappush
 from copy import deepcopy
 
-from . import forge, progression, achievements
+from . import forge, progression, achievements, content
 
 
 from .map_assets import read_catalog
 
 PRESETS = read_catalog("encounters")
-PLAYER_VISION = 12
+PLAYER_VISION = content.WORLD["player_vision"]
 SUMMON_VISION = 6
 CALL_TIME = 6.0
 SEARCH_TIME = 10 * progression.RATIO
@@ -609,7 +609,7 @@ def damaged(party, mob, actor, now):
 def defeated(party, mob, now, random, messages):
     from .tutorial import unpack, pack
     from . import world
-    reward = 0 if party.get("training") else 50
+    reward = 0 if party.get("training") else content.WORLD["mob_xp"]
     for key, data in party["characters"].items():
         character = unpack(data)
         if reward:
@@ -626,9 +626,10 @@ def defeated(party, mob, now, random, messages):
         kills = party.setdefault("zone_kills", {})
         kills[zone] = kills.get(zone, 0) + 1
     if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere" and mob.get("mob_id", "goblin") == "goblin":
-        party["kills"] = min(3, party["kills"] + 1)
+        party["kills"] = min(content.HUNT["count"], party["kills"] + 1)
     if not party.get("training"):
         achievements.record(party)["kills"] += 1
+        content.quest_event(party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"]))
     achievements.victory(party, now)
     messages.append(f"{mob['name']} vaincu : {reward} XP. Approchez-vous pour le dépecer.")
     if not party["mobs"] and party["combat_step"] == "first_fight":
