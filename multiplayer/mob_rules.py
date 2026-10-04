@@ -60,10 +60,16 @@ def validate_mobs(mobs):
             raise ValueError('16 capacités maximum.')
         names = set()
         for ability in abilities:
+            if isinstance(ability,dict) and 'native' in ability:
+                raise ValueError('Utilisez une référence skill_id pour une compétence native.')
+            if isinstance(ability,dict) and 'skill_id' in ability:
+                if not isinstance(ability['skill_id'],str) or type(ability.get('level')) is not int or not 1 <= ability['level'] <= 100 or not finite(ability.get('range',6),0,20):
+                    raise ValueError('Référence de compétence, niveau ou portée invalide.')
+                continue
             if not isinstance(ability, dict) or not isinstance(ability.get('name'), str) or not 1 <= len(ability['name']) <= 100 or ability['name'] in names or ability.get('type') not in ('damage','heal','stun'):
                 raise ValueError('Nom ou type de capacité invalide.')
             names.add(ability['name'])
-            for key, low, high in [('power',0,10000),('growth',0,1000),('cooldown',.2,600),('cast',0,30),('range',.5,20),('duration',.1,60)]:
+            for key, low, high in [('power',0,10000),('growth',0,1000),('cooldown',.2,600),('cast',0,30),('range',0,20),('duration',.1,60)]:
                 if not finite(ability.get(key, {'duration':2}.get(key)), low, high):
                     raise ValueError(f'Capacité : {key} invalide.')
             if type(ability.get('level')) is not int or not 1 <= ability['level'] <= 100 or type(ability.get('concentration', True)) is not bool:

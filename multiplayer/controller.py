@@ -55,6 +55,8 @@ class Project:
     def validate(self):
         validate_mobs(self.mobs)
         validate_content(self.content)
+        from .skill_catalog import validate as validate_catalog
+        validate_catalog(self.content,self.mobs)
         from . import map_building, forge
         previous = map_building.MOBS
         try:
@@ -76,7 +78,19 @@ class Project:
             return
         before = self.state()
         try:
-            if section in ('quests', 'achievements'):
+            if section in ('classes','skills'):
+                item = next(item for item in self.content.get(section,[]) if item['id'] == identifier)
+                if any(other['id'] == replacement for other in self.content[section]):
+                    raise ValueError('Identifiant déjà utilisé.')
+                item['id'] = replacement
+                if section == 'classes':
+                    item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids',[]),identifier]))
+                if section == 'skills':
+                    for definition in [*self.content.get('classes',[]), *self.mobs.values()]:
+                        for assignment in definition.get('skills',definition.get('abilities',[])):
+                            if assignment.get('skill_id') == 'skill:'+identifier:
+                                assignment['skill_id'] = 'skill:'+replacement
+            elif section in ('quests', 'achievements'):
                 item = next(item for item in self.content[section] if item['id'] == identifier)
                 if any(other['id'] == replacement or replacement in other.get('previous_ids', []) for other in self.content[section] if other is not item):
                     raise ValueError('Identifiant déjà utilisé.')
@@ -98,6 +112,11 @@ class Project:
                 for species in self.mobs.values():
                     if species.get('parent') == identifier:
                         species['parent'] = replacement
+                for definition in [*self.content.get('classes',[]), *self.mobs.values()]:
+                    for assignment in definition.get('skills',definition.get('abilities',[])):
+                        reference = assignment.get('skill_id','')
+                        if reference.startswith('mob:'+identifier+':'):
+                            assignment['skill_id'] = 'mob:'+replacement+reference[len('mob:'+identifier):]
                 for data in self.maps.values():
                     for spawn in data.get('spawners', []):
                         if spawn['mob_id'] == identifier:
@@ -193,7 +212,7 @@ class Controller:
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde')]:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes humaines'), ('skills','Compétences')]:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
             table = ttk.Treeview(page, columns=('name', 'details'), show='tree headings', selectmode='browse')
@@ -237,6 +256,8 @@ class Controller:
             'quests': [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q['reward_xp']} XP") for q in p.content['quests']],
             'achievements': [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} → {a['title']}") for a in p.content['achievements']],
             'npcs': [(f'{key}:{index}', site['name'], f"{key} · {site['id']} · case {site['position']}") for key, data in p.maps.items() for index, site in enumerate(data.get('sites', []))],
+            'classes': [(item['id'],item['name'],item['base_class']+' · '+str(len(item.get('skills',[])))+' compétences') for item in p.content.get('classes',[])],
+            'skills': [(item['id'],item['name'],item['type']+' · portée '+str(item['range'])) for item in p.content.get('skills',[])],
             'world': [(key, self.label(key), str(value)) for key, value in p.content['world'].items()],
         }
         for section, table in self.tables.items():
@@ -249,7 +270,7 @@ class Controller:
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
             return key[:-7]+' · croissance par niveau'
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet'}.get(key, key)
+        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -317,6 +338,35 @@ class Controller:
                 values = self.form('Paramètres du monde', p.content['world'])
                 if values:
                     p.content['world'] = values
+            elif section in ('classes','skills'):
+                from .skill_catalog import BASE_CLASSES, library
+                available = library(p.content,p.mobs)
+                if section == 'classes':
+                    old = {'id':'','name':'Nouvelle classe','base_class':'Knight','energy_capacity':30} if new else next(item for item in p.content.get('classes',[]) if item['id'] == key)
+                    values = self.form('Classe humaine',{k:v for k,v in old.items() if k not in ('stats','skills','previous_ids')},{'base_class':BASE_CLASSES})
+                    if not values:
+                        return
+                    stats = self.edit_stats({'class_name':values['base_class'],'name':values['name'],'stats':old.get('stats',{})})
+                    if stats is None:
+                        return
+                    assigned = self.edit_records('Compétences de classe',old.get('skills',[]),{'skill_id':next(iter(available)),'level':1,'range':6.0,'cost':5},{'skill_id':list(available)})
+                    if assigned is None:
+                        return
+                    values.update(stats=stats,skills=assigned)
+                else:
+                    old = {'id':'','name':'Nouvelle compétence','type':'damage','level':1,'power':3.0,'growth':.5,'cooldown':5.0,'cast':.6,'range':1.5,'duration':2.0,'concentration':True} if new else next(item for item in p.content.get('skills',[]) if item['id'] == key)
+                    values = self.form('Compétence réutilisable',old,{'type':['damage','heal','stun']})
+                    if not values:
+                        return
+                if not new and values['id'] != key:
+                    p.rename(section,key,values['id'])
+                elif new and any(item['id'] == values['id'] for item in p.content.get(section,[])):
+                    raise ValueError('Identifiant déjà utilisé.')
+                if section == 'classes' and not new:
+                    current = next(item for item in p.content[section] if item['id'] == values['id'])
+                    if current.get('previous_ids'):
+                        values['previous_ids'] = current['previous_ids']
+                p.content[section] = [item for item in p.content.get(section,[]) if item['id'] != values['id']] + [values]
             elif section == 'mobs':
                 from . import forge
                 old = resolve(p.mobs, key) if not new else {'name':'Nouvelle créature','class_name':'Goblin','rank':'D','damage':3,'loot':{'peau':1}}
@@ -485,15 +535,29 @@ class Controller:
         def refresh():
             table.delete(*table.get_children())
             for index, item in enumerate(rows):
-                table.insert('', 'end', iid=str(index), text=item.get('name',item.get('item','')), values=(str(item),))
+                table.insert('', 'end', iid=str(index), text=item.get('name',item.get('item',item.get('skill_id',''))), values=(str(item),))
         def edit(new=False):
             selected = table.selection()
             if not new and not selected:
                 return
             index = int(selected[0]) if selected else None
-            value = self.form(title, {**default, **({} if new else rows[index])}, choices)
+            existing = {} if new else rows[index]
+            if title == 'Capacités' and 'skill_id' in existing:
+                from .skill_catalog import library
+                value = self.form('Réutiliser une compétence',existing,{'skill_id':list(library(self.project.content,self.project.mobs))})
+            else:
+                value = self.form(title, {**default, **existing}, choices)
             if value:
                 rows.append(value) if new else rows.__setitem__(index,value)
+                refresh()
+        def reuse():
+            from .skill_catalog import library, builtins
+            from jeuxRPG._class.res.classType import SkillType
+            available = library(self.project.content,self.project.mobs)
+            choices = [key for key, entry in available.items() if not entry.get('native') or builtins()[entry['native']].skill_type not in (SkillType.INVOCATION,SkillType.RESURRECT)]
+            values = self.form('Réutiliser une compétence',{'skill_id':choices[0],'level':1,'range':6.0},{'skill_id':choices})
+            if values:
+                rows.append(values)
                 refresh()
         def delete():
             for index in sorted((int(value) for value in table.selection()), reverse=True):
@@ -507,6 +571,8 @@ class Controller:
         bar.pack(fill='x')
         for label, action in [('Ajouter',lambda:edit(True)),('Modifier',edit),('Supprimer',delete),('Appliquer',accept),('Annuler',window.destroy)]:
             self.ttk.Button(bar,text=label,command=action).pack(side='left')
+        if title == 'Capacités':
+            self.ttk.Button(bar,text='Réutiliser une compétence',command=reuse).pack(side='left')
         refresh()
         window.transient(self.root)
         window.grab_set()

@@ -1276,3 +1276,15 @@ function enterCombatFullscreen() {
   $("battle").requestFullscreen().catch(() => {});
 }
 document.addEventListener("pointerdown", enterCombatFullscreen, {capture: true});
+
+if (typeof fetch === 'function') fetch('/api/classes').then(response => { if (!response.ok) throw new Error('Classes indisponibles'); return response.json(); }).then(available => {
+  for (const item of available) {
+    if (!Object.hasOwn(classes, item.id)) {
+      classes[item.id] = item.name;
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.name;
+      $('class-name').append(option);
+    }
+  }
+}).catch(() => {});

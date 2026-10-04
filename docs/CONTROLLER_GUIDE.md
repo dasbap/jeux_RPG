@@ -147,3 +147,22 @@ Le catalogue utilise par exemple `"requirements": {"level": 5, "achievements": [
 
 
 Les probabilités de drop acceptent un point ou une virgule : `0.8` et `0,8` valent 80 %, même lorsque la valeur précédente était `1` ou `0`. Les nombres de tirages et les quantités d’objets restent entiers.
+
+
+## Bibliothèque de compétences et classes humaines
+
+L’onglet **Compétences** permet de créer et modifier des capacités réutilisables de dégâts, soin personnel ou étourdissement. Les capacités créées sur un mob et les compétences humaines et monstres intégrées au jeu sont également proposées dans les listes de sélection. Les références portent les préfixes `skill:`, `mob:` ou `native:` ; elles incluent le nom de leur source et de la compétence.
+
+Dans **Mobs → Modifier → Capacités**, utilisez **Réutiliser une compétence**, sélectionnez la source puis définissez le niveau de déblocage et la portée. Les attaques humaines natives conservent leurs effets et leur coût d’énergie ; le mob reçoit l’énergie requise et la régénère. Les invocations et résurrections natives sont actuellement proposées aux classes humaines uniquement : l’IA des mobs ne gère pas ces cibles et propriétaires spécifiques. Les capacités directement créées dans le contrôleur restent disponibles comme auparavant.
+
+Dans **Classes humaines**, cliquez sur **Ajouter** :
+
+1. Définissez l’identifiant, le nom et le modèle humain (chevalier, mage, archer, prêtre ou nécromancien).
+2. Ajustez les stats de base et la croissance par niveau. Les autres comportements et stats non remplacées proviennent du modèle.
+3. Ajoutez les compétences via la bibliothèque, avec leur niveau de déblocage, leur portée et leur coût d’énergie. Cette liste définit les compétences de la classe et remplace celle du modèle.
+
+Une compétence qui utilise une énergie absente du modèle ajoute cette énergie, avec la capacité définie dans les propriétés de classe. Les énergies déjà présentes gardent la capacité et progression du modèle. Les invocations natives restent utilisables avec le moteur existant. Les compétences et états sont conservés dans les sauvegardes du personnage ; modifier un catalogue exige de redémarrer le serveur.
+
+**Portée 0 signifie soi-même uniquement** : aucune autre entité ne peut être ciblée, même sur la même case. Cela convient aux soins, protections et invocations personnelles. Une attaque offensive de portée 0 n’a pas de cible valide, car le moteur interdit de s’attaquer soi-même. Les contrôles s’appliquent dans le client et le serveur.
+
+Après sauvegarde et redémarrage du serveur, les classes apparaissent dans la sélection de personnage du navigateur. Les données restent dans `maps/content.json`. Le renommage d’une classe conserve ses anciens identifiants pour relire les personnages existants ; ne supprimez pas une classe utilisée par des sauvegardes. Le renommage d’une compétence partagée met à jour les références. Une suppression qui laisserait une compétence référencée est refusée.

@@ -44,6 +44,10 @@ class GameService:
     lobby_duration = GameClock.ratio * 1800.0
 
     def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None, log_directory=None):
+        from .skill_catalog import install
+        from .content import DATA
+        from .map_building import MOBS
+        self.classes = (*type(self).classes, *install(DATA,MOBS))
         self._tick_errors = {}
         self._prepared_views = OrderedDict()
         self._view_errors = {}

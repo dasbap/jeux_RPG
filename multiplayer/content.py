@@ -32,7 +32,7 @@ def is_hunt(quest):
 
 
 def validate_content(data):
-    if not isinstance(data, dict) or set(data) != set(DEFAULTS):
+    if not isinstance(data, dict) or set(data)-{'classes','skills'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
     limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64)}
     if not isinstance(data['world'], dict) or set(data['world']) != set(limits):
@@ -96,6 +96,9 @@ def validate_content(data):
     hunts = [q for q in data['quests'] if is_hunt(q)]
     if len(hunts) != 1 or not any(q['npc'] == 'mira' and q['kind'] == 'kill' and q['target'] == 'goblin' and q.get('zone') == 'lisiere' for q in hunts):
         raise ValueError('La quête de chasse de Mira est nécessaire au tutoriel.')
+    for section in ('classes','skills'):
+        if section in data and not isinstance(data[section],list):
+            raise ValueError('Catalogue de classes/compétences invalide.')
     return deepcopy(data)
 
 

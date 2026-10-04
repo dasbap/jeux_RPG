@@ -206,7 +206,9 @@ def view(party, me, traveller=None):
         if 'hp' in definition.get('stats', {}):
             hp = round(definition['stats']['hp']['base'])
             creature['hp'] = {'first_encounter':hp, 'hunt':hp}
-        creature['abilities'] = deepcopy(definition.get('abilities', []))
+        from .skill_catalog import library, mob_ability
+        available = library(content.DATA,MOBS)
+        creature['abilities'] = [mob_ability(available[item['skill_id']],item) if 'skill_id' in item else deepcopy(item) for item in definition.get('abilities',[])]
         creature['xp'] = {'first_encounter':experience({**definition,'level':1},1,content.WORLD['mob_xp']), 'hunt':experience({**definition,'level':1},1,content.WORLD['mob_xp']), 'training':0}
         creature["spawn_maps"] = [item for item in creature["spawn_maps"] if item["id"] not in MAPS or any(config["mob_id"] == creature["id"] for config in spawners(MAPS[item["id"]]))]
     current_zone = zone_of(party.get("position", CURRENT[step]))
