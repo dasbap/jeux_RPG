@@ -171,12 +171,13 @@ class AssemblyWindow:
                 dx, dy = layout[destination]
                 other = self.editor.maps[destination]
                 self.canvas.create_line((x+data['width']/2-self.offset[0])*self.scale, (y+data['height']/2-self.offset[1])*self.scale, (dx+other['width']/2-self.offset[0])*self.scale, (dy+other['height']/2-self.offset[1])*self.scale, fill='#8bcdbc', width=2, arrow='last')
-        colors = {'water': '#286779', 'paths': '#ad9369', 'cover': '#35543c', 'bridges': '#d7b785'}
         for key, data in self.editor.maps.items():
             x, y = layout[key]
             x, y = (x-self.offset[0])*self.scale, (y-self.offset[1])*self.scale
             tag = 'map:'+key
-            self.canvas.create_rectangle(x, y, x+data['width']*self.scale, y+data['height']*self.scale, fill='#60764d', outline='#ffdc83' if key == self.selected else '#849bb5', width=3 if key == self.selected else 1, tags=(tag,))
+            ground, cover = {'cave': ('#374250', '#48505a'), 'village': ('#667356', '#344934')}.get(data.get('biome'), ('#294b35', '#344934'))
+            colors = {'water': '#286779', 'paths': '#ad9369', 'cover': cover, 'bridges': '#d7b785'}
+            self.canvas.create_rectangle(x, y, x+data['width']*self.scale, y+data['height']*self.scale, fill=ground, outline='#ffdc83' if key == self.selected else '#849bb5', width=3 if key == self.selected else 1, tags=(tag,))
             for field, color in colors.items():
                 for px, py in data.get(field, []):
                     self.canvas.create_rectangle(x+px*self.scale, y+py*self.scale, x+(px+1)*self.scale, y+(py+1)*self.scale, fill=color, outline='', tags=(tag,))
