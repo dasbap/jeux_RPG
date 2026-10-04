@@ -332,3 +332,13 @@ Déplacer un spawner décale également sa patrouille. Déplacer un point orange
 ## Fusionner les grottes
 
 Dans **Assemblage des cartes**, collez d’abord les salles pour obtenir le placement souhaité. Sélectionnez **cave_1**, puis absorbez **cave_2**, et enfin **cave_3** avec **Fusionner dans la sélection**. Les deux salles absorbées peuvent désormais disparaître du catalogue ; la première reste la carte de référence du tutoriel. Les passages externes et arrivées sont recalculés. La limite finale reste 128 × 128 cases. Utilisez une nouvelle session de jeu après fusion.
+
+## Aperçu du rendu final et orientation des ponts — alpha 0.11.0a9
+
+**Aperçu rendu final** ouvre dans le navigateur une page autonome avec le même rendu de terrain que le jeu : arbres, maisons, rochers, eau, ponts, murs et remparts. Aucun serveur de jeu n’est nécessaire. Les modifications non enregistrées sont incluses. Le sélecteur permet de consulter toutes les cartes de l’instantané ; la molette ou les boutons règlent le zoom, le glisser déplace la vue et **Vue entière** réinitialise le cadrage. Désactivez les repères pour voir seulement le décor.
+
+L’aperçu est figé : après une modification dans le builder, cliquez à nouveau **Aperçu rendu final** pour générer une vue à jour. Il présente le terrain et les positions éditées, sans simuler les déplacements des PNJ, les combats ou le brouillard de découverte des joueurs.
+
+Le réglage **Pont °** choisit l’orientation lors du placement avec le pinceau Pont : `0` ou `180` pour un pont orienté nord-sud, `90` ou `270` pour est-ouest. L’outil **Rotation pont** permet ensuite de cliquer un pont existant pour le tourner de 90°. Pour changer une traversée composée de plusieurs cases, tournez chacune des cases ou repeignez l’ensemble avec l’angle choisi. Les flèches ↕ / ↔ de l’éditeur indiquent le sens ; l’aperçu montre les planches et les rambardes.
+
+Les orientations sont stockées dans `bridge_rotations` sous forme de `{ "position": [x,y], "rotation": 90 }`. Une case sans orientation explicite conserve l’ancien rendu à 0°. Les rotations restent conservées lors des duplications, synchronisations de raccords et fusions. Effacer ou remplacer une case de pont retire son orientation. La rotation est visuelle et ne modifie pas les collisions ni les chemins traversables. Enregistrez puis redémarrez le serveur pour appliquer le changement dans le jeu.

@@ -10,6 +10,7 @@ const virtualConsole = new VirtualConsole();
 virtualConsole.on("jsdomError", error => errors.push(error.message));
 const dom = new JSDOM(fs.readFileSync(path.join(root, "multiplayer/web/index.html"), "utf8"), {url: "http://127.0.0.1:8080", runScripts: "outside-only", virtualConsole});
 dom.window.setInterval = () => 0;
+dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/map_artwork.js"), "utf8"));
 dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/app.js"), "utf8") + `
 window.uiTest = {gridPath, calls: [], render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
@@ -274,6 +275,16 @@ try {
     assert.equal(markers.length, scene.battle.map.exits.length);
     const circles = markers.map(marker => marker.querySelector("circle"));
     for (let i = 0; i < circles.length; i++) for (let j = i + 1; j < circles.length; j++) assert(Number(circles[i].getAttribute("cx")) !== Number(circles[j].getAttribute("cx")) || Number(circles[i].getAttribute("cy")) !== Number(circles[j].getAttribute("cy")));
+    if (scene.battle.map.bridges?.length) {
+      const bridge = scene.battle.map.bridges[0];
+      scene.battle.map.bridge_rotations = [{position: bridge, rotation: 90}];
+      scene.battle.players[scene.players[0].id].position = bridge;
+      scene.battle.explored.push(bridge);
+      render(scene);
+      const cell = el("world-map").querySelector(`[data-cell="${bridge.join(",")}"]`);
+      assert.equal(cell.dataset.rotation, "90");
+      assert(cell.style.fill.includes("river-bridge-90"));
+    }
     let requested = 0;
     el("battle").requestFullscreen = () => { requested++; return Promise.resolve(); };
     event(el("battle"), "pointerdown");

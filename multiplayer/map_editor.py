@@ -28,6 +28,7 @@ class MapEditor:
         self.min_level = tk.StringVar()
         self.max_level = tk.StringVar()
         self.brush = tk.StringVar(value="1")
+        self.bridge_rotation = tk.StringVar(value="0")
         self.layers = {name: tk.BooleanVar(value=True) for name in ("Décor", "Spawns", "PNJ", "Passages")}
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.title("RPG — Éditeur de cartes")
@@ -59,17 +60,19 @@ class MapEditor:
         self.zone_filter.trace_add("write", lambda *args: self.refresh_choice())
         ttk.Label(options, text="Pinceau").pack(side="left")
         ttk.Combobox(options, textvariable=self.brush, values=["1", "3", "5"], width=3, state="readonly").pack(side="left")
+        ttk.Label(options, text="Pont °").pack(side="left")
+        ttk.Combobox(options, textvariable=self.bridge_rotation, values=["0", "90", "180", "270"], width=4, state="readonly").pack(side="left")
         for name, variable in self.layers.items():
             ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
         advanced = ttk.Frame(root, padding=4)
         advanced.pack(fill="x")
-        for index, (label, command) in enumerate((("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
+        for index, (label, command) in enumerate((("Aperçu rendu final", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
             ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
         tools = ttk.Frame(body, padding=10)
         tools.pack(side="left", fill="y")
-        for label in ("Sol", "Déplacer", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Spawn", "Patrouille", "Téléportation", "PNJ", "Effacer", "Inspecter"):
+        for label in ("Sol", "Déplacer", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Rotation pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Spawn", "Patrouille", "Téléportation", "PNJ", "Effacer", "Inspecter"):
             ttk.Radiobutton(tools, text=label, variable=self.tool, value=label).pack(anchor="w", pady=3)
         ttk.Label(tools, text="Clic : placer / modifier\nGlisser : peindre\nCtrl+Z : annuler\nCtrl+S : enregistrer\n\nPNJ lié : propriétaire\nleader ou ID joueur.\nVide : PNJ fixe.", justify="left").pack(pady=20)
         viewport = ttk.Frame(body)
@@ -215,6 +218,9 @@ class MapEditor:
             self.label(position, {"goblin": "G", "orc": "O", "dragon_whelp": "D"}.get(config.get("mob_id", "goblin"), "S"), "#ff7777")
             for index, waypoint in enumerate(config.get("patrol", [])):
                 self.label(waypoint, str(index + 1), "#ffa552")
+        for bridge in data.get("bridges", []):
+            rotation = next((item["rotation"] for item in data.get("bridge_rotations", []) if item["position"] == bridge), 0)
+            self.label(bridge, "↔" if rotation % 180 else "↕", "#f5dfad")
         for exit in data.get("exits", []) if self.visible_layer("Passages") else []:
             self.label(exit["position"], "↗", "#80e9ff")
         for site in data.get("sites", []) if self.visible_layer("PNJ") else []:
@@ -229,7 +235,7 @@ class MapEditor:
             self.canvas.delete("move-preview")
             self.canvas.create_oval(point[0]*self.size, point[1]*self.size, (point[0]+1)*self.size, (point[1]+1)*self.size, outline="#ffe080", width=3, tags="move-preview")
             return
-        if self.tool.get() not in ("Téléportation", "PNJ", "Inspecter", "Spawn gobelin", "Spawn", "Patrouille"):
+        if self.tool.get() not in ("Téléportation", "PNJ", "Inspecter", "Spawn gobelin", "Spawn", "Patrouille", "Rotation pont"):
             self.click(event, record=False)
 
     def click(self, event, record=True):
@@ -238,6 +244,16 @@ class MapEditor:
         if not 0 <= point[0] < data["width"] or not 0 <= point[1] < data["height"]:
             return
         tool = self.tool.get()
+        if tool == "Rotation pont":
+            from .map_preview import rotate_bridge
+            try:
+                updated = rotate_bridge(data, point)
+                self.remember()
+                self.maps[self.selected.get()] = updated
+                self.draw()
+            except ValueError as exc:
+                messagebox.showerror("Pont", str(exc))
+            return
         if tool == "Déplacer":
             from .map_objects import objects_at
             objects = objects_at(data, point)
@@ -343,6 +359,7 @@ class MapEditor:
             for field in ("cover", "water", "bridges", "blocked", "paths"):
                 data[field] = [p for p in data.get(field, []) if p != point]
             data["decorations"] = [item for item in data.get("decorations", []) if item["position"] != point]
+            data["bridge_rotations"] = [item for item in data.get("bridge_rotations", []) if item["position"] != point]
             if tool == "Effacer":
                 for field in ("sites", "exits"):
                     data[field] = [item for item in data.get(field, []) if item["position"] != point]
@@ -354,6 +371,7 @@ class MapEditor:
             elif tool == "Pont":
                 data["water"].append(point)
                 data["bridges"].append(point)
+                data.setdefault("bridge_rotations", []).append({"position": point[:], "rotation": int(self.bridge_rotation.get()) if hasattr(self, "bridge_rotation") else 0})
             elif tool == "Chemin":
                 data["paths"].append(point)
             elif tool != "Sol":
@@ -507,6 +525,11 @@ class MapEditor:
     def edit_world(self):
         from .map_world_editor import WorldEditor
         WorldEditor(self)
+
+    def preview(self):
+        from .map_preview import open_preview
+        path = open_preview(self.maps, self.selected.get())
+        self.status.set(f"Aperçu ouvert dans le navigateur : {path}")
 
     def assembly(self):
         from .map_assembly import AssemblyWindow

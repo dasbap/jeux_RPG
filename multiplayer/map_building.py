@@ -73,6 +73,7 @@ def sync_overlap(maps, identifier):
             continue
         for field in ("cover", "blocked", "water", "bridges", "paths"):
             target[field] = [point for point in target.get(field, []) if tuple(point) not in common] + [[x + sx - tx, y + sy - ty] for x, y in source.get(field, []) if (x + sx - tx, y + sy - ty) in common]
+        target["bridge_rotations"] = [item for item in target.get("bridge_rotations", []) if tuple(item["position"]) not in common] + [{**deepcopy(item), "position": [item["position"][0] + sx - tx, item["position"][1] + sy - ty]} for item in source.get("bridge_rotations", []) if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common]
         target["decorations"] = [item for item in target.get("decorations", []) if tuple(item["position"]) not in common] + [{**deepcopy(item), "position": [item["position"][0] + sx - tx, item["position"][1] + sy - ty]} for item in source.get("decorations", []) if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common]
         count += 1
     return count
@@ -122,6 +123,7 @@ def linked_sector(maps, source_id, identifier, direction, overlap=4):
     for data, points in ((source, corridor(forward, anchor) + corridor(returning, anchor)), (target, corridor(back, arrival))):
         for field in ("cover", "blocked", "water", "bridges"):
             data[field] = [p for p in data.get(field, []) if p not in points]
+        data["bridge_rotations"] = [item for item in data.get("bridge_rotations", []) if item["position"] not in points]
         data["decorations"] = [d for d in data.get("decorations", []) if d["position"] not in points]
         for point in points:
             if point not in data["paths"]:

@@ -393,3 +393,7 @@ Le builder propose **Assemblage des cartes** : aperçu des blocs, déplacement s
 ## Alpha 0.11.0a8 — passages, rues et voyages éditables
 
 Le builder ajoute **Trajets / rues**, la configuration des distances et durées des chemins rapides, **TP par clics** pour choisir les cases du passage et du retour, et **Déplacer** pour les PNJ, passages, spawners, décors et points de patrouille. Les salles `cave_2` et `cave_3` peuvent être fusionnées dans `cave_1`. Les bundles transmettent désormais l’identifiant de carte fixe et ses interactions ; les repères des TP restent visibles hors cadrage et sans découverte préalable, avec séparation des repères superposés.
+
+## Alpha 0.11.0a9 — aperçu du rendu et rotation des ponts
+
+Le builder ouvre un **Aperçu rendu final** autonome dans le navigateur, avec le rendu de terrain partagé avec le jeu, zoom, déplacement de la vue et repères facultatifs. Les modifications non enregistrées sont incluses. **Pont °** règle l’orientation au placement ; **Rotation pont** tourne un pont existant par pas de 90°. L’orientation est enregistrée dans les JSON et préservée dans les raccords et fusions.

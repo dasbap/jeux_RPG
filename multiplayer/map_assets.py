@@ -37,6 +37,17 @@ def validate(maps):
                 raise ValueError(f"{key} : liste {field} invalide.")
             for value in values:
                 point(value)
+        rotations = definition.get("bridge_rotations", [])
+        if not isinstance(rotations, list) or len(rotations) > width * height:
+            raise ValueError(f"{key} : rotations de pont invalides.")
+        seen_bridges = set()
+        for item in rotations:
+            if not isinstance(item, dict):
+                raise ValueError(f"{key} : rotation de pont invalide.")
+            point(item.get("position"))
+            if item["position"] not in definition.get("bridges", []) or tuple(item["position"]) in seen_bridges or type(item.get("rotation")) is not int or item["rotation"] not in (0, 90, 180, 270):
+                raise ValueError(f"{key} : pont absent, dupliqué ou rotation invalide.")
+            seen_bridges.add(tuple(item["position"]))
         definition.setdefault("sites", [])
         definition.setdefault("spawns", [])
         definition.setdefault("cover", [])

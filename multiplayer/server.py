@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.query or parsed.fragment:
                 raise GameError("invalid_path", "URL invalide.", 404)
             path = parsed.path
-            self._network_route = path if path in ("/", "/app.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
+            self._network_route = path if path in ("/", "/app.js", "/map_artwork.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
             deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
             if deferred_command:
                 combat = True
@@ -214,6 +214,7 @@ class Handler(BaseHTTPRequestHandler):
                 write(self.server.network_log, "CONNECTION", peer=self.client_address[0], method="POST" if post else "GET", route=self._network_route)
             if not post:
                 static = {"/": ("index.html", "text/html; charset=utf-8"),
+                          "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
                           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                           "/style.css": ("style.css", "text/css; charset=utf-8")}
                 if path in static:

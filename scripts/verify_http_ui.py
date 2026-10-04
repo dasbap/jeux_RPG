@@ -64,6 +64,16 @@ def main():
                 tutorial.fields.enter(field_village, "rosee", [32, 20], 0)
                 fixture_path.write_text(json.dumps({"combat": tutorial.view(fixture, "p0", 0), "necromancer": initial_necromancer,
                                                   "control": tutorial.view(necromancer, "p0", 6), "field_village": tutorial.view(field_village, "p0", 0)}), encoding="utf-8")
+                from jeuxRPG.multiplayer.map_preview import preview_html
+                from jeuxRPG.multiplayer.fields import MAPS
+                from copy import deepcopy
+                preview_maps = deepcopy(MAPS)
+                preview_maps["clearing"]["bridge_rotations"] = [{"position": preview_maps["clearing"]["bridges"][0], "rotation": 90}]
+                preview_path = Path(directory) / "preview.html"
+                preview_path.write_text(preview_html(preview_maps, "clearing"), encoding="utf-8")
+                checked = subprocess.run(["node", str(root / "scripts" / "verify_map_preview.cjs"), str(preview_path)], env={**os.environ, "NODE_PATH": modules}, timeout=30)
+                if checked.returncode:
+                    return checked.returncode
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_tactical_ui.cjs"), str(fixture_path)],
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:

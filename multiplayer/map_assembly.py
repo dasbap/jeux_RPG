@@ -62,6 +62,7 @@ def merge(maps, target_id, source_id):
     for field in ('cover', 'blocked', 'water', 'bridges', 'paths'):
         merged[field] = [shifted(p, target_id) for p in target.get(field, [])]
         merged[field] += [p for old in source.get(field, []) if not target_contains(p := shifted(old, source_id))]
+    merged['bridge_rotations'] = [{**deepcopy(item), 'position': shifted(item['position'], key)} for key, data in ((target_id, target), (source_id, source)) for item in data.get('bridge_rotations', []) if key == target_id or not target_contains(shifted(item['position'], key))]
     merged['decorations'] = [{**deepcopy(item), 'position': shifted(item['position'], key)} for key, data in ((target_id, target), (source_id, source)) for item in data.get('decorations', []) if key == target_id or not target_contains(shifted(item['position'], key))]
     for field in ('spawns', 'sites', 'spawners', 'exits'):
         merged[field] = []
