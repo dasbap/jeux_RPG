@@ -18,7 +18,7 @@ class TestClock:
         self.start = time.monotonic()
 
     def now(self):
-        return (time.monotonic() - self.start) * 300
+        return (time.monotonic() - self.start) * 60
 
 
 def main():

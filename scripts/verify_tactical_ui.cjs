@@ -262,12 +262,18 @@ try {
   if (fixtures.field_village) {
     const scene = JSON.parse(JSON.stringify(fixtures.field_village));
     const gate = scene.battle.map.exits[0];
-    scene.battle.explored.push(gate.position);
+    scene.battle.explored = [];
     render(scene);
     const marker = el("world-map").querySelector(`[data-exit="${gate.position.join(",")}"]`);
-    assert(marker, "Une sortie découverte doit avoir un repère visible, même hors du cadrage");
+    assert(marker, "Un passage doit avoir un repère visible même hors exploration et hors cadrage");
     event(marker, "dblclick");
     assert(dom.window.uiTest.calls.some(call => call.action === "battle_move" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
+    scene.battle.map.exits.push({...gate, position: [gate.position[0], gate.position[1] + 1], name: "Autre passage"});
+    render(scene);
+    const markers = [...el("world-map").querySelectorAll("[data-exit]")];
+    assert.equal(markers.length, scene.battle.map.exits.length);
+    const circles = markers.map(marker => marker.querySelector("circle"));
+    for (let i = 0; i < circles.length; i++) for (let j = i + 1; j < circles.length; j++) assert(Number(circles[i].getAttribute("cx")) !== Number(circles[j].getAttribute("cx")) || Number(circles[i].getAttribute("cy")) !== Number(circles[j].getAttribute("cy")));
     let requested = 0;
     el("battle").requestFullscreen = () => { requested++; return Promise.resolve(); };
     event(el("battle"), "pointerdown");

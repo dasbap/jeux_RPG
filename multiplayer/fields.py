@@ -30,6 +30,9 @@ from .map_assets import configured, read_catalog
 
 MAPS = configured(read_catalog("fields"))
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
+for place in world.PLACES.values():
+    place["points"] = [point for point in place["points"] if point["id"] not in {"cave_2", "cave_3"} - MAPS.keys()]
+
 for identifier in MAPS:
     root_zone = zone_of(MAPS, identifier)
     if root_zone not in world.PLACES:
@@ -299,6 +302,14 @@ def repop(party, identifier, now, pursuers=()):
 def migrate_terrain(party):
     battle = party.get("battle")
     if not battle:
+        return
+    if battle["preset"] not in tactics.PRESETS:
+        destination = "cave_1" if party.get("field_map", "").startswith("cave_") else world.CURRENT[party["step"]]
+        party["linked_companions"] = deepcopy(battle.get("companions", {}))
+        party.update(position=destination, battle=None, mobs=[], mob=None, transit=None, journey=[])
+        party.pop("field_map", None)
+        party.pop("field_return_from", None)
+        party.pop("field_return_entry", None)
         return
     definition = tactics.PRESETS[battle["preset"]]
     version = definition.get("terrain_version", 1)

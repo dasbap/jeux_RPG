@@ -23,3 +23,11 @@ def test_bad_manifest_and_other_player_never_disclose_cached_data():
         assert encode(state, manifest)["bundles"] == state
     previous = encode({"player": {"id": "one"}, "session": None})
     assert encode(state, json.dumps(previous["hashes"]))["bundles"]["player"] == {"id": "two"}
+
+
+def test_fixed_map_and_interactions_survive_bundle_transport():
+    data = {'session': {'tutorial': {'field_map': 'rosee', 'field_interactions': [{'id':'mira'}], 'traveller': {'location':'rosee'}}}}
+    result = encode(data)['bundles']
+    assert result['session/tutorial/field_map'] == 'rosee'
+    assert result['session/tutorial/field_interactions'] == [{'id':'mira'}]
+    assert result['session/tutorial/traveller']['location'] == 'rosee'

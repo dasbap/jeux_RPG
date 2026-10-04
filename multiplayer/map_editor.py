@@ -63,13 +63,13 @@ class MapEditor:
             ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
         advanced = ttk.Frame(root, padding=4)
         advanced.pack(fill="x")
-        for index, (label, command) in enumerate((("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
+        for index, (label, command) in enumerate((("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
             ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
         tools = ttk.Frame(body, padding=10)
         tools.pack(side="left", fill="y")
-        for label in ("Sol", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Spawn", "Patrouille", "Téléportation", "PNJ", "Effacer", "Inspecter"):
+        for label in ("Sol", "Déplacer", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Spawn", "Patrouille", "Téléportation", "PNJ", "Effacer", "Inspecter"):
             ttk.Radiobutton(tools, text=label, variable=self.tool, value=label).pack(anchor="w", pady=3)
         ttk.Label(tools, text="Clic : placer / modifier\nGlisser : peindre\nCtrl+Z : annuler\nCtrl+S : enregistrer\n\nPNJ lié : propriétaire\nleader ou ID joueur.\nVide : PNJ fixe.", justify="left").pack(pady=20)
         viewport = ttk.Frame(body)
@@ -86,6 +86,7 @@ class MapEditor:
         self.canvas.bind("<Button-1>", self.click)
         self.canvas.bind("<B1-Motion>", self.drag)
         self.canvas.bind("<Motion>", self.hover)
+        self.canvas.bind("<ButtonRelease-1>", self.drop_object)
         root.bind("<Control-z>", lambda event: self.undo())
         root.bind("<Control-s>", lambda event: self.save())
         ttk.Label(root, textvariable=self.status, padding=6).pack(fill="x")
@@ -223,6 +224,11 @@ class MapEditor:
         self.canvas.create_text((point[0] + .5) * self.size, (point[1] + .5) * self.size, text=text, fill=color, font=("Arial", max(10, self.size // 2), "bold"))
 
     def drag(self, event):
+        if self.tool.get() == "Déplacer":
+            point = self.coordinates(event)
+            self.canvas.delete("move-preview")
+            self.canvas.create_oval(point[0]*self.size, point[1]*self.size, (point[0]+1)*self.size, (point[1]+1)*self.size, outline="#ffe080", width=3, tags="move-preview")
+            return
         if self.tool.get() not in ("Téléportation", "PNJ", "Inspecter", "Spawn gobelin", "Spawn", "Patrouille"):
             self.click(event, record=False)
 
@@ -232,6 +238,22 @@ class MapEditor:
         if not 0 <= point[0] < data["width"] or not 0 <= point[1] < data["height"]:
             return
         tool = self.tool.get()
+        if tool == "Déplacer":
+            from .map_objects import objects_at
+            objects = objects_at(data, point)
+            if not objects:
+                self.status.set("Aucun objet ici. Choisissez un PNJ, TP, spawner, décor ou point de patrouille.")
+                return
+            chosen = objects[0]
+            if len(objects) > 1:
+                self.object_choices = {item[0]: item for item in objects}
+                result = self.form("Objet à déplacer", {"object_choice": objects[0][0]})
+                if not result:
+                    return
+                chosen = self.object_choices[result["object_choice"]]
+            self.moving_object = (self.selected.get(), chosen[1], chosen[2], chosen[3])
+            self.status.set("Glissez puis relâchez sur la case destination.")
+            return
         if hasattr(self, "brush") and int(self.brush.get()) > 1 and tool not in ("Inspecter", "PNJ", "Téléportation", "Spawn", "Spawn gobelin", "Patrouille") and not getattr(self, "painting", False):
             if record:
                 self.remember()
@@ -279,11 +301,14 @@ class MapEditor:
         if tool in ("Téléportation", "PNJ"):
             field = "exits" if tool == "Téléportation" else "sites"
             existing = next((item for item in data.get(field, []) if item["position"] == point), None)
-            values = ({"name": "Passage", "destination": None, "entry": [1, 1], "fast_destination": "", **(existing or {}), "bidirectional": False} if field == "exits" else {"id": "pnj_" + str(point[0]) + "_" + str(point[1]), "name": "PNJ", "dialogue": "Bonjour !", "owner": "", **(existing or {})})
+            values = ({"name": "Passage", "destination": None, "entry": [1, 1], "fast_destination": "", **(existing or {}), "bidirectional": False, "pick_points": True} if field == "exits" else {"id": "pnj_" + str(point[0]) + "_" + str(point[1]), "name": "PNJ", "dialogue": "Bonjour !", "owner": "", **(existing or {})})
             result = self.form(tool, values)
             if result is None:
                 return
             result["position"] = point
+            if field == "exits" and result.get("pick_points"):
+                self.graphical_portal(point, result)
+                return
             if field == "exits":
                 try:
                     self.set_gate(point, result)
@@ -387,14 +412,14 @@ class MapEditor:
         for row, (key, value) in enumerate(values.items()):
             if key == "position":
                 continue
-            labels = {"anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            labels = {"route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
             ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
-            if key == "bidirectional":
+            if key in ("bidirectional", "pick_points"):
                 variable = tk.BooleanVar(value=bool(value))
                 ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
                 entries[key] = variable
                 continue
-            choices = ["est", "ouest", "nord", "sud"] if key == "direction" else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
+            choices = list(self.object_choices) if key == "object_choice" else ["est", "ouest", "nord", "sud"] if key == "direction" else sorted({zone_of(self.maps, key) for key in self.maps}) if key in ("from_zone", "to_zone") else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map", "from_zone", "to_zone") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
             entry = ttk.Combobox(window, values=choices, width=48) if choices is not None else ttk.Entry(window, width=50)
             entry.insert(0, ",".join(map(str, value)) if isinstance(value, list) else str(value) if value is not None else "")
             entry.grid(row=row, column=1, padx=8, pady=5)
@@ -421,6 +446,67 @@ class MapEditor:
         self.refresh_choice()
         self.draw()
         self.properties()
+
+    def drop_object(self, event):
+        selected = getattr(self, "moving_object", None)
+        self.moving_object = None
+        self.canvas.delete("move-preview")
+        if not selected:
+            return
+        from .map_objects import move_object
+        try:
+            updated = move_object(self.maps, *selected, self.coordinates(event))
+            self.remember()
+            self.maps = updated
+            self.draw()
+            self.status.set("Objet déplacé. Ctrl+Z pour annuler.")
+        except (ValueError, IndexError) as exc:
+            messagebox.showerror("Déplacement", str(exc))
+
+    def portal_by_click(self):
+        from .map_objects import pick_cell
+        source = pick_cell(self, "TP · cliquez la case de départ")
+        if not source:
+            return
+        self.selected.set(source[0])
+        self.refresh_choice()
+        self.draw()
+        result = self.form("TP", {"name": "Passage", "destination": "", "bidirectional": True, "fast_destination": ""})
+        if result:
+            self.graphical_portal(source[1], result)
+
+    def graphical_portal(self, point, result):
+        from .map_objects import pick_cell, place_portal
+        destination = result.get("destination") or None
+        entry, reverse, returning = None, None, None
+        if destination and destination not in self.maps:
+            messagebox.showerror("TP", "Carte destination inconnue.")
+            return
+        if destination:
+            chosen = pick_cell(self, "TP · cliquez l’arrivée sur la destination", destination)
+            if not chosen:
+                return
+            entry = chosen[1]
+            if result.get("bidirectional") in (True, "True", "1"):
+                chosen = pick_cell(self, "Retour · cliquez la case de départ", destination)
+                if not chosen:
+                    return
+                reverse = chosen[1]
+                chosen = pick_cell(self, "Retour · cliquez l’arrivée sur la carte source", self.selected.get())
+                if not chosen:
+                    return
+                returning = chosen[1]
+        try:
+            updated = place_portal(self.maps, self.selected.get(), point, destination, entry, result["name"], reverse, returning, result.get("fast_destination"))
+            self.remember()
+            self.maps = updated
+            self.draw()
+        except (ValueError, KeyError) as exc:
+            messagebox.showerror("TP", str(exc))
+
+    def edit_world(self):
+        from .map_world_editor import WorldEditor
+        WorldEditor(self)
 
     def assembly(self):
         from .map_assembly import AssemblyWindow

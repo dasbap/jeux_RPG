@@ -33,9 +33,25 @@ VILLAGE_STREETS = {
     ]},
 }
 
+from .map_assets import read_catalog
+from pathlib import Path
+import json
+import os
+
+world_source = os.environ.get("RPG_MAPS_FILE")
+WORLD_MAP_DATA = json.loads(Path(world_source).read_text(encoding="utf-8")) if world_source and Path(world_source).is_file() else read_catalog("fields", Path(world_source) if world_source else None)
+for identifier, definition in WORLD_MAP_DATA.items():
+    if definition.get("village_streets"):
+        VILLAGE_STREETS[identifier] = deepcopy(definition["village_streets"])
+        if identifier not in PLACES:
+            PLACES[identifier] = {"name": definition["name"], "type": "village", "x": 70, "y": 300, "description": "Village personnalisé.", "points": []}
+
 for village, layout in VILLAGE_STREETS.items():
     points = PLACES[village]["points"]
-    square = next(point for point in points if point["id"] == layout["square"])
+    square = next((point for point in points if point["id"] == layout["square"]), None)
+    if square is None:
+        square = {"id": layout["square"], "name": "Place centrale", "type": "repère", "description": "Place centrale."}
+        points.append(square)
     square.update(x=170, y=110)
     if village == "brume":
         square.update(name="Place du village", description="La place centrale relie l’entrée et toutes les rues de Brume.")
@@ -62,6 +78,8 @@ ROUTES = [
     {"id": "rosee_lisiere", "from": "rosee", "to": "lisiere", "name": "Chemin de la lisière", "distance_km": 0.2},
     {"id": "rosee_brume", "from": "rosee", "to": "brume", "name": "Route des Deux Villages", "distance_km": 1.0},
 ]
+
+ROUTES = deepcopy(WORLD_MAP_DATA["clearing"].get("travel_routes", ROUTES))
 
 CURRENT = {"clearing": "clearing", "first_fight": "clearing", "road": "clearing",
            "village": "rosee", "hunt": "lisiere", "craft": "rosee", "travel": "rosee", "complete": "brume"}
@@ -179,7 +197,7 @@ def view(party, me, traveller=None):
     return {"current": zone_of(party.get("position", CURRENT[step])), "position": party.get("position", CURRENT[step]), "places": places, "routes": routes, "graph": graph(known), "bestiary": bestiary, "objectives": [{"zone": "rosee", "point": "mira", "x": PLACES["rosee"]["x"], "y": PLACES["rosee"]["y"]}, {"zone": "lisiere", "point": "hunt", "x": PLACES["lisiere"]["x"], "y": PLACES["lisiere"]["y"]}]}
 
 
-ROAD_POINTS = {r["id"]: {"zone": "lisiere" if r["id"] == "rosee_lisiere" else "clearing" if r["id"] == "clearing_rosee" else "rosee", "name": r["name"]} for r in ROUTES}
+ROAD_POINTS = {r["id"]: {"zone": "lisiere" if r["id"] == "rosee_lisiere" else "clearing" if r["id"] == "clearing_rosee" else r["from"], "name": r["name"]} for r in ROUTES}
 
 LEVELS = {"clearing": 1, "rosee": 1, "lisiere": 2, "brume": 4}
 

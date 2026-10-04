@@ -389,3 +389,7 @@ Le builder propose **Créer un secteur relié** : direction, chevauchement, déc
 ## Alpha 0.11.0a7 — assemblage graphique des cartes
 
 Le builder propose **Assemblage des cartes** : aperçu des blocs, déplacement sur grille, zoom, collage ou espacement précis, chevauchement, création de passages et fusion de cartes d’une même zone. La fusion recalcule les entités, patrouilles et arrivées externes, retire les passages internes et protège les cartes obligatoires. Les changements sont annulables et enregistrés dans les JSON. Le [guide du builder](docs/BUILDER_GUIDE.md) décrit les règles de fusion et de placement.
+
+## Alpha 0.11.0a8 — passages, rues et voyages éditables
+
+Le builder ajoute **Trajets / rues**, la configuration des distances et durées des chemins rapides, **TP par clics** pour choisir les cases du passage et du retour, et **Déplacer** pour les PNJ, passages, spawners, décors et points de patrouille. Les salles `cave_2` et `cave_3` peuvent être fusionnées dans `cave_1`. Les bundles transmettent désormais l’identifiant de carte fixe et ses interactions ; les repères des TP restent visibles hors cadrage et sans découverte préalable, avec séparation des repères superposés.

@@ -493,6 +493,7 @@ def test_chat_global_presence_group_privacy_and_rate_limit(game):
 
 
 def test_prepared_views_remain_private_and_invalidate_on_action(game):
+    game.random = lambda: .5
     import uuid
     alice, bob = player(game), player(game, "Bob")
     for token in (alice, bob):

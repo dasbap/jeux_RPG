@@ -4,7 +4,7 @@ from .map_building import map_level, zone_of
 from .map_assets import validate
 
 
-CORE = {'clearing', 'rosee', 'lisiere', 'hunt', 'forest', 'cave_1', 'cave_2', 'cave_3', 'brume'}
+CORE = {'clearing', 'rosee', 'lisiere', 'hunt', 'forest', 'cave_1', 'brume'}
 
 
 def positions(maps):
@@ -96,6 +96,10 @@ def merge(maps, target_id, source_id):
                 gate['destination'] = target_id
             if gate.get('fast_destination') == source_id:
                 gate['fast_destination'] = target_id
+        for route in data.get('travel_routes', []):
+            for endpoint in ('from', 'to'):
+                if route[endpoint] == source_id:
+                    route[endpoint] = target_id
         for field in ('zone_id', 'world_zone', 'fast_travel_origin'):
             if data.get(field) == source_id:
                 data[field] = target_id

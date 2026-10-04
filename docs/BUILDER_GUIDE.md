@@ -79,7 +79,7 @@ La carte créée mesure 30 × 20 cases et comporte une sortie vers les chemins r
 
 Pour y accéder depuis le jeu, ajouter un passage depuis une carte existante. Une nouvelle carte n’ajoute pas automatiquement un itinéraire de voyage rapide au graphe du monde.
 
-Les neuf cartes du tutoriel doivent rester dans le fichier : `clearing`, `rosee`, `lisiere`, `hunt`, `forest`, `cave_1`, `cave_2`, `cave_3`, `brume`.
+Les sept cartes de référence du tutoriel doivent rester dans le fichier : `clearing`, `rosee`, `lisiere`, `hunt`, `forest`, `cave_1`, `brume`. Les salles `cave_2` et `cave_3` peuvent être absorbées par fusion.
 
 ## 5. Peindre le terrain
 
@@ -305,6 +305,30 @@ Cliquez sur **Assemblage des cartes**. Une fenêtre affiche toutes les cartes so
 
 Une fusion conserve l’identifiant, le nom, l’ambiance et les propriétés de la carte sélectionnée. Les terrains sont réunis selon leurs coordonnées globales ; dans une partie commune, le terrain de la sélection a priorité. Un espace entre deux blocs devient du sol libre. Les apparitions, patrouilles, PNJ et passages externes sont décalés ; les téléportations entre les deux anciennes cartes sont supprimées. Les arrivées depuis les autres cartes sont recalculées. Les niveaux des spawners sont conservés explicitement.
 
-La fusion est refusée si elle dépasse 128 × 128 cases, si les cartes n’ont pas la même taille de case ou la même zone, si deux spawners ou passages se superposent, si des PNJ ont le même identifiant, ou si la validation détecte un accès bloqué. Les neuf cartes obligatoires du tutoriel peuvent recevoir une fusion mais ne peuvent pas être absorbées et supprimées. Aucun échec de fusion ne modifie les données.
+La fusion est refusée si elle dépasse 128 × 128 cases, si les cartes n’ont pas la même taille de case ou la même zone, si deux spawners ou passages se superposent, si des PNJ ont le même identifiant, ou si la validation détecte un accès bloqué. Les sept cartes de référence du tutoriel peuvent recevoir une fusion mais ne peuvent pas être absorbées et supprimées. Aucun échec de fusion ne modifie les données.
 
 Enregistrez depuis la fenêtre d’assemblage ou l’éditeur principal. Les positions et cartes fusionnées sont stockées dans les JSON. Redémarrez ensuite le serveur ; pour vérifier une fusion, utilisez une nouvelle session de jeu, car les sessions existantes peuvent encore référencer l’ancienne carte.
+
+## Trajets rapides, rues et durée de voyage — alpha 0.11.0a8
+
+**Trajets / rues** ouvre le plan des déplacements de la carte générale. La liste supérieure affiche les chemins avec leur distance, durée totale en jeu et durée réelle. Sélectionnez un chemin puis **Modifier le chemin**, ou ajoutez un nouveau chemin entre deux zones. Modifiez la distance en kilomètres ou la durée à pied en minutes de jeu. Si vous modifiez la durée, elle a priorité sur la distance ; la conversion utilise 6 km/h. Le ratio 1:3 s’applique au temps réel. Une téléportation de proximité entre cartes reste instantanée : ces réglages concernent les voyages sur les chemins rapides.
+
+Dans la liste inférieure, choisissez la ville ou zone, puis ajoutez, renommez, supprimez ou réordonnez ses rues. Le champ **Bâtiments dans l’ordre** accepte les identifiants séparés par des virgules : la place est reliée à la rue, puis les bâtiments se suivent dans cet ordre. **Place centrale** change son identifiant. Ce plan règle les connexions sur la carte générale ; peignez séparément les chemins et bâtiments du terrain fixe avec les pinceaux. Les bâtiments sans interaction propre restent décoratifs dans le plan général.
+
+Cliquez **Appliquer**, puis enregistrez les cartes et redémarrez le serveur. Les routes sont stockées sous `clearing.travel_routes`, et chaque plan local sous `village_streets` dans la carte correspondante. Les trois chemins rapides du tutoriel sont conservés ; leur distance, durée et nom peuvent être modifiés. Un plan contenant des identifiants dupliqués ou une distance invalide est refusé.
+
+## Choisir les TP sur les cartes
+
+**TP par clics** ouvre la carte de départ : choisissez une carte dans la liste et cliquez une case praticable. Nommez le passage et choisissez la destination. Cliquez ensuite sa case d’arrivée sur la carte de destination. Si le retour est activé, cliquez également la case de départ du retour puis sa case d’arrivée sur la carte d’origine. Les quatre cases sont donc choisies explicitement. Annuler une étape abandonne l’opération sans créer de passage partiel.
+
+L’outil **Téléportation** propose aussi la case **Choisir les arrivées et le retour sur les cartes**. Désactivez-la pour garder la saisie des coordonnées et le retour voisin automatique des versions précédentes. Une destination vide crée une sortie complète vers la carte générale. Les cases d’arrivée ne doivent pas être des cases de TP, pour éviter de repartir aussitôt en boucle.
+
+## Déplacer les objets et les patrouilles
+
+Sélectionnez **Déplacer**, puis glissez un PNJ, un TP, un spawner, un décor ou un point de patrouille vers une autre case. Si plusieurs objets occupent la même case, choisissez celui à déplacer. Un clic de sélection suivi d’un clic sur la destination fonctionne aussi. Les points de patrouille sont les numéros orange affichés lorsque le calque Spawns est visible.
+
+Déplacer un spawner décale également sa patrouille. Déplacer un point orange ne change que ce point. Déplacer un TP change sa case de départ ; sa destination et son arrivée restent celles que vous avez configurées. Déplacer un arbre, rocher, maison, mur ou rempart déplace également sa collision. Une opération vers une case bloquée, hors carte ou qui rend le catalogue invalide est refusée. Ctrl+Z annule le déplacement.
+
+## Fusionner les grottes
+
+Dans **Assemblage des cartes**, collez d’abord les salles pour obtenir le placement souhaité. Sélectionnez **cave_1**, puis absorbez **cave_2**, et enfin **cave_3** avec **Fusionner dans la sélection**. Les deux salles absorbées peuvent désormais disparaître du catalogue ; la première reste la carte de référence du tutoriel. Les passages externes et arrivées sont recalculés. La limite finale reste 128 × 128 cases. Utilisez une nouvelle session de jeu après fusion.

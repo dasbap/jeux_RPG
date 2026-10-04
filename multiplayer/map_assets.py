@@ -9,7 +9,7 @@ from pathlib import Path
 def validate(maps):
     if not isinstance(maps, dict) or not maps or len(maps) > 100:
         raise ValueError("Le fichier doit contenir de 1 à 100 cartes.")
-    if not {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "cave_2", "cave_3", "brume"} <= maps.keys():
+    if not {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "brume"} <= maps.keys():
         raise ValueError("Les cartes du tutoriel doivent être conservées.")
     maps = deepcopy(maps)
     for key, definition in maps.items():
@@ -20,6 +20,9 @@ def validate(maps):
                 raise ValueError(f"{key} : référence {field} invalide.")
         if "world_origin" in definition and (not isinstance(definition["world_origin"], list) or len(definition["world_origin"]) != 2 or any(type(n) is not int for n in definition["world_origin"])):
             raise ValueError(f"{key} : origine du secteur invalide.")
+        metres = definition.get("cell_metres", 2)
+        if type(metres) not in (int, float) or not .1 <= metres <= 100:
+            raise ValueError(f"{key} : taille de case comprise entre 0.1 et 100 m.")
         width, height = definition.get("width"), definition.get("height")
         if type(width) is not int or type(height) is not int or not 4 <= width <= 128 or not 4 <= height <= 128:
             raise ValueError(f"{key} : dimensions comprises entre 4 et 128.")
@@ -127,6 +130,9 @@ def validate(maps):
         targets = definition.get("spawns", []) + [item["position"] for item in definition["sites"] + definition["exits"]]
         if any(tactics.path(definition, origin, target) is None for target in targets):
             raise ValueError(f"{key} : passage, PNJ ou apparition inaccessible.")
+    from .map_world_editor import world_metadata
+    from . import world
+    world_metadata(maps, world.VILLAGE_STREETS, world.ROUTES)
     return deepcopy(maps)
 
 

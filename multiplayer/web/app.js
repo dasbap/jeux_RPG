@@ -921,7 +921,7 @@ function renderBattle(adventure, me) {
     const bridge = (map.bridges || []).some(p => p[0] === x && p[1] === y);
     const road = (map.paths || []).some(p => p[0] === x && p[1] === y);
     const gate = map.exits?.find(gate => gate.position[0] === x && gate.position[1] === y);
-    const exit = adventure.field_map ? Boolean(gate) && discovered : (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
+    const exit = adventure.field_map ? Boolean(gate) : (battle.exit || [0, Math.floor(map.height / 2)]).join(",") === `${x},${y}`;
     const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: !discovered ? "battle-cell unexplored-cell" : exit ? "battle-cell battle-exit" : cover ? "battle-cover" : bridge ? "battle-cell terrain-bridge" : water ? "battle-cell terrain-water" : road ? "battle-cell terrain-path" : `battle-cell terrain-${map.biome || "forest"}${(x + y + (map.world_origin?.[0] || 0) + (map.world_origin?.[1] || 0)) % 2 ? " terrain-shade" : ""}`, role: "button", tabindex: "0", "aria-label": exit ? gate?.name || "Sortie du champ de bataille · fuite possible" : cover ? `Couverture ${x},${y}` : `Marcher en ${x},${y}`, "data-cell": `${x},${y}`});
     const move = () => {
       if (disabled) return;
@@ -984,11 +984,20 @@ function renderBattle(adventure, me) {
     svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
-  for (const gate of map.exits || []) {
-    if (explored && !explored.has(gate.position.join(","))) continue;
+  const gateMarkers = map.exits?.length ? map.exits : [{position: battle.exit || [0, Math.floor(map.height / 2)], name: "Sortie"}];
+  const usedGateMarkers = [];
+  for (const gate of gateMarkers) {
     const [gx, gy] = gate.position;
-    const x = Math.max(left + .5, Math.min(left + width - .5, gx + .5)) * 40;
-    const y = Math.max(top + .5, Math.min(top + height - .5, gy + .5)) * 40;
+    const baseX = Math.max(left + .5, Math.min(left + width - .5, gx + .5)) * 40;
+    const baseY = Math.max(top + .5, Math.min(top + height - .5, gy + .5)) * 40;
+    let x = baseX, y = baseY;
+    for (let step = 0; usedGateMarkers.some(p => Math.hypot(p[0] - x, p[1] - y) < 34) && step < (width + height) * 4; step++) {
+      const distance = (Math.floor(step / 4) + 1) * 36;
+      const direction = step % 4;
+      x = Math.max((left + .5) * 40, Math.min((left + width - .5) * 40, baseX + (direction === 2 ? distance : direction === 3 ? -distance : 0)));
+      y = Math.max((top + .5) * 40, Math.min((top + height - .5) * 40, baseY + (direction === 0 ? distance : direction === 1 ? -distance : 0)));
+    }
+    usedGateMarkers.push([x, y]);
     const marker = element("g", {class: "battle-unit exit-marker", "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
     marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"), element("title", {}, gate.name || "Sortie"));
     marker.onclick = () => { inspectedCell = gate.position; message(gate.name || "Sortie"); };
