@@ -5,7 +5,7 @@ from pathlib import Path
 from . import fields
 from .map_assets import load, save
 from . import tactics
-from .map_building import MOBS, map_level, zone_of, sync_overlap
+from .map_building import MOBS, map_level, zone_of, sync_overlap, linked_sector
 
 
 class MapEditor:
@@ -63,7 +63,7 @@ class MapEditor:
             ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
         advanced = ttk.Frame(root, padding=4)
         advanced.pack(fill="x")
-        for label, command in (("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol)):
+        for label, command in (("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol)):
             ttk.Button(advanced, text=label, command=command).pack(side="left", padx=3)
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
@@ -387,14 +387,14 @@ class MapEditor:
         for row, (key, value) in enumerate(values.items()):
             if key == "position":
                 continue
-            labels = {"name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            labels = {"map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
             ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
             if key == "bidirectional":
                 variable = tk.BooleanVar(value=bool(value))
                 ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
                 entries[key] = variable
                 continue
-            choices = ["", *self.maps] if key in ("destination", "fast_destination", "zone_id") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
+            choices = ["est", "ouest", "nord", "sud"] if key == "direction" else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
             entry = ttk.Combobox(window, values=choices, width=48) if choices is not None else ttk.Entry(window, width=50)
             entry.insert(0, ",".join(map(str, value)) if isinstance(value, list) else str(value) if value is not None else "")
             entry.grid(row=row, column=1, padx=8, pady=5)
@@ -421,6 +421,21 @@ class MapEditor:
         self.refresh_choice()
         self.draw()
         self.properties()
+
+    def create_linked(self):
+        result = self.form("Créer un secteur relié", {"map_id": "", "direction": "est", "overlap": 4})
+        if not result:
+            return
+        try:
+            maps = linked_sector(self.maps, self.selected.get(), result["map_id"].strip(), result["direction"], int(result["overlap"]))
+            self.remember()
+            self.maps = maps
+            self.selected.set(result["map_id"].strip())
+            self.refresh_choice()
+            self.draw()
+            self.status.set("Secteur créé : raccord copié et passages aller-retour ajoutés. Peignez le reste puis enregistrez.")
+        except (ValueError, KeyError) as exc:
+            messagebox.showerror("Secteur relié", str(exc))
 
     def properties(self):
         data = self.maps[self.selected.get()]

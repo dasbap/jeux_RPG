@@ -157,3 +157,27 @@ def test_duplicate_does_not_share_mutable_data_or_overlap_origin(monkeypatch):
     assert clone["zone_id"] == "clearing"
     clone["spawners"][0]["mob_id"] = "orc"
     assert e.maps["clearing"]["spawners"][0]["mob_id"] == "goblin"
+
+
+@pytest.mark.parametrize('direction', ['est', 'ouest', 'nord', 'sud'])
+def test_create_linked_sector_has_safe_return_and_shared_zone(direction):
+    original = deepcopy(fields.MAPS)
+    result = map_building.linked_sector(original, 'clearing_road', 'new_sector', direction, 4)
+    target = result['new_sector']
+    assert map_building.zone_of(result, 'new_sector') == 'clearing'
+    assert original == fields.MAPS
+    back = target['exits'][0]
+    forward = next(g for g in result['clearing_road']['exits'] if g['destination'] == 'new_sector')
+    assert back['destination'] == 'clearing_road'
+    assert tactics.walkable(target, forward['entry'])
+    assert tactics.walkable(result['clearing_road'], back['entry'])
+    assert back['position'] != forward['entry']
+    assert forward['position'] != back['entry']
+    assert target['world_origin'] != result['clearing_road']['world_origin']
+
+
+def test_linked_sector_invalid_overlap_does_not_mutate_source():
+    original = deepcopy(fields.MAPS)
+    with pytest.raises(ValueError):
+        map_building.linked_sector(original, 'clearing', 'new_sector', 'est', 99)
+    assert original == fields.MAPS

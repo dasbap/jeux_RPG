@@ -30,6 +30,7 @@ let activeWorldMap = "general";
 let currentView = "map";
 let viewContext = "";
 let combatTarget = "";
+let combatFullscreenRequested = false;
 let mapPlace = "";
 let mapPoint = "";
 let mapMarker = null;
@@ -520,6 +521,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
+  if (!fighting) combatFullscreenRequested = false;
+  if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
   $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
   $("character-menu").hidden = fighting;
   $("lobby").hidden = fighting;
@@ -981,6 +984,18 @@ function renderBattle(adventure, me) {
     svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
+  for (const gate of map.exits || []) {
+    if (explored && !explored.has(gate.position.join(","))) continue;
+    const [gx, gy] = gate.position;
+    const x = Math.max(left + .5, Math.min(left + width - .5, gx + .5)) * 40;
+    const y = Math.max(top + .5, Math.min(top + height - .5, gy + .5)) * 40;
+    const marker = element("g", {class: "battle-unit exit-marker", "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
+    marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"), element("title", {}, gate.name || "Sortie"));
+    marker.onclick = () => { inspectedCell = gate.position; message(gate.name || "Sortie"); };
+    marker.ondblclick = () => moveControlled(adventure, me, gate.position);
+    marker.onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); moveControlled(adventure, me, gate.position); } };
+    svg.append(marker);
+  }
   const previousMap = $("world-map").querySelector(".battle-map");
   if (previousMap && previousMap.getAttribute("viewBox") === svg.getAttribute("viewBox")) {
     const nodes = [...svg.children].map(node => {
@@ -1267,3 +1282,10 @@ function installWorldCamera(node) {
   node.onclick = () => { activeWorldMap = key; };
   node.onwheel = event => { event.preventDefault(); activeWorldMap = key; adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
 }
+
+function enterCombatFullscreen() {
+  if (!document.body.classList.contains("combat-active") || combatFullscreenRequested || document.fullscreenElement || !$("battle").requestFullscreen) return;
+  combatFullscreenRequested = true;
+  $("battle").requestFullscreen().catch(() => {});
+}
+document.addEventListener("pointerdown", enterCombatFullscreen, {capture: true});

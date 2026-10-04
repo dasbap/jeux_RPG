@@ -377,3 +377,11 @@ La forêt de départ comporte trois secteurs raccordés : sentier oublié, vieux
 Le builder propose des remparts de fortune X et des murs M, bloquant déplacement et vue. Les spawners choisissent leur espèce (gobelin, orc, dragonnet), leur niveau et un groupe de 1 à 5 créatures. Les patrouilles se dessinent sur la grille et sont conservées au repop. Le catalogue des espèces est dans `maps/mobs.json`.
 
 Les propriétés et la création de carte proposent le rattachement de zone, le niveau de zone et une surcharge locale. Le niveau d’un spawner vide hérite de la carte, puis de sa zone. Recherche par nom/identifiant, filtres par zone et niveau, pinceaux 1/3/5, visibilité des calques, duplication, suppression contrôlée, validation et synchronisation des raccords facilitent la construction. Le [guide complet](docs/BUILDER_GUIDE.md) détaille ces outils.
+
+## Alpha 0.11.0a6 — écran tactique et raccords
+
+L’interface tactique occupe toute la fenêtre, avec une grande carte centrale, les alliés à gauche, les ennemis à droite et les actions en bas. Au premier clic, le navigateur passe en plein écran s’il autorise cette fonction ; Échap permet d’en sortir. L’interface conserve son occupation de la fenêtre si le plein écran natif est refusé ou indisponible. Les panneaux latéraux défilent indépendamment.
+
+Les sorties découvertes sont signalées par un repère ⇥, ramené au bord de la vue si la sortie est hors cadrage. Double-cliquer ce repère lance la marche vers le passage.
+
+Le builder propose **Créer un secteur relié** : direction, chevauchement, décor partagé, rattachement de zone et passages aller-retour automatiques. Les chemins d’accès sont dégagés. Le guide décrit cette création et l’usage des téléportations pour les salles indépendantes.

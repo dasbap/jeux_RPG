@@ -284,3 +284,10 @@ Les données correspondantes sont `zone_id`, `zone_level` et `level`. Les coordo
 - **Synchroniser les raccords** : copie le terrain et le décor de la carte courante vers les bandes géométriques communes des voisins de la même zone. Les spawners, PNJ et passages restent propres à chaque carte. Cette opération est annulable ; valider ensuite pour vérifier qu’aucun objet du voisin n’a été recouvert.
 
 Les murs et remparts ne sont pas destructibles pour le moment. Les spawners ne proposent pas encore de vagues programmées, de conditions de quête ou de tirage pondéré entre plusieurs espèces. Le repop utilise le délai global du moteur.
+
+
+## Créer des secteurs qui se chevauchent
+
+Sélectionnez la carte de départ, puis **Créer un secteur relié**. Choisissez un identifiant inédit, une direction (est, ouest, nord, sud) et le nombre de cases partagées (4 par défaut). Le nouveau secteur reprend les dimensions, l’ambiance et la zone du précédent. Le décor du raccord est copié, les coordonnées globales sont calculées et les passages aller-retour sont placés automatiquement aux bords. Les cases de passage et d’arrivée sont dégagées, ainsi qu’un chemin d’accès vers le passage existant. Un passage déjà placé sur cette même case est remplacé.
+
+Peignez ensuite le reste du secteur, renommez-le avec **Propriétés carte**, puis enregistrez. **Synchroniser les raccords** reporte les modifications du décor partagé vers les secteurs voisins. Les PNJ et spawners restent propres à chaque carte. Pour des salles indépendantes comme une grotte, utilisez plutôt l’outil **Téléportation** : aucun chevauchement n’est nécessaire.

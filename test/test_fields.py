@@ -1,10 +1,20 @@
 from copy import deepcopy
 import uuid
+import json
+from pathlib import Path
 
 import pytest
 
 from jeuxRPG.multiplayer import fields, tutorial, tactics, world
 from jeuxRPG.multiplayer.service import GameError, GameService
+
+
+@pytest.fixture(autouse=True)
+def stable_field_scenarios(monkeypatch):
+    maps = json.loads((Path(__file__).parent / "fixtures" / "fields.json").read_text())
+    monkeypatch.setattr(fields, "MAPS", maps)
+    for definition in maps.values():
+        monkeypatch.setitem(tactics.PRESETS, definition["id"], definition)
 
 
 def party():

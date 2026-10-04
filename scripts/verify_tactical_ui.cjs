@@ -259,6 +259,21 @@ try {
     assert.equal(el("npc-view").parentElement.id, "combat-action-panel");
     assert.equal(el("target-controls").hidden, true);
   }
+  if (fixtures.field_village) {
+    const scene = JSON.parse(JSON.stringify(fixtures.field_village));
+    const gate = scene.battle.map.exits[0];
+    scene.battle.explored.push(gate.position);
+    render(scene);
+    const marker = el("world-map").querySelector(`[data-exit="${gate.position.join(",")}"]`);
+    assert(marker, "Une sortie découverte doit avoir un repère visible, même hors du cadrage");
+    event(marker, "dblclick");
+    assert(dom.window.uiTest.calls.some(call => call.action === "battle_move" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
+    let requested = 0;
+    el("battle").requestFullscreen = () => { requested++; return Promise.resolve(); };
+    event(el("battle"), "pointerdown");
+    event(el("battle"), "pointerdown");
+    assert.equal(requested, 1);
+  }
   assert.equal(errors.length, 0, errors.join(" · "));
   console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
 } finally {
