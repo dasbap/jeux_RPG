@@ -11,6 +11,17 @@ def maps():
     return deepcopy(fields.MAPS)
 
 
+def test_explicit_map_file_does_not_read_installed_catalog(tmp_path, monkeypatch):
+    path = tmp_path / "world.json"
+    data = maps()
+    map_assets.save(path, data)
+    monkeypatch.setenv("RPG_MAPS_FILE", str(path))
+    def unavailable_catalog(*args, **kwargs):
+        raise AssertionError("Installed catalog must not be read")
+    monkeypatch.setattr(map_assets, "read_catalog", unavailable_catalog)
+    assert map_assets.configured()["clearing"]["width"] == data["clearing"]["width"]
+
+
 def test_map_file_roundtrip_and_atomic_save(tmp_path):
     path = tmp_path / "maps.json"
     data = maps()

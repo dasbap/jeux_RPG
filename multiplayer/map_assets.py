@@ -196,9 +196,9 @@ def read_catalog(kind, directory=None):
     return result
 
 
-def configured(defaults):
+def configured(defaults=None):
     path = os.environ.get("RPG_MAPS_FILE")
-    maps = load(path) if path else validate(defaults)
+    maps = load(path) if path else validate(read_catalog("fields") if defaults is None else defaults)
     for definition in maps.values():
         geometry = {key: definition.get(key, []) for key in ("width", "height", "cover", "blocked")}
         definition["terrain_version"] = hashlib.sha256(json.dumps(geometry, sort_keys=True).encode()).hexdigest()[:16]

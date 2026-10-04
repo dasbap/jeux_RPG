@@ -28,7 +28,7 @@ def arrival_point(identifier, source=None):
 
 from .map_assets import configured, read_catalog
 
-MAPS = configured(read_catalog("fields"))
+MAPS = configured()
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
 for place in world.PLACES.values():
     place["points"] = [point for point in place["points"] if point["id"] not in {"cave_2", "cave_3"} - MAPS.keys()]
