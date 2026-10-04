@@ -1,0 +1,22 @@
+{
+  "users": 30,
+  "combat_users": 30,
+  "town_users": 0,
+  "duration_seconds": 30.09,
+  "state_requests": 900,
+  "successful_movement_actions": 240,
+  "expected_action_conflicts": [],
+  "errors": [],
+  "latency_ms": {
+    "p50": 77.98,
+    "p95": 156.49,
+    "max": 213.23
+  },
+  "average_full_bytes": 11213,
+  "average_delta_bytes": 4708,
+  "reduction_percent": 58.0,
+  "server_alive": true,
+  "ticker_alive": true,
+  "active_combats": 30,
+  "fixture": "30 independent combat sessions with real mob AI, boosted player HP to keep fighting; 0 town sessions; 1 state request/second/user, movement every 4 seconds in combat; localhost"
+}

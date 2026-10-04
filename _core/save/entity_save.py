@@ -7,7 +7,7 @@ ensuring consistent save formats and easier evolution.
 
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Type, TypeVar
 from enum import Enum
 
@@ -62,7 +62,7 @@ class EntitySaveData:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
-        data["updated_at"] = datetime.now().isoformat()
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
         if not data["created_at"]:
             data["created_at"] = data["updated_at"]
         return data
@@ -89,7 +89,7 @@ class EntitySaveData:
         for stat_name in ["force", "endurance", "intelligence", "sagesse"]:
             stat = getattr(character, stat_name, None)
             if stat is not None:
-                stats[stat_name] = getattr(stat, "current_value", int(stat))
+                stats[stat_name] = stat.current_value if hasattr(stat, "current_value") else int(stat)
         
         # Extract energies
         energies = []

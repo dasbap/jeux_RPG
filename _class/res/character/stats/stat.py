@@ -255,11 +255,14 @@ class DefaultStat:
         return self.current_value - self.value
     
     def end_round(self) -> None:
+        had_effects = bool(self.buffs or self.debuffs)
         for alteration in self.buffs + self.debuffs:
             alteration.decrease()
 
         self.buffs = [buff for buff in self.buffs if not buff.is_over()]
         self.debuffs = [debuff for debuff in self.debuffs if not debuff.is_over()]
+        if had_effects and self.name in ("Force", "Endurance", "Intelligence", "Sagesse"):
+            self._recalculate()
 
     
     # Private methods #########################################################

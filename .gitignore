@@ -35,6 +35,9 @@ saves/
 *.log
 *.sqlite3
 *.db
+pytest-of-root/
+*.sqlite3-journal
+.ui-test/
 test/load/locust_results_*.txt
 
 # Generated documentation
@@ -53,3 +56,5 @@ Thumbs.db
 *.old
 *.backup
 *.orig
+
+.logs/

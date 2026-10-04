@@ -116,11 +116,18 @@ class TeamBattle:
         # Terminée si 0 ou 1 alliance a encore des combattants vivants
         return alliances_with_alive_fighters <= 1
     
-    def auto_battle(self):
-        shuffle(self.fights)
-        for fight in self.fights:
-            fight.start_round(False)
-        if not self.is_over():
+    def auto_battle(self, max_rounds=10000):
+        if type(max_rounds) is not int or max_rounds < 1:
+            raise ValueError("max_rounds must be a positive integer")
+        for _ in range(max_rounds):
+            if self.is_over():
+                return
+            shuffle(self.fights)
+            for fight in self.fights:
+                if not fight.is_over():
+                    fight.start_round(False)
+            if self.is_over():
+                return
             for fight in self.fights:
                 fight.rest()
-            self.auto_battle()
+        raise TimeoutError("Battle exceeded its round limit")

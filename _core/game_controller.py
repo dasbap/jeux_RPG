@@ -4,6 +4,8 @@ import logging
 from .factory.Character_factory import Character_factory
 from .factory.factory import Factory
 from .object_creation import ObjectCreation
+from pathlib import Path
+from .save.safe_io import valid_id, contained, atomic_json
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +33,10 @@ class GameController:
     def create_save(self, id, **data) -> bool:
         if not self.save_path:
             return False
-        filename = os.path.join(self.save_path, f"id_{id}.json")
+        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
         save = {"id": id, "data": data}
         try:
-            with open(filename, "w", encoding="utf-8") as f:
-                json.dump(save, f, indent=4)
+            atomic_json(filename, save)
             self.memory["creation"].append(save)
             self.memory["last creation"] = save
             return True
@@ -46,7 +47,7 @@ class GameController:
     def load_save(self, id) -> dict | None:
         if not self.save_path:
             return None
-        filename = os.path.join(self.save_path, f"id_{id}.json")
+        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
         if not os.path.isfile(filename):
             return None
         try:
@@ -60,7 +61,7 @@ class GameController:
     def del_save(self, id) -> bool:
         if not self.save_path:
             return False
-        filename = os.path.join(self.save_path, f"id_{id}.json")
+        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
         if os.path.isfile(filename):
             try:
                 os.remove(filename)

@@ -1,0 +1,1 @@
+{"kind":"mobs","maps":{"goblin":{"class_name":"Goblin","name":"Gobelin des bois","rank":"D","damage":3,"loot":{"peau":1,"croc":1}},"orc":{"class_name":"Orc","name":"Orc","rank":"C","damage":5,"loot":{"peau":2,"croc":2}},"dragon_whelp":{"class_name":"DragonWhelp","name":"Dragonnet","rank":"B","damage":8,"loot":{"peau":3,"croc":3}}}}

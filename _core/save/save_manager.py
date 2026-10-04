@@ -13,6 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 from dataclasses import asdict
+from .safe_io import valid_id, contained, atomic_json
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class SaveManager:
         """Create all category subdirectories."""
         self._base_path.mkdir(parents=True, exist_ok=True)
         for category in SaveCategory:
-            (self._base_path / category.value).mkdir(exist_ok=True)
+            contained(self._base_path, self._base_path / category.value).mkdir(exist_ok=True)
 
         # Migrate legacy flat player files into per-player folders if needed
         try:
@@ -90,16 +91,17 @@ class SaveManager:
     def _get_filepath(self, category: SaveCategory, entity_id: str) -> Path:
         """Get the file path for a specific entity."""
         safe_id = self._sanitize_id(entity_id)
+        root = contained(self._base_path, self._base_path / category.value)
         # For players, prefer a per-player folder with character.json
         if category == SaveCategory.PLAYERS:
-            player_dir = self._base_path / category.value / safe_id
-            char_file = player_dir / "character.json"
+            player_dir = contained(root, root / safe_id)
+            char_file = contained(root, player_dir / "character.json")
             if char_file.exists():
                 return char_file
             # Fallback to legacy single-file layout
-            return self._base_path / category.value / f"{safe_id}.json"
+            return contained(root, root / f"{safe_id}.json")
 
-        return self._base_path / category.value / f"{safe_id}.json"
+        return contained(root, root / f"{safe_id}.json")
 
     def _get_save_filepath(self, category: SaveCategory, entity_id: str) -> Path:
         """Get the filepath to use when saving data.
@@ -107,17 +109,18 @@ class SaveManager:
         For players, ensure per-player folder and return character.json path.
         """
         safe_id = self._sanitize_id(entity_id)
+        root = contained(self._base_path, self._base_path / category.value)
         if category == SaveCategory.PLAYERS:
-            player_dir = self._base_path / category.value / safe_id
+            player_dir = contained(root, root / safe_id)
             player_dir.mkdir(parents=True, exist_ok=True)
-            return player_dir / "character.json"
-        return self._base_path / category.value / f"{safe_id}.json"
+            return contained(root, player_dir / "character.json")
+        return contained(root, root / f"{safe_id}.json")
     
     @staticmethod
     def _sanitize_id(entity_id: str) -> str:
         """Sanitize ID for use as filename (remove problematic chars)."""
         # Replace problematic filesystem characters
-        return str(entity_id).replace("/", "_").replace("\\", "_").replace(":", "_")
+        return valid_id(entity_id)
     
     def save(
         self,
@@ -151,8 +154,7 @@ class SaveManager:
             payload["metadata"] = metadata
         
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2, ensure_ascii=False, default=str)
+            atomic_json(filepath, payload)
             logger.debug(f"Saved {category.value}/{entity_id}")
             return True
         except Exception as e:
@@ -233,7 +235,9 @@ class SaveManager:
         ids = set()
         # Include directories (for players) and legacy json files
         for entry in category_path.iterdir():
-            if entry.is_dir():
+            if entry.is_symlink():
+                continue
+            if entry.is_dir() and (entry / "character.json").is_file():
                 ids.add(entry.name)
             elif entry.is_file() and entry.suffix == ".json":
                 ids.add(entry.stem)
@@ -262,6 +266,8 @@ class SaveManager:
 
         for file in list(players_path.glob("*.json")):
             try:
+                contained(players_path, file)
+                valid_id(file.stem)
                 with open(file, "r", encoding="utf-8") as f:
                     payload = json.load(f)
                 # Determine entity id
@@ -269,11 +275,13 @@ class SaveManager:
                 data = payload.get("data", payload)
 
                 # Write into folder structure
-                player_dir = players_path / file.stem
+                player_dir = contained(players_path, players_path / file.stem)
                 player_dir.mkdir(parents=True, exist_ok=True)
-                char_file = player_dir / "character.json"
-                with open(char_file, "w", encoding="utf-8") as cf:
-                    json.dump({"id": entity_id, "category": SaveCategory.PLAYERS.value, "data": data}, cf, ensure_ascii=False, indent=2)
+                char_file = contained(players_path, player_dir / "character.json")
+                if char_file.exists():
+                    continue
+                payload = {"id": entity_id, "category": SaveCategory.PLAYERS.value, "data": data, "metadata": payload.get("metadata", {})}
+                atomic_json(char_file, payload)
 
                 # Remove legacy file
                 try:

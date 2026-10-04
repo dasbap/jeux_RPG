@@ -1,0 +1,604 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1968" height="525" viewBox="0 0 1968 525">
+<defs><pattern id="ground" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="48" height="48" fill="#556d42"/><path d="M24 0h24v24H24zM0 24h24v24H0z" fill="#627a47"/></pattern><pattern id="bridge" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#b99b6b"/><path d="M0 6h24M0 12h24M0 18h24" stroke="#77603f"/></pattern><g id="tree"><rect x="11" y="14" width="2" height="8" fill="#ad855d"/><path d="M12 3L4 17h16z" fill="#294830"/></g><g id="rock"><path d="M12 5l7 7-7 7-7-7z" fill="#dce1c8"/></g><g id="flowers"><circle cx="12" cy="12" r="3" fill="#e6d897"/></g><g id="grass"><path d="M8 17l4-7 4 7" stroke="#bbca87" fill="none"/></g></defs>
+<rect width="1968" height="525" fill="#17251c"/>
+<rect y="45" width="1968" height="480" fill="url(#ground)"/>
+<rect x="432" y="45" width="48" height="24" fill="#358bb5"/>
+<rect x="960" y="45" width="48" height="24" fill="#358bb5"/>
+<rect x="1584" y="45" width="48" height="24" fill="#358bb5"/>
+<rect x="408" y="69" width="72" height="24" fill="#358bb5"/>
+<rect x="960" y="69" width="48" height="24" fill="#358bb5"/>
+<rect x="1584" y="69" width="48" height="24" fill="#358bb5"/>
+<rect x="408" y="93" width="48" height="24" fill="#358bb5"/>
+<rect x="960" y="93" width="48" height="24" fill="#358bb5"/>
+<rect x="1584" y="93" width="48" height="24" fill="#358bb5"/>
+<rect x="384" y="117" width="48" height="24" fill="#358bb5"/>
+<rect x="960" y="117" width="48" height="24" fill="#358bb5"/>
+<rect x="1584" y="117" width="48" height="24" fill="#358bb5"/>
+<rect x="360" y="141" width="72" height="24" fill="#358bb5"/>
+<rect x="936" y="141" width="72" height="24" fill="#358bb5"/>
+<rect x="1560" y="141" width="72" height="24" fill="#358bb5"/>
+<rect x="360" y="165" width="48" height="24" fill="#358bb5"/>
+<rect x="936" y="165" width="72" height="24" fill="#358bb5"/>
+<rect x="1560" y="165" width="72" height="24" fill="#358bb5"/>
+<rect x="192" y="189" width="48" height="24" fill="#a99b74"/>
+<rect x="264" y="189" width="48" height="24" fill="#a99b74"/>
+<rect x="336" y="189" width="96" height="24" fill="#a99b74"/>
+<rect x="456" y="189" width="24" height="24" fill="#a99b74"/>
+<rect x="912" y="189" width="72" height="24" fill="#358bb5"/>
+<rect x="1536" y="189" width="72" height="24" fill="#358bb5"/>
+<rect x="168" y="213" width="24" height="24" fill="#a99b74"/>
+<rect x="216" y="213" width="264" height="24" fill="#a99b74"/>
+<rect x="504" y="213" width="48" height="24" fill="#a99b74"/>
+<rect x="912" y="213" width="48" height="24" fill="#358bb5"/>
+<rect x="1536" y="213" width="48" height="24" fill="#358bb5"/>
+<rect x="120" y="237" width="216" height="24" fill="#a99b74"/>
+<rect x="336" y="237" width="48" height="24" fill="url(#bridge)"/>
+<rect x="384" y="237" width="216" height="24" fill="#a99b74"/>
+<rect x="720" y="237" width="24" height="24" fill="#a99b74"/>
+<rect x="768" y="237" width="24" height="24" fill="#a99b74"/>
+<rect x="816" y="237" width="96" height="24" fill="#a99b74"/>
+<rect x="912" y="237" width="48" height="24" fill="url(#bridge)"/>
+<rect x="960" y="237" width="192" height="24" fill="#a99b74"/>
+<rect x="96" y="261" width="144" height="24" fill="#a99b74"/>
+<rect x="336" y="261" width="48" height="24" fill="#358bb5"/>
+<rect x="480" y="261" width="192" height="24" fill="#a99b74"/>
+<rect x="720" y="261" width="168" height="24" fill="#a99b74"/>
+<rect x="888" y="261" width="48" height="24" fill="url(#bridge)"/>
+<rect x="936" y="261" width="312" height="24" fill="#a99b74"/>
+<rect x="1344" y="261" width="168" height="24" fill="#a99b74"/>
+<rect x="1512" y="261" width="48" height="24" fill="url(#bridge)"/>
+<rect x="1560" y="261" width="408" height="24" fill="#a99b74"/>
+<rect x="0" y="285" width="144" height="24" fill="#a99b74"/>
+<rect x="312" y="285" width="72" height="24" fill="#358bb5"/>
+<rect x="576" y="285" width="240" height="24" fill="#a99b74"/>
+<rect x="912" y="285" width="48" height="24" fill="#358bb5"/>
+<rect x="984" y="285" width="72" height="24" fill="#a99b74"/>
+<rect x="1080" y="285" width="432" height="24" fill="#a99b74"/>
+<rect x="1512" y="285" width="72" height="24" fill="url(#bridge)"/>
+<rect x="1584" y="285" width="384" height="24" fill="#a99b74"/>
+<rect x="0" y="309" width="120" height="24" fill="#a99b74"/>
+<rect x="288" y="309" width="72" height="24" fill="#358bb5"/>
+<rect x="624" y="309" width="120" height="24" fill="#a99b74"/>
+<rect x="912" y="309" width="48" height="24" fill="#358bb5"/>
+<rect x="1008" y="309" width="168" height="24" fill="#a99b74"/>
+<rect x="1200" y="309" width="312" height="24" fill="#a99b74"/>
+<rect x="1512" y="309" width="72" height="24" fill="url(#bridge)"/>
+<rect x="1584" y="309" width="384" height="24" fill="#a99b74"/>
+<rect x="0" y="333" width="24" height="24" fill="#a99b74"/>
+<rect x="48" y="333" width="48" height="24" fill="#a99b74"/>
+<rect x="264" y="333" width="72" height="24" fill="#358bb5"/>
+<rect x="888" y="333" width="72" height="24" fill="#358bb5"/>
+<rect x="1512" y="333" width="72" height="24" fill="#358bb5"/>
+<rect x="0" y="357" width="24" height="24" fill="#a99b74"/>
+<rect x="264" y="357" width="48" height="24" fill="#358bb5"/>
+<rect x="888" y="357" width="72" height="24" fill="#358bb5"/>
+<rect x="1512" y="357" width="72" height="24" fill="#358bb5"/>
+<rect x="264" y="381" width="48" height="24" fill="#358bb5"/>
+<rect x="888" y="381" width="48" height="24" fill="#358bb5"/>
+<rect x="1512" y="381" width="48" height="24" fill="#358bb5"/>
+<rect x="264" y="405" width="48" height="24" fill="#358bb5"/>
+<rect x="888" y="405" width="48" height="24" fill="#358bb5"/>
+<rect x="1512" y="405" width="48" height="24" fill="#358bb5"/>
+<rect x="240" y="429" width="72" height="24" fill="#358bb5"/>
+<rect x="888" y="429" width="48" height="24" fill="#358bb5"/>
+<rect x="1512" y="429" width="48" height="24" fill="#358bb5"/>
+<rect x="216" y="453" width="72" height="24" fill="#358bb5"/>
+<rect x="888" y="453" width="72" height="24" fill="#358bb5"/>
+<rect x="1512" y="453" width="72" height="24" fill="#358bb5"/>
+<rect x="192" y="477" width="72" height="24" fill="#358bb5"/>
+<rect x="912" y="477" width="48" height="24" fill="#358bb5"/>
+<rect x="1536" y="477" width="48" height="24" fill="#358bb5"/>
+<rect x="168" y="501" width="72" height="24" fill="#358bb5"/>
+<rect x="912" y="501" width="48" height="24" fill="#358bb5"/>
+<rect x="1536" y="501" width="48" height="24" fill="#358bb5"/>
+<use href="#grass" x="0" y="45"/>
+<use href="#grass" x="0" y="69"/>
+<use href="#grass" x="0" y="93"/>
+<use href="#grass" x="0" y="117"/>
+<use href="#grass" x="0" y="141"/>
+<use href="#grass" x="0" y="165"/>
+<use href="#grass" x="0" y="189"/>
+<use href="#grass" x="0" y="213"/>
+<use href="#grass" x="0" y="237"/>
+<use href="#grass" x="0" y="261"/>
+<use href="#grass" x="0" y="381"/>
+<use href="#grass" x="0" y="405"/>
+<use href="#grass" x="0" y="429"/>
+<use href="#grass" x="0" y="453"/>
+<use href="#rock" x="0" y="477"/>
+<use href="#rock" x="0" y="501"/>
+<use href="#tree" x="24" y="93"/>
+<use href="#tree" x="24" y="117"/>
+<use href="#grass" x="24" y="357"/>
+<use href="#rock" x="24" y="501"/>
+<use href="#tree" x="48" y="357"/>
+<use href="#grass" x="48" y="405"/>
+<use href="#grass" x="48" y="477"/>
+<use href="#grass" x="96" y="93"/>
+<use href="#grass" x="96" y="213"/>
+<use href="#tree" x="120" y="309"/>
+<use href="#grass" x="120" y="429"/>
+<use href="#grass" x="144" y="405"/>
+<use href="#tree" x="168" y="69"/>
+<use href="#grass" x="168" y="165"/>
+<use href="#rock" x="168" y="285"/>
+<use href="#rock" x="168" y="309"/>
+<use href="#grass" x="192" y="141"/>
+<use href="#rock" x="192" y="285"/>
+<use href="#grass" x="192" y="381"/>
+<use href="#tree" x="192" y="429"/>
+<use href="#rock" x="240" y="45"/>
+<use href="#rock" x="240" y="501"/>
+<use href="#rock" x="264" y="45"/>
+<use href="#grass" x="264" y="141"/>
+<use href="#rock" x="264" y="501"/>
+<use href="#tree" x="288" y="453"/>
+<use href="#grass" x="312" y="69"/>
+<use href="#grass" x="312" y="429"/>
+<use href="#tree" x="336" y="117"/>
+<use href="#grass" x="360" y="381"/>
+<use href="#rock" x="432" y="117"/>
+<use href="#rock" x="432" y="141"/>
+<use href="#rock" x="432" y="285"/>
+<use href="#rock" x="432" y="309"/>
+<use href="#tree" x="432" y="357"/>
+<use href="#grass" x="432" y="453"/>
+<use href="#rock" x="456" y="309"/>
+<use href="#grass" x="456" y="429"/>
+<use href="#tree" x="504" y="141"/>
+<use href="#grass" x="504" y="405"/>
+<use href="#grass" x="528" y="69"/>
+<use href="#tree" x="528" y="333"/>
+<use href="#grass" x="552" y="141"/>
+<use href="#grass" x="552" y="477"/>
+<use href="#grass" x="576" y="357"/>
+<use href="#grass" x="600" y="405"/>
+<use href="#grass" x="624" y="93"/>
+<use href="#grass" x="624" y="141"/>
+<use href="#grass" x="624" y="213"/>
+<use href="#tree" x="624" y="453"/>
+<use href="#grass" x="672" y="189"/>
+<use href="#grass" x="672" y="381"/>
+<use href="#grass" x="672" y="429"/>
+<use href="#grass" x="696" y="45"/>
+<use href="#grass" x="696" y="501"/>
+<use href="#flowers" x="720" y="45"/>
+<use href="#grass" x="720" y="93"/>
+<use href="#tree" x="720" y="117"/>
+<use href="#grass" x="720" y="165"/>
+<use href="#tree" x="720" y="189"/>
+<use href="#tree" x="720" y="213"/>
+<use href="#flowers" x="720" y="333"/>
+<use href="#grass" x="720" y="453"/>
+<use href="#flowers" x="720" y="477"/>
+<use href="#tree" x="720" y="501"/>
+<use href="#tree" x="744" y="45"/>
+<use href="#tree" x="744" y="69"/>
+<use href="#tree" x="744" y="93"/>
+<use href="#grass" x="744" y="189"/>
+<use href="#tree" x="744" y="213"/>
+<use href="#grass" x="744" y="357"/>
+<use href="#grass" x="744" y="405"/>
+<use href="#rock" x="744" y="501"/>
+<use href="#tree" x="768" y="45"/>
+<use href="#tree" x="768" y="69"/>
+<use href="#tree" x="768" y="93"/>
+<use href="#tree" x="768" y="141"/>
+<use href="#flowers" x="768" y="165"/>
+<use href="#tree" x="768" y="189"/>
+<use href="#grass" x="768" y="309"/>
+<use href="#grass" x="768" y="333"/>
+<use href="#flowers" x="768" y="405"/>
+<use href="#grass" x="768" y="477"/>
+<use href="#tree" x="768" y="501"/>
+<use href="#grass" x="792" y="69"/>
+<use href="#tree" x="792" y="93"/>
+<use href="#tree" x="792" y="117"/>
+<use href="#grass" x="792" y="165"/>
+<use href="#tree" x="792" y="189"/>
+<use href="#tree" x="792" y="213"/>
+<use href="#grass" x="792" y="237"/>
+<use href="#rock" x="792" y="357"/>
+<use href="#rock" x="792" y="381"/>
+<use href="#rock" x="792" y="405"/>
+<use href="#grass" x="792" y="453"/>
+<use href="#tree" x="792" y="477"/>
+<use href="#rock" x="792" y="501"/>
+<use href="#tree" x="816" y="45"/>
+<use href="#tree" x="816" y="93"/>
+<use href="#tree" x="816" y="117"/>
+<use href="#tree" x="816" y="165"/>
+<use href="#rock" x="816" y="285"/>
+<use href="#flowers" x="816" y="333"/>
+<use href="#rock" x="816" y="381"/>
+<use href="#rock" x="816" y="405"/>
+<use href="#tree" x="816" y="453"/>
+<use href="#tree" x="816" y="477"/>
+<use href="#tree" x="816" y="501"/>
+<use href="#grass" x="840" y="69"/>
+<use href="#grass" x="840" y="141"/>
+<use href="#flowers" x="840" y="189"/>
+<use href="#tree" x="840" y="309"/>
+<use href="#tree" x="840" y="357"/>
+<use href="#flowers" x="840" y="405"/>
+<use href="#flowers" x="840" y="477"/>
+<use href="#tree" x="840" y="501"/>
+<use href="#flowers" x="864" y="69"/>
+<use href="#flowers" x="864" y="93"/>
+<use href="#grass" x="864" y="165"/>
+<use href="#grass" x="864" y="189"/>
+<use href="#tree" x="864" y="213"/>
+<use href="#tree" x="864" y="309"/>
+<use href="#tree" x="864" y="333"/>
+<use href="#tree" x="864" y="501"/>
+<use href="#rock" x="888" y="45"/>
+<use href="#grass" x="888" y="117"/>
+<use href="#tree" x="888" y="165"/>
+<use href="#tree" x="888" y="189"/>
+<use href="#tree" x="888" y="213"/>
+<use href="#flowers" x="888" y="309"/>
+<use href="#tree" x="888" y="477"/>
+<use href="#flowers" x="888" y="501"/>
+<use href="#tree" x="912" y="45"/>
+<use href="#grass" x="912" y="69"/>
+<use href="#flowers" x="912" y="117"/>
+<use href="#tree" x="936" y="45"/>
+<use href="#grass" x="960" y="429"/>
+<use href="#tree" x="960" y="453"/>
+<use href="#tree" x="960" y="477"/>
+<use href="#tree" x="960" y="501"/>
+<use href="#tree" x="984" y="213"/>
+<use href="#flowers" x="984" y="333"/>
+<use href="#flowers" x="984" y="357"/>
+<use href="#grass" x="984" y="381"/>
+<use href="#grass" x="984" y="405"/>
+<use href="#tree" x="984" y="477"/>
+<use href="#tree" x="984" y="501"/>
+<use href="#rock" x="1008" y="45"/>
+<use href="#rock" x="1008" y="93"/>
+<use href="#rock" x="1008" y="117"/>
+<use href="#rock" x="1008" y="141"/>
+<use href="#tree" x="1008" y="213"/>
+<use href="#rock" x="1008" y="429"/>
+<use href="#flowers" x="1008" y="477"/>
+<use href="#tree" x="1008" y="501"/>
+<use href="#rock" x="1032" y="45"/>
+<use href="#flowers" x="1032" y="69"/>
+<use href="#grass" x="1032" y="117"/>
+<use href="#rock" x="1032" y="141"/>
+<use href="#grass" x="1032" y="165"/>
+<use href="#flowers" x="1032" y="189"/>
+<use href="#flowers" x="1032" y="381"/>
+<use href="#flowers" x="1032" y="429"/>
+<use href="#rock" x="1032" y="501"/>
+<use href="#grass" x="1056" y="45"/>
+<use href="#grass" x="1056" y="213"/>
+<use href="#grass" x="1056" y="285"/>
+<use href="#grass" x="1056" y="405"/>
+<use href="#grass" x="1056" y="429"/>
+<use href="#grass" x="1056" y="477"/>
+<use href="#rock" x="1056" y="501"/>
+<use href="#tree" x="1080" y="45"/>
+<use href="#tree" x="1080" y="69"/>
+<use href="#grass" x="1080" y="93"/>
+<use href="#flowers" x="1080" y="141"/>
+<use href="#grass" x="1080" y="357"/>
+<use href="#flowers" x="1080" y="501"/>
+<use href="#grass" x="1104" y="45"/>
+<use href="#tree" x="1104" y="69"/>
+<use href="#grass" x="1104" y="117"/>
+<use href="#grass" x="1104" y="189"/>
+<use href="#grass" x="1104" y="213"/>
+<use href="#flowers" x="1104" y="429"/>
+<use href="#flowers" x="1104" y="453"/>
+<use href="#tree" x="1104" y="477"/>
+<use href="#tree" x="1104" y="501"/>
+<use href="#rock" x="1128" y="117"/>
+<use href="#rock" x="1128" y="141"/>
+<use href="#flowers" x="1128" y="165"/>
+<use href="#tree" x="1128" y="333"/>
+<use href="#tree" x="1128" y="357"/>
+<use href="#flowers" x="1128" y="381"/>
+<use href="#tree" x="1128" y="477"/>
+<use href="#tree" x="1128" y="501"/>
+<use href="#grass" x="1152" y="45"/>
+<use href="#flowers" x="1152" y="93"/>
+<use href="#rock" x="1152" y="117"/>
+<use href="#grass" x="1152" y="141"/>
+<use href="#grass" x="1152" y="213"/>
+<use href="#tree" x="1152" y="333"/>
+<use href="#rock" x="1152" y="357"/>
+<use href="#rock" x="1152" y="381"/>
+<use href="#tree" x="1152" y="429"/>
+<use href="#grass" x="1152" y="477"/>
+<use href="#tree" x="1152" y="501"/>
+<use href="#rock" x="1176" y="45"/>
+<use href="#grass" x="1176" y="117"/>
+<use href="#tree" x="1176" y="189"/>
+<use href="#flowers" x="1176" y="237"/>
+<use href="#rock" x="1176" y="333"/>
+<use href="#rock" x="1176" y="357"/>
+<use href="#rock" x="1176" y="381"/>
+<use href="#flowers" x="1176" y="405"/>
+<use href="#tree" x="1176" y="453"/>
+<use href="#rock" x="1176" y="501"/>
+<use href="#flowers" x="1200" y="45"/>
+<use href="#grass" x="1200" y="69"/>
+<use href="#tree" x="1200" y="93"/>
+<use href="#grass" x="1200" y="117"/>
+<use href="#flowers" x="1200" y="165"/>
+<use href="#tree" x="1200" y="189"/>
+<use href="#grass" x="1200" y="213"/>
+<use href="#flowers" x="1200" y="333"/>
+<use href="#rock" x="1200" y="357"/>
+<use href="#rock" x="1200" y="381"/>
+<use href="#tree" x="1200" y="429"/>
+<use href="#grass" x="1200" y="453"/>
+<use href="#rock" x="1200" y="501"/>
+<use href="#tree" x="1224" y="45"/>
+<use href="#tree" x="1224" y="93"/>
+<use href="#tree" x="1224" y="189"/>
+<use href="#tree" x="1224" y="213"/>
+<use href="#grass" x="1224" y="405"/>
+<use href="#grass" x="1224" y="477"/>
+<use href="#grass" x="1224" y="501"/>
+<use href="#tree" x="1248" y="45"/>
+<use href="#flowers" x="1248" y="93"/>
+<use href="#rock" x="1248" y="141"/>
+<use href="#flowers" x="1248" y="165"/>
+<use href="#grass" x="1248" y="237"/>
+<use href="#grass" x="1248" y="453"/>
+<use href="#flowers" x="1248" y="477"/>
+<use href="#tree" x="1248" y="501"/>
+<use href="#grass" x="1272" y="45"/>
+<use href="#tree" x="1272" y="189"/>
+<use href="#tree" x="1272" y="213"/>
+<use href="#grass" x="1272" y="261"/>
+<use href="#flowers" x="1272" y="333"/>
+<use href="#grass" x="1272" y="357"/>
+<use href="#flowers" x="1272" y="405"/>
+<use href="#grass" x="1272" y="477"/>
+<use href="#rock" x="1272" y="501"/>
+<use href="#rock" x="1296" y="45"/>
+<use href="#grass" x="1296" y="69"/>
+<use href="#grass" x="1296" y="93"/>
+<use href="#grass" x="1296" y="141"/>
+<use href="#flowers" x="1296" y="165"/>
+<use href="#tree" x="1296" y="189"/>
+<use href="#flowers" x="1296" y="213"/>
+<use href="#grass" x="1296" y="357"/>
+<use href="#rock" x="1296" y="477"/>
+<use href="#rock" x="1296" y="501"/>
+<use href="#rock" x="1320" y="45"/>
+<use href="#rock" x="1320" y="69"/>
+<use href="#tree" x="1320" y="117"/>
+<use href="#tree" x="1320" y="165"/>
+<use href="#tree" x="1320" y="189"/>
+<use href="#tree" x="1320" y="213"/>
+<use href="#tree" x="1320" y="333"/>
+<use href="#tree" x="1320" y="357"/>
+<use href="#tree" x="1320" y="381"/>
+<use href="#grass" x="1320" y="453"/>
+<use href="#tree" x="1320" y="477"/>
+<use href="#tree" x="1320" y="501"/>
+<use href="#flowers" x="1344" y="45"/>
+<use href="#grass" x="1344" y="93"/>
+<use href="#tree" x="1344" y="117"/>
+<use href="#grass" x="1344" y="165"/>
+<use href="#tree" x="1344" y="189"/>
+<use href="#tree" x="1344" y="213"/>
+<use href="#flowers" x="1344" y="333"/>
+<use href="#grass" x="1344" y="453"/>
+<use href="#flowers" x="1344" y="477"/>
+<use href="#tree" x="1344" y="501"/>
+<use href="#tree" x="1368" y="45"/>
+<use href="#tree" x="1368" y="69"/>
+<use href="#tree" x="1368" y="93"/>
+<use href="#grass" x="1368" y="189"/>
+<use href="#tree" x="1368" y="213"/>
+<use href="#grass" x="1368" y="357"/>
+<use href="#grass" x="1368" y="405"/>
+<use href="#rock" x="1368" y="501"/>
+<use href="#tree" x="1392" y="45"/>
+<use href="#tree" x="1392" y="69"/>
+<use href="#tree" x="1392" y="93"/>
+<use href="#tree" x="1392" y="141"/>
+<use href="#flowers" x="1392" y="165"/>
+<use href="#tree" x="1392" y="189"/>
+<use href="#grass" x="1392" y="333"/>
+<use href="#flowers" x="1392" y="405"/>
+<use href="#grass" x="1392" y="477"/>
+<use href="#tree" x="1392" y="501"/>
+<use href="#grass" x="1416" y="69"/>
+<use href="#tree" x="1416" y="93"/>
+<use href="#tree" x="1416" y="117"/>
+<use href="#grass" x="1416" y="165"/>
+<use href="#tree" x="1416" y="189"/>
+<use href="#tree" x="1416" y="213"/>
+<use href="#grass" x="1416" y="237"/>
+<use href="#rock" x="1416" y="357"/>
+<use href="#rock" x="1416" y="381"/>
+<use href="#rock" x="1416" y="405"/>
+<use href="#grass" x="1416" y="453"/>
+<use href="#tree" x="1416" y="477"/>
+<use href="#rock" x="1416" y="501"/>
+<use href="#tree" x="1440" y="45"/>
+<use href="#tree" x="1440" y="93"/>
+<use href="#tree" x="1440" y="117"/>
+<use href="#tree" x="1440" y="165"/>
+<use href="#flowers" x="1440" y="333"/>
+<use href="#rock" x="1440" y="381"/>
+<use href="#rock" x="1440" y="405"/>
+<use href="#tree" x="1440" y="453"/>
+<use href="#tree" x="1440" y="477"/>
+<use href="#tree" x="1440" y="501"/>
+<use href="#grass" x="1464" y="69"/>
+<use href="#grass" x="1464" y="141"/>
+<use href="#flowers" x="1464" y="189"/>
+<use href="#tree" x="1464" y="357"/>
+<use href="#flowers" x="1464" y="405"/>
+<use href="#flowers" x="1464" y="477"/>
+<use href="#tree" x="1464" y="501"/>
+<use href="#flowers" x="1488" y="69"/>
+<use href="#flowers" x="1488" y="93"/>
+<use href="#grass" x="1488" y="165"/>
+<use href="#grass" x="1488" y="189"/>
+<use href="#tree" x="1488" y="213"/>
+<use href="#tree" x="1488" y="333"/>
+<use href="#tree" x="1488" y="501"/>
+<use href="#rock" x="1512" y="45"/>
+<use href="#grass" x="1512" y="117"/>
+<use href="#tree" x="1512" y="165"/>
+<use href="#tree" x="1512" y="189"/>
+<use href="#tree" x="1512" y="213"/>
+<use href="#tree" x="1512" y="477"/>
+<use href="#flowers" x="1512" y="501"/>
+<use href="#tree" x="1536" y="45"/>
+<use href="#grass" x="1536" y="69"/>
+<use href="#flowers" x="1536" y="117"/>
+<use href="#tree" x="1560" y="45"/>
+<use href="#grass" x="1584" y="429"/>
+<use href="#tree" x="1584" y="453"/>
+<use href="#tree" x="1584" y="477"/>
+<use href="#tree" x="1584" y="501"/>
+<use href="#tree" x="1608" y="213"/>
+<use href="#flowers" x="1608" y="333"/>
+<use href="#flowers" x="1608" y="357"/>
+<use href="#grass" x="1608" y="381"/>
+<use href="#grass" x="1608" y="405"/>
+<use href="#tree" x="1608" y="477"/>
+<use href="#tree" x="1608" y="501"/>
+<use href="#rock" x="1632" y="45"/>
+<use href="#rock" x="1632" y="93"/>
+<use href="#rock" x="1632" y="117"/>
+<use href="#rock" x="1632" y="141"/>
+<use href="#tree" x="1632" y="213"/>
+<use href="#rock" x="1632" y="429"/>
+<use href="#flowers" x="1632" y="477"/>
+<use href="#tree" x="1632" y="501"/>
+<use href="#rock" x="1656" y="45"/>
+<use href="#flowers" x="1656" y="69"/>
+<use href="#grass" x="1656" y="117"/>
+<use href="#rock" x="1656" y="141"/>
+<use href="#grass" x="1656" y="165"/>
+<use href="#flowers" x="1656" y="189"/>
+<use href="#flowers" x="1656" y="381"/>
+<use href="#flowers" x="1656" y="429"/>
+<use href="#rock" x="1656" y="501"/>
+<use href="#grass" x="1680" y="45"/>
+<use href="#grass" x="1680" y="213"/>
+<use href="#grass" x="1680" y="237"/>
+<use href="#grass" x="1680" y="405"/>
+<use href="#grass" x="1680" y="429"/>
+<use href="#grass" x="1680" y="477"/>
+<use href="#rock" x="1680" y="501"/>
+<use href="#tree" x="1704" y="45"/>
+<use href="#tree" x="1704" y="69"/>
+<use href="#grass" x="1704" y="93"/>
+<use href="#flowers" x="1704" y="141"/>
+<use href="#grass" x="1704" y="357"/>
+<use href="#flowers" x="1704" y="501"/>
+<use href="#grass" x="1728" y="45"/>
+<use href="#tree" x="1728" y="69"/>
+<use href="#grass" x="1728" y="117"/>
+<use href="#grass" x="1728" y="189"/>
+<use href="#grass" x="1728" y="213"/>
+<use href="#grass" x="1728" y="237"/>
+<use href="#flowers" x="1728" y="429"/>
+<use href="#flowers" x="1728" y="453"/>
+<use href="#tree" x="1728" y="477"/>
+<use href="#tree" x="1728" y="501"/>
+<use href="#rock" x="1752" y="117"/>
+<use href="#rock" x="1752" y="141"/>
+<use href="#flowers" x="1752" y="165"/>
+<use href="#tree" x="1752" y="237"/>
+<use href="#tree" x="1752" y="333"/>
+<use href="#tree" x="1752" y="357"/>
+<use href="#flowers" x="1752" y="381"/>
+<use href="#tree" x="1752" y="477"/>
+<use href="#tree" x="1752" y="501"/>
+<use href="#grass" x="1776" y="45"/>
+<use href="#flowers" x="1776" y="93"/>
+<use href="#rock" x="1776" y="117"/>
+<use href="#grass" x="1776" y="141"/>
+<use href="#grass" x="1776" y="213"/>
+<use href="#tree" x="1776" y="333"/>
+<use href="#rock" x="1776" y="357"/>
+<use href="#rock" x="1776" y="381"/>
+<use href="#tree" x="1776" y="429"/>
+<use href="#grass" x="1776" y="477"/>
+<use href="#tree" x="1776" y="501"/>
+<use href="#rock" x="1800" y="45"/>
+<use href="#grass" x="1800" y="117"/>
+<use href="#tree" x="1800" y="189"/>
+<use href="#flowers" x="1800" y="237"/>
+<use href="#rock" x="1800" y="333"/>
+<use href="#rock" x="1800" y="357"/>
+<use href="#rock" x="1800" y="381"/>
+<use href="#flowers" x="1800" y="405"/>
+<use href="#tree" x="1800" y="453"/>
+<use href="#rock" x="1800" y="501"/>
+<use href="#flowers" x="1824" y="45"/>
+<use href="#grass" x="1824" y="69"/>
+<use href="#tree" x="1824" y="93"/>
+<use href="#grass" x="1824" y="117"/>
+<use href="#flowers" x="1824" y="165"/>
+<use href="#tree" x="1824" y="189"/>
+<use href="#grass" x="1824" y="213"/>
+<use href="#flowers" x="1824" y="333"/>
+<use href="#rock" x="1824" y="357"/>
+<use href="#rock" x="1824" y="381"/>
+<use href="#tree" x="1824" y="429"/>
+<use href="#grass" x="1824" y="453"/>
+<use href="#rock" x="1824" y="501"/>
+<use href="#tree" x="1848" y="45"/>
+<use href="#tree" x="1848" y="93"/>
+<use href="#tree" x="1848" y="189"/>
+<use href="#tree" x="1848" y="213"/>
+<use href="#grass" x="1848" y="405"/>
+<use href="#grass" x="1848" y="477"/>
+<use href="#grass" x="1848" y="501"/>
+<use href="#tree" x="1872" y="45"/>
+<use href="#flowers" x="1872" y="93"/>
+<use href="#rock" x="1872" y="141"/>
+<use href="#flowers" x="1872" y="165"/>
+<use href="#grass" x="1872" y="237"/>
+<use href="#grass" x="1872" y="453"/>
+<use href="#flowers" x="1872" y="477"/>
+<use href="#tree" x="1872" y="501"/>
+<use href="#grass" x="1896" y="45"/>
+<use href="#tree" x="1896" y="189"/>
+<use href="#tree" x="1896" y="213"/>
+<use href="#flowers" x="1896" y="333"/>
+<use href="#grass" x="1896" y="357"/>
+<use href="#flowers" x="1896" y="405"/>
+<use href="#grass" x="1896" y="477"/>
+<use href="#rock" x="1896" y="501"/>
+<use href="#rock" x="1920" y="45"/>
+<use href="#grass" x="1920" y="69"/>
+<use href="#grass" x="1920" y="93"/>
+<use href="#grass" x="1920" y="141"/>
+<use href="#flowers" x="1920" y="165"/>
+<use href="#tree" x="1920" y="189"/>
+<use href="#flowers" x="1920" y="213"/>
+<use href="#grass" x="1920" y="357"/>
+<use href="#rock" x="1920" y="477"/>
+<use href="#rock" x="1920" y="501"/>
+<use href="#rock" x="1944" y="45"/>
+<use href="#rock" x="1944" y="69"/>
+<use href="#tree" x="1944" y="117"/>
+<use href="#tree" x="1944" y="165"/>
+<use href="#tree" x="1944" y="189"/>
+<use href="#tree" x="1944" y="213"/>
+<use href="#tree" x="1944" y="333"/>
+<use href="#tree" x="1944" y="357"/>
+<use href="#tree" x="1944" y="381"/>
+<use href="#grass" x="1944" y="453"/>
+<use href="#tree" x="1944" y="477"/>
+<use href="#tree" x="1944" y="501"/>
+<text x="414" y="303" fill="#ff857b" font-family="sans-serif" font-size="17">G</text>
+<text x="1182" y="207" fill="#ff857b" font-family="sans-serif" font-size="17">G</text>
+<text x="8" y="25" fill="#efe5c8" font-family="sans-serif" font-size="16">Forêt des Éveillés · sentier oublié</text>
+<text x="632" y="25" fill="#efe5c8" font-family="sans-serif" font-size="16">Forêt des Éveillés · vieux pont</text>
+<text x="1256" y="25" fill="#efe5c8" font-family="sans-serif" font-size="16">Forêt des Éveillés · route entretenue</text>
+</svg>

@@ -74,7 +74,7 @@ class SkillMixin:
                 
             # Check cooldown status
             if not skill.is_ready():
-                remaining = skill.cooldown - skill.current_cooldown
+                remaining = skill.current_cooldown
                 return False, f"{skill.name} is on cooldown ({remaining} rounds remaining)"
             
             # Validate target if skill requires one
@@ -83,7 +83,7 @@ class SkillMixin:
                 
             # Check if target is valid (alive and not self for harmful skills)
             if target is not None:
-                if not target.is_alive():
+                if not target.is_alive() and skill.skill_type != SkillType.RESURRECT:
                     return False, f"Cannot target defeated {target.name}"
                 if skill.skill_type == SkillType.DAMAGE and target is self:
                     return False, "Cannot damage yourself"

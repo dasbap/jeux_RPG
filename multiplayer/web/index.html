@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RPG · De la clairière à Brume</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="badge">ALPHA MULTIJOUEUR</span><span id="connection">Connexion…</span></header>
+    <h1>Votre aventure commence.</h1>
+    <p class="intro">Découvrez votre classe, remportez votre premier combat et rejoignez les villages de Rosée et de Brume. Jouez seul ou invitez un compagnon avant de commencer.</p>
+    <p id="message" role="status" aria-live="polite"></p>
+    <nav id="character-menu" class="panel actions" aria-label="Menu du personnage" hidden>
+      <button id="show-stats" class="secondary">Caractéristiques</button><button id="show-equipment" class="secondary">Équipement équipé</button><button id="show-inventory" class="secondary">Inventaire</button><button id="show-quest" class="secondary">Journal de quêtes</button><button id="show-map" class="secondary">Carte</button><button id="show-bestiary" class="secondary">Bestiaire</button><button id="show-achievements" class="secondary">Succès et titres</button><button id="back-view" class="quiet" hidden>Retour</button>
+    </nav>
+    <section id="registration" class="panel">
+      <h2>Votre personnage</h2>
+      <p>Chaque onglet possède sa propre identité. Ouvrez un second onglet pour tester à deux.</p>
+      <form id="register-form">
+        <label for="name">Nom du personnage</label><input id="name" maxlength="32" required autocomplete="off" placeholder="Votre nom">
+        <label for="class-name">Classe</label><select id="class-name"><option value="Knight">Chevalier</option><option value="Mage">Mage</option><option value="Archer">Archer</option><option value="Priest">Prêtre</option><option value="Necromancien">Nécromancien</option></select>
+        <button type="submit">Créer mon personnage</button>
+      </form>
+      <details><summary>Retrouver mon personnage</summary><form id="restore-form"><label for="restore-token">Clé personnelle</label><input id="restore-token" type="password" autocomplete="off" required><button type="submit" class="secondary">Se connecter</button></form></details>
+    </section>
+    <section id="lobby" class="panel" hidden>
+      <div class="section-head"><h2 id="player-name">Votre personnage</h2><button id="logout" class="quiet">Se déconnecter</button></div>
+      <details><summary>Ma clé de reconnexion</summary><p>Conservez cette clé en privé : elle donne accès à votre personnage.</p><button id="copy-token" class="secondary">Copier ma clé</button><p id="token-output" hidden></p></details>
+      <div id="room-controls"><button id="tutorial">Commencer le tutoriel en solo</button><button id="create" class="secondary">Inviter un compagnon</button><form id="join-form"><label for="invite-input">Code ou lien d’invitation de votre compagnon</label><input id="invite-input" required autocomplete="off" maxlength="2048"><button class="secondary" type="submit">Rejoindre</button></form></div>
+      <div id="invitation" hidden><p id="invite-status" role="status"></p><label for="invite-link">Lien à partager</label><input id="invite-link" readonly><button id="copy-invite-link" class="quiet">Copier le lien</button><p>Ou transmettez ce code :</p><code id="invite-code"></code><button id="copy-invite" class="quiet">Copier le code</button></div>
+    </section>
+    <section id="battle" class="panel" hidden>
+      <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" hidden></span></div>
+      <div id="fighters" class="fighters"></div>
+      <section id="tutorial-panel" hidden>
+        <h3 id="location"></h3><p id="objective"></p>
+        <div id="combat-layout" hidden><aside id="combat-player-panel" class="dashboard-box"><h2>Alliés · PV et ressources</h2></aside><div id="combat-map-panel"></div><aside id="combat-enemy-panel" class="dashboard-box"><h2>Ennemis et intentions</h2></aside><section id="combat-action-panel" class="dashboard-box"><h2 id="combat-action-title">Actions et sorts</h2></section></div>
+        <section id="map-strip" class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted" id="map-help">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="field-camera" class="actions" hidden><button id="field-zoom-in" aria-label="Zoomer">+</button><button id="field-zoom-out" aria-label="Dézoomer">−</button><button id="field-center">Suivre le personnage</button><button id="field-left" aria-label="Vue vers la gauche">←</button><button id="field-up" aria-label="Vue vers le haut">↑</button><button id="field-down" aria-label="Vue vers le bas">↓</button><button id="field-right" aria-label="Vue vers la droite">→</button><span id="field-location"></span></div><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
+        <div class="adventure-grid">
+          <section class="dashboard-box consultation"><h2>Personnage</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-vitals"></div><div id="character-details"></div></section>
+        <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
+        <section id="inventory-view" hidden><h3>Inventaire</h3><div id="inventory-details"></div></section>
+
+        <section id="achievements-view" hidden><h3>Succès de cette aventure</h3><p id="achievement-summary"></p><div class="table-scroll"><table><thead><tr><th>Accomplissement</th><th>Progression</th><th>Titre</th></tr></thead><tbody id="achievement-rows"></tbody></table></div><p id="achievement-titles"></p></section>
+        <section id="bestiary-view" hidden><h3>Bestiaire découvert</h3><div class="actions" id="bestiary-filters"><label>Carte de spawn<select id="bestiary-map"></select></label><label>Rechercher<input id="bestiary-search" placeholder="Nom ou matériau"></label><label id="bestiary-sort-label">Trier les cartes<select id="bestiary-sort"><option value="asc">Cartes A → Z</option><option value="desc">Cartes Z → A</option></select></label></div><div id="bestiary-details"></div></section>
+</section>
+          <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3 id="standby-title">Exploration</h3><p id="standby-description"></p><div id="tutorial-actions" class="actions"></div></section>
+        <section id="npc-view" hidden><h3>Parler à Mira</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
+
+        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Fabriquez six pièces indépendantes et améliorez-les jusqu’à +10. Les coûts et les matériaux rares requis figurent dans le catalogue.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="forge-catalogue"></div><div id="craft-actions" class="actions"></div></section>
+        <section id="combat-view" hidden>
+          <section id="combat-allies"><div id="combat-resources"></div><h3>Invocations · PV et Mana</h3><div id="combat-stats-details"></div><div id="selected-unit-stats"></div></section><section id="unit-controls" hidden><h3>Alliés contrôlables</h3><p id="control-status"></p><div id="unit-control-list"></div><div id="unit-control-actions" class="actions"></div></section><section id="combat-enemies"><h3>Entités de la sélection</h3><p id="cell-selection-status"></p><div id="cell-entities" class="actions"></div><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div></section><p id="combat-status" role="status"></p>
+          <div id="self-skills" class="actions" aria-label="Invocations personnelles"></div>
+          <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
+          <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
+          <div id="corpse-actions" class="actions"></div><div id="tactical-actions" class="actions"></div>
+          <section id="combat-feedback"><p id="combat-notice" role="status" aria-live="polite"></p><details><summary>Journal du combat</summary><ol id="combat-events"></ol></details></section>
+          <p class="muted">Sélectionnez votre cible sur la carte ou dans le panneau des entités à droite.</p>
+        </section>
+          </section>
+          <section class="dashboard-box quest-box">        <section id="quest-view" hidden><h3>Journal de quête</h3><p id="quest-progress"></p><p id="quest-description"></p><div id="quest-actions" class="actions"></div></section></section>
+        </div>
+      </section>
+      <p id="result"></p>
+      <div id="duel-target-controls" hidden><label for="duel-target">Choisir votre adversaire</label><select id="duel-target"></select></div>
+      <div class="actions"><button id="party-tutorial">Commencer le tutoriel du groupe</button><button id="start" class="secondary">Duel optionnel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
+      <details><summary id="shared-log-title">Journal partagé</summary><ol id="events"></ol></details>
+    </section>
+<section id="chat-panel" class="panel" hidden><h2>Discussion</h2><p id="online-players"></p><div class="chat-columns"><section><h3>Global</h3><ol id="chat-global"></ol></section><section><h3>Groupe</h3><ol id="chat-group"></ol></section></div><form id="chat-form"><label for="chat-channel">Canal</label><select id="chat-channel"><option value="global">Global</option><option value="group">Mon groupe</option></select><label for="chat-message">Message</label><input id="chat-message" maxlength="400" required autocomplete="off"><button id="send-chat" type="submit">Envoyer</button><p id="chat-status" role="status"></p></form></section>
+    <footer>De la clairière à Brume · votre aventure est sauvegardée</footer>
+  </main>
+</body>
+</html>

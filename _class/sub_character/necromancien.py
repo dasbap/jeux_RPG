@@ -66,7 +66,7 @@ class Necromancien(Character):
         if skill.can_afford(self) and self.has_required_energie(skill) and self.invocations.can_summon():
             message = skill.execute(self,self)
             if message["success"] == True:
-                return True, f"the invocation of {message["invocation"].name} is a success"
+                return True, f"the invocation of {message['invocation'].name} is a success"
             else:
                 return False, "the invocation faild"
         return False, "the condition for a invocation was not reach"

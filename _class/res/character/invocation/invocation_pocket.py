@@ -27,13 +27,16 @@ class InvocationPocket:
     
     def lose_hp(self, source : object, amount : int) -> tuple[bool, str]:
         valide_invoc = [invoc for invoc in self.get_all() if invoc.is_alive()]
-        if valide_invoc == [] : return False, ""
-        div = int(amount / len(valide_invoc))
-        for invoc in valide_invoc:
-            invoc.lose_hp(source, div)
+        if not valide_invoc or amount <= 0:
+            return False, ""
+        share, remainder = divmod(amount, len(valide_invoc))
+        for index, invoc in enumerate(valide_invoc):
+            damage = share + (1 if index < remainder else 0)
+            if damage > 0:
+                invoc.lose_hp(source, damage)
         invoc_killed = [invoc for invoc in valide_invoc if not invoc.is_alive()]
         message = ""
-        if invoc_killed is not []:
+        if invoc_killed:
             message = str(len(invoc_killed)) + ", some was killed in the attack "
             message += ", ".join(invoc.name for invoc in invoc_killed)
             message += " was defeated"
