@@ -4,6 +4,7 @@ from heapq import heappop, heappush
 from copy import deepcopy
 
 from . import forge, progression, achievements, content
+from . import mob_rules, mob_abilities
 
 
 from .map_assets import read_catalog
@@ -479,7 +480,7 @@ def view(party, now, player=None):
         unit["can_hide"] = can_hide(party, key)
         unit["detected"] = any(mob.get("target") == key for mob in party["mobs"])
     result["intents"] = [{"id": mob["combat_id"], "name": mob["name"], "action": mob["intent"],
-                           "remaining_seconds": max(0, (mob.get("calling_until") or mob.get("windup_until") or mob.get("next_attack", now)) - now) / progression.RATIO}
+                           "remaining_seconds": max(0, (mob.get("ability_cast", {}).get("ends_at") or mob.get("calling_until") or mob.get("windup_until") or mob.get("next_attack", now)) - now) / progression.RATIO}
                           for mob in party["mobs"] if player is None or visible(party, player, mob)]
     return result
 
@@ -581,6 +582,9 @@ def execute(party, player, action, params, now, error):
 
 def damaged(party, mob, actor, now):
     battle = party["battle"]
+    mob["last_hit_by"] = actor if actor in party["characters"] else battle.get("summons", {}).get(actor, {}).get("owner")
+    if mob.get("ability_cast", {}).get("concentration"):
+        mob.pop("ability_cast", None)
     unit = battle["players"].get(actor) or battle.get("summons", {}).get(actor)
     unit["hidden"] = False
     unit["route"] = []
@@ -609,17 +613,16 @@ def damaged(party, mob, actor, now):
 def defeated(party, mob, now, random, messages):
     from .tutorial import unpack, pack
     from . import world
-    reward = 0 if party.get("training") else content.WORLD["mob_xp"]
+    killer = mob.get('last_hit_by')
+    killer_data = party['characters'].get(killer) or next(iter(party['characters'].values()))
+    reward = 0 if party.get("training") else mob_rules.experience(mob, killer_data['level'], content.WORLD["mob_xp"])
     for key, data in party["characters"].items():
         character = unpack(data)
         if reward:
             character.gain_exp(reward)
         party["characters"][key] = pack(character)
-    loot = {} if party.get("training") else dict(mob.get("loot", world.GOBLIN["loot"]))
-    if loot:
-        for item, probability in forge.RARE_DROPS.items():
-            if random() < probability:
-                loot[item] = 1
+    rules = mob_rules.drop_rules(mob if 'loot' in mob or 'drops' in mob else {'loot':world.GOBLIN['loot']}, forge.RARE_DROPS)
+    loot = {} if party.get('training') else mob_rules.roll_drops(rules, random)
     party["battle"]["corpses"].append({"id": mob["combat_id"], "name": mob["name"], "position": mob["position"][:], "loot": loot, "harvested": []})
     if party.get("field_mode") and not party.get("training") and mob.get("mob_id", "goblin") == "goblin":
         zone = world.zone_of(party["position"])
@@ -684,6 +687,7 @@ def advance(party, now, random):
         if mob.get("stunned_until", 0) > now:
             mob["calling_until"] = None
             mob["windup_until"] = None
+            mob.pop("ability_cast", None)
             mob["intent"] = "Étourdi : aucune action"
             continue
         if mob.get("stunned_until"):
@@ -740,6 +744,8 @@ def advance(party, now, random):
             mob["windup_until"] = None
             mob["intent"] = "Appel aux alliés"
             continue
+        if mob_abilities.advance(party, mob, target, characters, units, preset, now, messages):
+            continue
         if target and visible[0][0] <= 1.5:
             if mob["windup_until"] is not None and mob["windup_until"] <= now:
                 enemy = unpack(mob)
@@ -747,7 +753,7 @@ def advance(party, now, random):
                 actor.drop_xp = lambda killer: ""
                 before_hp = actor.hp.current_value
                 before_invocations_hp = sum(invocation.hp.current_value for invocation in actor.invocations.get_all())
-                actor.lose_hp(enemy, mob.get("attack_damage", 3))
+                actor.lose_hp(enemy, max(1, mob.get("attack_damage", 3)))
                 if actor.hp.current_value < before_hp or sum(i.hp.current_value for i in actor.invocations.get_all()) < before_invocations_hp:
                     battle["damage_received"] = True
                 cast = units[target].get("casting")

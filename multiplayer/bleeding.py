@@ -30,6 +30,7 @@ def advance(party, now, random):
             if source and enemy.is_alive():
                 enemy.drop_xp = lambda killer: ""
                 enemy.lose_hp(unpack(source), stack["damage"])
+                mob["last_hit_by"] = stack["source"]
             stack["ticks"] -= 1
             stack["next"] = now + 2 * progression.RATIO
         mob["bleeding"] = [stack for stack in mob.get("bleeding", []) if stack["ticks"] > 0]

@@ -110,3 +110,24 @@ Sélectionner une ligne puis **Renommer identifiant**, ou modifier directement l
 Les références aux espèces, PNJ et cartes personnalisées sont mises à jour. Pour une quête renommée, les anciens identifiants sont conservés dans `previous_ids` : après redémarrage du serveur, les quêtes déjà acceptées ou terminées retrouvent leur progression, sans seconde récompense. Un ancien identifiant ne peut pas être réutilisé pour une autre quête.
 
 La quête initiale de Mira peut être renommée. Les IDs `goblin`, `mira`, `forge` et les sept cartes obligatoires restent des références internes protégées ; créer une définition personnalisée pour un autre ID. Enregistrer le projet puis redémarrer le serveur. Tester les renommages de cartes ou de mobs dans une nouvelle session : les scènes déjà chargées conservent leurs anciennes références.
+
+
+## Espèces, sous-espèces et butin
+
+Dans l’onglet Mobs, sélectionnez une espèce puis **Modifier**, ou utilisez **Ajouter** pour créer une espèce. **Créer une sous-espèce** part de l’espèce sélectionnée. Les identifiants tels que `goblin_mage_2` sont acceptés. Une sous-espèce hérite des champs absents de son parent ; les listes de drops et capacités explicitement définies remplacent celles du parent. Les cycles de parenté sont refusés. L’éditeur enregistre les valeurs affichées comme des valeurs explicites : elles deviennent indépendantes des changements ultérieurs du parent.
+
+Les classes Goblin, Orc et DragonWhelp sont des modèles de personnage sûrs ; les espèces peuvent avoir un nom, un rang et des propriétés propres. Les statistiques suivent `base + croissance × (niveau − 1)`. Les dégâts de l’attaque classique ont également une base et une croissance par niveau. Le niveau effectif provient du spawner ou, à défaut, de la zone.
+
+Les capacités configurables sont les dégâts, le soin personnel et l’étourdissement. Pour chacune : nom, niveau de déblocage, puissance et croissance, portée, durée d’incantation, délai de récupération, concentration et durée de l’étourdissement. Une incantation avec concentration est interrompue par les dégâts ; les capacités offensives exigent portée et visibilité. Les durées sont exprimées en secondes de jeu ; l’étourdissement est arrondi au prochain tick d’effet. Aucun code Python arbitraire n’est exécuté depuis le catalogue.
+
+Chaque ligne de drop définit un identifiant d’objet, une probabilité entre 0 et 1, un nombre de tirages indépendants, une quantité minimale et maximale par réussite, et une indication de rareté. Exemple : probabilité 0,1, trois tirages, quantité 1–2 : jusqu’à trois réussites pour un total de six objets. La rareté sert au classement du bestiaire ; elle ne modifie pas la probabilité. Les règles explicites remplacent les anciens drops communs et rares. Un objet doit correspondre aux identifiants de matériaux utilisés par les recettes pour être utilisable à la forge.
+
+## Expérience des ennemis
+
+La récompense est arrondie à l’entier :
+
+`XP = XP de base du monde × niveau du mob × facteur de classe XP × multiplicateur de l’espèce × 4^(écart / 10)`
+
+L’écart est `niveau du mob − niveau du tueur`, plafonné entre −10 et +10. Le facteur de niveau vaut donc ×4 dès +10 et ÷4 dès −10. Les classes XP configurables sont normal (1), guerrier (1,5), lanceur de sorts (1,8), élite (2,5) et boss (4). Les anciennes espèces sans classe XP explicite conservent les facteurs de modèle Goblin (1), Orc (1,6) et DragonWhelp (2,5).
+
+Le dernier coup identifie le tueur ; une invocation est attribuée à son propriétaire, un saignement à sa source. La récompense calculée est accordée à chaque membre du groupe, comme auparavant. Un multiplicateur nul supprime l’XP. L’entraînement ne donne ni XP ni butin. Sauvegardez les catalogues et redémarrez le serveur pour appliquer les modifications.

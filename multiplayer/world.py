@@ -186,7 +186,9 @@ def view(party, me, traveller=None):
                          "materials_usage": "Deux peaux et trois crocs permettent de fabriquer une veste à Rosée. L'entraînement ne donne aucun butin."})
     from .map_building import MOBS, species_details, spawners
     from .fields import MAPS
-    for identifier, definition in MOBS.items():
+    from .mob_rules import resolve
+    for identifier in MOBS:
+        definition = resolve(MOBS, identifier)
         if identifier == "goblin" or identifier not in mobs:
             continue
         details = species_details(identifier)
@@ -195,7 +197,17 @@ def view(party, me, traveller=None):
             "hp": {"first_encounter": details["hp"], "hunt": details["hp"]}, "stats": details["stats"], "weaknesses": details["weaknesses"], "resistances": details["resistances"],
             "loot": [{"item": key, "quantity": value} for key, value in definition.get("loot", {}).items()], "rare_loot": [{"item": key, "chance": value} for key, value in RARE_DROPS.items()],
             "spawn_maps": spawn_maps, "locations": [item["name"] for item in spawn_maps], "xp": {"first_encounter": 50, "hunt": 50, "training": 0}, "materials_usage": "Matériaux communs utilisés par les recettes de forge."})
+    from .mob_rules import resolve, drop_rules, experience
     for creature in bestiary:
+        definition = resolve(MOBS, creature['id'])
+        rules = drop_rules(definition, RARE_DROPS)
+        creature['loot'] = [{'item':rule['item'],'quantity':rule['min'],'chance':rule['chance'],'attempts':rule['attempts'],'max_quantity':rule['max']} for rule in rules if not rule.get('rare')]
+        creature['rare_loot'] = [{'item':rule['item'],'chance':rule['chance'],'attempts':rule['attempts'],'min':rule['min'],'max':rule['max']} for rule in rules if rule.get('rare')]
+        if 'hp' in definition.get('stats', {}):
+            hp = round(definition['stats']['hp']['base'])
+            creature['hp'] = {'first_encounter':hp, 'hunt':hp}
+        creature['abilities'] = deepcopy(definition.get('abilities', []))
+        creature['xp'] = {'first_encounter':experience({**definition,'level':1},1,content.WORLD['mob_xp']), 'hunt':experience({**definition,'level':1},1,content.WORLD['mob_xp']), 'training':0}
         creature["spawn_maps"] = [item for item in creature["spawn_maps"] if item["id"] not in MAPS or any(config["mob_id"] == creature["id"] for config in spawners(MAPS[item["id"]]))]
     current_zone = zone_of(party.get("position", CURRENT[step]))
     if current_zone not in {p["id"] for p in places}:

@@ -401,7 +401,7 @@ def test_visited_villages_and_codex_survive_restart(game, tmp_path):
         world = reopened.state(player["token"])["session"]["tutorial"]["world"]
         assert all(place["visited"] for place in world["places"])
         assert next(p for p in world["places"] if p["id"] == "rosee")["points"]
-        assert world["bestiary"][0]["loot"] == [{"item": "peau", "quantity": 1}, {"item": "croc", "quantity": 1}]
+        assert world["bestiary"][0]["loot"] == [{"item": item, "quantity": 1, "chance": 1, "attempts": 1, "max_quantity": 1} for item in ("peau", "croc")]
         assert world == state["tutorial"]["world"]
     finally:
         reopened.close()

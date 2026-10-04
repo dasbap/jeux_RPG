@@ -455,10 +455,10 @@ function renderWorld(adventure, me) {
       `Force ${mob.stats.force} · Endurance ${mob.stats.endurance} · Intelligence ${mob.stats.intelligence} · Sagesse ${mob.stats.sagesse}`,
       `Faiblesses : ${mob.weaknesses.map(t => damageTypes[t] || t).join(", ") || "aucune"}`,
       `Résistances : ${mob.resistances.map(t => damageTypes[t] || t).join(", ") || "aucune"}`,
-      `Matériaux donnés par victoire : ${mob.loot.map(item => `${item.quantity} ${item.item}`).join(", ")}`,
-      `Expérience : ${mob.xp.first_encounter} au premier combat, ${mob.xp.hunt} par chasse. Entraînement : aucun butin ni XP.`,
+      `Matériaux donnés par victoire : ${mob.loot.map(item => `${item.quantity === item.max_quantity ? item.quantity : `${item.quantity}–${item.max_quantity}`} ${item.item} (${(100 * item.chance).toFixed(1)} %, ${item.attempts} tirage(s))`).join(", ")}`,
+      `Expérience de référence au niveau 1 : ${mob.xp.hunt} XP. Varie selon le niveau du mob et du joueur qui porte le dernier coup. Entraînement : aucun butin ni XP.`,
       `Cartes de spawn découvertes : ${[...(mob.spawn_maps || [])].sort((a, b) => a.name.localeCompare(b.name) * ($("bestiary-sort").value === "desc" ? -1 : 1)).map(p => p.name).join(", ")}`,
-      `Matériaux rares au dépeçage : ${(mob.rare_loot || []).map(p => `${p.item} (${(100 * p.chance).toFixed(0)} %)`).join(", ")}`, mob.materials_usage]) {
+      `Matériaux rares au dépeçage : ${(mob.rare_loot || []).map(p => `${p.item} (${(100 * p.chance).toFixed(1)} %, ${p.attempts} tirage(s), ${p.min}–${p.max} par réussite)`).join(", ")}`, `Capacités : ${(mob.abilities || []).map(a => `${a.name} (niveau ${a.level})`).join(", ") || "attaque classique"}`, mob.materials_usage]) {
       const p = document.createElement("p");
       p.textContent = text;
       card.append(p);

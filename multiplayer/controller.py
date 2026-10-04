@@ -13,18 +13,7 @@ from .map_building import zone_of
 RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
 
 
-def validate_mobs(mobs):
-    if not isinstance(mobs, dict) or not 1 <= len(mobs) <= 200:
-        raise ValueError('De 1 à 200 espèces requises.')
-    import re
-    for key, mob in mobs.items():
-        if not re.fullmatch(r'[a-z0-9_]{1,64}', key) or not isinstance(mob, dict) or mob.get('class_name') not in ('Goblin', 'Orc', 'DragonWhelp') or not isinstance(mob.get('name'), str) or not 1 <= len(mob['name']) <= 100 or mob.get('rank') not in RANKS or type(mob.get('damage')) is not int or not 0 <= mob['damage'] <= 10000:
-            raise ValueError('Espèce, classe, rang ou dégâts invalides.')
-        if not isinstance(mob.get('loot'), dict) or len(mob['loot']) > 100 or any(not isinstance(item, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', item) or type(count) is not int or not 1 <= count <= 10000 for item, count in mob['loot'].items()):
-            raise ValueError('Butin invalide.')
-    if 'goblin' not in mobs:
-        raise ValueError('Le gobelin est nécessaire au tutoriel.')
-    return deepcopy(mobs)
+from .mob_rules import validate_mobs, resolve, CLASS_XP, drop_rules, STATS
 
 
 class Project:
@@ -88,6 +77,9 @@ class Project:
                 if replacement in self.mobs:
                     raise ValueError('Identifiant déjà utilisé.')
                 self.mobs[replacement] = self.mobs.pop(identifier)
+                for species in self.mobs.values():
+                    if species.get('parent') == identifier:
+                        species['parent'] = replacement
                 for data in self.maps.values():
                     for spawn in data.get('spawners', []):
                         if spawn['mob_id'] == identifier:
@@ -200,6 +192,10 @@ class Controller:
             actions.pack(fill='x', pady=8)
             for label, action in [('Modifier', lambda s=section:self.edit(s))] + ([] if section == 'world' else [('Ajouter', lambda s=section:self.edit(s, True)), ('Supprimer', lambda s=section:self.delete(s))]):
                 ttk.Button(actions, text=label, command=action).pack(side='left', padx=4)
+            if section != 'world':
+                ttk.Button(actions, text='Renommer identifiant', command=lambda s=section:self.rename(s)).pack(side='left', padx=4)
+            if section == 'mobs':
+                ttk.Button(actions, text='Créer une sous-espèce', command=self.subspecies).pack(side='left', padx=4)
             if section == 'maps':
                 ttk.Button(actions, text='Éditer la carte dans le builder', command=self.builder).pack(side='left')
             if section == 'world':
@@ -219,7 +215,7 @@ class Controller:
         p = self.project
         rows = {
             'maps': [(key, data['name'], f"{data['width']} × {data['height']} · zone {zone_of(p.maps, key)}") for key, data in p.maps.items()],
-            'mobs': [(key, mob['name'], f"{mob['class_name']} · rang {mob['rank']} · dégâts {mob['damage']} · {mob['loot']}") for key, mob in p.mobs.items()],
+            'mobs': [(key, resolve(p.mobs,key)['name'], f"{resolve(p.mobs,key)['class_name']} · rang {resolve(p.mobs,key)['rank']} · parent {mob.get('parent') or 'aucun'}") for key, mob in p.mobs.items()],
             'quests': [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q['reward_xp']} XP") for q in p.content['quests']],
             'achievements': [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} → {a['title']}") for a in p.content['achievements']],
             'npcs': [(f'{key}:{index}', site['name'], f"{key} · {site['id']} · case {site['position']}") for key, data in p.maps.items() for index, site in enumerate(data.get('sites', []))],
@@ -231,7 +227,11 @@ class Controller:
                 table.insert('', 'end', iid=key, text=key, values=(name, details))
 
     def label(self, key):
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)'}.get(key, key)
+        if key.endswith('_base'):
+            return key[:-5]+' · valeur au niveau 1'
+        if key.endswith('_growth') and key != 'damage_growth':
+            return key[:-7]+' · croissance par niveau'
+        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -242,9 +242,11 @@ class Controller:
         for row, (key, value) in enumerate(values.items()):
             labels[key] = self.ttk.Label(window, text=self.label(key))
             labels[key].grid(row=row, column=0, padx=8, pady=5, sticky='w')
+            if type(value) is bool:
+                choices[key] = ['Oui','Non']
             widget = self.ttk.Combobox(window, values=choices[key], state='readonly', width=55) if key in choices else self.ttk.Entry(window, width=58)
             if key in choices:
-                widget.set(value)
+                widget.set('Oui' if value is True else 'Non' if value is False else value)
             else:
                 widget.insert(0, str(value))
             widget.grid(row=row, column=1, padx=8, pady=5)
@@ -268,7 +270,7 @@ class Controller:
         result = []
         def accept():
             try:
-                parsed = {key: float(widget.get()) if key == 'threshold' else int(widget.get()) if type(values[key]) is int else float(widget.get()) if type(values[key]) is float else widget.get() for key, widget in fields.items()}
+                parsed = {key: widget.get() == 'Oui' if type(values[key]) is bool else float(widget.get()) if key == 'threshold' else int(widget.get()) if type(values[key]) is int else float(widget.get()) if type(values[key]) is float else widget.get() for key, widget in fields.items()}
                 if 'condition' in parsed and parsed['condition'] not in ('fast', 'higher', 'level', 'kills'):
                     parsed['threshold'] = 1
                 result.append(parsed)
@@ -298,19 +300,29 @@ class Controller:
                 if values:
                     p.content['world'] = values
             elif section == 'mobs':
-                old = deepcopy(p.mobs[key]) if not new else {'name':'Nouvelle créature', 'class_name':'Goblin', 'rank':'D', 'damage':3, 'loot':{'peau':1}}
-                values = self.form('Espèce', {'id':key or '', **{k:v for k,v in old.items() if k != 'loot'}}, {'class_name':['Goblin','Orc','DragonWhelp'], 'rank':RANKS})
+                from . import forge
+                old = resolve(p.mobs, key) if not new else {'name':'Nouvelle créature','class_name':'Goblin','rank':'D','damage':3,'loot':{'peau':1}}
+                public = {'id':key or '', 'name':old['name'], 'class_name':old['class_name'], 'rank':old['rank'], 'damage':old['damage'], 'damage_growth':float(old.get('damage_growth',.5)), 'xp_class':old.get('xp_class', 'normal' if old['class_name'] == 'Goblin' else 'warrior' if old['class_name'] == 'Orc' else 'elite'), 'xp_multiplier':float(old.get('xp_multiplier',1)), 'parent':p.mobs[key].get('parent','') if not new else ''}
+                values = self.form('Espèce / sous-espèce', public, {'class_name':['Goblin','Orc','DragonWhelp'], 'rank':RANKS, 'xp_class':list(CLASS_XP), 'parent':['', *p.mobs]})
                 if not values:
                     return
-                loot = self.edit_loot(old['loot'])
-                if loot is None:
+                stats = self.edit_stats(old)
+                if stats is None:
+                    return
+                drops = self.edit_records('Drops', drop_rules(old, forge.RARE_DROPS), {'item':'peau','chance':1.0,'attempts':1,'min':1,'max':1,'rare':False})
+                if drops is None:
+                    return
+                abilities = self.edit_records('Capacités', old.get('abilities',[]), {'name':'Frappe','type':'damage','level':1,'power':3.0,'growth':0.5,'cooldown':5.0,'cast':0.6,'range':1.5,'duration':2.0,'concentration':True}, {'type':['damage','heal','stun']})
+                if abilities is None:
                     return
                 identifier = values.pop('id')
                 if identifier != key and identifier in p.mobs:
                     raise ValueError('Identifiant déjà utilisé.')
                 if not new and identifier != key:
                     p.rename('mobs', key, identifier)
-                p.mobs[identifier] = {**values, 'loot':loot}
+                if not values['parent']:
+                    values.pop('parent')
+                p.mobs[identifier] = {**values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities}
             elif section in ('quests', 'achievements'):
                 default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre'}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
@@ -367,6 +379,81 @@ class Controller:
             self.status.set('Identifiant renommé, références mises à jour. Enregistrez puis redémarrez le serveur.')
         except (ValueError, KeyError) as exc:
             self.messagebox.showerror('Renommage refusé', str(exc), parent=self.root)
+
+    def subspecies(self):
+        selected = self.tables['mobs'].selection()
+        if not selected:
+            return
+        parent = selected[0]
+        identifier = self.simpledialog.askstring('Sous-espèce', 'Nouvel identifiant', parent=self.root)
+        if not identifier:
+            return
+        before = self.project.state()
+        try:
+            if identifier in self.project.mobs:
+                raise ValueError('Identifiant déjà utilisé.')
+            self.project.mobs[identifier] = {'parent':parent, 'name':resolve(self.project.mobs,parent)['name']+' · sous-espèce'}
+            self.project.validate()
+            self.remember(before)
+            self.refresh()
+            self.tables['mobs'].selection_set(identifier)
+            self.edit('mobs')
+        except ValueError as exc:
+            self.project.maps, self.project.mobs, self.project.content = before
+            self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
+
+    def edit_stats(self, definition):
+        from jeuxRPG._class.character import Character
+        actor = Character.create(definition['class_name'],'controller',definition['name'])
+        bases = {stat:getattr(actor,stat).value for stat in STATS}
+        actor.gain_exp(actor._required_exp_for_next_level()-actor.exp)
+        values = {}
+        for stat in STATS:
+            current = definition.get('stats',{}).get(stat, {'base':bases[stat],'growth':getattr(actor,stat).value-bases[stat]})
+            values[stat+'_base'] = float(current['base'])
+            values[stat+'_growth'] = float(current['growth'])
+        result = self.form('Stats : base + croissance × (niveau − 1)', values)
+        return {stat:{'base':result[stat+'_base'],'growth':result[stat+'_growth']} for stat in STATS} if result else None
+
+    def edit_records(self, title, initial, default, choices=None):
+        window = self.tk.Toplevel(self.root)
+        window.title(title)
+        rows = deepcopy(initial)
+        table = self.ttk.Treeview(window, columns=('details',), show='tree headings', height=12)
+        table.heading('#0', text='Définition')
+        table.heading('details', text='Paramètres')
+        table.column('details', width=650)
+        table.pack(fill='both',expand=True,padx=8,pady=8)
+        def refresh():
+            table.delete(*table.get_children())
+            for index, item in enumerate(rows):
+                table.insert('', 'end', iid=str(index), text=item.get('name',item.get('item','')), values=(str(item),))
+        def edit(new=False):
+            selected = table.selection()
+            if not new and not selected:
+                return
+            index = int(selected[0]) if selected else None
+            value = self.form(title, {**default, **({} if new else rows[index])}, choices)
+            if value:
+                rows.append(value) if new else rows.__setitem__(index,value)
+                refresh()
+        def delete():
+            for index in sorted((int(value) for value in table.selection()), reverse=True):
+                rows.pop(index)
+            refresh()
+        result = []
+        def accept():
+            result.append(rows)
+            window.destroy()
+        bar = self.ttk.Frame(window)
+        bar.pack(fill='x')
+        for label, action in [('Ajouter',lambda:edit(True)),('Modifier',edit),('Supprimer',delete),('Appliquer',accept),('Annuler',window.destroy)]:
+            self.ttk.Button(bar,text=label,command=action).pack(side='left')
+        refresh()
+        window.transient(self.root)
+        window.grab_set()
+        self.root.wait_window(window)
+        return result[0] if result else None
 
     def edit_loot(self, initial):
         window = self.tk.Toplevel(self.root)

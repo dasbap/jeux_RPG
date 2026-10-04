@@ -4,10 +4,14 @@ import os
 from pathlib import Path
 
 from .map_assets import read_catalog
+from .mob_rules import resolve, validate_mobs, drop_rules
 
 source = os.environ.get("RPG_MAPS_FILE")
 catalog_directory = Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None
 MOBS = read_catalog("mobs", catalog_directory) if catalog_directory and (catalog_directory / "mobs.json").is_file() else read_catalog("mobs")
+
+MOBS = validate_mobs(MOBS)
+MOBS = {key:resolve(MOBS,key) for key in MOBS}
 
 
 def zone_of(maps, identifier):
@@ -45,7 +49,7 @@ def spawners(definition):
 def create_mob(maps, identifier, config, index, first=False):
     from jeuxRPG._class.character import Character
     from . import tutorial, world
-    definition = MOBS[config["mob_id"]]
+    definition = resolve(MOBS, config["mob_id"])
     actor = Character.create(definition["class_name"], "tutorial-mob", config.get("name") or f"{definition['name']} {index + 1}")
     base_hp = actor.hp.value
     level = config.get("level") or map_level(maps, identifier)
@@ -53,9 +57,15 @@ def create_mob(maps, identifier, config, index, first=False):
         actor.gain_exp(actor._required_exp_for_next_level() - actor.exp)
     if config["mob_id"] == "goblin":
         actor.hp.value = (world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]) + max(0, actor.hp.value - base_hp)
+    for key, formula in definition.get('stats', {}).items():
+        stat = getattr(actor, key)
+        stat.value = max(1 if key == 'hp' else 0, round(formula['base']+formula['growth']*(level-1)))
+        stat.current_value = stat.value
     actor.hp.current_value = actor.hp.value
-    return {**tutorial.pack(actor), "mob_id": config["mob_id"], "rank": definition["rank"], "attack_damage": definition["damage"] + (level - 1) // 2,
-            "loot": deepcopy(definition.get("loot", {}))}
+    return {**tutorial.pack(actor), "mob_id": config["mob_id"], "rank": definition["rank"], "attack_damage": round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
+            "loot": deepcopy(definition.get("loot", {})), 'drops':drop_rules(definition, tutorial.forge.RARE_DROPS),
+            'abilities':[deepcopy(ability) for ability in definition.get('abilities',[]) if ability['level'] <= level],
+            'xp_multiplier':definition.get('xp_multiplier',1), **({'xp_class':definition['xp_class']} if 'xp_class' in definition else {})}
 
 
 def sync_overlap(maps, identifier):
@@ -82,8 +92,11 @@ def sync_overlap(maps, identifier):
 @lru_cache(maxsize=32)
 def species_details(identifier):
     from jeuxRPG._class.character import Character
-    definition = MOBS[identifier]
+    definition = resolve(MOBS, identifier)
     actor = Character.create(definition["class_name"], "bestiary", definition["name"])
+    for key, formula in definition.get('stats', {}).items():
+        getattr(actor,key).value = formula['base']
+        getattr(actor,key).current_value = formula['base']
     advantages = actor.class_table["advantage"]
     return {"hp": actor.hp.value, "stats": {key: getattr(actor, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
             "weaknesses": [value.name for value in advantages["weakness"]], "resistances": [value.name for value in advantages["resilience"]]}
