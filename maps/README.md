@@ -34,8 +34,6 @@ Les champs `world_origin` et `overlap_columns` décrivent le raccord. Modifier u
 
 L’eau bloque les déplacements mais laisse passer la vue ; les ponts sont praticables. Les arbres et les rochers bloquent déplacement et vue.
 
-[Vue d’ensemble des trois secteurs](../docs/STARTING_MAPS.svg)
-
 [Guide complet du builder](../docs/BUILDER_GUIDE.md)
 
 ## Zones, spawners et fortifications — alpha 0.11.0a5
