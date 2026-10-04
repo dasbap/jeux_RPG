@@ -291,3 +291,20 @@ Les murs et remparts ne sont pas destructibles pour le moment. Les spawners ne p
 Sélectionnez la carte de départ, puis **Créer un secteur relié**. Choisissez un identifiant inédit, une direction (est, ouest, nord, sud) et le nombre de cases partagées (4 par défaut). Le nouveau secteur reprend les dimensions, l’ambiance et la zone du précédent. Le décor du raccord est copié, les coordonnées globales sont calculées et les passages aller-retour sont placés automatiquement aux bords. Les cases de passage et d’arrivée sont dégagées, ainsi qu’un chemin d’accès vers le passage existant. Un passage déjà placé sur cette même case est remplacé.
 
 Peignez ensuite le reste du secteur, renommez-le avec **Propriétés carte**, puis enregistrez. **Synchroniser les raccords** reporte les modifications du décor partagé vers les secteurs voisins. Les PNJ et spawners restent propres à chaque carte. Pour des salles indépendantes comme une grotte, utilisez plutôt l’outil **Téléportation** : aucun chevauchement n’est nécessaire.
+
+## Assembler les cartes comme des blocs
+
+Cliquez sur **Assemblage des cartes**. Une fenêtre affiche toutes les cartes sous forme de blocs avec un aperçu du terrain, leur identifiant et leurs coordonnées globales en cases. Les cartes sans coordonnées sont rangées provisoirement sur une grille ; ce rangement n’est écrit que lorsque vous déplacez ou alignez un bloc.
+
+- **Glisser un bloc** : déplacer sa position globale, avec un pas d’une case. Cela change son placement dans l’assemblage et ses futurs chevauchements, sans modifier ses téléportations existantes.
+- **Molette** : zoomer ou dézoomer ; les barres de défilement permettent de parcourir l’ensemble.
+- **Double clic** : retourner à l’éditeur de terrain sur cette carte.
+- **Coller / espacer** : choisir une carte de référence, une direction et une distance. `0` colle les bords ; une valeur positive sépare les blocs ; une valeur négative les fait se chevaucher. Les deux blocs conservent leur zone respective.
+- **Relier par un passage** : créer un passage sur la carte sélectionnée vers une autre carte, avec coordonnées du passage et de l’arrivée et retour automatique facultatif. Le placement visuel seul ne crée pas de connexion jouable. Les coordonnées sont locales à chaque carte.
+- **Fusionner dans la sélection** : absorber une autre carte de la même zone dans le bloc sélectionné. La fusion est préparée et validée avant confirmation, puis peut être annulée avec **Annuler**. Le bloc absorbé disparaît du catalogue.
+
+Une fusion conserve l’identifiant, le nom, l’ambiance et les propriétés de la carte sélectionnée. Les terrains sont réunis selon leurs coordonnées globales ; dans une partie commune, le terrain de la sélection a priorité. Un espace entre deux blocs devient du sol libre. Les apparitions, patrouilles, PNJ et passages externes sont décalés ; les téléportations entre les deux anciennes cartes sont supprimées. Les arrivées depuis les autres cartes sont recalculées. Les niveaux des spawners sont conservés explicitement.
+
+La fusion est refusée si elle dépasse 128 × 128 cases, si les cartes n’ont pas la même taille de case ou la même zone, si deux spawners ou passages se superposent, si des PNJ ont le même identifiant, ou si la validation détecte un accès bloqué. Les neuf cartes obligatoires du tutoriel peuvent recevoir une fusion mais ne peuvent pas être absorbées et supprimées. Aucun échec de fusion ne modifie les données.
+
+Enregistrez depuis la fenêtre d’assemblage ou l’éditeur principal. Les positions et cartes fusionnées sont stockées dans les JSON. Redémarrez ensuite le serveur ; pour vérifier une fusion, utilisez une nouvelle session de jeu, car les sessions existantes peuvent encore référencer l’ancienne carte.

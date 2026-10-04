@@ -385,3 +385,7 @@ L’interface tactique occupe toute la fenêtre, avec une grande carte centrale,
 Les sorties découvertes sont signalées par un repère ⇥, ramené au bord de la vue si la sortie est hors cadrage. Double-cliquer ce repère lance la marche vers le passage.
 
 Le builder propose **Créer un secteur relié** : direction, chevauchement, décor partagé, rattachement de zone et passages aller-retour automatiques. Les chemins d’accès sont dégagés. Le guide décrit cette création et l’usage des téléportations pour les salles indépendantes.
+
+## Alpha 0.11.0a7 — assemblage graphique des cartes
+
+Le builder propose **Assemblage des cartes** : aperçu des blocs, déplacement sur grille, zoom, collage ou espacement précis, chevauchement, création de passages et fusion de cartes d’une même zone. La fusion recalcule les entités, patrouilles et arrivées externes, retire les passages internes et protège les cartes obligatoires. Les changements sont annulables et enregistrés dans les JSON. Le [guide du builder](docs/BUILDER_GUIDE.md) décrit les règles de fusion et de placement.

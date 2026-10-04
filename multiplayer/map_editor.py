@@ -63,8 +63,8 @@ class MapEditor:
             ttk.Checkbutton(options, text=name, variable=variable, command=self.draw).pack(side="left")
         advanced = ttk.Frame(root, padding=4)
         advanced.pack(fill="x")
-        for label, command in (("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol)):
-            ttk.Button(advanced, text=label, command=command).pack(side="left", padx=3)
+        for index, (label, command) in enumerate((("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("Synchroniser les raccords", self.synchronize), ("Fin patrouille", self.end_patrol))):
+            ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
         body = ttk.Frame(root)
         body.pack(fill="both", expand=True)
         tools = ttk.Frame(body, padding=10)
@@ -387,14 +387,14 @@ class MapEditor:
         for row, (key, value) in enumerate(values.items()):
             if key == "position":
                 continue
-            labels = {"map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            labels = {"anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
             ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
             if key == "bidirectional":
                 variable = tk.BooleanVar(value=bool(value))
                 ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
                 entries[key] = variable
                 continue
-            choices = ["est", "ouest", "nord", "sud"] if key == "direction" else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
+            choices = ["est", "ouest", "nord", "sud"] if key == "direction" else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
             entry = ttk.Combobox(window, values=choices, width=48) if choices is not None else ttk.Entry(window, width=50)
             entry.insert(0, ",".join(map(str, value)) if isinstance(value, list) else str(value) if value is not None else "")
             entry.grid(row=row, column=1, padx=8, pady=5)
@@ -421,6 +421,10 @@ class MapEditor:
         self.refresh_choice()
         self.draw()
         self.properties()
+
+    def assembly(self):
+        from .map_assembly import AssemblyWindow
+        AssemblyWindow(self)
 
     def create_linked(self):
         result = self.form("Créer un secteur relié", {"map_id": "", "direction": "est", "overlap": 4})
