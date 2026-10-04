@@ -144,3 +144,6 @@ Lors de l’ajout ou de la modification d’une quête, la fenêtre **Prérequis
 Les listes permettent plusieurs sélections par clic. Toutes les conditions sélectionnées sont obligatoires ; une liste vide n’impose aucune condition de ce type. Les succès et quêtes utilisent la progression partagée du groupe. Le PNJ explique les conditions manquantes et le serveur refuse l’acceptation tant qu’elles ne sont pas remplies. Les quêtes déjà acceptées restent actives même si les prérequis sont modifiés.
 
 Le catalogue utilise par exemple `"requirements": {"level": 5, "achievements": ["kills_10"], "quests": ["mira_hunt"]}`. Les références inconnues, les doublons et les dépendances circulaires sont refusés à la sauvegarde. Renommer une quête ou un succès met à jour ses références dans les prérequis. L’absence de `requirements` conserve l’accès sans condition des anciens catalogues. Sauvegardez puis redémarrez le serveur.
+
+
+Les probabilités de drop acceptent un point ou une virgule : `0.8` et `0,8` valent 80 %, même lorsque la valeur précédente était `1` ou `0`. Les nombres de tirages et les quantités d’objets restent entiers.

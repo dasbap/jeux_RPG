@@ -16,6 +16,19 @@ RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
 from .mob_rules import validate_mobs, resolve, CLASS_XP, drop_rules, STATS
 
 
+DECIMAL_FIELDS = {'chance','threshold','xp_multiplier','damage_growth','power','growth','cooldown','cast','range','duration','repop_seconds','xp_base','xp_exponent','merchant_stay_hours'}
+
+
+def parse_field(key, value, initial):
+    if type(initial) is bool:
+        return value == 'Oui'
+    if key in DECIMAL_FIELDS or key.endswith(('_base','_growth')) or type(initial) is float:
+        return float(value.strip().replace(',','.'))
+    if type(initial) is int:
+        return int(value)
+    return value
+
+
 class Project:
     def __init__(self, directory):
         self.directory = Path(directory).resolve()
@@ -275,7 +288,7 @@ class Controller:
         result = []
         def accept():
             try:
-                parsed = {key: widget.get() == 'Oui' if type(values[key]) is bool else float(widget.get()) if key == 'threshold' else int(widget.get()) if type(values[key]) is int else float(widget.get()) if type(values[key]) is float else widget.get() for key, widget in fields.items()}
+                parsed = {key: parse_field(key, widget.get(), values[key]) for key, widget in fields.items()}
                 if 'condition' in parsed and parsed['condition'] not in ('fast', 'higher', 'level', 'kills'):
                     parsed['threshold'] = 1
                 result.append(parsed)

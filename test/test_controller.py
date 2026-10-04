@@ -237,3 +237,19 @@ def test_installed_game_starts_with_renamed_tutorial_quest(tmp_path):
     code = 'from jeuxRPG.multiplayer import content, tutorial; assert content.HUNT["id"] == "mira_hunt_2"; party = tutorial.new_party([{"id":"p","name":"Test","class_name":"Knight"}]); assert content.quest_dialogue(party, "mira") == []; assert content.quest_journal(party) == []'
     result = subprocess.run([sys.executable, '-c', code], env={**os.environ, 'RPG_MAPS_FILE':str(p.directory)}, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize('initial', [0,1,0.1])
+@pytest.mark.parametrize('entered', ['0.8','0,8'])
+def test_drop_probability_accepts_decimals_independently_of_previous_value(initial,entered):
+    probability = controller.parse_field('chance',entered,initial)
+    assert probability == .8
+    mobs = deepcopy(map_building.MOBS)
+    mobs['goblin']['drops'] = [{'item':'peau','chance':probability,'attempts':1,'min':1,'max':1,'rare':False}]
+    assert controller.validate_mobs(mobs)['goblin']['drops'][0]['chance'] == .8
+
+
+@pytest.mark.parametrize('field', ['attempts','min','max'])
+def test_drop_quantities_and_attempts_remain_integer(field):
+    with pytest.raises(ValueError):
+        controller.parse_field(field,'0.8',1)
