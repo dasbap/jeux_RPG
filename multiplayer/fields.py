@@ -84,6 +84,8 @@ def enter(party, identifier, entry, now, pursuers=()):
     if identifier == "rosee" and party["step"] == "road":
         party["step"] = "village"
     party["visited"] = sorted(set(party.get("visited", [])) | {world.zone_of(identifier)})
+    from . import achievements
+    achievements.record(party)
     saved = party.setdefault("fields", {}).pop(identifier, None)
     party["encounter_number"] = party.get("encounter_number", 0) + 1
     party["training"] = False
@@ -305,7 +307,7 @@ def repop(party, identifier, now, pursuers=()):
             "patrol_route": deepcopy(config.get("patrol")) or [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], "patrol_index": 0})
         count += 1
     if count:
-        party["battle"].update(initial_mobs=len(party["mobs"]), awarded=False, started_at=now, combat_step=party["step"],
+        party["battle"].update(initial_mobs=len(party["mobs"]), awarded=False, started_at=now, combat_step=party["step"], defeated_targets=[], enemy_alerted=False, damage_received=False,
                               higher_level=any(mob["level"] > max(c["level"] for c in party["characters"].values()) for mob in party["mobs"]))
 
 

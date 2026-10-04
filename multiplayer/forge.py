@@ -99,6 +99,8 @@ def execute(party, player, action, recipe, error):
     party["characters"][player] = pack(actor)
     from . import content, world
     if action == "craft":
+        from . import achievements
+        achievements.event(party, "craft", recipe)
         content.quest_event(party, "craft", recipe, world.zone_of(party["position"]))
     previous_step = party["step"]
     if party["step"] == "craft" and all("torso" in party["equipment"].get(key, {}) for key in party["characters"]):

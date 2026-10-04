@@ -327,6 +327,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             messages.append(f"Mira : {content.HUNT['description']} · {content.HUNT['count']} gobelin(s).")
         elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
             party.update(step="craft", quest="completed")
+            achievements.event(party, "quests", content.HUNT["id"])
             for key, character in characters.items():
                 if content.HUNT["reward_xp"]:
                     character.gain_exp(content.HUNT["reward_xp"])

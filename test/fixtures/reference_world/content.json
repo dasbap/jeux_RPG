@@ -1,0 +1,120 @@
+{
+  "kind": "content",
+  "maps": {},
+  "content": {
+    "world": {
+      "repop_seconds": 180,
+      "mob_xp": 50,
+      "xp_base": 500,
+      "xp_exponent": 1.8,
+      "merchant_stay_hours": 8,
+      "player_vision": 12
+    },
+    "quests": [
+      {
+        "id": "mira_hunt",
+        "name": "Protéger la lisière",
+        "npc": "mira",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "lisiere",
+        "count": 3,
+        "reward_xp": 300,
+        "description": "Battez les gobelins puis rapportez la nouvelle à Mira."
+      }
+    ],
+    "achievements": [
+      {
+        "id": "silent",
+        "name": "Victoire sans alerter d’ennemi",
+        "condition": "silent",
+        "threshold": 1,
+        "title": "Ombre silencieuse"
+      },
+      {
+        "id": "untouched",
+        "name": "Victoire sans dégâts au groupe ni aux invocations",
+        "condition": "untouched",
+        "threshold": 1,
+        "title": "Intouchable"
+      },
+      {
+        "id": "fast",
+        "name": "Victoire en 30 secondes réelles maximum",
+        "condition": "fast",
+        "threshold": 30,
+        "title": "Éclair de la lisière"
+      },
+      {
+        "id": "higher",
+        "name": "Seul contre un ennemi de niveau supérieur",
+        "condition": "higher",
+        "threshold": 1,
+        "title": "Briseur de limites"
+      },
+      {
+        "id": "superiority",
+        "name": "Victoire en supériorité numérique",
+        "condition": "superiority",
+        "threshold": 1,
+        "title": "Force du nombre"
+      },
+      {
+        "id": "inferiority",
+        "name": "Victoire en infériorité numérique",
+        "condition": "inferiority",
+        "threshold": 1,
+        "title": "Contre toute attente"
+      },
+      {
+        "id": "level_5",
+        "name": "Atteindre le niveau 5",
+        "condition": "level",
+        "threshold": 5,
+        "title": "Aventurier confirmé"
+      },
+      {
+        "id": "level_10",
+        "name": "Atteindre le niveau 10",
+        "condition": "level",
+        "threshold": 10,
+        "title": "Vétéran"
+      },
+      {
+        "id": "level_20",
+        "name": "Atteindre le niveau 20",
+        "condition": "level",
+        "threshold": 20,
+        "title": "Légende vivante"
+      },
+      {
+        "id": "kills_1",
+        "name": "Vaincre 1 créatures",
+        "condition": "kills",
+        "threshold": 1,
+        "title": "Première victoire"
+      },
+      {
+        "id": "kills_10",
+        "name": "Vaincre 10 créatures",
+        "condition": "kills",
+        "threshold": 10,
+        "title": "Chasseur"
+      },
+      {
+        "id": "kills_50",
+        "name": "Vaincre 50 créatures",
+        "condition": "kills",
+        "threshold": 50,
+        "title": "Fléau des gobelins"
+      },
+      {
+        "id": "kills_100",
+        "name": "Vaincre 100 créatures",
+        "condition": "kills",
+        "threshold": 100,
+        "title": "Gardien des chemins"
+      }
+    ]
+  }
+}

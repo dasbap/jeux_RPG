@@ -23,6 +23,7 @@ def resolve(mobs, identifier, visited=None):
     parent = item.get('parent')
     if parent:
         base = resolve(mobs, parent, visited)
+        base.pop('previous_ids',None)
         stats = {**base.get('stats', {}), **item.get('stats', {})}
         item = {**base, **item, 'stats':stats}
     return item
@@ -32,6 +33,12 @@ def validate_mobs(mobs,classes=None):
     classes = CLASSES if classes is None else classes
     if not isinstance(mobs, dict) or not 1 <= len(mobs) <= 200 or 'goblin' not in mobs:
         raise ValueError('De 1 à 200 espèces requises, dont goblin.')
+    owners = set(mobs)
+    for raw in mobs.values():
+        history = raw.get('previous_ids',[]) if isinstance(raw,dict) else []
+        if not isinstance(history,list) or len(history) > 100 or any(not isinstance(key,str) or not re.fullmatch(r'[a-z0-9_]{1,64}',key) or key in owners for key in history) or len(set(history)) != len(history):
+            raise ValueError('Historique d’espèce invalide ou identifiant réservé.')
+        owners.update(history)
     for identifier, raw in mobs.items():
         if not isinstance(identifier, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', identifier) or not isinstance(raw, dict):
             raise ValueError('Identifiant d’espèce invalide.')
@@ -83,9 +90,9 @@ def level_factor(mob_level, player_level):
     return 4 ** (max(-10, min(10, mob_level-player_level))/10)
 
 
-def experience(mob, player_level, base):
+def experience(mob, player_level, base, models=None):
     classification = mob.get('xp_class')
-    model = next((item for item in MODELS['classes'] if item['id'] == mob.get('class_name') or mob.get('class_name') in item.get('previous_ids',[])),{})
+    model = next((item for item in (models or MODELS)['classes'] if item['id'] == mob.get('class_name') or mob.get('class_name') in item.get('previous_ids',[])),{})
     class_factor = CLASS_XP.get(classification,model.get('combat',{}).get('xp_factor',1))
     level = max(1, mob.get('level',1))
     return max(0, round(base*level*class_factor*mob.get('xp_multiplier',1)*level_factor(level,player_level)))

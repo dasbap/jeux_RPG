@@ -55,10 +55,10 @@ def create_mob(maps, identifier, config, index, first=False):
     available = library(DATA,MOBS)
     abilities = [mob_ability(available[item['skill_id']],item) if 'skill_id' in item else deepcopy(item) for item in definition.get('abilities',[])]
     actor = Character.create(definition["class_name"], "tutorial-mob", config.get("name") or f"{definition['name']} {index + 1}")
-    from .skill_catalog import builtins
+    from .mob_abilities import native_skill
     for ability in abilities:
         if ability.get('native'):
-            skill = builtins()[ability['native']]
+            skill = native_skill(ability)
             if not any(isinstance(energy,skill.energie_target) for energy in actor.energie):
                 actor.add_energie(skill.energie_target(max(30,skill.energie_cost),.3))
     base_hp = actor.hp.value

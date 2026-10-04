@@ -49,6 +49,9 @@ class GameService:
         from .skill_catalog import install
         from .content import DATA
         from .map_building import MOBS
+        from .content import validate_references
+        from .fields import MAPS
+        validate_references(DATA, MOBS, MAPS)
         extra_classes = install(DATA,MOBS)
         self.classes = (*playable(DATA.get('templates')), *extra_classes)
         self._tick_errors = {}

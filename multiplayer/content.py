@@ -20,7 +20,7 @@ DEFAULTS = {
         *[{'id': f'kills_{count}', 'name': f'Vaincre {count} créatures', 'condition': 'kills', 'threshold': count, 'title': title} for count, title in [(1, 'Première victoire'), (10, 'Chasseur'), (50, 'Fléau des gobelins'), (100, 'Gardien des chemins')]],
     ],
 }
-CONDITIONS = ('silent', 'untouched', 'fast', 'higher', 'superiority', 'inferiority', 'level', 'kills')
+CONDITIONS = ('silent', 'untouched', 'fast', 'higher', 'superiority', 'inferiority', 'level', 'kills', 'victories', 'craft', 'quests', 'discover')
 
 
 def number(value, minimum, maximum):
@@ -65,6 +65,16 @@ def validate_content(data):
                     raise ValueError('Objectif ou récompense de quête invalide.')
             elif item.get('condition') not in CONDITIONS or not number(item.get('threshold'), .01, 100000):
                 raise ValueError('Condition de succès invalide.')
+            if section == 'achievements':
+                for key in ('target', 'zone', 'map'):
+                    if not isinstance(item.get(key, ''), str) or item.get(key) and not re.fullmatch(r'[a-z0-9_]{1,64}', item[key]):
+                        raise ValueError('Cible ou lieu de succès invalide.')
+                if item['condition'] != 'fast' and type(item['threshold']) is not int:
+                    raise ValueError('Le seuil de ce succès doit être entier.')
+                if item['condition'] == 'level' and (item['threshold'] > 100 or any(item.get(key) for key in ('target', 'zone', 'map'))):
+                    raise ValueError('Succès de niveau : seuil 1–100, sans cible ni lieu.')
+                if item['condition'] == 'discover' and item.get('target'):
+                    raise ValueError('Une découverte utilise une zone ou une carte, pas une cible.')
     for section in ('quests', 'achievements'):
         owners = {}
         for item in data[section]:
@@ -158,7 +168,7 @@ def quest_event(party, kind, target, zone=None):
     states = quest_states(party)
     for quest in DATA['quests']:
         state = states.get(quest['id'])
-        if not is_hunt(quest) and state and state['status'] == 'active' and quest['kind'] == kind and quest['target'] == target and (not quest.get('zone') or quest['zone'] == zone):
+        if not is_hunt(quest) and state and state['status'] == 'active' and quest['kind'] == kind and quest['target'] == target and (not quest.get('zone') or quest['zone'] in (zone,party.get('field_map'),party.get('position'))) and (not quest.get('map') or quest['map'] == (party.get('field_map') or party.get('position'))):
             state['progress'] = min(quest['count'], state['progress']+1)
 
 
@@ -170,14 +180,10 @@ def missing_requirements(party, quest):
     below = [character['name'] for character in party['characters'].values() if character['level'] < level]
     if below:
         missing.append(f"niveau {level} requis pour : {', '.join(below)}")
-    stats = achievements.record(party)
     definitions = {item['id']:item for item in DATA['achievements']}
     for identifier in requirements.get('achievements',[]):
         definition = definitions[identifier]
-        condition = definition['condition']
-        value = stats['max_level'] if condition == 'level' else stats['kills'] if condition == 'kills' else None
-        unlocked = value >= definition['threshold'] if value is not None else definition['title'] in stats['titles']
-        if not unlocked:
+        if not achievements.unlocked(party, definition):
             missing.append('succès requis : '+definition['name'])
     states = quest_states(party)
     definitions = {item['id']:item for item in DATA['quests']}
@@ -206,6 +212,8 @@ def quest_dialogue(party, npc):
             messages.append(f"Quête acceptée : {quest['name']} · {quest['description']}")
         elif state['status'] == 'active' and state['progress'] >= quest['count']:
             state['status'] = 'completed'
+            from . import achievements
+            achievements.event(party, 'quests', quest['id'])
             for key, data in party['characters'].items():
                 actor = unpack(data)
                 if quest['reward_xp']:
@@ -220,3 +228,32 @@ def quest_dialogue(party, npc):
 def quest_journal(party):
     quest_states(party)
     return [{**deepcopy(quest), **party.get('custom_quests', {}).get(quest['id'], {'status': 'available', 'progress': 0})} for quest in DATA['quests'] if not is_hunt(quest) and quest['id'] in party.get('custom_quests', {})]
+
+
+def validate_references(data, mobs, maps):
+    from .forge import RECIPES
+    from .map_building import zone_of
+    zones = {zone_of(maps, identifier) for identifier in maps}
+    for definition in [*data['quests'], *data['achievements']]:
+        if definition.get('zone') and definition['zone'] not in (maps if 'kind' in definition else zones):
+            raise ValueError(definition['name'] + ' : zone de rattachement introuvable.')
+        if definition.get('map') and definition['map'] not in maps:
+            raise ValueError(definition['name'] + ' : carte introuvable.')
+        if definition.get('zone') and definition.get('map') and zone_of(maps, definition['map']) != definition['zone'] and definition['map'] != definition['zone']:
+            raise ValueError(definition['name'] + ' : la carte ne fait pas partie de la zone choisie.')
+    npcs = {site['id'] for value in maps.values() for site in value.get('sites', [])}
+    for quest in data['quests']:
+        if quest['npc'] not in npcs or quest['target'] not in (mobs if quest['kind'] == 'kill' else RECIPES):
+            raise ValueError(quest['name'] + ' : PNJ ou objectif de quête introuvable.')
+    quests = {item['id'] for item in data['quests']}
+    for definition in data['achievements']:
+        target = definition.get('target')
+        condition = definition['condition']
+        known = RECIPES if condition == 'craft' else quests if condition == 'quests' else mobs
+        if target and target not in known:
+            raise ValueError(definition['name'] + ' : cible de succès introuvable.')
+        if condition == 'discover' and definition.get('zone') and definition.get('map'):
+            raise ValueError(definition['name'] + ' : choisissez une zone ou une carte pour la découverte.')
+        if (condition == 'quests' and target or condition == 'discover' and (definition.get('map') or definition.get('zone'))) and definition['threshold'] > 1:
+            raise ValueError(definition['name'] + ' : cet objectif unique ne peut avoir un seuil supérieur à 1.')
+    return True

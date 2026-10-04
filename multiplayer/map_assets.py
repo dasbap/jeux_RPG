@@ -13,6 +13,12 @@ def validate(maps):
     if not {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "brume"} <= maps.keys():
         raise ValueError("Les cartes du tutoriel doivent être conservées.")
     maps = deepcopy(maps)
+    owners = set(maps)
+    for definition in maps.values():
+        history = definition.get('previous_ids',[]) if isinstance(definition,dict) else []
+        if not isinstance(history,list) or len(history) > 100 or any(not isinstance(key,str) or not re.fullmatch(r'[a-z0-9_]{1,64}',key) or key in owners for key in history) or len(set(history)) != len(history):
+            raise ValueError('Historique de carte invalide ou identifiant réservé.')
+        owners.update(history)
     for key, definition in maps.items():
         if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9_]{1,64}", key) or not isinstance(definition, dict):
             raise ValueError("Identifiant de carte invalide.")

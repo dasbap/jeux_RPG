@@ -4,12 +4,17 @@ from copy import deepcopy
 from . import progression
 
 
+def native_skill(ability):
+    from .skill_catalog import builtins
+    from jeuxRPG._class.res.character.class_models import skill_from_data
+    return skill_from_data(ability['skill_data']) if ability.get('skill_data') else deepcopy(builtins()[ability['native']])
+
+
 def self_target(ability):
     if ability['type'] == 'heal':
         return True
     if ability.get('native'):
-        from .skill_catalog import builtins
-        return builtins()[ability['native']].skill_type.name not in ('DAMAGE','DEBUFF')
+        return ability['skill_data']['type'] not in ('DAMAGE','DEBUFF') if ability.get('skill_data') else native_skill(ability).skill_type.name not in ('DAMAGE','DEBUFF')
     return False
 
 
@@ -35,8 +40,7 @@ def advance(party, mob, target, characters, units, preset, now, messages):
         invocations_before = sum(invoc.hp.current_value for invoc in actor.invocations.get_all())
         success = True
         if ability.get('native'):
-            from .skill_catalog import builtins
-            skill = deepcopy(builtins()[ability['native']])
+            skill = native_skill(ability)
             skill.energie_cost = ability['cost']
             skill.current_cooldown = 0
             source.skills[skill.name] = skill
@@ -83,8 +87,7 @@ def advance(party, mob, target, characters, units, preset, now, messages):
                 continue
             key = target
         if ability.get('native'):
-            from .skill_catalog import builtins
-            energy_name = builtins()[ability['native']].energie_target.__name__
+            energy_name = ability['skill_data']['energy'] if ability.get('skill_data') else native_skill(ability).energie_target.__name__
             elapsed = max(0,now-mob.get('energy_at',now))/progression.RATIO
             for energy in mob['energies']:
                 energy['current'] = min(energy['max'],energy['current']+elapsed)

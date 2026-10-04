@@ -25,14 +25,17 @@ Un dossier neuf est initialisé avec les catalogues fournis. Tkinter doit être 
 
 ## Organisation
 
-Le contrôleur est un outil externe au jeu. Il modifie les définitions, pas les sessions des joueurs en direct. La barre supérieure propose **Builder**, **Valider**, **Enregistrer le projet** et **Annuler modification**. Double-cliquer une ligne ouvre son formulaire. Les modifications restent en mémoire jusqu’à l’enregistrement.
+Le contrôleur est un outil externe au jeu. Il modifie les définitions, pas les sessions des joueurs en direct. La barre supérieure propose **Builder**, **Valider**, **Enregistrer le projet**, **Annuler modification** et **Rétablir**. Double-cliquer une ligne ouvre son formulaire. Les modifications restent en mémoire jusqu’à l’enregistrement.
 
 | Onglet | Contrôles |
 | --- | --- |
 | Cartes / zones | Liste des cartes et rattachements ; ouvrir le builder, créer une carte, gérer les zones et raccords dans l’assemblage |
-| Quêtes | Nom, description, PNJ donneur, élimination ou fabrication, cible, zone facultative, quantité et récompense XP |
+| Quêtes | Nom, description, PNJ donneur, élimination ou fabrication, cible, zone/carte facultatives, quantité et récompense XP |
 | Mobs | Identifiant, nom, classe de base, rang, dégâts et tableau des matériaux donnés |
-| Succès et titres | Nom, condition, seuil lorsqu’il est utilisé et titre obtenu |
+| Succès et titres | Condition, cible facultative, zone et carte facultatives, seuil et titre |
+| Classes / modèles | Classes jouables, modèles de créatures et invocations : stats, énergies, paliers, affinités et profil de combat |
+| Compétences simples | Dégâts, soin et stun réutilisables |
+| Compétences moteur | Effets multiples, invocations, buffs, coûts, scaling, portée et incantation |
 | PNJ | Carte, nom, identifiant, dialogue, joueur lié facultatif et placement par clic |
 | Monde | Délai de repop, XP des mobs, courbe d’XP, durée de séjour du marchand et vision des joueurs |
 
@@ -42,7 +45,7 @@ Les cartes fixes, les rencontres, les collisions, les rues et les durées des tr
 
 Sélectionner une carte dans **Cartes / zones**, puis **Éditer la carte dans le builder**. Tous les outils existants sont disponibles, notamment **Assemblage des cartes**, **Aperçu rendu final** et **Trajets / rues**. Le builder utilise les espèces créées dans l’onglet Mobs même avant leur enregistrement.
 
-Enregistrer depuis le builder valide et enregistre les trois catalogues du projet. En fermant le builder avec des modifications non enregistrées, choisir de les garder dans le contrôleur ou de les abandonner. Annuler depuis le contrôleur restaure aussi les modifications récupérées du builder.
+Enregistrer depuis le builder valide et enregistre les quatre catalogues du projet. En fermant le builder avec des modifications non enregistrées, choisir de les garder dans le contrôleur ou de les abandonner. Annuler depuis le contrôleur restaure aussi les modifications récupérées du builder.
 
 Le bouton Supprimer d’une carte ouvre le builder : utiliser son outil **Supprimer carte**, qui protège les cartes du tutoriel et leurs références.
 
@@ -50,7 +53,7 @@ Le bouton Supprimer d’une carte ouvre le builder : utiliser son outil **Suppri
 
 Créer d’abord le PNJ donneur, puis ajouter la quête. Les objectifs disponibles sont :
 
-- `kill` : vaincre une espèce, dans une zone donnée ou partout si la zone est vide.
+- `kill` : vaincre une espèce, dans une zone donnée ou partout si la zone est vide. Le champ Carte restreint à un secteur précis. Les anciens objectifs utilisant un ID de secteur dans Zone restent reconnus.
 - `craft` : fabriquer une recette de forge existante. Une amélioration ne compte pas comme une fabrication.
 
 La quête est acceptée en parlant au PNJ, à proximité, hors menace ennemie, sur la carte de terrain. Le compteur démarre à l’acceptation. Les membres du groupe partagent la progression. Revenir parler au PNJ une fois l’objectif rempli accorde l’XP à chaque joueur, une seule fois. Le journal affiche les quêtes acceptées, leur avancement et leur état.
@@ -61,26 +64,39 @@ Les objectifs ne déclenchent pas de scripts libres, de nouvelles étapes de tut
 
 ## Espèces et matériaux
 
-Les classes de base disponibles sont Goblin, Orc et DragonWhelp. Une nouvelle espèce réutilise une de ces classes pour ses statistiques et compétences héritées ; elle peut avoir un nom, un rang, des dégâts et des matériaux différents. Le niveau et le nombre apparaissant ensemble se règlent par spawner dans le builder.
+Les modèles de base proviennent de **Classes / modèles**. Une espèce peut utiliser tout modèle non invocation, y compris un modèle personnalisé. Les caractéristiques héritées peuvent être remplacées par des formules de base et de croissance. Une espèce dispose de son nom, rang, dégâts, multiplicateur XP, matériaux et capacités. Le niveau et le nombre apparaissant ensemble se règlent par spawner dans le builder.
 
-Dans le tableau du butin, ajouter/modifier une ligne ou la retirer, puis cliquer **Appliquer**. Les matériaux sont récupérés en dépeçant le corps. Les probabilités des matériaux rares et les recettes d’équipement conservent leurs règles actuelles ; cet écran édite les matériaux garantis.
+Dans **Drops**, configurer pour chaque matériau la probabilité, les tirages indépendants, la quantité minimale/maximale et la rareté. Les décimales acceptent un point ou une virgule. Les matériaux sont récupérés en dépeçant le corps. **Aperçu / références** calcule la probabilité d’au moins un drop, la quantité moyenne et l’XP selon les deux niveaux sélectionnés.
 
 Une espèce utilisée par un spawner ou une quête ne peut pas être supprimée. Le gobelin de référence est protégé. Renommer une espèce personnalisée met automatiquement à jour les spawners et les cibles de quêtes.
 
 ## Succès et titres
 
-| Condition | Déclencheur / seuil |
-| --- | --- |
-| silent | Victoire sans alerte ennemie |
-| untouched | Victoire sans dégâts au groupe ni aux invocations |
-| fast | Victoire en au plus X secondes réelles |
-| higher | Duel gagné contre un ennemi supérieur d’au moins X niveaux |
-| superiority | Victoire avec plus de joueurs que d’ennemis au début |
-| inferiority | Victoire avec moins de joueurs que d’ennemis au début |
-| level | Niveau maximal atteint au moins X |
-| kills | Au moins X créatures vaincues |
+Les succès appartiennent à l’aventure du groupe. Les filtres vides signifient toutes les cibles et tous les lieux. Les filtres renseignés se combinent avec **ET** : une créature d’une autre espèce ou tuée ailleurs ne compte pas. La cible désigne une espèce exacte ; une sous-espèce peut être sélectionnée séparément. La zone inclut ses cartes rattachées ; la carte désigne un secteur précis. Le contrôleur refuse une carte qui n’appartient pas à la zone choisie.
 
-Le champ Seuil est masqué pour les conditions qui n’en utilisent pas. Les découvertes de zones gardent leurs succès automatiques. Les combats d’entraînement ne décernent pas de succès de victoire.
+Exemple : **Ajouter** → identifiant `gobelins_666` → condition `kills` → seuil `666` → cible `goblin` → zone `lisiere` → carte `hunt` (facultative) → titre `Fléau du campement`. Sans cible, toutes les créatures du lieu comptent. Sans lieu, tous les gobelins de l’aventure comptent.
+
+| Condition | Seuil | Cible / lieu |
+| --- | --- | --- |
+| `kills` | Nombre de créatures éliminées | Espèce facultative, zone et/ou carte |
+| `silent` | Nombre de victoires sans alerte | Espèce présente parmi les victimes, zone et/ou carte |
+| `untouched` | Nombre de victoires sans dégâts au groupe ni aux invocations | Mêmes filtres |
+| `victories` | Nombre de victoires complètes | Mêmes filtres |
+| `superiority` / `inferiority` | Nombre de victoires avec avantage / désavantage numérique initial | Mêmes filtres |
+| `fast` | Temps maximal d’une victoire en secondes réelles, décimales autorisées | Mêmes filtres |
+| `higher` | Différence minimale de niveaux pour un duel gagné | Mêmes filtres |
+| `level` | Niveau maximal atteint, 1–100 | Aucun filtre |
+| `craft` | Nombre de fabrications, hors améliorations | Recette facultative, zone et/ou carte |
+| `quests` | Nombre de quêtes distinctes terminées | Quête facultative, lieu où elle a été rendue |
+| `discover` | Nombre de zones distinctes découvertes | Sans filtre pour plusieurs zones ; zone ou carte précise avec seuil 1 |
+
+Une victoire exige la fin réelle du combat, sans ennemis ni arrivées en attente. Les conditions sans alerte et sans dégâts portent sur tout le combat, même si une cible est précisée. Les entraînements ne comptent pas. Les découvertes automatiques de zones restent disponibles.
+
+Les succès acquis sont conservés par identifiant ; modifier le titre ne retire pas l’accomplissement. Deux succès peuvent partager un titre sans se débloquer mutuellement. Renommer conserve l’ancien identifiant. Pour remplacer un objectif acquis par un objectif différent, créer un nouveau succès plutôt que réutiliser son identifiant.
+
+Les anciens totaux de kills restent disponibles. Les anciennes sessions ne contiennent pas l’espèce et le lieu des kills historiques : les nouveaux compteurs filtrés démarrent avec cette mise à jour. Les quêtes déjà terminées restent reconnues sans filtre de lieu ; leur lieu historique n’est pas inventé.
+
+Les cibles inconnues et suppressions laissant une référence sont refusées avant écriture. Renommer un mob, une quête ou une carte met à jour les succès concernés et conserve les compteurs déjà enregistrés sous ses anciens identifiants. Un objectif portant sur une seule quête ou un seul lieu de découverte utilise un seuil de 1.
 
 ## PNJ
 
@@ -92,7 +108,7 @@ Supprimer un PNJ requis par une quête est refusé. Renommer son identifiant met
 
 La progression utilise `base × niveau^exposant`. Le repop s’applique après le délai d’absence de joueurs, en secondes de jeu. Le marchand séjourne le nombre d’heures configuré dans chaque village. La vision est en cases. Le ratio reste 1:3 et la marche à 6 km/h.
 
-L’enregistrement valide les références avant d’écrire `world.json`, `mobs.json` et `content.json`. Chaque fichier est remplacé atomiquement ; une erreur d’écriture détectée restaure les fichiers déjà remplacés. Cela ne constitue pas une transaction garantie face à une coupure du processus ou du système pendant les remplacements.
+L’enregistrement valide les références avant d’écrire `world.json`, `mobs.json`, `content.json` et `classes.json`. Chaque fichier est remplacé atomiquement ; une erreur d’écriture détectée restaure les fichiers déjà remplacés. Cela ne constitue pas une transaction garantie face à une coupure du processus ou du système pendant les remplacements.
 
 Pour utiliser un projet séparé dans le jeu :
 
@@ -101,7 +117,7 @@ $env:RPG_MAPS_FILE = 'D:\RPG\mon_monde\maps'
 python main.py
 ```
 
-Le jeu lit `content.json` et `mobs.json` dans ce dossier. On peut sélectionner le contenu séparément avec `RPG_CONTENT_FILE`. Redémarrer le serveur après l’enregistrement. Tester les changements d’objectifs, de titres ou de cartes fusionnées avec de nouvelles sessions ; les anciennes sessions conservent leur progression.
+Le jeu lit `content.json`, `mobs.json` et `classes.json` dans ce dossier. On peut sélectionner le contenu séparément avec `RPG_CONTENT_FILE`. Redémarrer le serveur après l’enregistrement. Tester les changements d’objectifs, de titres ou de cartes fusionnées avec de nouvelles sessions ; les anciennes sessions conservent leur progression.
 
 ## Renommer les identifiants — alpha 0.11.0a13
 
@@ -155,7 +171,7 @@ L’onglet **Compétences** permet de créer et modifier des capacités réutili
 
 Dans **Mobs → Modifier → Capacités**, utilisez **Réutiliser une compétence**, sélectionnez la source puis définissez le niveau de déblocage et la portée. Les attaques humaines natives conservent leurs effets et leur coût d’énergie ; le mob reçoit l’énergie requise et la régénère. Les invocations et résurrections natives sont actuellement proposées aux classes humaines uniquement : l’IA des mobs ne gère pas ces cibles et propriétaires spécifiques. Les capacités directement créées dans le contrôleur restent disponibles comme auparavant.
 
-Dans **Classes humaines**, **Ajouter** copie une définition existante. Cette copie devient une classe indépendante : elle ne dépend plus d’une sous-classe Python ou d’un modèle imposé à l’exécution.
+Dans **Classes / modèles**, **Ajouter** copie une définition existante. Cette copie devient une classe indépendante : elle ne dépend plus d’une sous-classe Python ou d’un modèle imposé à l’exécution.
 
 1. Définissez l’identifiant, le nom, le type et les statistiques initiales.
 2. Réglez les énergies, leur capacité et leur régénération.
@@ -170,3 +186,27 @@ Une énergie requise par une compétence et absente de la progression est ajout�
 Après sauvegarde et redémarrage du serveur, les classes jouables apparaissent dans la sélection de personnage du navigateur. Les définitions universelles, compétences intégrées et progressions sont stockées dans `maps/classes.json`. Les quêtes, PNJ et compétences partagées du contrôleur restent dans `maps/content.json`. Le renommage d’une classe conserve ses anciens identifiants et met à jour les références aux mobs et invocations. Ne supprimez pas une classe utilisée par des sauvegardes.
 
 Les anciens imports Python (`Knight`, `Mage`, etc.) restent des alias de compatibilité ; ils ne contiennent plus de statistiques, compétences ou progression spécifiques. Le moteur générique construit les personnages depuis le catalogue. Le format détaillé est décrit dans [CLASS_FORMAT.md](CLASS_FORMAT.md).
+
+## Rechercher, dupliquer, vérifier
+
+Chaque onglet propose une recherche par mots sur identifiant, nom et détails, insensible à la casse. Tous les mots doivent correspondre. Le tableau conserve la sélection lorsque la ligne reste visible. Les barres de défilement facilitent les grands catalogues.
+
+**Dupliquer** crée une définition indépendante dans Quêtes, Succès, Mobs, Classes et Compétences. Les alias historiques et le rôle du tutoriel ne sont pas copiés. Les cartes se copient dans le builder ; les PNJ se placent depuis leur éditeur. **Annuler modification** et **Rétablir** gèrent jusqu’à 30 états ; une nouvelle modification supprime la branche de rétablissement.
+
+**Aperçu / références** affiche la définition et les chemins des éléments qui l’utilisent. Pour une classe, sélectionner le niveau pour voir stats, énergies, attaque et compétences. Pour un mob, sélectionner son niveau et celui du joueur pour vérifier stats héritées/remplacées, dégâts, XP et probabilités de drop. Le premier gobelin du tutoriel conserve son réglage de PV particulier ; l’aperçu gobelin utilise les PV habituels de chasse.
+
+**Valider** présente un diagnostic par module : contenu/classes, espèces/drops, compétences, cartes/placements et références des succès. Il peut afficher plusieurs erreurs de catégories différentes et des avertissements non bloquants, par exemple un drop à 0 %. Le diagnostic ne modifie pas les catalogues. L’enregistrement applique également la validation.
+
+## Modifier une compétence moteur
+
+L’onglet **Compétences moteur** édite les définitions de `classes.json`. **Ajouter** copie une compétence et demande une référence `ability:mon_identifiant`. **Dupliquer** crée également une copie indépendante. Les compétences simples restent dans leur onglet dédié.
+
+Les propriétés règlent type, énergie, coût de base, cooldown, ciblage, type de dégâts et portée. Portée `−1` conserve le calcul automatique ; `0` impose une cible personnelle. Le formulaire d’incantation règle `seconds` et `concentration`. Le formulaire de balance règle le coût fixe (`−1` = absent), les coefficients de coût/effets/stats et le saignement.
+
+Chaque effet possède une clé unique (`damage`, `heal`, etc.), une valeur (`−1` = aucune valeur), une durée en unités du moteur, une statistique visée, une altération et éventuellement un modèle/palier d’invocation. Les types et paliers inconnus sont refusés. Utiliser une compétence existante comme point de départ préserve les effets attendus par son type. Les handlers restent limités aux gestionnaires sûrs du moteur ; aucun script libre n’est exécuté.
+
+Les modèles d’invocations conservent des paliers tels que `BL`, les classes humaines des niveaux numériques. Les affinités acceptent les types `PHYSICAL`, `MAGIC`, `SACRED`, séparés par des virgules. Au moins une classe doit rester jouable. Redémarrer le serveur après enregistrement.
+
+Une modification d’une compétence moteur est partagée par toutes ses références. Les capacités de mobs reçoivent la définition du projet, y compris une compétence nouvellement créée. L’IA des mobs ne gère toujours pas les invocations et résurrections : ces compétences sont réservées aux modèles liés à un joueur.
+
+Les limites et le périmètre contrôlés sont détaillés dans [CONTROLLER_AUDIT.md](CONTROLLER_AUDIT.md).

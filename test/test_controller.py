@@ -8,7 +8,14 @@ from jeuxRPG.multiplayer import content, tutorial, progression, achievements, co
 
 
 def project(tmp_path):
-    return controller.Project(tmp_path/'maps')
+    from pathlib import Path
+    import shutil
+    directory = tmp_path/'maps'
+    directory.mkdir(exist_ok=True)
+    for source in (Path(__file__).parent/'fixtures'/'reference_world').glob('*.json'):
+        if not (directory/source.name).exists():
+            shutil.copyfile(source,directory/source.name)
+    return controller.Project(directory)
 
 
 def test_project_saves_and_reloads_all_catalogs(tmp_path):

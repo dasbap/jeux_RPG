@@ -7,6 +7,10 @@ import threading
 import time
 from types import SimpleNamespace
 
+reference_world = Path(__file__).resolve().parent.parent / "test" / "fixtures" / "reference_world"
+if reference_world.is_dir():
+    os.environ.setdefault("RPG_MAPS_FILE", str(reference_world))
+
 import jeuxRPG
 from jeuxRPG.multiplayer import server as server_module, tutorial
 from jeuxRPG.multiplayer.service import GameService, GameError

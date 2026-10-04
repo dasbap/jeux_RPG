@@ -258,7 +258,7 @@ class Skill:
                 if success:
                     total_success += 1
                     effects_list.append(
-                        f"{eff.stat_target.__name__} {'+' if eff.alterationtype == AlterationType.BUFFSTAT else '-'}{eff.value}"
+                        f"{eff.stat_target.__name__ if isinstance(eff.stat_target, type) else eff.name or eff.alterationtype.name} {'+' if eff.alterationtype == AlterationType.BUFFSTAT else '-'}{eff.value}"
                     )
             all_message = ", ".join(effects_list)
 

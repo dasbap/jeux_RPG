@@ -71,6 +71,8 @@ def register_model(model,data=None):
             self.level = level
             Invocation.__init__(self,master,deepcopy(table),name,skills=deepcopy(table['class_skills_dict'][level]))
         actor_type = CharacterMeta(model['id'],(Invocation,),{'__init__':initialize,'class_skills_dict':table['class_skills_dict'],'is_playable':False,'universal_class':True,'can_level_up':lambda self:False,'_required_exp_for_next_level':lambda self:0,'level_up':lambda self:t('invocation.cannot_level_up',name=self.name)})
+        for alias in model.get('previous_ids',[]):
+            CharacterMeta._classes[alias.lower()] = actor_type
         return actor_type
     def initialize(self,user_id,name):
         Character.__init__(self,user_id,name,deepcopy(table),char_class=model['id'])

@@ -105,6 +105,8 @@ class Project:
         for quest in self.content['quests']:
             if quest['npc'] not in npcs or quest.get('zone') and quest['zone'] not in self.maps or quest['kind'] == 'kill' and quest['target'] not in self.mobs or quest['kind'] == 'craft' and quest['target'] not in forge.RECIPES:
                 raise ValueError(f"{quest['name']} : PNJ, zone ou cible introuvable.")
+        from .content import validate_references
+        validate_references(self.content, self.mobs, self.maps)
         return True
 
     def rename(self, section, identifier, replacement):
@@ -129,6 +131,18 @@ class Project:
                 for definition in self.content.get('classes',[]):
                     if definition['base_class'] == identifier:
                         definition['base_class'] = replacement
+            elif section == 'skill_models':
+                if replacement in self.content['templates']['skills']:
+                    raise ValueError('Identifiant déjà utilisé.')
+                self.content['templates']['skills'][replacement] = self.content['templates']['skills'].pop(identifier)
+                for model in self.content['templates']['classes']:
+                    for entry in model['skills']:
+                        if entry['skill_id'] == identifier:
+                            entry['skill_id'] = replacement
+                for mob in self.mobs.values():
+                    for entry in mob.get('abilities',[]):
+                        if entry.get('skill_id') == identifier:
+                            entry['skill_id'] = replacement
             elif section in ('classes','skills'):
                 item = next(item for item in self.content.get(section,[]) if item['id'] == identifier)
                 if any(other['id'] == replacement for other in self.content[section]):
@@ -152,6 +166,10 @@ class Project:
                     item['role'] = 'tutorial_hunt'
                 item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids', []), identifier]))
                 item['id'] = replacement
+                if section == 'quests':
+                    for success in self.content['achievements']:
+                        if success['condition'] == 'quests' and success.get('target') == identifier:
+                            success['target'] = replacement
                 requirement_key = 'quests' if section == 'quests' else 'achievements'
                 for quest in self.content['quests']:
                     requirements = quest.get('requirements', {})
@@ -163,14 +181,21 @@ class Project:
                 if replacement in self.mobs:
                     raise ValueError('Identifiant déjà utilisé.')
                 self.mobs[replacement] = self.mobs.pop(identifier)
+                self.mobs[replacement]['previous_ids'] = list(dict.fromkeys([*self.mobs[replacement].get('previous_ids',[]),identifier]))
                 for species in self.mobs.values():
                     if species.get('parent') == identifier:
                         species['parent'] = replacement
-                for definition in [*self.content.get('classes',[]), *self.mobs.values()]:
+                for definition in [*self.content.get('classes',[]), *self.content['templates']['classes'], *self.mobs.values()]:
                     for assignment in definition.get('skills',definition.get('abilities',[])):
                         reference = assignment.get('skill_id','')
                         if reference.startswith('mob:'+identifier+':'):
                             assignment['skill_id'] = 'mob:'+replacement+reference[len('mob:'+identifier):]
+                for reference in list(self.content['templates']['skills']):
+                    if reference.startswith('mob:'+identifier+':'):
+                        self.content['templates']['skills']['mob:'+replacement+reference[len('mob:'+identifier):]] = self.content['templates']['skills'].pop(reference)
+                for success in self.content['achievements']:
+                    if success.get('target') == identifier and success['condition'] not in ('craft','quests'):
+                        success['target'] = replacement
                 for data in self.maps.values():
                     for spawn in data.get('spawners', []):
                         if spawn['mob_id'] == identifier:
@@ -197,6 +222,7 @@ class Project:
                 if replacement in self.maps:
                     raise ValueError('Identifiant de carte déjà utilisé.')
                 self.maps[replacement] = self.maps.pop(identifier)
+                self.maps[replacement]['previous_ids'] = list(dict.fromkeys([*self.maps[replacement].get('previous_ids',[]),identifier]))
                 self.maps[replacement]['id'] = 'field_'+replacement
                 for data in self.maps.values():
                     for key in ('zone_id', 'world_zone', 'fast_travel_origin'):
@@ -210,11 +236,49 @@ class Project:
                         for key in ('from', 'to'):
                             if route[key] == identifier:
                                 route[key] = replacement
-                for quest in self.content['quests']:
-                    if quest.get('zone') == identifier:
-                        quest['zone'] = replacement
+                for definition in [*self.content['quests'], *self.content['achievements']]:
+                    for field in ('zone', 'map'):
+                        if definition.get(field) == identifier:
+                            definition[field] = replacement
             else:
                 raise ValueError('Ce type de définition ne possède pas d’identifiant modifiable.')
+            self.validate()
+        except Exception:
+            self.maps, self.mobs, self.content = before
+            raise
+
+    def duplicate(self, section, identifier, replacement):
+        import re
+        if section not in ('mobs','quests','achievements','classes','skills','skill_models'):
+            raise ValueError('Ce catalogue se duplique depuis son éditeur spécialisé.')
+        if not isinstance(replacement,str) or not re.fullmatch(r'[a-z0-9_]{1,64}',replacement):
+            raise ValueError('Identifiant : lettres minuscules, chiffres et underscores.')
+        before = self.state()
+        try:
+            if section == 'skill_models':
+                key = 'ability:'+replacement
+                if key in self.content['templates']['skills']:
+                    raise ValueError('Identifiant déjà utilisé.')
+                self.content['templates']['skills'][key] = deepcopy(self.content['templates']['skills'][identifier])
+                self.content['templates']['skills'][key]['name'] += ' · copie'
+            elif section == 'mobs':
+                if replacement in self.mobs:
+                    raise ValueError('Identifiant déjà utilisé.')
+                value = deepcopy(self.mobs[identifier])
+                value['name'] += ' · copie'
+                value.pop('previous_ids',None)
+                self.mobs[replacement] = value
+            else:
+                values = self.content['templates']['classes'] if section == 'classes' else self.content.setdefault(section,[])
+                if any(item['id'].lower() == replacement.lower() or replacement in item.get('previous_ids',[]) for item in values):
+                    raise ValueError('Identifiant déjà utilisé.')
+                value = deepcopy(next(item for item in values if item['id'] == identifier))
+                value.update(id=replacement,name=value['name']+' · copie')
+                for key in ('previous_ids','table_id','role'):
+                    value.pop(key,None)
+                if section == 'quests' and is_hunt(value):
+                    value.pop('role',None)
+                values.append(value)
             self.validate()
         except Exception:
             self.maps, self.mobs, self.content = before
@@ -254,35 +318,51 @@ class Controller:
         self.tk, self.ttk, self.messagebox, self.simpledialog = tk, ttk, messagebox, simpledialog
         self.root, self.project = root, project
         self.history = []
+        self.future = []
+        self.filters = {}
         root.title('RPG — Contrôleur du projet')
         root.geometry('1120x780')
         root.protocol('WM_DELETE_WINDOW', self.close)
         bar = ttk.Frame(root, padding=8)
         bar.pack(fill='x')
-        for name, action in [('Builder', self.builder), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo)]:
+        for name, action in [('Builder', self.builder), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo), ('Rétablir', self.redo)]:
             ttk.Button(bar, text=name, command=action).pack(side='left', padx=4)
         self.status = tk.StringVar(value=f'{project.directory} · Modifiez puis enregistrez. Redémarrez le serveur pour appliquer.')
         ttk.Label(root, textvariable=self.status, wraplength=1080).pack(fill='x', padx=8)
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes humaines'), ('skills','Compétences')]:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')]:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
-            table = ttk.Treeview(page, columns=('name', 'details'), show='tree headings', selectmode='browse')
+            search = ttk.Frame(page)
+            search.pack(fill='x', pady=(0,8))
+            ttk.Label(search, text='Rechercher').pack(side='left')
+            self.filters[section] = tk.StringVar()
+            ttk.Entry(search, textvariable=self.filters[section]).pack(side='left', fill='x', expand=True, padx=8)
+            self.filters[section].trace_add('write', lambda *args: self.refresh())
+            table_frame = ttk.Frame(page)
+            table_frame.pack(fill='both', expand=True)
+            table = ttk.Treeview(table_frame, columns=('name', 'details'), show='tree headings', selectmode='browse')
             table.heading('#0', text='Identifiant')
             table.heading('name', text='Nom')
             table.heading('details', text='Détails')
             table.column('#0', width=190)
             table.column('name', width=240)
             table.column('details', width=540)
-            table.pack(fill='both', expand=True)
+            table.pack(side='left', fill='both', expand=True)
+            scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=table.yview)
+            scrollbar.pack(side='left', fill='y')
+            table.configure(yscrollcommand=scrollbar.set)
             table.bind('<Double-1>', lambda e, s=section: self.edit(s))
             self.tables[section] = table
             actions = ttk.Frame(page)
             actions.pack(fill='x', pady=8)
             for label, action in [('Modifier', lambda s=section:self.edit(s))] + ([] if section == 'world' else [('Ajouter', lambda s=section:self.edit(s, True)), ('Supprimer', lambda s=section:self.delete(s))]):
                 ttk.Button(actions, text=label, command=action).pack(side='left', padx=4)
+            ttk.Button(actions, text='Aperçu / références', command=lambda s=section:self.inspect(s)).pack(side='left', padx=4)
+            if section not in ('world','maps','npcs'):
+                ttk.Button(actions, text='Dupliquer', command=lambda s=section:self.duplicate(s)).pack(side='left', padx=4)
             if section != 'world':
                 ttk.Button(actions, text='Renommer identifiant', command=lambda s=section:self.rename(s)).pack(side='left', padx=4)
             if section == 'mobs':
@@ -294,30 +374,88 @@ class Controller:
         self.refresh()
 
     def remember(self, state=None):
+        self.future = []
         self.history.append(self.project.state() if state is None else state)
         self.history = self.history[-30:]
 
     def undo(self):
         if self.history:
+            self.future.append(self.project.state())
             self.project.maps, self.project.mobs, self.project.content = self.history.pop()
             self.refresh()
 
+    def redo(self):
+        if self.future:
+            self.history.append(self.project.state())
+            self.project.maps, self.project.mobs, self.project.content = self.future.pop()
+            self.refresh()
+
+    def inspect(self, section):
+        from .controller_tools import preview, references
+        selected = self.tables[section].selection()
+        if not selected:
+            return
+        level = player_level = 1
+        if section in ('mobs','classes'):
+            level = self.simpledialog.askinteger('Aperçu', 'Niveau à simuler (1–100)', initialvalue=1, minvalue=1, maxvalue=100, parent=self.root)
+            if level is None:
+                return
+        if section == 'mobs':
+            player_level = self.simpledialog.askinteger('Récompense XP', 'Niveau du joueur (1–100)', initialvalue=level, minvalue=1, maxvalue=100, parent=self.root)
+            if player_level is None:
+                return
+        try:
+            self.show_report('Aperçu et références', {'aperçu':preview(self.project,section,selected[0],level,player_level),'utilisé_par':references(self.project,section,selected[0])})
+        except (ValueError,KeyError,TypeError) as exc:
+            self.messagebox.showerror('Aperçu',str(exc),parent=self.root)
+
+    def show_report(self, title, value):
+        from .controller_tools import text
+        window = self.tk.Toplevel(self.root)
+        window.title(title)
+        window.geometry('900x650')
+        frame = self.ttk.Frame(window)
+        frame.pack(fill='both',expand=True)
+        area = self.tk.Text(frame,wrap='word')
+        scrollbar = self.ttk.Scrollbar(frame,orient='vertical',command=area.yview)
+        area.configure(yscrollcommand=scrollbar.set)
+        area.pack(side='left',fill='both',expand=True)
+        scrollbar.pack(side='right',fill='y')
+        area.insert('1.0',text(value))
+        area.configure(state='disabled')
+        self.ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=8)
+        window.transient(self.root)
+
+    def duplicate(self, section):
+        selected = self.tables[section].selection()
+        if not selected:
+            return
+        identifier = self.simpledialog.askstring('Dupliquer', 'Identifiant de la copie', parent=self.root)
+        if not identifier:
+            return
+        before = self.project.state()
+        try:
+            self.project.duplicate(section,selected[0],identifier)
+            self.remember(before)
+            self.filters[section].set('')
+            self.refresh()
+            self.tables[section].selection_set('ability:'+identifier if section == 'skill_models' else identifier)
+            self.status.set('Copie indépendante créée. Enregistrez pour la conserver.')
+        except (ValueError,KeyError,TypeError) as exc:
+            self.messagebox.showerror('Duplication',str(exc),parent=self.root)
+
     def refresh(self):
         p = self.project
-        rows = {
-            'maps': [(key, data['name'], f"{data['width']} × {data['height']} · zone {zone_of(p.maps, key)}") for key, data in p.maps.items()],
-            'mobs': [(key, resolve(p.mobs,key)['name'], f"{resolve(p.mobs,key)['class_name']} · rang {resolve(p.mobs,key)['rank']} · parent {mob.get('parent') or 'aucun'}") for key, mob in p.mobs.items()],
-            'quests': [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q['reward_xp']} XP") for q in p.content['quests']],
-            'achievements': [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} → {a['title']}") for a in p.content['achievements']],
-            'npcs': [(f'{key}:{index}', site['name'], f"{key} · {site['id']} · case {site['position']}") for key, data in p.maps.items() for index, site in enumerate(data.get('sites', []))],
-            'classes': [(item['id'],item['name'], 'Format universel · '+str(len(item['skills']))+' compétences') for item in p.content['templates']['classes'] if item['playable']] + [(item['id'],item['name'],'Ancien format · '+item['base_class']) for item in p.content.get('classes',[])],
-            'skills': [(item['id'],item['name'],item['type']+' · portée '+str(item['range'])) for item in p.content.get('skills',[])],
-            'world': [(key, self.label(key), str(value)) for key, value in p.content['world'].items()],
-        }
+        from .controller_tools import catalog_rows, filter_rows
         for section, table in self.tables.items():
+            selected = table.selection()
+            query = self.filters[section].get() if hasattr(self, 'filters') else ''
             table.delete(*table.get_children())
-            for key, name, details in rows[section]:
+            for key, name, details in filter_rows(catalog_rows(p, section), query):
                 table.insert('', 'end', iid=key, text=key, values=(name, details))
+            for key in selected:
+                if table.exists(key):
+                    table.selection_set(key)
 
     def label(self, key):
         if key.endswith('_base'):
@@ -333,7 +471,7 @@ class Controller:
         labels = {}
         choices = choices or {}
         for row, (key, value) in enumerate(values.items()):
-            labels[key] = self.ttk.Label(window, text=(self.label(key)+' (−1 : automatique)' if title == 'Compétences universelles' and key in ('range','cost') else self.label(key)))
+            labels[key] = self.ttk.Label(window, text=(self.label(key)+' (−1 : automatique)' if title in ('Compétences universelles','Compétence moteur') and key in ('range','cost') else self.label(key)))
             labels[key].grid(row=row, column=0, padx=8, pady=5, sticky='w')
             if type(value) is bool:
                 choices[key] = ['Oui','Non']
@@ -345,9 +483,21 @@ class Controller:
             widget.grid(row=row, column=1, padx=8, pady=5)
             fields[key] = widget
         def condition_changed(event=None):
-            numeric = fields['condition'].get() in ('fast', 'higher', 'level', 'kills')
-            for widget in (labels['threshold'], fields['threshold']):
-                widget.grid() if numeric else widget.grid_remove()
+            condition = fields['condition'].get()
+            if 'target' in fields:
+                from .forge import RECIPES
+                targets = [''] + (list(RECIPES) if condition == 'craft' else [item['id'] for item in self.project.content['quests']] if condition == 'quests' else list(self.project.mobs))
+                fields['target'].configure(values=targets)
+                if fields['target'].get() not in targets or condition in ('level','discover'):
+                    fields['target'].set('')
+                for widget in (labels['target'], fields['target']):
+                    widget.grid_remove() if condition in ('level','discover') else widget.grid()
+                for key in ('zone','map'):
+                    for widget in (labels[key], fields[key]):
+                        widget.grid_remove() if condition == 'level' else widget.grid()
+                    if condition == 'level':
+                        fields[key].set('')
+            labels['threshold'].configure(text='Temps maximum (secondes réelles)' if condition == 'fast' else 'Différence de niveau minimale' if condition == 'higher' else 'Niveau requis' if condition == 'level' else 'Nombre requis')
         if 'condition' in fields and 'threshold' in fields:
             fields['condition'].bind('<<ComboboxSelected>>', condition_changed)
             condition_changed()
@@ -356,7 +506,7 @@ class Controller:
             targets = list(self.project.mobs) if fields['kind'].get() == 'kill' else list(RECIPES)
             fields['target'].configure(values=targets)
             if fields['target'].get() not in targets:
-                fields['target'].set(targets[0])
+                fields['target'].set(targets[0] if targets else '')
         if 'kind' in fields and 'target' in fields:
             fields['kind'].bind('<<ComboboxSelected>>', kind_changed)
             kind_changed()
@@ -364,8 +514,10 @@ class Controller:
         def accept():
             try:
                 parsed = {key: parse_field(key, widget.get(), values[key]) for key, widget in fields.items()}
-                if 'condition' in parsed and parsed['condition'] not in ('fast', 'higher', 'level', 'kills'):
-                    parsed['threshold'] = 1
+                if 'condition' in parsed and parsed['condition'] != 'fast':
+                    if parsed['threshold'] != int(parsed['threshold']):
+                        raise ValueError('Seuil entier requis.')
+                    parsed['threshold'] = int(parsed['threshold'])
                 result.append(parsed)
                 window.destroy()
             except ValueError:
@@ -392,6 +544,16 @@ class Controller:
                 values = self.form('Paramètres du monde', p.content['world'])
                 if values:
                     p.content['world'] = values
+            elif section == 'skill_models':
+                values = self.edit_skill_model(key,new)
+                if values is None:
+                    return
+                identifier = values.pop('id')
+                if new and identifier in p.content['templates']['skills']:
+                    raise ValueError('Identifiant déjà utilisé.')
+                if not new and identifier != key:
+                    raise ValueError('Utilisez Renommer identifiant pour changer la référence.')
+                p.content['templates']['skills'][identifier] = values
             elif section == 'classes' and (new or any(item['id'] == key for item in p.content['templates']['classes'])):
                 values = self.edit_template(key,new)
                 if values is None:
@@ -455,11 +617,18 @@ class Controller:
                     p.rename('mobs', key, identifier)
                 if not values['parent']:
                     values.pop('parent')
-                p.mobs[identifier] = {**values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities}
+                history = p.mobs.get(identifier,{}).get('previous_ids',[]) if not new else []
+                p.mobs[identifier] = {**({'previous_ids':history} if history else {}), **values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities}
             elif section in ('quests', 'achievements'):
-                default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre'}
+                default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'map':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre', 'target':'', 'zone':'', 'map':''}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
                 choices = {'npc':sorted({site['id'] for data in p.maps.values() for site in data['sites']}), 'kind':['kill','craft'], 'target':list(p.mobs), 'zone':['', *p.maps], 'condition':CONDITIONS}
+                if section == 'achievements':
+                    old = {'target':'','zone':'','map':'',**old}
+                else:
+                    old = {'map':'',**old}
+                choices['zone'] = ['', *p.maps] if section == 'quests' else ['', *sorted({zone_of(p.maps, identifier) for identifier in p.maps})]
+                choices['map'] = ['', *p.maps]
                 values = self.form('Quête' if section == 'quests' else 'Succès et titre', {k:v for k,v in old.items() if k not in ('role', 'previous_ids', 'requirements')}, choices)
                 if values:
                     if section == 'quests':
@@ -540,12 +709,56 @@ class Controller:
             self.project.maps, self.project.mobs, self.project.content = before
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
 
+    def edit_skill_model(self,key,new):
+        from jeuxRPG._class.res.classType import SkillType, DamageType
+        from jeuxRPG._class.res.character.alteration.alteration import AlterationType
+        from jeuxRPG._class.res.character.class_models import skill_from_data
+        from .progression import casting
+        models = self.project.content['templates']
+        if new:
+            choice = self.form('Copier une compétence moteur',{'source':next(iter(models['skills']))},{'source':list(models['skills'])})
+            if not choice:
+                return None
+            result = deepcopy(models['skills'][choice['source']])
+            identifier = 'ability:'
+        else:
+            result = deepcopy(models['skills'][key])
+            identifier = key
+        values = self.form('Compétence moteur',{'id':identifier,**{field:result[field] for field in ('name','type','energy','cost','cooldown','requires_target','can_target_others','handler')},'damage_type':result.get('damage_type') or '', 'description':result.get('description',''), 'range':result.get('range',-1.0)},{'type':list(SkillType.__members__),'damage_type':['',*DamageType.__members__],'energy':['Mana','Aura','Foie'],'handler':['default','damage_stun']})
+        if not values:
+            return None
+        import re
+        if new and not re.fullmatch(r'ability:[a-z0-9_]{1,64}',values['id']):
+            raise ValueError('Nouvelle référence : ability:identifiant (lettres minuscules, chiffres, underscores).')
+        result.update(values)
+        result['damage_type'] = result['damage_type'] or None
+        if result['range'] == -1:
+            result.pop('range')
+        timing = self.form('Incantation',casting(skill_from_data(result)))
+        if timing is None:
+            return None
+        result['casting'] = timing
+        balance = self.form('Coûts et scaling', {**result['balance'],'cost_fixed':result['balance'].get('cost_fixed') if result['balance'].get('cost_fixed') is not None else -1})
+        if balance is None:
+            return None
+        balance['cost_fixed'] = None if balance['cost_fixed'] == -1 else balance['cost_fixed']
+        result['balance'] = balance
+        rows = [{'key':name,'name':effect.get('name') or '', 'value':float(effect['value']) if effect['value'] is not None else -1.0,'duration':float(effect['duration']),'stat_target':str(effect['stat_target']) if effect['stat_target'] is not None else '', 'alteration':effect['alteration'] or '', 'invocation_class':(effect.get('invocation') or {}).get('class',''),'invocation_level':(effect.get('invocation') or {}).get('level','BL')} for name,effect in result['effects'].items()]
+        choices = {'stat_target':['','0','HP','Force','Endurance','Intelligence','Sagesse'],'alteration':['',*AlterationType.__members__],'invocation_class':['',*[model['id'] for model in models['classes'] if model['class_type'] == 'INVOCATION']]}
+        effects = self.edit_records('Effets : valeur −1 = aucune valeur',rows,{'key':'damage','name':'','value':1.0,'duration':0.0,'stat_target':'','alteration':'','invocation_class':'','invocation_level':'BL'},choices)
+        if effects is None:
+            return None
+        if len({entry['key'] for entry in effects}) != len(effects):
+            raise ValueError('Les clés d’effets doivent être uniques.')
+        result['effects'] = {entry['key']:{'name':None if not entry['name'] and result['effects'].get(entry['key'],{}).get('name') is None else entry['name'],'value':None if entry['value'] == -1 else entry['value'],'duration':entry['duration'],'stat_target':0 if entry['stat_target'] == '0' else entry['stat_target'] or None,'alteration':entry['alteration'] or None,'invocation':{**(result['effects'].get(entry['key'],{}).get('invocation') or {}),'class':entry['invocation_class'],'level':entry['invocation_level']} if entry['invocation_class'] else None} for entry in effects}
+        return result
+
     def edit_template(self,key,new):
         from jeuxRPG._class.res.character.class_models import MODELS, STAT_NAMES, ENERGY_NAMES
         from jeuxRPG._class.res.classType import ClassType
-        models = self.project.content['templates']
+        models = deepcopy(self.project.content['templates'])
         if new:
-            choice = self.form('Créer une classe : copier une définition',{'template':next(item['id'] for item in models['classes'] if item['playable'])},{'template':[item['id'] for item in models['classes'] if item['playable']]})
+            choice = self.form('Créer une classe : copier une définition',{'template':next(item['id'] for item in models['classes'])},{'template':[item['id'] for item in models['classes']]})
             if not choice:
                 return None
             result = deepcopy(next(item for item in models['classes'] if item['id'] == choice['template']))
@@ -575,17 +788,18 @@ class Controller:
         for identifier,entry in library(self.project.content,self.project.mobs).items():
             if identifier not in models['skills']:
                 models['skills'][identifier] = skill_to_data(make_skill(entry,{}))
-        rows = [{**entry,'level':int(entry['level'].split()[1]),'range':entry.get('range',-1.0),'cost':entry.get('cost',-1)} for entry in result['skills']]
-        skills = self.edit_records('Compétences universelles',rows,{'skill_id':next(iter(models['skills'])),'level':1,'range':-1.0,'cost':-1},{'skill_id':list(models['skills'])})
+        invocation = result['class_type'] == 'INVOCATION'
+        rows = [{**entry,'level':entry['level'] if invocation and not entry['level'].startswith('level ') else 'BL' if invocation else int(entry['level'].split()[1]) if entry['level'].startswith('level ') else 1,'range':entry.get('range',-1.0),'cost':entry.get('cost',-1)} for entry in result['skills']]
+        skills = self.edit_records('Compétences universelles',rows,{'skill_id':next(iter(models['skills'])),'level':'BL' if invocation else 1,'range':-1.0,'cost':-1},{'skill_id':list(models['skills'])})
         if skills is None:
             return None
-        result['skills'] = [{**{key:value for key,value in entry.items() if key not in ('level','range','cost') or key in ('range','cost') and value != -1},'level':'level '+str(entry['level'])} for entry in skills]
+        result['skills'] = [{**{key:value for key,value in entry.items() if key not in ('level','range','cost') or key in ('range','cost') and value != -1},'level':str(entry['level']) if invocation else 'level '+str(entry['level'])} for entry in skills]
         from jeuxRPG._class.res.character.class_models import skill_from_data
         energy_names = {entry['type'] for entry in result['energies']}
         for assignment in result['skills']:
             skill = skill_from_data(models['skills'][assignment['skill_id']])
             name = skill.energie_target.__name__
-            level = int(assignment['level'].split()[1])
+            level = 1 if invocation else int(assignment['level'].split()[1])
             available = name in energy_names or any(entry['level'] <= level and name in entry.get('unlock_energies',{}) for entry in result['growth'])
             if not available:
                 result['energies'].append({'type':name,'value':max(30,skill.energie_cost),'regen_rate':.3})
@@ -602,8 +816,13 @@ class Controller:
         if combat is None:
             return None
         result['combat'] = combat
+        affinities = self.form('Affinités : types de dégâts séparés par des virgules',{'weaknesses':', '.join(result['weaknesses']),'resistances':', '.join(result['resistances'])})
+        if affinities is None:
+            return None
+        result.update({key:[value.strip().upper() for value in text.split(',') if value.strip()] for key,text in affinities.items()})
         if not new and result['id'] != key:
             result['previous_ids'] = list(dict.fromkeys([*result.get('previous_ids',[]),key]))
+        self.project.content['templates']['skills'].update({entry['skill_id']:models['skills'][entry['skill_id']] for entry in result['skills'] if entry['skill_id'] not in self.project.content['templates']['skills']})
         return result
 
     def edit_growth(self,initial):
@@ -694,10 +913,13 @@ class Controller:
                 rows.append(value) if new else rows.__setitem__(index,value)
                 refresh()
         def reuse():
-            from .skill_catalog import library, builtins
+            from .skill_catalog import library, make_skill
             from jeuxRPG._class.res.classType import SkillType
             available = library(self.project.content,self.project.mobs)
-            choices = [key for key, entry in available.items() if not entry.get('native') or builtins()[entry['native']].skill_type not in (SkillType.INVOCATION,SkillType.RESURRECT)]
+            choices = [key for key, entry in available.items() if not entry.get('native') or make_skill(entry,{}).skill_type not in (SkillType.INVOCATION,SkillType.RESURRECT)]
+            if not choices:
+                self.messagebox.showinfo('Compétences','Aucune compétence compatible.',parent=window)
+                return
             values = self.form('Réutiliser une compétence',{'skill_id':choices[0],'level':1,'range':6.0},{'skill_id':choices})
             if values:
                 rows.append(values)
@@ -773,7 +995,9 @@ class Controller:
             return
         before = self.project.state()
         try:
-            if section == 'classes' and any(item['id'] == key for item in self.project.content['templates']['classes']):
+            if section == 'skill_models':
+                self.project.content['templates']['skills'].pop(key)
+            elif section == 'classes' and any(item['id'] == key for item in self.project.content['templates']['classes']):
                 self.project.content['templates']['classes'] = [item for item in self.project.content['templates']['classes'] if item['id'] != key]
             elif section == 'mobs':
                 self.project.mobs.pop(key)
@@ -840,11 +1064,14 @@ class Controller:
         self.refresh()
 
     def validate(self):
+        from .controller_tools import report
         try:
-            self.project.validate()
-            self.status.set('Projet valide : cartes, espèces, quêtes, PNJ et succès cohérents.')
-            return True
-        except (ValueError, KeyError) as exc:
+            result = report(self.project)
+            self.show_report('Diagnostic du projet', result)
+            valid = not result['erreurs']
+            self.status.set('Projet valide.' if valid else 'Corrigez les erreurs du diagnostic avant de sauvegarder.')
+            return valid
+        except (ValueError, KeyError, TypeError) as exc:
             self.messagebox.showerror('Validation', str(exc), parent=self.root)
             return False
 

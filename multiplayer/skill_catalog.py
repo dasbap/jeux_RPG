@@ -23,7 +23,8 @@ def builtins():
 
 
 def library(data, mobs):
-    result = {key:{'name':skill.name,'native':key} for key,skill in builtins().items()}
+    definitions = data.get('templates', MODELS)['skills']
+    result = {key:{'name':definition['name'],'native':key,'definition':deepcopy(definition)} for key,definition in definitions.items() if not key.startswith(('skill:','mob:'))}
     for definition in data.get('skills',[]):
         result['skill:'+definition['id']] = deepcopy(definition)
     for identifier in mobs:
@@ -77,7 +78,7 @@ def validate(data, mobs):
             if 'skill_id' in assignment:
                 validate_assignment(assignment,available)
                 entry = available[assignment['skill_id']]
-                if entry.get('native') and builtins()[entry['native']].skill_type in (SkillType.INVOCATION,SkillType.RESURRECT):
+                if entry.get('native') and make_skill(entry,assignment).skill_type in (SkillType.INVOCATION,SkillType.RESURRECT):
                     raise ValueError('Cette compétence nécessite un propriétaire joueur ou une cible alliée morte ; elle est utilisable dans une classe humaine.')
     return available
 
@@ -91,7 +92,7 @@ def validate_assignment(item, available):
 
 def make_skill(entry, assignment):
     if entry.get('native'):
-        skill = deepcopy(builtins()[entry['native']])
+        skill = skill_from_data(entry['definition']) if 'definition' in entry else deepcopy(builtins()[entry['native']])
     else:
         kind = entry['type']
         power = max(1,round(entry['power']))
@@ -99,7 +100,7 @@ def make_skill(entry, assignment):
         skill = Skill(entry['name'],{'damage':SkillType.DAMAGE,'heal':SkillType.HEAL,'stun':SkillType.DEBUFF}[kind],{'heal' if kind == 'heal' else 'damage' if kind == 'damage' else 'stun':effect},energie_target=Mana,energie_cost=5,damage_type=DamageType.MAGIC,cooldown=entry['cooldown'])
         skill.catalog_growth = entry['growth']
         skill.catalog_cast = {'seconds':entry['cast'],'concentration':entry.get('concentration',True)}
-    skill.catalog_range = assignment.get('range',entry.get('range',6))
+    skill.catalog_range = assignment.get('range',getattr(skill,'catalog_range',entry.get('range',6)))
     skill.can_target_others = skill.can_target_others and skill.catalog_range != 0
     if 'cost' in assignment:
         skill.energie_cost = assignment['cost']
@@ -112,7 +113,7 @@ def mob_ability(entry, assignment):
         skill = make_skill(entry,assignment)
         from .progression import casting
         timing = casting(skill)
-        return {'name':skill.name,'type':'native','native':entry['native'],'level':assignment['level'],'range':skill.catalog_range,'cast':timing['seconds'],'concentration':timing['concentration'],'cooldown':max(.2,skill.cooldown),'cost':skill.energie_cost}
+        return {'skill_data':deepcopy(entry.get('definition', MODELS['skills'].get(entry['native']))),'name':skill.name,'type':'native','native':entry['native'],'level':assignment['level'],'range':skill.catalog_range,'cast':timing['seconds'],'concentration':timing['concentration'],'cooldown':max(.2,skill.cooldown),'cost':skill.energie_cost}
     return {**deepcopy(entry),'level':assignment['level'],'range':assignment.get('range',entry['range'])}
 
 
