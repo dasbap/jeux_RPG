@@ -39,6 +39,8 @@ def validate(maps):
         definition.setdefault("cover", [])
         definition.setdefault("blocked", [])
         blocked = {tuple(p) for p in definition.get("cover", []) + definition.get("blocked", [])}
+        if len({tuple(point) for point in definition["spawns"]}) != len(definition["spawns"]):
+            raise ValueError(f"{key} : positions de spawn dupliquées.")
         for position in definition.get("spawns", []):
             if tuple(position) in blocked:
                 raise ValueError(f"{key} : apparition sur un obstacle.")
@@ -50,13 +52,18 @@ def validate(maps):
                 if not isinstance(item, dict):
                     raise ValueError(f"{key} : objet invalide.")
                 point(item.get("position"))
-                if field == "decorations" and item.get("kind") not in {"tree", "rock", "house", "flowers", "grass", "crystal", "camp"}:
+                if field == "decorations" and item.get("kind") not in {"tree", "rock", "house", "flowers", "grass", "crystal", "camp", "barricade", "wall"}:
                     raise ValueError(f"{key} : décor inconnu.")
+                if field == "decorations" and item.get("kind") in {"wall", "barricade"} and item["position"] not in definition["cover"]:
+                    raise ValueError(f"{key} : mur ou rempart sans collision.")
                 if field != "decorations" and tuple(item["position"]) in blocked:
                     raise ValueError(f"{key} : passage ou PNJ sur un obstacle.")
         if not definition.get("exits"):
             raise ValueError(f"{key} : au moins un passage est nécessaire.")
         for exit in definition["exits"]:
+            origin = exit.get("fast_destination")
+            if origin is not None and (not isinstance(origin, str) or origin not in maps):
+                raise ValueError(f"{key} : provenance du chemin rapide invalide.")
             destination = exit.get("destination")
             if destination is not None:
                 if not isinstance(destination, str) or destination not in maps:
@@ -78,7 +85,44 @@ def validate(maps):
             if not isinstance(site.get("dialogue", ""), str) or len(site.get("dialogue", "")) > 2000:
                 raise ValueError(f"{key} : dialogue invalide.")
     from . import tactics
+    from .map_building import MOBS, zone_of
     for key, definition in maps.items():
+        zone_of(maps, key)
+        for field in ("zone_level", "level"):
+            value = definition.get(field)
+            if value is not None and (type(value) is not int or not 1 <= value <= 100):
+                raise ValueError(f"{key} : niveau {field} entre 1 et 100.")
+        configurations = definition.get("spawners", [])
+        if len(definition["spawns"]) > 64:
+            raise ValueError(f"{key} : 64 spawners maximum.")
+        if not isinstance(configurations, list) or len(configurations) > 64:
+            raise ValueError(f"{key} : liste de spawners invalide.")
+        seen = set()
+        for config in configurations:
+            if not isinstance(config, dict) or not isinstance(config.get("position"), list):
+                raise ValueError(f"{key} : spawner invalide.")
+            position = config["position"]
+            if position not in definition["spawns"] or tuple(position) in seen or not isinstance(config.get("mob_id"), str) or config.get("mob_id") not in MOBS:
+                raise ValueError(f"{key} : spawner dupliqué, position ou espèce invalide.")
+            seen.add(tuple(position))
+            if type(config.get("count", 1)) is not int or not 1 <= config.get("count", 1) <= 5:
+                raise ValueError(f"{key} : groupe de 1 à 5 créatures.")
+            level = config.get("level")
+            if level is not None and (type(level) is not int or not 1 <= level <= 100):
+                raise ValueError(f"{key} : niveau du spawner entre 1 et 100.")
+            patrol = config.get("patrol", [])
+            if not isinstance(patrol, list) or len(patrol) > 32:
+                raise ValueError(f"{key} : patrouille de 32 points maximum.")
+            previous = position
+            for waypoint in patrol:
+                if not tactics.walkable(definition, waypoint) or tactics.path(definition, previous, waypoint) is None:
+                    raise ValueError(f"{key} : point de patrouille impraticable.")
+                previous = waypoint
+            if not isinstance(config.get("name", ""), str) or len(config.get("name", "")) > 100:
+                raise ValueError(f"{key} : nom de spawner invalide.")
+        configured_counts = {tuple(config["position"]): config.get("count", 1) for config in configurations}
+        if sum(configured_counts.get(tuple(position), 1) for position in definition["spawns"]) > 128:
+            raise ValueError(f"{key} : 128 créatures maximum par carte.")
         origin = definition["exits"][0]["position"]
         targets = definition.get("spawns", []) + [item["position"] for item in definition["sites"] + definition["exits"]]
         if any(tactics.path(definition, origin, target) is None for target in targets):

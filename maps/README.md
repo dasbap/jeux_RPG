@@ -37,3 +37,11 @@ L’eau bloque les déplacements mais laisse passer la vue ; les ponts sont prat
 [Vue d’ensemble des trois secteurs](../docs/STARTING_MAPS.svg)
 
 [Guide complet du builder](../docs/BUILDER_GUIDE.md)
+
+## Zones, spawners et fortifications — alpha 0.11.0a5
+
+`mobs.json` est un catalogue `kind: mobs`, distinct des cartes. Il contient les espèces gobelin, orc et dragonnet utilisées par les spawners. Les cartes disposent de `zone_id`, `zone_level` et d’une éventuelle surcharge `level`. Chaque entrée de `spawners` correspond à une case de `spawns`, avec une espèce `mob_id`, un niveau facultatif, un groupe `count` et une patrouille facultative `patrol`.
+
+Les décors `barricade` et `wall` doivent aussi figurer dans `cover` pour bloquer le déplacement et la vue. Le builder le fait automatiquement. Le campement gobelin fourni comporte des remparts et des murs, avec des passages praticables.
+
+Le bouton Synchroniser les raccords copie maintenant le terrain et le décor dans les bandes communes, sans déplacer les entités ou modifier les passages. Valider les cartes après cette opération.

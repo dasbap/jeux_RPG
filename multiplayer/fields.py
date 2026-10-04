@@ -2,6 +2,7 @@ from copy import deepcopy
 import uuid
 
 from . import tactics, world, progression
+from .map_building import spawners, create_mob, map_level, zone_of
 
 
 def terrain(identifier, name, width, height, cover, exits, mobs=(), sites=()):
@@ -29,9 +30,20 @@ from .map_assets import configured, read_catalog
 
 MAPS = configured(read_catalog("fields"))
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
+for identifier in MAPS:
+    root_zone = zone_of(MAPS, identifier)
+    if root_zone not in world.PLACES:
+        world.PLACES[root_zone] = {"name": MAPS[root_zone]["name"], "type": "zone", "x": 70, "y": 300 + 30 * len(world.PLACES), "description": "Zone personnalisée.", "points": []}
+        world.LEVELS[root_zone] = MAPS[root_zone].get("zone_level", 1)
 for identifier, definition in MAPS.items():
     zone = world.zone_of(identifier)
-    parent_zone = definition.get("world_zone")
+    parent_zone = zone_of(MAPS, identifier)
+    if parent_zone == identifier:
+        parent_zone = definition.get("world_zone")
+    if identifier not in world.PLACES and parent_zone in world.PLACES and zone != parent_zone:
+        for place in world.PLACES.values():
+            place["points"] = [point for point in place["points"] if point["id"] != identifier]
+        zone = None
     if zone is None and parent_zone in world.PLACES:
         world.PLACES[parent_zone]["points"].append({"id": identifier, "name": definition["name"], "type": "rencontre", "description": "Secteur de forêt à explorer à pied."})
         zone = parent_zone
@@ -44,6 +56,11 @@ for identifier, definition in MAPS.items():
     if zone is None:
         world.PLACES[identifier] = {"name": definition["name"], "type": "zone", "x": 70, "y": 300 + 30 * len(world.PLACES), "description": "Zone personnalisée.", "points": []}
         world.LEVELS[identifier] = 1
+
+for identifier in MAPS:
+    root_zone = zone_of(MAPS, identifier)
+    if root_zone in world.LEVELS:
+        world.LEVELS[root_zone] = MAPS[root_zone].get("zone_level", world.LEVELS[root_zone])
 
 
 def start(party, now):
@@ -80,14 +97,16 @@ def enter(party, identifier, entry, now, pursuers=()):
         party["combat_step"] = "first_fight" if first else party["step"]
         if first:
             party["step"] = "first_fight"
-        for index, position in enumerate(definition["spawns"]):
-            actor = Character.create("Goblin", "tutorial-mob", f"Gobelin des bois {index + 1}")
-            actor.hp.value = world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]
-            actor.hp.current_value = actor.hp.value
-            party["mobs"].append({**tutorial.pack(actor), "combat_id": f"{identifier}-mob-{index}", "rank": "D", "next_attack": now + 6})
+        configurations = spawners(definition)
+        for index, config in enumerate(configurations):
+            mob = create_mob(MAPS, identifier, config, index, first)
+            party["mobs"].append({**mob, "combat_id": f"{identifier}-mob-{index}", "next_attack": now + 6})
         tactics.begin(party, now, "explore")
-        for mob, position in zip(party["mobs"], definition["spawns"]):
-            mob.update(position=position[:], home=position[:], patrol_route=[tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], patrol_index=0)
+        occupied = []
+        for mob, config in zip(party["mobs"], configurations):
+            position = tactics.free_position(definition, config["position"], occupied)
+            occupied.append(position)
+            mob.update(position=position, home=position[:], patrol_route=deepcopy(config.get("patrol")) or [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], patrol_index=0)
     if saved and now - saved["saved_at"] >= 180:
         progression.health_resources(party, now)
         repop(party, identifier, now, pursuers)
@@ -122,7 +141,7 @@ def enter(party, identifier, entry, now, pursuers=()):
     tutorial.sync_mobs(party)
     progression.health_resources(party, now)
     if party["mobs"]:
-        party["seen_mobs"] = sorted(set(party.get("seen_mobs", [])) | {"goblin"})
+        party["seen_mobs"] = sorted(set(party.get("seen_mobs", [])) | {mob.get("mob_id", "goblin") for mob in party["mobs"]})
         party["seen_spawnpoints"] = sorted(set(party.get("seen_spawnpoints", [])) | {identifier})
     reveal(party)
     return [f"Vous entrez dans {definition['name']}."]
@@ -260,18 +279,17 @@ def repop(party, identifier, now, pursuers=()):
         existing.extend(arrival["mob"] for arrival in saved["battle"].get("arrivals", []))
     origins = {mob["combat_id"].split(":repop:")[0] for mob in existing}
     count = 0
-    for index, position in enumerate(definition["spawns"]):
+    for index, config in enumerate(spawners(definition)):
+        position = config["position"]
         origin = f"{identifier}-mob-{index}"
         if origin in origins:
             continue
-        actor = Character.create("Goblin", "tutorial-mob", f"Gobelin des bois {index + 1}")
-        actor.hp.value = world.GOBLIN["hp_first"] if identifier == "clearing" else world.GOBLIN["hp_hunt"]
-        actor.hp.current_value = actor.hp.value
-        party["mobs"].append({**tutorial.pack(actor), "combat_id": origin + ":repop:" + uuid.uuid4().hex, "rank": "D", "next_attack": now + 6,
+        mob = create_mob(MAPS, identifier, config, index, identifier == "clearing")
+        party["mobs"].append({**mob, "combat_id": origin + ":repop:" + uuid.uuid4().hex, "next_attack": now + 6,
             "position": tactics.free_position(definition, position, [mob["position"] for mob in party["mobs"]]), "home": position[:], "state": "patrol", "target": None, "last_known": None, "search_until": None,
             "next_move": now + tactics.GOBLIN_MOVE_TIME, "next_call": now, "calling_until": None, "windup_until": None,
             "known_dead": [], "allies": [], "intent": "Patrouille", "stunned_until": 0,
-            "patrol_route": [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], "patrol_index": 0})
+            "patrol_route": deepcopy(config.get("patrol")) or [tactics.free_position(definition, [position[0] + dx, position[1] + dy]) for dx, dy in ((0, 0), (4, 0), (4, 4), (-3, 4))], "patrol_index": 0})
         count += 1
     if count:
         party["battle"].update(initial_mobs=len(party["mobs"]), awarded=False, started_at=now, combat_step=party["step"],

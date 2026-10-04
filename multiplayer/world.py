@@ -85,7 +85,7 @@ def discovery(party):
         visited.add("brume")
     visited.update(party.get("visited", []))
     mobs = set(party.get("seen_mobs", []))
-    if party["mob"] or step not in ("clearing",):
+    if not party.get("field_mode") and (party["mob"] or step not in ("clearing",)):
         mobs.add("goblin")
     return visited, mobs
 
@@ -159,6 +159,19 @@ def view(party, me, traveller=None):
                          "xp": {"first_encounter": GOBLIN["xp_first"], "hunt": GOBLIN["xp_hunt"], "training": 0},
                          "locations": [PLACES[key]["name"] for key in ("clearing", "lisiere") if key in visited],
                          "materials_usage": "Deux peaux et trois crocs permettent de fabriquer une veste à Rosée. L'entraînement ne donne aucun butin."})
+    from .map_building import MOBS, species_details, spawners
+    from .fields import MAPS
+    for identifier, definition in MOBS.items():
+        if identifier == "goblin" or identifier not in mobs:
+            continue
+        details = species_details(identifier)
+        spawn_maps = [{"id": key, "name": point_name(key)} for key in party.get("seen_spawnpoints", []) if key in MAPS and zone_of(key) in visited and any(config["mob_id"] == identifier for config in spawners(MAPS[key]))]
+        bestiary.append({"id": identifier, "rank": definition["rank"], "name": definition["name"], "description": "Statistiques de base au niveau 1 ; le niveau dépend du spawner ou de la zone.",
+            "hp": {"first_encounter": details["hp"], "hunt": details["hp"]}, "stats": details["stats"], "weaknesses": details["weaknesses"], "resistances": details["resistances"],
+            "loot": [{"item": key, "quantity": value} for key, value in definition.get("loot", {}).items()], "rare_loot": [{"item": key, "chance": value} for key, value in RARE_DROPS.items()],
+            "spawn_maps": spawn_maps, "locations": [item["name"] for item in spawn_maps], "xp": {"first_encounter": 50, "hunt": 50, "training": 0}, "materials_usage": "Matériaux communs utilisés par les recettes de forge."})
+    for creature in bestiary:
+        creature["spawn_maps"] = [item for item in creature["spawn_maps"] if item["id"] not in MAPS or any(config["mob_id"] == creature["id"] for config in spawners(MAPS[item["id"]]))]
     current_zone = zone_of(party.get("position", CURRENT[step]))
     if current_zone not in {p["id"] for p in places}:
         definition = PLACES[current_zone]

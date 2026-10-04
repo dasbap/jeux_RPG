@@ -371,3 +371,9 @@ Le [guide complet du builder](docs/BUILDER_GUIDE.md) décrit les outils, les nom
 Les définitions des cartes fixes et des quinze presets de rencontre sont maintenant dans le dossier [maps](maps/README.md), sous forme de JSON. Elles sont incluses dans le paquet installé. Le builder lancé depuis le dépôt ouvre `maps/world.json` par défaut ; le serveur peut aussi charger un dossier de plusieurs JSON via `RPG_MAPS_FILE`.
 
 La forêt de départ comporte trois secteurs raccordés : sentier oublié, vieux pont et route entretenue. Ils reprennent le terrain des références, avec quatre colonnes de chevauchement identiques. La troisième carte dispose d’un chemin en bon état et de la sortie vers les chemins rapides ; les retours restent possibles. [Vue d’ensemble](docs/STARTING_MAPS.svg).
+
+## Alpha 0.11.0a5 — builder avancé
+
+Le builder propose des remparts de fortune X et des murs M, bloquant déplacement et vue. Les spawners choisissent leur espèce (gobelin, orc, dragonnet), leur niveau et un groupe de 1 à 5 créatures. Les patrouilles se dessinent sur la grille et sont conservées au repop. Le catalogue des espèces est dans `maps/mobs.json`.
+
+Les propriétés et la création de carte proposent le rattachement de zone, le niveau de zone et une surcharge locale. Le niveau d’un spawner vide hérite de la carte, puis de sa zone. Recherche par nom/identifiant, filtres par zone et niveau, pinceaux 1/3/5, visibilité des calques, duplication, suppression contrôlée, validation et synchronisation des raccords facilitent la construction. Le [guide complet](docs/BUILDER_GUIDE.md) détaille ces outils.

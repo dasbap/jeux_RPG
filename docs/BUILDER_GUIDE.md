@@ -1,8 +1,8 @@
 # Guide complet du builder de cartes RPG
 
-Version : alpha 0.11.0a3.
+Version : alpha 0.11.0a5.
 
-Le builder est un éditeur de bureau indépendant du jeu. Il permet de modifier les cartes fixes, leur décor, les apparitions de gobelins, les passages et les PNJ. Les modifications sont enregistrées dans un fichier JSON choisi par l’utilisateur, puis chargées par le serveur à son démarrage.
+Le builder est un éditeur de bureau indépendant du jeu. Il permet de modifier les cartes fixes, leur décor, les spawners de créatures, les passages et les PNJ. Les modifications sont enregistrées dans un fichier JSON choisi par l’utilisateur, puis chargées par le serveur à son démarrage.
 
 ## 1. Installer et lancer
 
@@ -48,7 +48,8 @@ Les boutons `−` et `+` changent la taille des cases. Les barres de défilement
 
 | Symbole | Objet |
 | --- | --- |
-| G rouge | Apparition de gobelin |
+| G, O, D rouges | Spawner de gobelin, orc, dragonnet |
+| X, M | Rempart de fortune, mur |
 | ↗ bleu | Passage ou sortie |
 | N jaune | PNJ fixe |
 | P jaune | PNJ lié à un joueur |
@@ -87,7 +88,7 @@ Choisir un outil puis cliquer sur une case. Maintenir le bouton et glisser pour 
 | Outil | Déplacement | Ligne de vue |
 | --- | --- | --- |
 | Sol | Praticable | Transparente |
-| Arbre, Rocher, Maison | Bloqué | Bloquée |
+| Arbre, Rocher, Maison, Rempart X, Mur M | Bloqué | Bloquée |
 | Eau | Bloqué | Transparente |
 | Pont | Praticable | Transparente |
 | Chemin | Praticable | Transparente |
@@ -133,13 +134,29 @@ La case d’arrivée n’est pas utilisée pour cette sortie. **Provenance du ch
 
 Le retour automatique n’est pas disponible pour une sortie complète.
 
-## 7. Ajouter des apparitions
+## 7. Ajouter des spawners
 
-Choisir **Spawn gobelin**, puis cliquer sur les cases d’apparition. Plusieurs cases donnent plusieurs gobelins présents dans la même zone.
+Choisir **Spawn**, puis cliquer sur une case praticable. Cliquer à nouveau sur cette case avec le même outil pour modifier son spawner.
 
-Les points doivent être praticables et accessibles depuis les passages. Les apparitions utilisent actuellement le gobelin et les réglages du moteur ; le builder ne propose pas encore d’autre espèce, de niveau individuel ou de table de butin.
+| Champ | Utilisation |
+| --- | --- |
+| Espèce | `goblin`, `orc`, `dragon_whelp` |
+| Niveau local | Vide : hériter du niveau de la carte ; entier 1–100 : niveau propre au spawner |
+| Nombre de créatures | 1 à 5 créatures présentes simultanément |
+| Nom affiché | Nom facultatif des créatures de ce spawner |
 
-Les apparitions fixes sont utilisées lors de la création de la zone et par le repop après trois minutes de jeu sans occupant. Modifier un fichier ne remplace pas immédiatement les ennemis déjà sauvegardés dans une session existante.
+Chaque spawner peut choisir une espèce différente. Une carte accepte au maximum 64 spawners et 128 créatures au total. Le groupe utilise des cases voisines praticables distinctes autour du point d’apparition. Les statistiques du personnage sont augmentées au niveau choisi ; les attaques ennemies restent pilotées par l’IA tactique commune. Le catalogue `maps/mobs.json` définit les espèces disponibles, leurs classes du moteur, rangs, dégâts et matériaux. Les trois espèces utilisent actuellement les matériaux communs `peau` et `croc` de la forge.
+
+Les anciens points d’apparition sans configuration détaillée restent des gobelins. Le repop conserve l’espèce, le niveau, le groupe et la patrouille configurés. Tester une nouvelle session après une modification pour ne pas conserver les anciennes créatures sauvegardées.
+
+### Dessiner une patrouille
+
+1. Choisir **Patrouille** et cliquer sur le spawner.
+2. Accepter le remplacement des points pour repartir de zéro ; refuser pour continuer la patrouille existante.
+3. Cliquer successivement sur les cases à parcourir. Les numéros affichent l’ordre.
+4. Cliquer sur **Fin patrouille**.
+
+Une patrouille contient au maximum 32 points accessibles. Les créatures passent de point en point et recommencent le parcours. Sans point personnalisé, elles utilisent la patrouille automatique du moteur. La poursuite et les recherches prennent la priorité sur la patrouille.
 
 ## 8. Ajouter un PNJ
 
@@ -218,7 +235,7 @@ python main.py
 | Les gobelins n’ont pas changé | Tester dans une nouvelle session ; les anciennes zones sont sauvegardées |
 | Tkinter ne démarre pas | Vérifier l’installation Tcl/Tk et la présence d’un affichage de bureau |
 
-Le builder ne modifie actuellement ni les classes, ni les compétences, ni l’équilibrage, ni le graphe des routes rapides. Ces éléments restent définis dans le moteur.
+Le builder ne modifie pas les tables de classes, les compétences ou le graphe des routes rapides. Il permet de régler la difficulté des cartes via les niveaux et les spawners.
 
 ## 13. Catalogue JSON du dépôt — alpha 0.11.0a4
 
@@ -236,3 +253,34 @@ python main.py
 Les trois secteurs initiaux sont `clearing`, `clearing_trail` et `clearing_road`. Leurs quatre colonnes communes sont identiques ; les passages permettent d’avancer et de revenir. Seul le dernier secteur rejoint les chemins rapides. Les champs `world_origin` et `overlap_columns` gardent la référence du chevauchement. Le builder conserve ces champs, mais ne synchronise pas automatiquement les modifications des bords communs : reporter le terrain dans les deux cartes concernées.
 
 Consulter le [dossier des cartes](../maps/README.md) et la [vue d’ensemble](STARTING_MAPS.svg).
+
+
+## 14. Zones et héritage des niveaux
+
+À la création, la fenêtre **Propriétés carte** s’ouvre aussi pour définir la zone et les niveaux. Une carte peut être la racine de sa propre zone ou être rattachée à une autre carte du catalogue.
+
+| Champ | Rôle |
+| --- | --- |
+| Zone de rattachement | Identifiant de la carte racine ou d’un secteur rattaché ; son propre identifiant crée une zone indépendante |
+| Niveau de zone | 1–100 ; utilisé sur la carte racine de la zone |
+| Niveau local | Vide : héritage de la zone ; 1–100 : surcharge pour cette carte |
+
+Priorité : **niveau du spawner > niveau local de la carte > niveau de la zone**. Les rattachements peuvent former une chaîne, mais les cycles et les références inexistantes sont refusés. Changer le niveau d’une zone met à jour les cartes et spawners qui en héritent au prochain chargement du serveur.
+
+Certaines cartes déjà fournies conservent un niveau local explicite pour maintenir leur équilibrage. Vider ce champ permet de rétablir l’héritage. Définir le niveau de zone sur un secteur secondaire ne change pas la racine : modifier les propriétés de la carte racine.
+
+Les données correspondantes sont `zone_id`, `zone_level` et `level`. Les coordonnées simples restent dans `spawns` ; les options individuelles sont dans `spawners`, avec `position`, `mob_id`, `level`, `count` et éventuellement `patrol`.
+
+## 15. Outils de construction avancée
+
+- **Recherche** : filtre par nom ou identifiant, sans tenir compte de la casse.
+- **Zone** : filtre par zone racine, y compris ses secteurs rattachés.
+- **Niv. min / max** : filtre par niveau effectif de la carte. Laisser vide pour ne pas limiter.
+- **Pinceau 1, 3 ou 5** : peint un carré de cette taille à partir de la case cliquée ; fonctionne aussi avec Effacer. Les outils d’entités et de patrouille restent précis à une case.
+- **Décor / Spawns / PNJ / Passages** : masquer ou afficher ces éléments dans le canevas, sans les supprimer ni changer les collisions.
+- **Dupliquer** : crée une copie indépendante avec un nouvel identifiant. Les objets sont copiés et le rattachement de zone est conservé ; l’origine globale et le chevauchement sont retirés pour ne pas superposer involontairement deux scènes.
+- **Supprimer carte** : autorisé pour une carte facultative qui n’a plus de passage entrant ni de secteur rattaché. Les cartes essentielles du tutoriel sont protégées.
+- **Valider** : contrôle les cartes sans écrire de fichier, avec niveaux, espèces, groupes et patrouilles en plus des coordonnées et accès.
+- **Synchroniser les raccords** : copie le terrain et le décor de la carte courante vers les bandes géométriques communes des voisins de la même zone. Les spawners, PNJ et passages restent propres à chaque carte. Cette opération est annulable ; valider ensuite pour vérifier qu’aucun objet du voisin n’a été recouvert.
+
+Les murs et remparts ne sont pas destructibles pour le moment. Les spawners ne proposent pas encore de vagues programmées, de conditions de quête ou de tirage pondéré entre plusieurs espèces. Le repop utilise le délai global du moteur.

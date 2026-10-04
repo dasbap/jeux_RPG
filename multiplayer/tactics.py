@@ -615,17 +615,17 @@ def defeated(party, mob, now, random, messages):
         if reward:
             character.gain_exp(reward)
         party["characters"][key] = pack(character)
-    loot = {} if party.get("training") else dict(world.GOBLIN["loot"])
+    loot = {} if party.get("training") else dict(mob.get("loot", world.GOBLIN["loot"]))
     if loot:
         for item, probability in forge.RARE_DROPS.items():
             if random() < probability:
                 loot[item] = 1
     party["battle"]["corpses"].append({"id": mob["combat_id"], "name": mob["name"], "position": mob["position"][:], "loot": loot, "harvested": []})
-    if party.get("field_mode") and not party.get("training"):
+    if party.get("field_mode") and not party.get("training") and mob.get("mob_id", "goblin") == "goblin":
         zone = world.zone_of(party["position"])
         kills = party.setdefault("zone_kills", {})
         kills[zone] = kills.get(zone, 0) + 1
-    if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere":
+    if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere" and mob.get("mob_id", "goblin") == "goblin":
         party["kills"] = min(3, party["kills"] + 1)
     if not party.get("training"):
         achievements.record(party)["kills"] += 1
@@ -746,7 +746,7 @@ def advance(party, now, random):
                 actor.drop_xp = lambda killer: ""
                 before_hp = actor.hp.current_value
                 before_invocations_hp = sum(invocation.hp.current_value for invocation in actor.invocations.get_all())
-                actor.lose_hp(enemy, 3)
+                actor.lose_hp(enemy, mob.get("attack_damage", 3))
                 if actor.hp.current_value < before_hp or sum(i.hp.current_value for i in actor.invocations.get_all()) < before_invocations_hp:
                     battle["damage_received"] = True
                 cast = units[target].get("casting")

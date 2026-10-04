@@ -288,7 +288,7 @@ function equipmentBonuses(piece) {
 function renderWorld(adventure, me) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
-  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau de gobelin pour la forge`) : ["Votre inventaire est vide."]);
+  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
   const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length);
@@ -940,6 +940,10 @@ function renderBattle(adventure, me) {
       group.append(element("ellipse", {cx: 22, cy: 34, rx: 15, ry: 4, fill: "#102f23", opacity: .55}), element("rect", {x: 17, y: 17, width: 7, height: 18, fill: "#856342"}), element("circle", {cx: 13, cy: 17, r: 11, fill: "#335d3b"}), element("circle", {cx: 26, cy: 17, r: 12, fill: "#497e4d"}), element("circle", {cx: 20, cy: 10, r: 10, fill: "#76a867"}));
     } else if (decoration.kind === "house") {
       group.append(element("rect", {x: 4, y: 16, width: 32, height: 21, fill: "#c0a27b"}), element("path", {d: "M1 18 L20 2 L39 18 Z", fill: "#9a5645", stroke: "#5f3733", "stroke-width": 2}), element("rect", {x: 17, y: 25, width: 8, height: 12, fill: "#493d35"}));
+    } else if (decoration.kind === "barricade") {
+      group.append(element("path", {d: "M5 4L35 36M35 4L5 36M3 20H37", stroke: "#9a7048", "stroke-width": 6, "stroke-linecap": "round"}));
+    } else if (decoration.kind === "wall") {
+      group.append(element("rect", {x: 1, y: 4, width: 38, height: 32, fill: "#77808a", stroke: "#414950", "stroke-width": 2}), element("path", {d: "M1 15H39M1 26H39M13 4V15M27 15V26M13 26V36", stroke: "#424b54", "stroke-width": 2}));
     } else if (decoration.kind === "rock") {
       group.append(element("path", {d: "M3 29 L9 10 L26 5 L37 20 L32 34 L13 36 Z", fill: "#808a94", stroke: "#485561", "stroke-width": 2}), element("path", {d: "M9 10 L26 5 L23 20 L3 29 Z", fill: "#a8b1b5"}));
     } else {
@@ -969,7 +973,7 @@ function renderBattle(adventure, me) {
     svg.append(group);
   };
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
-  for (const mob of adventure.mobs) draw(mob.combat_id, mob.position, mob.combat_id === "mob" ? "G1" : `G${mob.combat_id.split("-")[1]}`, "enemy-unit");
+  for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit"); }
   for (const [id, summon] of Object.entries(battle.summons || {})) {
     const number = id.match(/:summon:(\d+)$/);
     const label = number ? `S${Number(number[1]) + 1}` : "S";

@@ -190,7 +190,7 @@ def test_editor_renames_display_name_and_keeps_map_identifier():
     editor.form = lambda title, values: {"name": "Rosée renommée", "width": "64", "height": "40", "biome": "village"}
     editor.properties()
     assert editor.maps["rosee"]["name"] == "Rosée renommée"
-    assert editor.map_labels["Rosée renommée [rosee]"] == "rosee"
+    assert editor.map_labels["Rosée renommée [rosee] · niv. 1"] == "rosee"
     assert editor.maps["rosee"]["id"] == "field_rosee"
 
 
