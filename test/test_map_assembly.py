@@ -115,3 +115,31 @@ def test_merge_preserves_implicit_spawner_level():
     data['assembly_b'].update(level=8, spawns=[[3,3]])
     result = merge(data, 'assembly_a', 'assembly_b')
     assert result['assembly_a']['spawners'][0]['level'] == 8
+
+
+@pytest.mark.parametrize('biome,ground,cover', [
+    ('cave', '#374250', '#48505a'),
+    ('forest', '#294b35', '#344934'),
+    ('village', '#667356', '#344934'),
+])
+def test_assembly_draw_uses_map_biome(biome, ground, cover):
+    from types import SimpleNamespace
+    from jeuxRPG.multiplayer.map_assembly import AssemblyWindow
+    rectangles = []
+    data = {'room': {'name': 'Salle', 'width': 4, 'height': 4, 'biome': biome, 'exits': [], 'cover': [[1, 1]]}}
+    window = AssemblyWindow.__new__(AssemblyWindow)
+    window.editor = SimpleNamespace(maps=data)
+    window.selected = 'room'
+    window.scale = 8
+    window.choice = SimpleNamespace(configure=lambda **kwargs: None)
+    window.selection = SimpleNamespace(set=lambda value: None)
+    window.canvas = SimpleNamespace(
+        delete=lambda value: None,
+        create_rectangle=lambda *args, **kwargs: rectangles.append(kwargs),
+        create_text=lambda *args, **kwargs: None,
+        configure=lambda **kwargs: None,
+        bbox=lambda value: (0, 0, 32, 32),
+    )
+    window.draw()
+    assert [rectangle['fill'] for rectangle in rectangles] == [ground, cover]
+    assert rectangles[0]['outline'] == '#ffdc83'
