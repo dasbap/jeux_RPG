@@ -53,6 +53,17 @@ jobs:
           from pathlib import Path
           Path('.vercel/project.json').write_text(json.dumps({'projectId': 'prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2', 'orgId': 'team_qde9V6kikwwSvLtNrjAsAkRY', 'projectName': 'jeux-rpg'}))
           PY
+      - name: Synchroniser les acces Turso valides vers Vercel
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'):
+              subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive', '--token', os.environ['VERCEL_TOKEN']], input=os.environ[key], text=True, check=True)
+          PY
       - name: Publier en production
         run: .deploy-tools/node_modules/.bin/vercel deploy --prod --yes --token "$VERCEL_TOKEN" > deployment-url.txt
       - name: Verifier les routes et la connexion admin en ligne
