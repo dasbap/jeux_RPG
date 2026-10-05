@@ -1,0 +1,658 @@
+{
+  "geography": {
+    "start_world": "aube",
+    "start_zone": "aube-capitale",
+    "start_hour": 8,
+    "day_start": 6,
+    "night_start": 18,
+    "combat_hours": 1
+  },
+  "worlds": {
+    "aube": {
+      "name": "Terres de l'Aube",
+      "max_level": 20,
+      "entry_zone": "aube-capitale"
+    },
+    "cendres": {
+      "name": "Empire des Cendres",
+      "max_level": 40,
+      "entry_zone": "cendres-capitale"
+    },
+    "confins": {
+      "name": "Confins oubliés",
+      "max_level": 80,
+      "entry_zone": "confins-capitale"
+    }
+  },
+  "zones": {
+    "aube-capitale": {
+      "name": "Capitale — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 1,
+      "max_level": 20,
+      "creatures": [
+        "Goblin"
+      ],
+      "kind": "capital",
+      "inn": true,
+      "craft": true
+    },
+    "aube-village": {
+      "name": "Village des premières terres — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 1,
+      "max_level": 5,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "village",
+      "inn": true,
+      "craft": true,
+      "settlement_level": 5
+    },
+    "aube-foret": {
+      "name": "Forêt sauvage — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 1,
+      "max_level": 5,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "aube-ville": {
+      "name": "Ville marchande — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 6,
+      "max_level": 10,
+      "creatures": [
+        "Orc",
+        "OrcDesCendres"
+      ],
+      "kind": "city",
+      "inn": true,
+      "craft": true
+    },
+    "aube-montagnes": {
+      "name": "Montagnes — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 11,
+      "max_level": 15,
+      "creatures": [
+        "OrcDesCendres",
+        "PhysicalResistantMob",
+        "MagicResistantMob",
+        "SacredResistantMob"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "aube-fort-est": {
+      "name": "Forteresse abandonnée de l'Est — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 16,
+      "max_level": 20,
+      "creatures": [
+        "SeigneurOrc",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    },
+    "aube-fort-ouest": {
+      "name": "Forteresse abandonnée de l'Ouest — Terres de l'Aube",
+      "world": "aube",
+      "min_level": 16,
+      "max_level": 20,
+      "creatures": [
+        "RoiGobelin",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    },
+    "cendres-capitale": {
+      "name": "Capitale — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 1,
+      "max_level": 40,
+      "creatures": [
+        "Goblin"
+      ],
+      "kind": "capital",
+      "inn": true,
+      "craft": true
+    },
+    "cendres-village": {
+      "name": "Village des premières terres — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 1,
+      "max_level": 10,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "village",
+      "inn": true,
+      "craft": true,
+      "settlement_level": 10
+    },
+    "cendres-foret": {
+      "name": "Forêt sauvage — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 1,
+      "max_level": 10,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "cendres-ville": {
+      "name": "Ville marchande — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 11,
+      "max_level": 20,
+      "creatures": [
+        "Orc",
+        "OrcDesCendres"
+      ],
+      "kind": "city",
+      "inn": true,
+      "craft": true
+    },
+    "cendres-montagnes": {
+      "name": "Montagnes — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 21,
+      "max_level": 35,
+      "creatures": [
+        "OrcDesCendres",
+        "PhysicalResistantMob",
+        "MagicResistantMob",
+        "SacredResistantMob"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "cendres-fort-est": {
+      "name": "Forteresse abandonnée de l'Est — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 36,
+      "max_level": 40,
+      "creatures": [
+        "SeigneurOrc",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    },
+    "cendres-fort-ouest": {
+      "name": "Forteresse abandonnée de l'Ouest — Empire des Cendres",
+      "world": "cendres",
+      "min_level": 36,
+      "max_level": 40,
+      "creatures": [
+        "RoiGobelin",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    },
+    "confins-capitale": {
+      "name": "Capitale — Confins oubliés",
+      "world": "confins",
+      "min_level": 1,
+      "max_level": 80,
+      "creatures": [
+        "Goblin"
+      ],
+      "kind": "capital",
+      "inn": true,
+      "craft": true
+    },
+    "confins-village": {
+      "name": "Village des premières terres — Confins oubliés",
+      "world": "confins",
+      "min_level": 1,
+      "max_level": 20,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "village",
+      "inn": true,
+      "craft": true,
+      "settlement_level": 20
+    },
+    "confins-foret": {
+      "name": "Forêt sauvage — Confins oubliés",
+      "world": "confins",
+      "min_level": 1,
+      "max_level": 20,
+      "creatures": [
+        "Goblin",
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "confins-ville": {
+      "name": "Ville marchande — Confins oubliés",
+      "world": "confins",
+      "min_level": 21,
+      "max_level": 40,
+      "creatures": [
+        "Orc",
+        "OrcDesCendres"
+      ],
+      "kind": "city",
+      "inn": true,
+      "craft": true
+    },
+    "confins-montagnes": {
+      "name": "Montagnes — Confins oubliés",
+      "world": "confins",
+      "min_level": 41,
+      "max_level": 75,
+      "creatures": [
+        "OrcDesCendres",
+        "PhysicalResistantMob",
+        "MagicResistantMob",
+        "SacredResistantMob"
+      ],
+      "kind": "wilderness",
+      "inn": false,
+      "craft": false
+    },
+    "confins-fort-est": {
+      "name": "Forteresse abandonnée de l'Est — Confins oubliés",
+      "world": "confins",
+      "min_level": 76,
+      "max_level": 80,
+      "creatures": [
+        "SeigneurOrc",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    },
+    "confins-fort-ouest": {
+      "name": "Forteresse abandonnée de l'Ouest — Confins oubliés",
+      "world": "confins",
+      "min_level": 76,
+      "max_level": 80,
+      "creatures": [
+        "RoiGobelin",
+        "DragonWhelp",
+        "DragonAncien"
+      ],
+      "kind": "fortress",
+      "inn": false,
+      "craft": false
+    }
+  },
+  "paths": {
+    "aube-capitale-village": {
+      "source": "aube-capitale",
+      "destination": "aube-village",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-village-foret": {
+      "source": "aube-village",
+      "destination": "aube-foret",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-capitale-ville": {
+      "source": "aube-capitale",
+      "destination": "aube-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-ville-montagnes": {
+      "source": "aube-ville",
+      "destination": "aube-montagnes",
+      "hours": 4,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-montagnes-fort-est": {
+      "source": "aube-montagnes",
+      "destination": "aube-fort-est",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-montagnes-fort-ouest": {
+      "source": "aube-montagnes",
+      "destination": "aube-fort-ouest",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-capitale-village": {
+      "source": "cendres-capitale",
+      "destination": "cendres-village",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-village-foret": {
+      "source": "cendres-village",
+      "destination": "cendres-foret",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-capitale-ville": {
+      "source": "cendres-capitale",
+      "destination": "cendres-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-ville-montagnes": {
+      "source": "cendres-ville",
+      "destination": "cendres-montagnes",
+      "hours": 4,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-montagnes-fort-est": {
+      "source": "cendres-montagnes",
+      "destination": "cendres-fort-est",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-montagnes-fort-ouest": {
+      "source": "cendres-montagnes",
+      "destination": "cendres-fort-ouest",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-village": {
+      "source": "confins-capitale",
+      "destination": "confins-village",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-village-foret": {
+      "source": "confins-village",
+      "destination": "confins-foret",
+      "hours": 2,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-ville": {
+      "source": "confins-capitale",
+      "destination": "confins-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-ville-montagnes": {
+      "source": "confins-ville",
+      "destination": "confins-montagnes",
+      "hours": 4,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-montagnes-fort-est": {
+      "source": "confins-montagnes",
+      "destination": "confins-fort-est",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-montagnes-fort-ouest": {
+      "source": "confins-montagnes",
+      "destination": "confins-fort-ouest",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "portail-aube-cendres": {
+      "source": "aube-capitale",
+      "destination": "cendres-capitale",
+      "hours": 1,
+      "day_risk": 0.05,
+      "night_risk": 0.15,
+      "bidirectional": true
+    },
+    "portail-cendres-confins": {
+      "source": "cendres-capitale",
+      "destination": "confins-capitale",
+      "hours": 1,
+      "day_risk": 0.05,
+      "night_risk": 0.15,
+      "bidirectional": true
+    },
+    "aube-capitale-foret": {
+      "source": "aube-capitale",
+      "destination": "aube-foret",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-foret-ville": {
+      "source": "aube-foret",
+      "destination": "aube-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "aube-village-montagnes": {
+      "source": "aube-village",
+      "destination": "aube-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-capitale-montagnes": {
+      "source": "cendres-capitale",
+      "destination": "cendres-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-village-ville": {
+      "source": "cendres-village",
+      "destination": "cendres-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "cendres-foret-ville": {
+      "source": "cendres-foret",
+      "destination": "cendres-ville",
+      "hours": 4,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-foret": {
+      "source": "confins-capitale",
+      "destination": "confins-foret",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-village-ville": {
+      "source": "confins-village",
+      "destination": "confins-ville",
+      "hours": 3,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-foret-montagnes": {
+      "source": "confins-foret",
+      "destination": "confins-montagnes",
+      "hours": 5,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    },
+    "confins-capitale-montagnes": {
+      "source": "confins-capitale",
+      "destination": "confins-montagnes",
+      "hours": 6,
+      "day_risk": 0.1,
+      "night_risk": 0.3,
+      "bidirectional": true
+    }
+  },
+  "creatures": {
+    "GoblinForestier": {
+      "name": "Gobelin forestier",
+      "character_class": "Goblin",
+      "parent": "Goblin",
+      "variant": "subspecies",
+      "stat_multiplier": 1.2,
+      "loot_multiplier": 1,
+      "drops": [
+        {
+          "material": "Goblin:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Goblin:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "RoiGobelin": {
+      "name": "Roi gobelin",
+      "character_class": "Goblin",
+      "parent": "Goblin",
+      "variant": "boss",
+      "stat_multiplier": 3,
+      "loot_multiplier": 3,
+      "drops": [
+        {
+          "material": "Goblin:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Goblin:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "OrcDesCendres": {
+      "name": "Orc des cendres",
+      "character_class": "Orc",
+      "parent": "Orc",
+      "variant": "subspecies",
+      "stat_multiplier": 1.4,
+      "loot_multiplier": 2,
+      "drops": [
+        {
+          "material": "Orc:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Orc:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "SeigneurOrc": {
+      "name": "Seigneur orc",
+      "character_class": "Orc",
+      "parent": "OrcDesCendres",
+      "variant": "boss",
+      "stat_multiplier": 4,
+      "loot_multiplier": 4,
+      "drops": [
+        {
+          "material": "Orc:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Orc:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "DragonAncien": {
+      "name": "Dragon ancien",
+      "character_class": "DragonWhelp",
+      "parent": "DragonWhelp",
+      "variant": "boss",
+      "stat_multiplier": 5,
+      "loot_multiplier": 5,
+      "drops": [
+        {
+          "material": "DragonWhelp:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "DragonWhelp:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    }
+  }
+}

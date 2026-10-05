@@ -1,0 +1,653 @@
+{
+  "frontier": {
+    "camp": "camp",
+    "village": "village",
+    "road": "road",
+    "relay": "relay",
+    "gathering_hours": 1,
+    "road_hours": 3
+  },
+  "zones": {
+    "aube-clairiere": {
+      "name": "Clairière du grand rocher — aube",
+      "world": "aube",
+      "min_level": 1,
+      "max_level": 5,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    },
+    "aube-grotte": {
+      "name": "Grotte de la source — aube",
+      "world": "aube",
+      "min_level": 1,
+      "max_level": 5,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    },
+    "cendres-clairiere": {
+      "name": "Clairière du grand rocher — cendres",
+      "world": "cendres",
+      "min_level": 1,
+      "max_level": 10,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    },
+    "cendres-grotte": {
+      "name": "Grotte de la source — cendres",
+      "world": "cendres",
+      "min_level": 1,
+      "max_level": 10,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    },
+    "confins-clairiere": {
+      "name": "Clairière du grand rocher — confins",
+      "world": "confins",
+      "min_level": 1,
+      "max_level": 20,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    },
+    "confins-grotte": {
+      "name": "Grotte de la source — confins",
+      "world": "confins",
+      "min_level": 1,
+      "max_level": 20,
+      "creatures": [
+        "GoblinForestier"
+      ],
+      "kind": "wilderness",
+      "hidden": true
+    }
+  },
+  "landmarks": {
+    "aube-arbre": {
+      "name": "Arbre courbé",
+      "direction": "est",
+      "description": "Un arbre courbé surplombe une sente hors de la route.",
+      "source": "aube-capitale",
+      "destination": "aube-village",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "aube-rocher": {
+      "name": "Grand rocher",
+      "direction": "nord",
+      "description": "Un grand rocher clair dépasse de la canopée. Une clairière se devine au-delà.",
+      "source": "aube-foret",
+      "destination": "aube-clairiere",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "aube-source": {
+      "name": "Filet d’eau",
+      "direction": "nord-ouest",
+      "description": "Un filet d’eau rejoint une paroi creusée. Suivre le relief mène à une grotte.",
+      "source": "aube-clairiere",
+      "destination": "aube-grotte",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "cendres-arbre": {
+      "name": "Arbre courbé",
+      "direction": "est",
+      "description": "Un arbre courbé surplombe une sente hors de la route.",
+      "source": "cendres-capitale",
+      "destination": "cendres-village",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "cendres-rocher": {
+      "name": "Grand rocher",
+      "direction": "nord",
+      "description": "Un grand rocher clair dépasse de la canopée. Une clairière se devine au-delà.",
+      "source": "cendres-foret",
+      "destination": "cendres-clairiere",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "cendres-source": {
+      "name": "Filet d’eau",
+      "direction": "nord-ouest",
+      "description": "Un filet d’eau rejoint une paroi creusée. Suivre le relief mène à une grotte.",
+      "source": "cendres-clairiere",
+      "destination": "cendres-grotte",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "confins-arbre": {
+      "name": "Arbre courbé",
+      "direction": "est",
+      "description": "Un arbre courbé surplombe une sente hors de la route.",
+      "source": "confins-capitale",
+      "destination": "confins-village",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "confins-rocher": {
+      "name": "Grand rocher",
+      "direction": "nord",
+      "description": "Un grand rocher clair dépasse de la canopée. Une clairière se devine au-delà.",
+      "source": "confins-foret",
+      "destination": "confins-clairiere",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    },
+    "confins-source": {
+      "name": "Filet d’eau",
+      "direction": "nord-ouest",
+      "description": "Un filet d’eau rejoint une paroi creusée. Suivre le relief mène à une grotte.",
+      "source": "confins-clairiere",
+      "destination": "confins-grotte",
+      "hours": 2,
+      "day_risk": 0.2,
+      "night_risk": 0.4,
+      "bidirectional": true
+    }
+  },
+  "sites": {
+    "aube-foret": {
+      "strategic": true,
+      "reason": "Carrefour naturel entre la capitale, le village et les terres marchandes.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "aube-clairiere": {
+      "strategic": true,
+      "reason": "Eau douce et passage naturel permettant de contrôler l’accès aux vallées.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "aube-grotte": {
+      "strategic": false,
+      "reason": "Terrain encaissé sans espace agricole ni accès commercial.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "aube-montagnes": {
+      "strategic": true,
+      "reason": "Col permettant de contrôler les accès aux forteresses.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "cendres-foret": {
+      "strategic": true,
+      "reason": "Carrefour naturel entre la capitale, le village et les terres marchandes.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "cendres-clairiere": {
+      "strategic": true,
+      "reason": "Eau douce et passage naturel permettant de contrôler l’accès aux vallées.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "cendres-grotte": {
+      "strategic": false,
+      "reason": "Terrain encaissé sans espace agricole ni accès commercial.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "cendres-montagnes": {
+      "strategic": true,
+      "reason": "Col permettant de contrôler les accès aux forteresses.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "confins-foret": {
+      "strategic": true,
+      "reason": "Carrefour naturel entre la capitale, le village et les terres marchandes.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "confins-clairiere": {
+      "strategic": true,
+      "reason": "Eau douce et passage naturel permettant de contrôler l’accès aux vallées.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "confins-grotte": {
+      "strategic": false,
+      "reason": "Terrain encaissé sans espace agricole ni accès commercial.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    },
+    "confins-montagnes": {
+      "strategic": true,
+      "reason": "Col permettant de contrôler les accès aux forteresses.",
+      "resources": [
+        {
+          "material": "Land:wood",
+          "minimum": 4,
+          "maximum": 4
+        },
+        {
+          "material": "Land:stone",
+          "minimum": 3,
+          "maximum": 3
+        }
+      ]
+    }
+  },
+  "materials": {
+    "Land:wood": {
+      "name": "Bois de construction"
+    },
+    "Land:stone": {
+      "name": "Pierre de construction"
+    }
+  },
+  "constructions": {
+    "camp": {
+      "materials": {
+        "Land:wood": 4,
+        "Land:stone": 2
+      },
+      "workers": 2,
+      "hours": 4
+    },
+    "village": {
+      "materials": {
+        "Land:wood": 16,
+        "Land:stone": 12
+      },
+      "workers": 4,
+      "hours": 12
+    },
+    "road": {
+      "materials": {
+        "Land:wood": 8,
+        "Land:stone": 6
+      },
+      "workers": 2,
+      "hours": 6
+    },
+    "relay": {
+      "materials": {
+        "Land:wood": 6,
+        "Land:stone": 4
+      },
+      "workers": 2,
+      "hours": 4
+    }
+  },
+  "npcs": {
+    "aube-worker": {
+      "name": "Compagnie de bâtisseurs — aube",
+      "role": "worker",
+      "start_zone": "aube-capitale",
+      "itinerary": [
+        "aube-capitale-village",
+        "aube-capitale-village",
+        "aube-capitale-ville",
+        "aube-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 0,
+      "workforce": 4
+    },
+    "aube-merchant": {
+      "name": "Caravane marchande — aube",
+      "role": "merchant",
+      "start_zone": "aube-capitale",
+      "itinerary": [
+        "aube-capitale-village",
+        "aube-capitale-village",
+        "aube-capitale-ville",
+        "aube-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 2,
+      "workforce": 0
+    },
+    "aube-guard": {
+      "name": "Patrouille du royaume — aube",
+      "role": "guard",
+      "start_zone": "aube-capitale",
+      "itinerary": [
+        "aube-capitale-village",
+        "aube-capitale-village",
+        "aube-capitale-ville",
+        "aube-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 4,
+      "workforce": 0
+    },
+    "cendres-worker": {
+      "name": "Compagnie de bâtisseurs — cendres",
+      "role": "worker",
+      "start_zone": "cendres-capitale",
+      "itinerary": [
+        "cendres-capitale-village",
+        "cendres-capitale-village",
+        "cendres-capitale-ville",
+        "cendres-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 0,
+      "workforce": 4
+    },
+    "cendres-merchant": {
+      "name": "Caravane marchande — cendres",
+      "role": "merchant",
+      "start_zone": "cendres-capitale",
+      "itinerary": [
+        "cendres-capitale-village",
+        "cendres-capitale-village",
+        "cendres-capitale-ville",
+        "cendres-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 2,
+      "workforce": 0
+    },
+    "cendres-guard": {
+      "name": "Patrouille du royaume — cendres",
+      "role": "guard",
+      "start_zone": "cendres-capitale",
+      "itinerary": [
+        "cendres-capitale-village",
+        "cendres-capitale-village",
+        "cendres-capitale-ville",
+        "cendres-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 4,
+      "workforce": 0
+    },
+    "confins-worker": {
+      "name": "Compagnie de bâtisseurs — confins",
+      "role": "worker",
+      "start_zone": "confins-capitale",
+      "itinerary": [
+        "confins-capitale-village",
+        "confins-capitale-village",
+        "confins-capitale-ville",
+        "confins-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 0,
+      "workforce": 4
+    },
+    "confins-merchant": {
+      "name": "Caravane marchande — confins",
+      "role": "merchant",
+      "start_zone": "confins-capitale",
+      "itinerary": [
+        "confins-capitale-village",
+        "confins-capitale-village",
+        "confins-capitale-ville",
+        "confins-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 2,
+      "workforce": 0
+    },
+    "confins-guard": {
+      "name": "Patrouille du royaume — confins",
+      "role": "guard",
+      "start_zone": "confins-capitale",
+      "itinerary": [
+        "confins-capitale-village",
+        "confins-capitale-village",
+        "confins-capitale-ville",
+        "confins-capitale-ville"
+      ],
+      "stop_hours": 1,
+      "offset_hours": 4,
+      "workforce": 0
+    }
+  },
+  "patrols": {
+    "aube-nocturne-1": {
+      "name": "Patrouille de gobelins nocturnes 1 — aube",
+      "start_zone": "aube-capitale",
+      "itinerary": [
+        "aube-capitale-village",
+        "aube-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 0
+    },
+    "aube-nocturne-2": {
+      "name": "Patrouille de gobelins nocturnes 2 — aube",
+      "start_zone": "aube-capitale",
+      "itinerary": [
+        "aube-capitale-village",
+        "aube-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 1
+    },
+    "aube-sauvage": {
+      "name": "Gobelins des sentes — aube",
+      "start_zone": "aube-clairiere",
+      "itinerary": [
+        "aube-source",
+        "aube-source"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "always",
+      "offset_hours": 0
+    },
+    "cendres-nocturne-1": {
+      "name": "Patrouille de gobelins nocturnes 1 — cendres",
+      "start_zone": "cendres-capitale",
+      "itinerary": [
+        "cendres-capitale-village",
+        "cendres-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 0
+    },
+    "cendres-nocturne-2": {
+      "name": "Patrouille de gobelins nocturnes 2 — cendres",
+      "start_zone": "cendres-capitale",
+      "itinerary": [
+        "cendres-capitale-village",
+        "cendres-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 1
+    },
+    "cendres-sauvage": {
+      "name": "Gobelins des sentes — cendres",
+      "start_zone": "cendres-clairiere",
+      "itinerary": [
+        "cendres-source",
+        "cendres-source"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "always",
+      "offset_hours": 0
+    },
+    "confins-nocturne-1": {
+      "name": "Patrouille de gobelins nocturnes 1 — confins",
+      "start_zone": "confins-capitale",
+      "itinerary": [
+        "confins-capitale-village",
+        "confins-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 0
+    },
+    "confins-nocturne-2": {
+      "name": "Patrouille de gobelins nocturnes 2 — confins",
+      "start_zone": "confins-capitale",
+      "itinerary": [
+        "confins-capitale-village",
+        "confins-capitale-village"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "night",
+      "offset_hours": 1
+    },
+    "confins-sauvage": {
+      "name": "Gobelins des sentes — confins",
+      "start_zone": "confins-clairiere",
+      "itinerary": [
+        "confins-source",
+        "confins-source"
+      ],
+      "creature": "GoblinForestier",
+      "level": 2,
+      "active": "always",
+      "offset_hours": 0
+    }
+  }
+}

@@ -1,0 +1,31 @@
+name: Installation et lancement
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install build
+      - run: python -m build
+      - run: python -m venv /tmp/rpg-install
+      - run: /tmp/rpg-install/bin/python -m pip install dist/*.whl
+      - working-directory: /tmp
+        run: |
+          /tmp/rpg-install/bin/python -m jeuxRPG --floors 2
+          /tmp/rpg-install/bin/jeux-rpg --floors 2
+          /tmp/rpg-install/bin/jeux-rpg --battles 3 --interval 0 --save /tmp/rpg-player.json
+          /tmp/rpg-install/bin/jeux-rpg --battles 2 --interval 0 --save /tmp/rpg-player.json
+          /tmp/rpg-install/bin/jeux-rpg --mode world --ticks 3 --interval 0 --world-save /tmp/rpg-world.json
+          /tmp/rpg-install/bin/python -c "from jeuxRPG.adventure import Adventure; s = Adventure('/tmp/rpg-player.json'); assert len(s.world_map()['worlds']) == 3; assert s.current_zone.kind == 'capital'; print(s.rest_at_inn('night'))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distribution
+          path: dist/*
