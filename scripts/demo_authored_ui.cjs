@@ -1,20 +1,25 @@
 const assert = require('node:assert/strict');
 const {randomUUID} = require('node:crypto');
 const {JSDOM, VirtualConsole} = require('jsdom');
+const {HuntCycle} = require('./demo_hunt_cycle.cjs');
 const origin = process.env.RPG_TEST_ORIGIN;
 const clients = [], errors = [];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const $ = (dom, id) => dom.window.document.getElementById(id);
 const state = dom => dom.window.demoSnapshot();
 const visible = node => node && !node.disabled && !node.closest('[hidden]');
+function commandReady(dom) {
+  return (!dom.window.demoReady || dom.window.demoReady()) && Date.now() >= (dom.nextActionAt || 0) && Date.now() >= (dom.backoffUntil || 0);
+}
 function press(dom, selector, match = () => true) {
+  if (!commandReady(dom)) return false;
   const node = [...dom.window.document.querySelectorAll(selector)].find(node => visible(node) && match(node));
   if (!node) return false;
   node.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true}));
   return true;
 }
 function double(dom, node) {
-  if (!node) return false;
+  if (!node || !commandReady(dom)) return false;
   node.dispatchEvent(new dom.window.MouseEvent('dblclick', {bubbles:true, cancelable:true}));
   return true;
 }
@@ -33,7 +38,19 @@ async function client(name, className) {
   const interval=dom.window.setInterval.bind(dom.window); dom.timers=[];
   dom.window.setInterval=(...args)=>{const timer=interval(...args);dom.timers.push(timer);return timer;};
   dom.actions=[];
-  dom.window.fetch = (url, options) => { if(String(url).includes('/api/commands')) { const body=JSON.parse(options.body); dom.actions.push({action:body.action,params:body.params}); } return fetch(new URL(url, origin), options); };
+  dom.window.fetch = async (url, options) => {
+    if (String(url).includes('/api/commands')) {
+      const body=JSON.parse(options.body);
+      dom.actions.push({action:body.action,params:body.params});
+      dom.nextActionAt = Date.now() + 1100;
+    }
+    const response = await fetch(new URL(url, origin), options);
+    if (response.status === 429) {
+      const seconds = Number(response.headers.get('Retry-After'));
+      dom.backoffUntil = Date.now() + (Number.isFinite(seconds) && seconds > 0 ? seconds : 60) * 1000;
+    }
+    return response;
+  };
   dom.window.AbortController = AbortController;
   dom.window.AbortSignal = AbortSignal;
   dom.window.crypto.randomUUID = randomUUID;
@@ -45,6 +62,7 @@ async function client(name, className) {
   return dom;
 }
 function walk(dom, target) {
+  if (!commandReady(dom)) return false;
   const s=state(dom), a=s.tutorial, unit=a.battle.players[s.me];
   if (unit.route.length) return false;
   const route=dom.window.demoPath(a.battle.map,unit.position,target);
@@ -56,7 +74,7 @@ function walk(dom, target) {
 }
 function support(dom) {
   const s=state(dom), a=s?.tutorial;
-  if (!a?.battle || !dom.window.demoReady()) return false;
+  if (!a?.battle || !commandReady(dom)) return false;
   const me=a.players.find(p=>p.id===s.me);
   const injured=a.players.filter(p=>p.hp<p.max_hp*.75).sort((x,y)=>x.hp/x.max_hp-y.hp/y.max_hp)[0];
   const heal=injured && me.skills.find(k=>k.type==='HEAL' && k.available && k.targets.includes(injured.id));
@@ -80,7 +98,7 @@ function hasEquipment(dom, recipe) {
 }
 function craftStep(dom, recipe) {
   const s = state(dom), a = s?.tutorial;
-  if (!a?.battle || !dom.window.demoReady() || hasEquipment(dom, recipe)) return false;
+  if (!a?.battle || !commandReady(dom) || hasEquipment(dom, recipe)) return false;
   const me = a.players.find(p => p.id === s.me);
   const catalogue = me.forge.find(item => item.recipe === recipe);
   if (!catalogue) throw new Error(`Recette ${recipe} absente de la forge`);
@@ -106,8 +124,8 @@ async function runUntil(dom, predicate, label, target, limit=600000) {
   while(Date.now()<deadline) {
     const s=state(dom), a=s.tutorial;
     if(predicate(a)) return;
-    if(!dom.window.demoReady()) { await pause(100); continue; }
-    if(clients.some(ally=>ally!==dom && support(ally))) { await pause(200); continue; }
+    if(!commandReady(dom)) { await pause(100); continue; }
+    if(!dom.huntWaiting && clients.some(ally=>ally!==dom && support(ally))) { await pause(200); continue; }
     const me=a.players.find(p=>p.id===s.me);
     if(Date.now()>report) { console.log(JSON.stringify({lieu:a.field_map||a.position,pv:me.hp,kills:a.kills,position:a.battle?.players[s.me].position,mobs:a.mobs.map(m=>({id:m.combat_id,hp:m.stats.hp.current})),action:dom.actions.at(-1)?.action,message:$(dom,'message').textContent})); report=Date.now()+10000; }
     if(me.hp<=0) { await pause(150); continue; }
@@ -157,6 +175,30 @@ function travel(dom,destination) {
   if(parent) { const node=dom.window.document.querySelector(`[data-destination="${parent.id}"]`); if(node) node.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true})); }
   return double(dom,dom.window.document.querySelector(`[data-destination="${destination}"], [data-point="${destination}"]`));
 }
+function createHuntStep(dom, map, zone) {
+  const a = state(dom).tutorial;
+  const cycle = new HuntCycle(map, zone, a.repop_seconds);
+  if (!Number.isFinite(cycle.repopSeconds) || cycle.repopSeconds <= 0) throw new Error('Délai de repop absent : mettez le paquet du jeu à jour');
+  let announced = false;
+  return adventure => {
+    const decision = cycle.decide(adventure, state(dom).game_time, state(dom).me);
+    if (decision.type === 'wait') {
+      dom.huntWaiting = true;
+      if (!announced) { console.log(`Campement quitté : attente de ${cycle.repopSeconds} secondes de jeu avant le retour.`); announced = true; }
+      return;
+    }
+    dom.huntWaiting = false;
+    announced = false;
+    if (decision.type === 'walk') return walk(dom, decision.point);
+    if (decision.type === 'exit') return exitTo(dom, decision.destination);
+    if (adventure.battle) {
+      const gate = adventure.battle.map.exits?.find(g=>g.destination===map);
+      return exitTo(dom, gate ? map : null);
+    }
+    return travel(dom,map) || travel(dom,zone);
+  };
+}
+
 async function main() {
   try {
     const hero=await client('Démo chevalier','Knight'), healer=await client('Démo soutien','Priest');
@@ -164,7 +206,7 @@ async function main() {
     await wait(()=>!$(hero,'invitation').hidden,'invitation');
     $(healer,'invite-input').value=$(hero,'invite-link').value;
     $(healer,'join-form').dispatchEvent(new healer.window.Event('submit',{bubbles:true,cancelable:true}));
-    await wait(()=>!$(hero,'party-tutorial').disabled,'groupe');
+    await wait(()=>commandReady(hero) && !$(hero,'party-tutorial').disabled,'groupe');
     press(hero,'#party-tutorial');
     await wait(()=>state(hero)?.tutorial,'tutoriel');
     await runUntil(hero,a=>a.field_map==='forest','Clairière : combat, dépeçage et chemin vers la forêt',()=>exitTo(hero,'forest'));
@@ -186,17 +228,7 @@ async function main() {
     console.log(`Objectif lu dans le client : ${goal} ennemis, ${state(hero).tutorial.hunt_description}`);
     await runUntil(hero,a=>!a.battle,'Sortie de Rosée',()=>exitTo(hero,null));
     await runUntil(hero,a=>a.field_map===huntMap,'Rejoindre le lieu indiqué par la quête',a=>a.battle?exitTo(hero,huntMap):(travel(hero,huntMap)||travel(hero,huntZone)));
-    await runUntil(hero,a=>a.kills>=a.hunt_goal,'Accomplir les objectifs actuels de la quête',a=>{
-      if(!a.battle) return travel(hero,huntMap)||travel(hero,huntZone);
-      const points=a.battle.map.spawns||[];
-      const next=points.find(p=>!(a.battle.explored||[]).some(q=>q.join()===p.join()));
-      if(next) walk(hero,next);
-      else {
-        const destination=a.field_map===huntMap ? huntZone : huntMap;
-        if(destination===a.field_map) throw new Error(`Objectif ${a.kills}/${a.hunt_goal}: aucun ennemi restant dans le lieu demandé`);
-        exitTo(hero,destination);
-      }
-    });
+    await runUntil(hero,a=>a.kills>=a.hunt_goal,'Accomplir les objectifs actuels de la quête',createHuntStep(hero,huntMap,huntZone));
     await runUntil(hero,a=>a.field_map===huntZone || !a.battle,'Retour vers la lisière',()=>exitTo(hero,huntZone));
     await runUntil(hero,a=>!a.battle,'Sortie de la lisière',()=>exitTo(hero,null));
     await runUntil(hero,a=>a.field_map==='rosee','Retour à Rosée',()=>travel(hero,'rosee'));
@@ -216,5 +248,5 @@ async function main() {
     console.log('DÉMO RÉUSSIE : données réelles, interface uniquement, quête, craft, équipement et Brume.');
   } finally { for(const c of clients) { for(const timer of c.timers) c.window.clearInterval(timer); await wait(()=>c.window.demoIdle(),'fermeture'); c.window.close(); } }
 }
-module.exports = {craftStep, hasEquipment};
+module.exports = {craftStep, hasEquipment, commandReady, createHuntStep};
 if (require.main === module) main().catch(error=>{console.error(error);process.exitCode=1;});

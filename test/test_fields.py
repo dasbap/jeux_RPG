@@ -377,3 +377,10 @@ def test_custom_npc_quest_requires_proximity_and_rewards_once(monkeypatch):
     fields.execute(data, 'p', 'talk', {'npc':'guide'}, 3, GameError, lambda: .99)
     fields.execute(data, 'p', 'talk', {'npc':'guide'}, 4, GameError, lambda: .99)
     assert data['characters']['p']['exp'] == xp + 75
+
+
+def test_client_receives_configured_repopulation_delay(monkeypatch):
+    from jeuxRPG.multiplayer import content
+    monkeypatch.setitem(content.WORLD, "repop_seconds", 240)
+    party = tutorial.new_party([{"id": "p0", "name": "Test", "class_name": "Knight"}])
+    assert tutorial.view(party, "p0", 0)["repop_seconds"] == 240

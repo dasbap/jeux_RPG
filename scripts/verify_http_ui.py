@@ -82,6 +82,9 @@ def main():
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode
+                checked = subprocess.run(["node", str(root / "scripts" / "verify_demo_hunt.cjs")], env={**os.environ, "NODE_PATH": modules}, timeout=30)
+                if checked.returncode:
+                    return checked.returncode
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_demo_driver.cjs"), str(fixture_path)], env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode

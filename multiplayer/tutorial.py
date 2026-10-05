@@ -157,6 +157,7 @@ def view(party, me, now):
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party)
     result["hunt_objective"] = {key: content.HUNT.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
+    result["repop_seconds"] = content.WORLD["repop_seconds"]
     result["hunt_goal"] = content.HUNT["count"]
     result["hunt_name"] = content.HUNT["name"]
     result["hunt_description"] = content.HUNT["description"]

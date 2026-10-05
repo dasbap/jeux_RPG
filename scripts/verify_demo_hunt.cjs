@@ -1,0 +1,38 @@
+const assert = require('node:assert/strict');
+const {HuntCycle} = require('./demo_hunt_cycle.cjs');
+const {commandReady} = require('./demo_authored_ui.cjs');
+const camp = (encounter=1) => ({field_map:'hunt',encounter_number:encounter,kills:8,hunt_goal:10,battle:{players:{p0:{position:[5,5]}},map:{spawns:[[5,5],[10,10]],exits:[{destination:'lisiere'}]},explored:[[5,5],[10,10]]}});
+const outside = {field_map:'lisiere',encounter_number:2,battle:{players:{p0:{position:[1,1]}},map:{spawns:[],exits:[{destination:'hunt'}]}}};
+const cycle = new HuntCycle('hunt','lisiere',180);
+const first = camp();
+assert.deepEqual(cycle.decide(first,100,'p0'),{type:'walk',point:[10,10]});
+first.battle.players.p0.position = [10,10];
+assert.deepEqual(cycle.decide(first,110,'p0'),{type:'exit',destination:'lisiere'});
+assert.deepEqual(cycle.decide(first,115,'p0'),{type:'exit',destination:'lisiere'});
+assert.deepEqual(cycle.decide(outside,120,'p0'),{type:'wait',remaining:183});
+for(let now=121;now<303;now++) {
+  assert.equal(cycle.decide(outside,now,'p0').type,'wait');
+  assert.equal(cycle.deadline,303);
+}
+assert.deepEqual(cycle.decide(outside,303,'p0'),{type:'enter',destination:'hunt'});
+assert.deepEqual(cycle.decide(camp(3),304,'p0'),{type:'walk',point:[10,10]});
+const custom = new HuntCycle('hunt','hunt',240);
+const complete = camp(); complete.battle.map.spawns=[];
+assert.deepEqual(custom.decide(complete,20,'p0'),{type:'exit',destination:'lisiere'});
+assert.deepEqual(custom.decide(outside,25,'p0'),{type:'wait',remaining:243});
+assert.deepEqual(custom.decide(outside,268,'p0'),{type:'enter',destination:'hunt'});
+const interrupted = new HuntCycle('hunt','lisiere',180);
+complete.battle.map.spawns=[];
+interrupted.decide(complete,10,'p0'); interrupted.decide(outside,20,'p0');
+assert.equal(interrupted.decide(camp(3),30,'p0').type,'exit');
+assert.deepEqual(interrupted.decide(outside,40,'p0'),{type:'wait',remaining:183});
+assert.throws(()=>cycle.decide(outside,undefined,'p0'),/Horloge/);
+const dom = {window:{demoReady:()=>true},nextActionAt:Date.now()+1000};
+assert.equal(commandReady(dom),false);
+dom.nextActionAt=0; dom.backoffUntil=Date.now()+60000;
+assert.equal(commandReady(dom),false);
+dom.backoffUntil=0;
+assert.equal(commandReady(dom),true);
+dom.window.demoReady=()=>false;
+assert.equal(commandReady(dom),false);
+process.stdout.write('Pilote UI : attente hors zone, repop configuré, nouvelle recherche et pause des commandes vérifiés.\n');

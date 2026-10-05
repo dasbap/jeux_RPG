@@ -29,3 +29,8 @@ jsdom vérifie les interactions et l'état de l'interface, pas les pixels rendus
 
 
 À la forge, chaque personnage rejoint une case libre à portée de l’atelier et fabrique sa propre veste. Une veste déjà équipée est ignorée : le pilote ne clique jamais sur l’amélioration pour accomplir cette étape. Si les matériaux nécessaires manquent, il signale le coût et le sac du personnage concerné au lieu de répéter des commandes impossibles.
+
+
+Si le nombre demandé dépasse les ennemis actuellement présents, le pilote parcourt les points de spawn, quitte le lieu de chasse et attend à l’extérieur le délai de repop configuré par le contrôleur. Il utilise l’horloge publique du serveur et recommence la recherche au retour, même sur des cases déjà explorées. Il ne provoque pas la réapparition côté serveur et ne réduit pas son délai.
+
+Les commandes du pilote sont espacées d’au moins 1,1 seconde par personnage. En cas de réponse HTTP 429, il respecte `Retry-After` avant d’agir à nouveau. L’attente hors zone suspend les ordres de suivi qui pourraient provoquer un retour prématuré.
