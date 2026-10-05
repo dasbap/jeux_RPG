@@ -7,6 +7,12 @@ from collections.abc import Mapping
 from urllib.parse import urlsplit
 
 
+class TursoHTTPError(sqlite3.OperationalError):
+    def __init__(self, status):
+        super().__init__('Accès HTTP Turso refusé')
+        self.status = status
+
+
 class Row(Mapping):
     def __init__(self, names, values):
         self.names, self.values = names, values
@@ -97,7 +103,10 @@ class TursoConnection:
                 self.connection.request('POST', '/v2/pipeline', json.dumps(payload, allow_nan=False).encode(), {'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'})
                 response = self.connection.getresponse()
                 body = response.read(16 * 1024 * 1024 + 1)
-                if response.status != 200 or len(body) > 16 * 1024 * 1024:
+                if response.status != 200:
+                    self.broken = True
+                    raise TursoHTTPError(response.status)
+                if len(body) > 16 * 1024 * 1024:
                     raise OSError('Base indisponible')
                 data = json.loads(body)
             self.baton = data.get('baton')

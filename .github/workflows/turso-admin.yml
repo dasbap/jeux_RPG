@@ -4,6 +4,8 @@ on:
     branches: [alpha-vercel-turso]
     paths:
       - multiplayer/schema.py
+      - multiplayer/turso.py
+      - multiplayer/turso_admin.py
       - .github/workflows/turso-admin.yml
   workflow_dispatch:
     inputs:
