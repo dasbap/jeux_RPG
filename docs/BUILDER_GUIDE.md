@@ -9,7 +9,7 @@ Le builder est un éditeur de bureau indépendant du jeu. Il permet de modifier 
 Depuis le dossier du dépôt, dans PowerShell :
 
 ```powershell
-git pull origin codex/secure-multiplayer-poc
+git pull origin secure-multiplayer-poc
 python -m pip install --upgrade .
 python map_editor.py
 ```

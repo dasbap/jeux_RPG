@@ -9,12 +9,12 @@ Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaq
 Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou service de base de données n'est nécessaire.
 
 ```bash
-git clone --branch codex/secure-multiplayer-poc https://github.com/dasbap/jeux_RPG.git
+git clone --branch secure-multiplayer-poc https://github.com/dasbap/jeux_RPG.git
 cd jeux_RPG
 python main.py
 ```
 
-Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusionnée, utiliser la branche `codex/secure-multiplayer-poc`.
+Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusionnée, utiliser la branche `secure-multiplayer-poc`.
 
 1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
 2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
