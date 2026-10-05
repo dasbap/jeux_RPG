@@ -178,3 +178,24 @@ class TestNecromancien:
         # Devrait retourner un tuple (bool, str)
         assert isinstance(success, bool)
         assert isinstance(message, str)
+
+
+
+@pytest.mark.parametrize("amount,expected", [(0, []), (1, [1]), (2, [1, 1]), (3, [2, 1]), (5, [3, 2])])
+def test_shared_damage_is_positive_and_preserves_remainder(amount, expected):
+    calls = []
+
+    class Unit:
+        def is_alive(self):
+            return True
+
+        def lose_hp(self, source, value):
+            assert value > 0
+            calls.append(value)
+
+    pocket = InvocationPocket(None)
+    pocket.invocations = [Unit(), Unit()]
+    success, _ = pocket.lose_hp(None, amount)
+    assert success == (amount > 0)
+    assert calls == expected
+    assert sum(calls) == amount

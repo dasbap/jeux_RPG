@@ -35,6 +35,9 @@ saves/
 *.log
 *.sqlite3
 *.db
+pytest-of-root/
+*.sqlite3-journal
+.ui-test/
 test/load/locust_results_*.txt
 
 # Generated documentation
@@ -54,15 +57,7 @@ Thumbs.db
 *.backup
 *.orig
 
-pip-*/
-pytest-of-root/
-tmp*/
-coverage.json
-coverage.xml
-function-audit.json
-tests.xml
-performance.xml
-results.txt
-baseline*.txt
+.logs/
 
-install-check/
+.vercel/
+.vercel

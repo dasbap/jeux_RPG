@@ -1,17 +1,3 @@
-from jeuxRPG._class.character import Character
-from jeuxRPG._class.res.dictType import ClassSkills
+from jeuxRPG._class.universal_character import get_class
 
-from jeuxRPG._class.res.character.table_stat_subclass import knight_table
-
-class Knight(Character):
-    """Classe représentant un Knight, tank résistant avec des capacités défensives."""
-    
-    is_playable: bool = True
-    class_skills_dict : ClassSkills = knight_table["class_skills_dict"]
-    
-    def __init__(self, user_id: str, name: str):
-        super().__init__(
-            user_id=user_id,
-            name=name,
-            class_table=knight_table.copy(),
-        )
+Knight = get_class('Knight')

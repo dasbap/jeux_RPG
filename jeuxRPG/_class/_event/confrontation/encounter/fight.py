@@ -230,6 +230,19 @@ class Fight:
 
                 
     def play(self, who_play : Character, target : Character, skill_name : str) -> bool:
+        if self.is_over() or not who_play.is_alive():
+            return False
+        if target is not None and target not in self.get_all_individuals():
+            return False
+        skill = who_play.skills.get(skill_name)
+        if skill is None:
+            return False
+        if target is not None:
+            same_side = (who_play in self.attackers) == (target in self.attackers)
+            if skill.skill_type in (SkillType.DAMAGE, SkillType.DEBUFF) and same_side:
+                return False
+            if skill.skill_type in (SkillType.HEAL, SkillType.BUFF, SkillType.RESURRECT) and not same_side:
+                return False
         # If the actor already played this round, treat as no-op (avoid raising during auto-battle loops)
         if who_play not in self.can_play:
             return False
@@ -242,7 +255,8 @@ class Fight:
         if message == '':
             # Debug hook left from older flow; keep safe but non-blocking
             pass
-        self.can_play.remove(who_play)
+        if success:
+            self.can_play.remove(who_play)
         return success
     
     def get_winner(self) -> Optional[Alliance]:

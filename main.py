@@ -1,4 +1,5 @@
-from jeuxRPG.cli import main
+from jeuxRPG.multiplayer.server import main
+
 
 if __name__ == "__main__":
     main()

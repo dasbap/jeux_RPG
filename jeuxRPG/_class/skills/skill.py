@@ -258,12 +258,12 @@ class Skill:
                 if success:
                     total_success += 1
                     effects_list.append(
-                        f"{eff.stat_target.__name__} {'+' if eff.alterationtype == AlterationType.BUFFSTAT else '-'}{eff.value}"
+                        f"{eff.stat_target.__name__ if isinstance(eff.stat_target, type) else eff.name or eff.alterationtype.name} {'+' if eff.alterationtype == AlterationType.BUFFSTAT else '-'}{eff.value}"
                     )
             all_message = ", ".join(effects_list)
 
-        process_effects(effects.get("Buff", []))
-        process_effects(effects.get("Debuff", []))
+        for effect in effects.values():
+            process_effects(effect)
 
         results["effects"] = ", ".join(effects_list)
         results["message"] = f"Altérations appliquées sur {target.name} par {caster.name} : {total_success}/{total_pass} {all_message}"

@@ -1,0 +1,696 @@
+import argparse
+from copy import deepcopy
+from pathlib import Path
+
+from . import fields
+from .map_assets import load, save
+from . import tactics
+from .map_building import MOBS, map_level, zone_of, sync_overlap, linked_sector
+
+
+class MapEditor:
+    def __init__(self, root, path=None):
+        self.root = root
+        from .editor_ui import InlineMessages
+        self._messages = InlineMessages(root)
+        self.maps = deepcopy(fields.MAPS)
+        self.path = Path(path) if path else Path.cwd() / "maps" / "world.json" if (Path.cwd() / "maps" / "world.json").exists() else None
+        if self.path and self.path.exists():
+            self.maps = load(self.path)
+            if self.path.is_dir():
+                self.path = None
+        self.saved = deepcopy(self.maps)
+        self.history = []
+        self.size = 24
+        self.tool = tk.StringVar(value="Sol")
+        self.selected = tk.StringVar(value=next(iter(self.maps)))
+        self.status = tk.StringVar()
+        self.search = tk.StringVar()
+        self.zone_filter = tk.StringVar()
+        self.min_level = tk.StringVar()
+        self.max_level = tk.StringVar()
+        self.brush = tk.StringVar(value="1")
+        self.bridge_rotation = tk.StringVar(value="0")
+        self.layers = {name: tk.BooleanVar(value=True) for name in ("Décor", "Spawns", "PNJ", "Passages")}
+        root.protocol("WM_DELETE_WINDOW", self.close)
+        root.title("RPG — Éditeur de cartes")
+        root.geometry("1200x800")
+        bar = ttk.Frame(root, padding=6)
+        bar.pack(fill="x")
+        for label, command in (("Ouvrir", self.open), ("Enregistrer", self.save), ("Annuler", self.undo), ("Propriétés carte", self.properties)):
+            ttk.Button(bar, text=label, command=command).pack(side="left", padx=2)
+        self.displayed_map = tk.StringVar()
+        self.choice = ttk.Combobox(bar, textvariable=self.displayed_map, state="readonly", width=32)
+        self.choice.pack(side="left", padx=10)
+        self.refresh_choice()
+        self.choice.bind("<<ComboboxSelected>>", self.select_map)
+        ttk.Button(bar, text="−", command=lambda: self.zoom(-4)).pack(side="left")
+        ttk.Button(bar, text="+", command=lambda: self.zoom(4)).pack(side="left")
+        from .editor_ui import fold
+        options = fold(root, "Recherche et filtres")
+        ttk.Label(options, text="Rechercher").pack(side="left")
+        ttk.Entry(options, textvariable=self.search, width=22).pack(side="left", padx=4)
+        ttk.Label(options, text="Zone").pack(side="left")
+        self.zone_choice = ttk.Combobox(options, textvariable=self.zone_filter, values=["", *sorted({zone_of(self.maps, key) for key in self.maps})], width=16)
+        self.zone_choice.pack(side="left", padx=4)
+        ttk.Label(options, text="Niv. min / max").pack(side="left")
+        ttk.Entry(options, textvariable=self.min_level, width=3).pack(side="left")
+        ttk.Entry(options, textvariable=self.max_level, width=3).pack(side="left")
+        self.min_level.trace_add("write", lambda *args: self.refresh_choice())
+        self.max_level.trace_add("write", lambda *args: self.refresh_choice())
+        self.search.trace_add("write", lambda *args: self.refresh_choice())
+        self.zone_filter.trace_add("write", lambda *args: self.refresh_choice())
+        layers = fold(root, "Calques visibles")
+        for name, variable in self.layers.items():
+            ttk.Checkbutton(layers, text=name, variable=variable, command=self.draw).pack(side="left")
+        from .editor_ui import fold
+        advanced = fold(root, "Cartes, monde et validation")
+        for index, (label, command) in enumerate((("Nouvelle carte", self.new), ("Enregistrer sous", lambda: self.save(True)), ("Aperçu navigateur", self.preview), ("Assemblage des cartes", self.assembly), ("Créer un secteur relié", self.create_linked), ("Dupliquer", self.duplicate), ("Supprimer carte", self.delete), ("Valider", self.validate), ("TP par clics", self.portal_by_click), ("Carte générale / points", self.edit_layout), ("Trajets / rues", self.edit_world), ("Synchroniser les raccords", self.synchronize))):
+            ttk.Button(advanced, text=label, command=command).grid(row=index // 5, column=index % 5, padx=3, pady=2, sticky="w")
+        body = ttk.Frame(root)
+        body.pack(fill="both", expand=True)
+        sidebar = ttk.Frame(body, width=230)
+        sidebar.pack(side="left", fill="y")
+        tool_canvas = tk.Canvas(sidebar, width=210, highlightthickness=0)
+        tool_scroll = ttk.Scrollbar(sidebar, orient="vertical", command=tool_canvas.yview)
+        tool_canvas.configure(yscrollcommand=tool_scroll.set)
+        tool_scroll.pack(side="right", fill="y")
+        tool_canvas.pack(side="left", fill="both", expand=True)
+        tools = ttk.Frame(tool_canvas, padding=8)
+        tool_canvas.create_window((0, 0), window=tools, anchor="nw", width=210)
+        tools.bind("<Configure>", lambda e: tool_canvas.configure(scrollregion=tool_canvas.bbox("all")))
+        from .editor_ui import fold
+        for label in ("Déplacer", "Inspecter", "Effacer"):
+            ttk.Radiobutton(tools, text=label, variable=self.tool, value=label).pack(anchor="w")
+        decoration = fold(tools, "Décoration")
+        groups = [(decoration, "Végétaux", ("Arbre", "Fleurs", "Herbe")), (decoration, "Minéraux", ("Rocher", "Cristal")), (decoration, "Constructions", ("Maison", "Camp", "Rempart X", "Mur M")), (tools, "Terrain et eau", ("Sol", "Chemin", "Eau", "Pont", "Rotation pont")), (tools, "PNJ et créatures", ("PNJ", "Spawn", "Patrouille")), (tools, "Passages", ("Téléportation",))]
+        for parent, title, labels in groups:
+            group = fold(parent, title)
+            for label in labels:
+                ttk.Radiobutton(group, text="Spawner" if label == "Spawn" else label, variable=self.tool, value=label).pack(anchor="w", pady=2)
+        self.tool_options = fold(tools, "Réglages de l’outil", True)
+        self.brush_controls = ttk.Frame(self.tool_options)
+        ttk.Label(self.brush_controls, text="Pinceau").pack(side="left")
+        ttk.Combobox(self.brush_controls, textvariable=self.brush, values=["1", "3", "5"], width=3, state="readonly").pack(side="left")
+        self.bridge_controls = ttk.Frame(self.tool_options)
+        ttk.Label(self.bridge_controls, text="Rotation °").pack(side="left")
+        ttk.Combobox(self.bridge_controls, textvariable=self.bridge_rotation, values=["0", "90", "180", "270"], width=4, state="readonly").pack(side="left")
+        self.patrol_button = ttk.Button(self.tool_options, text="Terminer la patrouille", command=self.end_patrol)
+        self.tool.trace_add("write", lambda *args: self.update_patrol_button())
+        self.tool.trace_add("write", lambda *args: self.update_tool_options())
+        self.update_tool_options()
+        viewport = ttk.Frame(body)
+        viewport.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(viewport, background="#15201b")
+        horizontal = ttk.Scrollbar(viewport, orient="horizontal", command=self.canvas.xview)
+        vertical = ttk.Scrollbar(viewport, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=horizontal.set, yscrollcommand=vertical.set)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        vertical.grid(row=0, column=1, sticky="ns")
+        horizontal.grid(row=1, column=0, sticky="ew")
+        viewport.rowconfigure(0, weight=1)
+        viewport.columnconfigure(0, weight=1)
+        self.canvas.bind("<Button-1>", self.click)
+        self.canvas.bind("<B1-Motion>", self.drag)
+        self.canvas.bind("<Motion>", self.hover)
+        self.canvas.bind("<MouseWheel>", lambda e: self.zoom(4 if e.delta > 0 else -4, e))
+        self.canvas.bind("<Button-4>", lambda e: self.zoom(4, e))
+        self.canvas.bind("<Button-5>", lambda e: self.zoom(-4, e))
+        self.canvas.bind("<ButtonRelease-1>", self.drop_object)
+        root.bind("<Control-z>", lambda event: self.undo())
+        root.bind("<Control-s>", lambda event: self.save())
+        ttk.Label(root, textvariable=self.status, padding=6).pack(fill="x")
+        self.draw()
+
+    @property
+    def messages(self):
+        return self._messages if hasattr(self, "_messages") else globals()["messagebox"]
+
+    def update_tool_options(self):
+        painting = self.tool.get() in ("Sol", "Arbre", "Rocher", "Maison", "Eau", "Pont", "Chemin", "Fleurs", "Herbe", "Cristal", "Camp", "Rempart X", "Mur M", "Effacer")
+        for widget, visible in ((self.brush_controls, painting), (self.bridge_controls, self.tool.get() in ("Pont", "Rotation pont"))):
+            widget.pack(fill="x") if visible else widget.pack_forget()
+
+    def edit_layout(self):
+        from .map_layout_editor import LayoutEditor
+        LayoutEditor(self)
+
+    def refresh_choice(self):
+        query = self.search.get().casefold() if hasattr(self, "search") else ""
+        zone = self.zone_filter.get() if hasattr(self, "zone_filter") else ""
+        minimum = self.min_level.get() if hasattr(self, "min_level") else ""
+        maximum = self.max_level.get() if hasattr(self, "max_level") else ""
+        low = int(minimum) if minimum.isdigit() else 1
+        high = int(maximum) if maximum.isdigit() else 100
+        labels = {f"{value['name']} [{key}] · niv. {map_level(self.maps, key)}": key for key, value in self.maps.items() if query in (value["name"] + " " + key).casefold() and (not zone or zone_of(self.maps, key) == zone) and low <= map_level(self.maps, key) <= high}
+        if hasattr(self, "zone_choice"):
+            self.zone_choice.configure(values=["", *sorted({zone_of(self.maps, key) for key in self.maps})])
+        self.map_labels = labels
+        self.choice.configure(values=list(labels))
+        if hasattr(self, "displayed_map"):
+            self.displayed_map.set(next((label for label, key in labels.items() if key == self.selected.get()), ""))
+
+    def select_map(self, event=None):
+        if self.displayed_map.get() not in self.map_labels:
+            return
+        self.selected.set(self.map_labels[self.displayed_map.get()])
+        self.update_patrol_button()
+        self.draw()
+
+    def visible_layer(self, name):
+        return not hasattr(self, "layers") or self.layers[name].get()
+
+    def update_patrol_button(self):
+        if self.tool.get() == "Patrouille" and getattr(self, "patrol_spawn", None) and self.patrol_spawn[0] == self.selected.get():
+            self.patrol_button.pack(fill="x", pady=4)
+        else:
+            self.patrol_button.pack_forget()
+
+    def end_patrol(self):
+        self.patrol_spawn = None
+        self.update_patrol_button()
+        self.status.set("Patrouille terminée. Recliquer un spawner avec l’outil Patrouille pour éditer son trajet.")
+
+    def duplicate(self):
+        values = self.form("Dupliquer", {"map_id": ""})
+        key = values["map_id"].strip() if values else None
+        if not key or key in self.maps:
+            return
+        self.remember()
+        source = self.selected.get()
+        data = deepcopy(self.maps[source])
+        data.update(id="field_" + key, name=data["name"] + " · copie")
+        data.pop("world_origin", None)
+        data.pop("overlap_columns", None)
+        data["zone_id"] = zone_of(self.maps, source)
+        self.maps[key] = data
+        self.selected.set(key)
+        self.refresh_choice()
+        self.draw()
+
+    def delete(self):
+        key = self.selected.get()
+        if key in {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "cave_2", "cave_3", "brume"}:
+            self.messages.showerror("Suppression", "Cette carte est nécessaire au tutoriel.")
+            return
+        if any(item.get("destination") == key or item.get("fast_destination") == key for value in self.maps.values() for item in value["exits"]) or any(other != key and (zone_of(self.maps, other) == key or any(value.get(field) == key for field in ("zone_id", "world_zone", "fast_travel_origin"))) for other, value in self.maps.items()):
+            self.messages.showerror("Suppression", "Retirez d’abord les passages et rattachements vers cette carte.")
+            return
+        self.remember()
+        del self.maps[key]
+        self.selected.set(next(iter(self.maps)))
+        self.refresh_choice()
+        self.draw()
+
+    def validate(self):
+        from .map_assets import validate
+        try:
+            validate(self.maps)
+            from .map_playability import validate as playable
+            playable(self.maps)
+            self.messages.showinfo("Validation", "Cartes, niveaux, spawners et chemins valides.")
+        except ValueError as exc:
+            self.messages.showerror("Validation", str(exc))
+
+    def synchronize(self):
+        self.remember()
+        count = sync_overlap(self.maps, self.selected.get())
+        self.draw()
+        self.messages.showinfo("Raccords", f"{count} carte(s) voisine(s) synchronisée(s). Les entités et passages sont conservés. Validez avant d’enregistrer.")
+
+    def close(self):
+        if self.maps != self.saved and not self.messages.askyesno("Modifications non enregistrées", "Fermer sans enregistrer ?"):
+            return
+        self.root.destroy()
+
+    def remember(self):
+        self.history.append(deepcopy(self.maps))
+        self.history = self.history[-30:]
+
+    def undo(self):
+        if self.history:
+            self.maps = self.history.pop()
+            if self.selected.get() not in self.maps:
+                self.selected.set(next(iter(self.maps)))
+            self.refresh_choice()
+            self.draw()
+
+    def coordinates(self, event):
+        return [int(self.canvas.canvasx(event.x) // self.size), int(self.canvas.canvasy(event.y) // self.size)]
+
+    def hover(self, event):
+        x, y = self.coordinates(event)
+        self.status.set(f"{self.selected.get()} · case {x}, {y} · {self.tool.get()} · {self.path or 'non enregistré'}")
+
+    def zoom(self, delta, event=None):
+        from .map_viewport import zoom_canvas
+        previous = self.size
+        self.size = max(12, min(64, self.size + delta))
+        zoom_canvas(self.canvas, previous, self.size, self.draw, event.x if event else None, event.y if event else None)
+
+    def draw(self):
+        self.canvas.delete("all")
+        data = self.maps[self.selected.get()]
+        size = self.size
+        self.canvas.configure(scrollregion=(0, 0, data["width"] * size, data["height"] * size))
+        colors = {"water": "#348aba", "bridges": "#b99864", "paths": "#aa9b77", "cover": "#354a35"}
+        base = "#3e434d" if data.get("biome") == "cave" else "#597244"
+        terrain = {field: {tuple(p) for p in data.get(field, [])} for field in colors}
+        for y in range(data["height"]):
+            for x in range(data["width"]):
+                color = base
+                for field, value in colors.items():
+                    if (x, y) in terrain[field]:
+                        color = value
+                self.canvas.create_rectangle(x * size, y * size, (x + 1) * size, (y + 1) * size, fill=color, outline="#52634f")
+        icons = {"tree": "♣", "rock": "◆", "house": "⌂", "flowers": "✿", "grass": "⁙", "crystal": "✦", "camp": "▲", "barricade": "X", "wall": "M"}
+        for decoration in data.get("decorations", []) if self.visible_layer("Décor") else []:
+            self.label(decoration["position"], icons.get(decoration["kind"], "?"), "#e4dfb8")
+        for position in data.get("spawns", []) if self.visible_layer("Spawns") else []:
+            config = next((c for c in data.get("spawners", []) if c["position"] == position), {})
+            self.label(position, {"goblin": "G", "orc": "O", "dragon_whelp": "D"}.get(config.get("mob_id", "goblin"), "S"), "#ff7777")
+            for index, waypoint in enumerate(config.get("patrol", [])):
+                self.label(waypoint, str(index + 1), "#ffa552")
+        for bridge in data.get("bridges", []):
+            rotation = next((item["rotation"] for item in data.get("bridge_rotations", []) if item["position"] == bridge), 0)
+            self.label(bridge, "↔" if rotation % 180 else "↕", "#f5dfad")
+        for exit in data.get("exits", []) if self.visible_layer("Passages") else []:
+            self.label(exit["position"], "↗", "#80e9ff")
+        for site in data.get("sites", []) if self.visible_layer("PNJ") else []:
+            self.label(site["position"], "P" if site.get("owner") else "N", "#ffe080")
+
+    def label(self, point, text, color):
+        self.canvas.create_text((point[0] + .5) * self.size, (point[1] + .5) * self.size, text=text, fill=color, font=("Arial", max(10, self.size // 2), "bold"))
+
+    def drag(self, event):
+        if self.tool.get() == "Déplacer":
+            point = self.coordinates(event)
+            self.canvas.delete("move-preview")
+            self.canvas.create_oval(point[0]*self.size, point[1]*self.size, (point[0]+1)*self.size, (point[1]+1)*self.size, outline="#ffe080", width=3, tags="move-preview")
+            return
+        if self.tool.get() not in ("Téléportation", "PNJ", "Inspecter", "Spawn gobelin", "Spawn", "Patrouille", "Rotation pont"):
+            self.click(event, record=False)
+
+    def click(self, event, record=True):
+        point = self.coordinates(event)
+        data = self.maps[self.selected.get()]
+        if not 0 <= point[0] < data["width"] or not 0 <= point[1] < data["height"]:
+            return
+        tool = self.tool.get()
+        if tool == "Rotation pont":
+            from .map_preview import rotate_bridge
+            try:
+                updated = rotate_bridge(data, point)
+                self.remember()
+                self.maps[self.selected.get()] = updated
+                self.draw()
+            except ValueError as exc:
+                self.messages.showerror("Pont", str(exc))
+            return
+        if tool == "Déplacer":
+            from .map_objects import objects_at
+            objects = objects_at(data, point)
+            if not objects:
+                self.status.set("Aucun objet ici. Choisissez un PNJ, TP, spawner, décor ou point de patrouille.")
+                return
+            chosen = objects[0]
+            if len(objects) > 1:
+                self.object_choices = {item[0]: item for item in objects}
+                result = self.form("Objet à déplacer", {"object_choice": objects[0][0]})
+                if not result:
+                    return
+                chosen = self.object_choices[result["object_choice"]]
+            self.moving_object = (self.selected.get(), chosen[1], chosen[2], chosen[3])
+            self.status.set("Glissez puis relâchez sur la case destination.")
+            return
+        if hasattr(self, "brush") and int(self.brush.get()) > 1 and tool not in ("Inspecter", "PNJ", "Téléportation", "Spawn", "Spawn gobelin", "Patrouille") and not getattr(self, "painting", False):
+            if record:
+                self.remember()
+            self.painting = True
+            try:
+                from types import SimpleNamespace
+                for dy in range(int(self.brush.get())):
+                    for dx in range(int(self.brush.get())):
+                        self.click(SimpleNamespace(x=event.x + dx * self.size, y=event.y + dy * self.size), record=False)
+            finally:
+                self.painting = False
+            self.draw()
+            return
+        if tool == "Patrouille":
+            active = getattr(self, "patrol_spawn", None)
+            config = next((item for item in data.get("spawners", []) if item["position"] == point), None)
+            if config is not None:
+                self.patrol_spawn = (self.selected.get(), point[:])
+                if hasattr(self, "patrol_button"):
+                    self.update_patrol_button()
+                if self.messages.askyesno("Patrouille", "Remplacer les points actuels ?"):
+                    self.remember()
+                    config["patrol"] = []
+                self.draw()
+                return
+            if not active or active[0] != self.selected.get():
+                self.messages.showinfo("Patrouille", "Sélectionnez d’abord un spawner avec cet outil.")
+                return
+            config = next((item for item in data.get("spawners", []) if item["position"] == active[1]), None)
+            if config is None or not tactics.walkable(data, point) or len(config.get("patrol", [])) >= 32:
+                self.messages.showerror("Patrouille", "Point praticable requis ; 32 points maximum.")
+                return
+            previous = config.get("patrol", [])[-1] if config.get("patrol") else config["position"]
+            if tactics.path(data, previous, point) is None:
+                self.messages.showerror("Patrouille", "Point inaccessible depuis le point précédent.")
+                return
+            self.remember()
+            config.setdefault("patrol", []).append(point)
+            self.draw()
+            return
+        if tool == "Inspecter":
+            objects = [item for field in ("sites", "exits", "decorations", "spawners") for item in data.get(field, []) if item["position"] == point]
+            self.messages.showinfo("Case", str(objects or point))
+            return
+        if record:
+            self.remember()
+        if tool in ("Téléportation", "PNJ"):
+            field = "exits" if tool == "Téléportation" else "sites"
+            existing = next((item for item in data.get(field, []) if item["position"] == point), None)
+            values = ({"name": "Passage", "destination": None, "entry": [1, 1], "fast_destination": "", **(existing or {}), "bidirectional": False, "pick_points": True} if field == "exits" else {"id": "pnj_" + str(point[0]) + "_" + str(point[1]), "name": "PNJ", "dialogue": "Bonjour !", "owner": "", **(existing or {})})
+            result = self.form(tool, values)
+            if result is None:
+                return
+            result["position"] = point
+            if field == "exits" and result.get("pick_points"):
+                self.graphical_portal(point, result)
+                return
+            if field == "exits":
+                try:
+                    self.set_gate(point, result)
+                except ValueError as exc:
+                    self.messages.showerror("Téléportation", str(exc))
+                    return
+            else:
+                result["owner"] = result.get("owner") or None
+                data[field] = [item for item in data.get(field, []) if item["position"] != point] + [result]
+        elif tool in ("Spawn", "Spawn gobelin"):
+            if not tactics.walkable(data, point):
+                self.messages.showerror("Spawn", "Choisissez une case praticable.")
+                return
+            existing = next((item for item in data.get("spawners", []) if item["position"] == point), {})
+            values = {"mob_id": "goblin", "level": "", "count": 1, "name": "", **{key: value for key, value in existing.items() if key != "patrol"}}
+            result = self.form("Spawner", values)
+            if result is None:
+                return
+            try:
+                result.update(position=point, count=int(result["count"]), level=int(result["level"]) if result.get("level") else None)
+                if existing.get("patrol"):
+                    result["patrol"] = deepcopy(existing["patrol"])
+                if result["mob_id"] not in MOBS or not 1 <= result["count"] <= 5 or result["level"] is not None and not 1 <= result["level"] <= 100:
+                    raise ValueError()
+            except ValueError:
+                self.messages.showerror("Spawn", "Espèce valide, groupe 1–5, niveau 1–100 ou vide pour hériter.")
+                return
+            if point not in data.get("spawns", []):
+                data.setdefault("spawns", []).append(point)
+            data["spawners"] = [item for item in data.get("spawners", []) if item["position"] != point] + [result]
+        else:
+            for field in ("cover", "water", "bridges", "blocked", "paths"):
+                data[field] = [p for p in data.get(field, []) if p != point]
+            data["decorations"] = [item for item in data.get("decorations", []) if item["position"] != point]
+            data["bridge_rotations"] = [item for item in data.get("bridge_rotations", []) if item["position"] != point]
+            if tool == "Effacer":
+                for field in ("sites", "exits"):
+                    data[field] = [item for item in data.get(field, []) if item["position"] != point]
+                data["spawns"] = [p for p in data.get("spawns", []) if p != point]
+                data["spawners"] = [item for item in data.get("spawners", []) if item["position"] != point]
+            elif tool == "Eau":
+                data["water"].append(point)
+                data["blocked"].append(point)
+            elif tool == "Pont":
+                data["water"].append(point)
+                data["bridges"].append(point)
+                data.setdefault("bridge_rotations", []).append({"position": point[:], "rotation": int(self.bridge_rotation.get()) if hasattr(self, "bridge_rotation") else 0})
+            elif tool == "Chemin":
+                data["paths"].append(point)
+            elif tool != "Sol":
+                kinds = {"Arbre": "tree", "Rocher": "rock", "Maison": "house", "Fleurs": "flowers", "Herbe": "grass", "Cristal": "crystal", "Camp": "camp", "Rempart X": "barricade", "Mur M": "wall"}
+                data["decorations"].append({"position": point, "kind": kinds[tool]})
+                if tool in ("Arbre", "Rocher", "Maison", "Rempart X", "Mur M"):
+                    data["cover"].append(point)
+        if not getattr(self, "painting", False):
+            self.draw()
+
+    def set_gate(self, point, result):
+        source = self.maps[self.selected.get()]
+        destination = result.get("destination") or None
+        if not tactics.walkable(source, point):
+            raise ValueError("Le passage doit être sur une case praticable.")
+        if destination is not None and destination not in self.maps:
+            raise ValueError("Choisissez une carte destination existante.")
+        if not result.get("name", "").strip():
+            raise ValueError("Le passage doit avoir un nom.")
+        entry = None
+        if destination:
+            try:
+                entry = [int(n.strip()) for n in result.get("entry", "").split(",")]
+            except (ValueError, AttributeError):
+                raise ValueError("Arrivée : deux coordonnées entières x,y.")
+            if not tactics.walkable(self.maps[destination], entry):
+                raise ValueError("La case d’arrivée est hors carte ou sur un obstacle.")
+            if entry in [gate["position"] for gate in self.maps[destination]["exits"]]:
+                raise ValueError("L’arrivée doit être à côté d’un passage, pour éviter une boucle de téléportation.")
+        fast_destination = result.get("fast_destination") or None
+        if fast_destination and fast_destination not in self.maps:
+            raise ValueError("La provenance du chemin rapide doit être une carte existante.")
+        reverse = result.get("bidirectional", False) in (True, "True", "1")
+        if reverse and (not destination or destination == self.selected.get()):
+            raise ValueError("Le retour automatique nécessite une autre carte destination.")
+        gate = {"name": result["name"].strip(), "position": point[:], "destination": destination, "entry": entry}
+        if "travel_minutes" in result:
+            gate["travel_minutes"] = float(result["travel_minutes"])
+        previous = next((item for item in source["exits"] if item["position"] == point), {})
+        if previous.get("link_id"):
+            gate["link_id"] = previous["link_id"]
+        if fast_destination and not destination:
+            gate["fast_destination"] = fast_destination
+        reverse_gate = None
+        if reverse:
+            target = self.maps[destination]
+            occupied = [entry, *target.get("spawns", []), *[item["position"] for item in target["exits"] + target.get("sites", [])]]
+            reverse_point = tactics.free_position(target, entry, occupied)
+            return_entry = tactics.free_position(source, point, [point, *[item["position"] for item in source["exits"]]])
+            if tactics.distance(reverse_point, entry) > 1.5 or tactics.distance(return_entry, point) > 1.5:
+                raise ValueError("Il faut une case libre voisine des deux passages pour créer le retour.")
+            reverse_gate = {"name": "Retour vers " + source["name"], "position": reverse_point, "destination": self.selected.get(), "entry": return_entry}
+        source["exits"] = [item for item in source["exits"] if item["position"] != point] + [gate]
+        if reverse_gate:
+            self.maps[destination]["exits"].append(reverse_gate)
+
+    def form(self, title, values):
+        from .editor_ui import EditorPanel
+        panel = EditorPanel(self.root, title)
+        window = panel.content
+        entries = {}
+        for row, (key, value) in enumerate(values.items()):
+            if key in ("position", "link_id"):
+                continue
+            labels = {"remove_reverse": "Supprimer aussi le sens inverse", "link_mode": "Type : passage immédiat / trajet à pied / rapide sur carte générale", "route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
+            if key in ("bidirectional", "pick_points", "remove_reverse"):
+                variable = tk.BooleanVar(value=bool(value))
+                ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
+                entries[key] = variable
+                continue
+            choices = ["passage", "trajet", "rapide"] if key == "link_mode" else list(self.object_choices) if key == "object_choice" else ["est", "ouest", "nord", "sud"] if key == "direction" else sorted({zone_of(self.maps, key) for key in self.maps}) if key in ("from_zone", "to_zone") else ["", *self.maps] if key in ("destination", "fast_destination", "zone_id", "anchor", "source_map", "from_zone", "to_zone") else ["forest", "village", "cave"] if key == "biome" else list(MOBS) if key == "mob_id" else None
+            entry = ttk.Combobox(window, values=choices, width=48) if choices is not None else ttk.Entry(window, width=50)
+            entry.insert(0, ",".join(map(str, value)) if isinstance(value, list) else str(value) if value is not None else "")
+            entry.grid(row=row, column=1, padx=8, pady=5)
+            entries[key] = entry
+        result = []
+        def accept():
+            result.append({key: entry.get() for key, entry in entries.items()})
+            panel.destroy()
+        ttk.Button(window, text="Valider", command=accept).grid(row=len(values), column=0)
+        ttk.Button(window, text="Annuler", command=panel.destroy).grid(row=len(values), column=1)
+        self.root.wait_window(panel)
+        return result[0] if result else None
+
+    def new(self):
+        values = self.form("Nouvelle carte", {"map_id": ""})
+        key = values["map_id"].strip() if values else None
+        if not key or key in self.maps:
+            return
+        self.remember()
+        self.maps[key] = fields.terrain(key, key, 30, 20, [], [fields.gate(0, 10, None, None, "Chemins rapides")])
+        self.maps[key].update(biome="forest", decorations=[], water=[], bridges=[], blocked=[], paths=[], zone_id=key, zone_level=1, spawners=[])
+        self.selected.set(key)
+        self.refresh_choice()
+        self.draw()
+        self.properties()
+
+    def drop_object(self, event):
+        selected = getattr(self, "moving_object", None)
+        self.moving_object = None
+        self.canvas.delete("move-preview")
+        if not selected:
+            return
+        from .map_objects import move_object
+        try:
+            updated = move_object(self.maps, *selected, self.coordinates(event))
+            self.remember()
+            self.maps = updated
+            self.draw()
+            self.status.set("Objet déplacé. Ctrl+Z pour annuler.")
+        except (ValueError, IndexError) as exc:
+            self.messages.showerror("Déplacement", str(exc))
+
+    def portal_by_click(self):
+        from .map_objects import pick_cell
+        source = pick_cell(self, "TP · cliquez la case de départ")
+        if not source:
+            return
+        self.selected.set(source[0])
+        self.refresh_choice()
+        self.draw()
+        result = self.form("TP", {"name": "Passage", "destination": "", "bidirectional": True, "fast_destination": ""})
+        if result:
+            self.graphical_portal(source[1], result)
+
+    def graphical_portal(self, point, result):
+        from .map_objects import pick_cell, place_portal
+        destination = result.get("destination") or None
+        entry, reverse, returning = None, None, None
+        if destination and destination not in self.maps:
+            self.messages.showerror("TP", "Carte destination inconnue.")
+            return
+        if destination:
+            chosen = pick_cell(self, "TP · cliquez l’arrivée sur la destination", destination)
+            if not chosen:
+                return
+            entry = chosen[1]
+            if result.get("bidirectional") in (True, "True", "1"):
+                chosen = pick_cell(self, "Retour · cliquez la case de départ", destination)
+                if not chosen:
+                    return
+                reverse = chosen[1]
+                chosen = pick_cell(self, "Retour · cliquez l’arrivée sur la carte source", self.selected.get())
+                if not chosen:
+                    return
+                returning = chosen[1]
+        try:
+            updated = place_portal(self.maps, self.selected.get(), point, destination, entry, result["name"], reverse, returning, result.get("fast_destination"))
+            self.remember()
+            self.maps = updated
+            self.draw()
+        except (ValueError, KeyError) as exc:
+            self.messages.showerror("TP", str(exc))
+
+    def edit_world(self):
+        from .map_world_editor import WorldEditor
+        WorldEditor(self)
+
+    def preview(self):
+        from .map_preview import open_preview
+        path = open_preview(self.maps, self.selected.get())
+        self.status.set(f"Aperçu ouvert dans le navigateur : {path}")
+
+    def assembly(self):
+        from .map_assembly import AssemblyWindow
+        AssemblyWindow(self)
+
+    def create_linked(self):
+        result = self.form("Créer un secteur relié", {"map_id": "", "direction": "est", "overlap": 4})
+        if not result:
+            return
+        try:
+            maps = linked_sector(self.maps, self.selected.get(), result["map_id"].strip(), result["direction"], int(result["overlap"]))
+            self.remember()
+            self.maps = maps
+            self.selected.set(result["map_id"].strip())
+            self.refresh_choice()
+            self.draw()
+            self.status.set("Secteur créé : raccord copié et passages aller-retour ajoutés. Peignez le reste puis enregistrez.")
+        except (ValueError, KeyError) as exc:
+            self.messages.showerror("Secteur relié", str(exc))
+
+    def properties(self):
+        data = self.maps[self.selected.get()]
+        values = {key: data.get(key, "forest") for key in ("name", "width", "height", "biome")}
+        values.update(zone_id=data.get("zone_id", data.get("world_zone", self.selected.get())), zone_level=data.get("zone_level", 1), level=data.get("level", ""))
+        result = self.form("Carte", values)
+        if result:
+            try:
+                result.update(width=int(result["width"]), height=int(result["height"]))
+                if not 4 <= result["width"] <= 128 or not 4 <= result["height"] <= 128:
+                    raise ValueError()
+                if not result["name"].strip():
+                    raise ValueError()
+                result["zone_id"] = result.get("zone_id") or self.selected.get()
+                result["zone_level"] = int(result.get("zone_level", 1))
+                result["level"] = int(result["level"]) if result.get("level") else None
+                candidate = deepcopy(self.maps)
+                candidate[self.selected.get()].update(result)
+                zone_of(candidate, self.selected.get())
+                if not 1 <= result["zone_level"] <= 100 or result["level"] is not None and not 1 <= result["level"] <= 100:
+                    raise ValueError()
+                self.remember()
+                result["name"] = result["name"].strip()
+                data.update(result)
+                self.refresh_choice()
+                self.draw()
+            except ValueError:
+                self.messages.showerror("Carte", "Dimensions 4–128 ; niveaux 1–100 ; zone existante sans cycle ; nom non vide.")
+
+    def open(self):
+        path = filedialog.askopenfilename(filetypes=[("Cartes JSON", "*.json")])
+        if path:
+            try:
+                maps = load(path)
+                self.remember()
+                self.maps, self.path = maps, Path(path)
+                self.saved = deepcopy(maps)
+                self.selected.set(next(iter(maps)))
+                self.refresh_choice()
+                self.draw()
+            except (ValueError, OSError) as exc:
+                self.messages.showerror("Ouverture", str(exc))
+
+    def save(self, choose=False):
+        from .map_playability import validate as playable
+        try:
+            from .map_assets import validate
+            playable(validate(self.maps))
+        except ValueError as exc:
+            self.messages.showerror("Carte non jouable", str(exc))
+            return
+        if getattr(self, "on_save", None):
+            return self.on_save(choose)
+        path = self.path
+        if choose or not path:
+            value = filedialog.asksaveasfilename(defaultextension=".json", initialfile="maps.json", filetypes=[("Cartes JSON", "*.json")])
+            if not value:
+                return
+            path = Path(value)
+        try:
+            save(path, self.maps)
+            self.path = path
+            self.saved = deepcopy(self.maps)
+            self.status.set(f"Enregistré : {path}. Redémarrez le serveur avec RPG_MAPS_FILE.")
+        except (ValueError, OSError) as exc:
+            self.messages.showerror("Enregistrement", str(exc))
+
+
+def main():
+    global tk, ttk, filedialog, messagebox, simpledialog
+    try:
+        import tkinter as tk
+        from tkinter import ttk, filedialog, messagebox, simpledialog
+    except ImportError as exc:
+        raise SystemExit("Tkinter est requis pour l’éditeur. Installez Python avec Tcl/Tk sous Windows ou python3-tk sous Linux.") from exc
+    parser = argparse.ArgumentParser(description="Éditeur graphique externe des cartes RPG")
+    parser.add_argument("file", nargs="?")
+    args = parser.parse_args()
+    root = tk.Tk()
+    MapEditor(root, args.file)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
