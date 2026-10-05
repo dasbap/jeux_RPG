@@ -1,0 +1,535 @@
+{
+  "version": 1,
+  "rules": {
+    "levels_per_tier": 5,
+    "fallback_skill": "arena_staff"
+  },
+  "slots": {
+    "helmet": "Casque",
+    "chest": "Plastron",
+    "boots": "Bottes"
+  },
+  "creatures": {
+    "Goblin": {
+      "name": "gobelin",
+      "character_class": "Goblin",
+      "drops": [
+        {
+          "material": "Goblin:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Goblin:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "Orc": {
+      "name": "orc",
+      "character_class": "Orc",
+      "drops": [
+        {
+          "material": "Orc:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "Orc:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "DragonWhelp": {
+      "name": "dragon",
+      "character_class": "DragonWhelp",
+      "drops": [
+        {
+          "material": "DragonWhelp:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "DragonWhelp:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "PhysicalResistantMob": {
+      "name": "gardien de pierre",
+      "character_class": "PhysicalResistantMob",
+      "drops": [
+        {
+          "material": "PhysicalResistantMob:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "PhysicalResistantMob:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "MagicResistantMob": {
+      "name": "créature arcanique",
+      "character_class": "MagicResistantMob",
+      "drops": [
+        {
+          "material": "MagicResistantMob:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "MagicResistantMob:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    },
+    "SacredResistantMob": {
+      "name": "créature sacrée",
+      "character_class": "SacredResistantMob",
+      "drops": [
+        {
+          "material": "SacredResistantMob:hide",
+          "minimum": 2,
+          "maximum": 4
+        },
+        {
+          "material": "SacredResistantMob:trophy",
+          "minimum": 1,
+          "maximum": 2
+        }
+      ]
+    }
+  },
+  "materials": {
+    "Goblin:hide": {
+      "name": "cuir de gobelin"
+    },
+    "Goblin:trophy": {
+      "name": "dent de gobelin"
+    },
+    "Orc:hide": {
+      "name": "peau de orc"
+    },
+    "Orc:trophy": {
+      "name": "défense de orc"
+    },
+    "DragonWhelp:hide": {
+      "name": "écaille de dragon"
+    },
+    "DragonWhelp:trophy": {
+      "name": "griffe de dragon"
+    },
+    "PhysicalResistantMob:hide": {
+      "name": "carapace de gardien de pierre"
+    },
+    "PhysicalResistantMob:trophy": {
+      "name": "noyau de gardien de pierre"
+    },
+    "MagicResistantMob:hide": {
+      "name": "étoffe de créature arcanique"
+    },
+    "MagicResistantMob:trophy": {
+      "name": "cristal de créature arcanique"
+    },
+    "SacredResistantMob:hide": {
+      "name": "plume de créature sacrée"
+    },
+    "SacredResistantMob:trophy": {
+      "name": "relique de créature sacrée"
+    }
+  },
+  "equipment": {
+    "Goblin:helmet": {
+      "name": "Casque de gobelin",
+      "family": "Goblin",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Force": 1
+      }
+    },
+    "Goblin:chest": {
+      "name": "Plastron de gobelin",
+      "family": "Goblin",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 1,
+        "Force": 2
+      }
+    },
+    "Goblin:boots": {
+      "name": "Bottes de gobelin",
+      "family": "Goblin",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Force": 1
+      }
+    },
+    "Orc:helmet": {
+      "name": "Casque de orc",
+      "family": "Orc",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 2
+      }
+    },
+    "Orc:chest": {
+      "name": "Plastron de orc",
+      "family": "Orc",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 3
+      }
+    },
+    "Orc:boots": {
+      "name": "Bottes de orc",
+      "family": "Orc",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 2
+      }
+    },
+    "DragonWhelp:helmet": {
+      "name": "Casque de dragon",
+      "family": "DragonWhelp",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Force": 1
+      }
+    },
+    "DragonWhelp:chest": {
+      "name": "Plastron de dragon",
+      "family": "DragonWhelp",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 1,
+        "Force": 2
+      }
+    },
+    "DragonWhelp:boots": {
+      "name": "Bottes de dragon",
+      "family": "DragonWhelp",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Force": 1
+      }
+    },
+    "PhysicalResistantMob:helmet": {
+      "name": "Casque de gardien de pierre",
+      "family": "PhysicalResistantMob",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 2
+      }
+    },
+    "PhysicalResistantMob:chest": {
+      "name": "Plastron de gardien de pierre",
+      "family": "PhysicalResistantMob",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 3
+      }
+    },
+    "PhysicalResistantMob:boots": {
+      "name": "Bottes de gardien de pierre",
+      "family": "PhysicalResistantMob",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 2
+      }
+    },
+    "MagicResistantMob:helmet": {
+      "name": "Casque de créature arcanique",
+      "family": "MagicResistantMob",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Intelligence": 1
+      }
+    },
+    "MagicResistantMob:chest": {
+      "name": "Plastron de créature arcanique",
+      "family": "MagicResistantMob",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 1,
+        "Intelligence": 2
+      }
+    },
+    "MagicResistantMob:boots": {
+      "name": "Bottes de créature arcanique",
+      "family": "MagicResistantMob",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Intelligence": 1
+      }
+    },
+    "SacredResistantMob:helmet": {
+      "name": "Casque de créature sacrée",
+      "family": "SacredResistantMob",
+      "slot": "helmet",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Sagesse": 1
+      }
+    },
+    "SacredResistantMob:chest": {
+      "name": "Plastron de créature sacrée",
+      "family": "SacredResistantMob",
+      "slot": "chest",
+      "bonuses": {
+        "HP": 10,
+        "Endurance": 1,
+        "Sagesse": 2
+      }
+    },
+    "SacredResistantMob:boots": {
+      "name": "Bottes de créature sacrée",
+      "family": "SacredResistantMob",
+      "slot": "boots",
+      "bonuses": {
+        "HP": 5,
+        "Endurance": 1,
+        "Sagesse": 1
+      }
+    }
+  },
+  "recipes": {
+    "Goblin:helmet": {
+      "equipment": "Goblin:helmet",
+      "ingredients": {
+        "Goblin:hide": 2,
+        "Goblin:trophy": 1
+      }
+    },
+    "Goblin:chest": {
+      "equipment": "Goblin:chest",
+      "ingredients": {
+        "Goblin:hide": 3,
+        "Goblin:trophy": 1
+      }
+    },
+    "Goblin:boots": {
+      "equipment": "Goblin:boots",
+      "ingredients": {
+        "Goblin:hide": 2,
+        "Goblin:trophy": 1
+      }
+    },
+    "Orc:helmet": {
+      "equipment": "Orc:helmet",
+      "ingredients": {
+        "Orc:hide": 2,
+        "Orc:trophy": 1
+      }
+    },
+    "Orc:chest": {
+      "equipment": "Orc:chest",
+      "ingredients": {
+        "Orc:hide": 3,
+        "Orc:trophy": 1
+      }
+    },
+    "Orc:boots": {
+      "equipment": "Orc:boots",
+      "ingredients": {
+        "Orc:hide": 2,
+        "Orc:trophy": 1
+      }
+    },
+    "DragonWhelp:helmet": {
+      "equipment": "DragonWhelp:helmet",
+      "ingredients": {
+        "DragonWhelp:hide": 2,
+        "DragonWhelp:trophy": 1
+      }
+    },
+    "DragonWhelp:chest": {
+      "equipment": "DragonWhelp:chest",
+      "ingredients": {
+        "DragonWhelp:hide": 3,
+        "DragonWhelp:trophy": 1
+      }
+    },
+    "DragonWhelp:boots": {
+      "equipment": "DragonWhelp:boots",
+      "ingredients": {
+        "DragonWhelp:hide": 2,
+        "DragonWhelp:trophy": 1
+      }
+    },
+    "PhysicalResistantMob:helmet": {
+      "equipment": "PhysicalResistantMob:helmet",
+      "ingredients": {
+        "PhysicalResistantMob:hide": 2,
+        "PhysicalResistantMob:trophy": 1
+      }
+    },
+    "PhysicalResistantMob:chest": {
+      "equipment": "PhysicalResistantMob:chest",
+      "ingredients": {
+        "PhysicalResistantMob:hide": 3,
+        "PhysicalResistantMob:trophy": 1
+      }
+    },
+    "PhysicalResistantMob:boots": {
+      "equipment": "PhysicalResistantMob:boots",
+      "ingredients": {
+        "PhysicalResistantMob:hide": 2,
+        "PhysicalResistantMob:trophy": 1
+      }
+    },
+    "MagicResistantMob:helmet": {
+      "equipment": "MagicResistantMob:helmet",
+      "ingredients": {
+        "MagicResistantMob:hide": 2,
+        "MagicResistantMob:trophy": 1
+      }
+    },
+    "MagicResistantMob:chest": {
+      "equipment": "MagicResistantMob:chest",
+      "ingredients": {
+        "MagicResistantMob:hide": 3,
+        "MagicResistantMob:trophy": 1
+      }
+    },
+    "MagicResistantMob:boots": {
+      "equipment": "MagicResistantMob:boots",
+      "ingredients": {
+        "MagicResistantMob:hide": 2,
+        "MagicResistantMob:trophy": 1
+      }
+    },
+    "SacredResistantMob:helmet": {
+      "equipment": "SacredResistantMob:helmet",
+      "ingredients": {
+        "SacredResistantMob:hide": 2,
+        "SacredResistantMob:trophy": 1
+      }
+    },
+    "SacredResistantMob:chest": {
+      "equipment": "SacredResistantMob:chest",
+      "ingredients": {
+        "SacredResistantMob:hide": 3,
+        "SacredResistantMob:trophy": 1
+      }
+    },
+    "SacredResistantMob:boots": {
+      "equipment": "SacredResistantMob:boots",
+      "ingredients": {
+        "SacredResistantMob:hide": 2,
+        "SacredResistantMob:trophy": 1
+      }
+    }
+  },
+  "sets": {
+    "Goblin": {
+      "name": "Panoplie de gobelin",
+      "equipment": [
+        "Goblin:helmet",
+        "Goblin:chest",
+        "Goblin:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    },
+    "Orc": {
+      "name": "Panoplie de orc",
+      "equipment": [
+        "Orc:helmet",
+        "Orc:chest",
+        "Orc:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    },
+    "DragonWhelp": {
+      "name": "Panoplie de dragon",
+      "equipment": [
+        "DragonWhelp:helmet",
+        "DragonWhelp:chest",
+        "DragonWhelp:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    },
+    "PhysicalResistantMob": {
+      "name": "Panoplie de gardien de pierre",
+      "equipment": [
+        "PhysicalResistantMob:helmet",
+        "PhysicalResistantMob:chest",
+        "PhysicalResistantMob:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    },
+    "MagicResistantMob": {
+      "name": "Panoplie de créature arcanique",
+      "equipment": [
+        "MagicResistantMob:helmet",
+        "MagicResistantMob:chest",
+        "MagicResistantMob:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    },
+    "SacredResistantMob": {
+      "name": "Panoplie de créature sacrée",
+      "equipment": [
+        "SacredResistantMob:helmet",
+        "SacredResistantMob:chest",
+        "SacredResistantMob:boots"
+      ],
+      "bonuses": {
+        "HP": 20,
+        "Endurance": 3
+      }
+    }
+  },
+  "skills": {
+    "arena_staff": {
+      "name": "Frappe de bâton",
+      "damage_type": "PHYSICAL",
+      "damage": 6,
+      "energie_cost": 0,
+      "cooldown": 0
+    }
+  }
+}

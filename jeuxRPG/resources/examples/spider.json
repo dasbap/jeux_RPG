@@ -1,0 +1,53 @@
+{
+  "slots": {
+    "shoulders": "Épaulières"
+  },
+  "creatures": {
+    "Spider": {
+      "name": "araignée",
+      "character_class": "Goblin",
+      "drops": [
+        {
+          "material": "Spider:silk",
+          "minimum": 2,
+          "maximum": 2
+        }
+      ]
+    }
+  },
+  "materials": {
+    "Spider:silk": {
+      "name": "Soie d'araignée"
+    }
+  },
+  "equipment": {
+    "Spider:shoulders": {
+      "name": "Épaulières de soie",
+      "family": "Spider",
+      "slot": "shoulders",
+      "bonuses": {
+        "HP": 8,
+        "Force": 2
+      }
+    }
+  },
+  "recipes": {
+    "Spider:shoulders": {
+      "equipment": "Spider:shoulders",
+      "ingredients": {
+        "Spider:silk": 2
+      }
+    }
+  },
+  "sets": {
+    "silk": {
+      "name": "Panoplie de soie",
+      "equipment": [
+        "Spider:shoulders"
+      ],
+      "bonuses": {
+        "Endurance": 3
+      }
+    }
+  }
+}
