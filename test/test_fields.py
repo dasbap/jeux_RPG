@@ -208,7 +208,7 @@ def test_repop_requires_three_full_game_minutes_without_players():
     assert len(data["mobs"]) == 1
     assert data["mobs"][0]["combat_id"] != enemy["combat_id"]
     assert data["mobs"][0]["stats"]["hp"]["current"] == data["mobs"][0]["stats"]["hp"]["max"]
-    assert data["battle"]["corpses"][0]["id"] == enemy["combat_id"]
+    assert data["battle"]["corpses"] == []
     assert data["mobs"][0]["position"] == fields.MAPS["clearing"]["spawns"][0]
 
 
@@ -384,3 +384,48 @@ def test_client_receives_configured_repopulation_delay(monkeypatch):
     monkeypatch.setitem(content.WORLD, "repop_seconds", 240)
     party = tutorial.new_party([{"id": "p0", "name": "Test", "class_name": "Knight"}])
     assert tutorial.view(party, "p0", 0)["repop_seconds"] == 240
+
+
+@pytest.mark.parametrize("elapsed, remaining", [(119.99, 1), (120, 0), (179, 0)])
+def test_corpses_expire_after_two_game_minutes_in_an_empty_map(elapsed, remaining):
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    gate = fields.MAPS["clearing"]["exits"][0]
+    fields.transition(data, gate, "p", 2)
+    fields.enter(data, "clearing", [1, 10], 2 + elapsed)
+    assert len(data["battle"]["corpses"]) == remaining
+    assert data["mobs"] == []
+
+
+def test_corpses_remain_while_players_are_in_the_map():
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    fields.advance(data, 1000)
+    assert len(data["battle"]["corpses"]) == 1
+
+
+def test_corpses_expire_in_saved_maps_without_waiting_for_a_return():
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    fields.transition(data, fields.MAPS["clearing"]["exits"][0], "p", 2)
+    fields.advance(data, 121)
+    assert len(data["fields"]["clearing"]["battle"]["corpses"]) == 1
+    fields.advance(data, 122)
+    assert data["fields"]["clearing"]["battle"]["corpses"] == []
+
+
+def test_returning_to_a_map_resets_the_empty_map_countdown():
+    data = party()
+    enemy = data["mobs"].pop()
+    tactics.defeated(data, enemy, 1, lambda: .99, [])
+    gate = fields.MAPS["clearing"]["exits"][0]
+    fields.transition(data, gate, "p", 2)
+    fields.enter(data, "clearing", [1, 10], 100)
+    fields.advance(data, 1000)
+    assert len(data["battle"]["corpses"]) == 1
+    fields.transition(data, gate, "p", 1001)
+    fields.enter(data, "clearing", [1, 10], 1120)
+    assert len(data["battle"]["corpses"]) == 1

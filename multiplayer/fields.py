@@ -81,6 +81,7 @@ def enter(party, identifier, entry, now, pursuers=()):
     from . import tutorial
     from jeuxRPG._class.character import Character
     definition = MAPS[identifier]
+    expire_corpses(party, now)
     companions = deepcopy(party.get("battle", {}).get("companions", {})) if party.get("battle") else deepcopy(party.get("linked_companions", {}))
     party["position"] = identifier
     party["field_map"] = identifier
@@ -252,7 +253,14 @@ def reveal(party):
     battle["explored_positions"] = deepcopy(positions)
 
 
+def expire_corpses(party, now):
+    for identifier, saved in party.get("fields", {}).items():
+        if identifier != party.get("field_map") and now - saved["saved_at"] >= 120:
+            saved["battle"]["corpses"] = []
+
+
 def advance(party, now):
+    expire_corpses(party, now)
     if not party.get("field_map") or not party.get("battle"):
         return []
     battle = party["battle"]
