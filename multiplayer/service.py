@@ -45,7 +45,7 @@ class GameService:
     match_duration = 3 * 300.0
     lobby_duration = GameClock.ratio * 1800.0
 
-    def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None, log_directory=None):
+    def __init__(self, database=".data/multiplayer.sqlite3", clock=None, random_source=None, log_directory=None, connection=None, initialize_schema=True):
         from .skill_catalog import install
         from .content import DATA
         from .map_building import MOBS
@@ -59,75 +59,47 @@ class GameService:
         self._view_errors = {}
         self.random = random_source or secrets.SystemRandom().random
         path = Path(database)
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        if path.is_symlink():
+        if connection is None:
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if connection is None and path.is_symlink():
             raise ValueError("La base ne peut pas être un lien symbolique")
         self._lock = threading.RLock()
         self._chat_connections = {}
         self._chat_sent = {}
         self._chat_cleanup_at = 0
         self.chat_log = create_chat_logger(log_directory or path.parent / ".logs")
-        self.db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
-        os.chmod(path, 0o600)
-        self.db.row_factory = sqlite3.Row
-        self.db.execute("PRAGMA foreign_keys=ON")
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.executescript("""
-            CREATE TABLE IF NOT EXISTS presence (player_id TEXT PRIMARY KEY, seen REAL NOT NULL);
-            CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session_id TEXT, player_id TEXT NOT NULL, name TEXT NOT NULL, message TEXT NOT NULL, sent REAL NOT NULL);
-
-            CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS players (
-                id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
-                scope TEXT NOT NULL, external_id TEXT, name TEXT NOT NULL,
-                class_name TEXT NOT NULL, hp INTEGER NOT NULL, damage INTEGER NOT NULL,
-                UNIQUE(scope, external_id)
-            );
-            CREATE TABLE IF NOT EXISTS sessions (
-                id TEXT PRIMARY KEY, scope TEXT NOT NULL, owner TEXT NOT NULL REFERENCES players(id),
-                invite_hash TEXT NOT NULL UNIQUE, state TEXT NOT NULL,
-                revision INTEGER NOT NULL, deadline REAL NOT NULL, winner TEXT,
-                created REAL NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS members (
-                session_id TEXT NOT NULL REFERENCES sessions(id),
-                player_id TEXT NOT NULL REFERENCES players(id), hp INTEGER NOT NULL,
-                ready_at REAL NOT NULL DEFAULT 0, PRIMARY KEY(session_id, player_id)
-            );
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL REFERENCES sessions(id),
-                game_time REAL NOT NULL, message TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS receipts (
-                player_id TEXT NOT NULL REFERENCES players(id), request_id TEXT NOT NULL,
-                fingerprint TEXT NOT NULL, response TEXT NOT NULL,
-                PRIMARY KEY(player_id, request_id)
-            );
-            CREATE INDEX IF NOT EXISTS member_player ON members(player_id);
-            CREATE INDEX IF NOT EXISTS session_events ON events(session_id, id);
-            CREATE TABLE IF NOT EXISTS tutorials (
-                session_id TEXT PRIMARY KEY REFERENCES sessions(id), data TEXT NOT NULL
-            );
-        """)
-        self.db.execute("INSERT OR IGNORE INTO meta VALUES ('epoch_wall', ?)", (str(time.time()),))
-        epoch = float(self.db.execute("SELECT value FROM meta WHERE key='epoch_wall'").fetchone()[0])
-        checkpoint = self.db.execute("SELECT value FROM meta WHERE key='last_game'").fetchone()
-        anchor_row = self.db.execute("SELECT value FROM meta WHERE key='epoch_game'").fetchone()
-        ratio_row = self.db.execute("SELECT value FROM meta WHERE key='clock_ratio'").fetchone()
-        anchor = float(anchor_row[0]) if anchor_row else 0
-        if checkpoint and (not ratio_row or float(ratio_row[0]) != GameClock.ratio):
-            epoch = time.time()
-            anchor = float(checkpoint[0])
-            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_wall', ?)", (str(epoch),))
-            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_game', ?)", (str(anchor),))
-        self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
-        self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
-        self._last_game = float(checkpoint[0]) if checkpoint else 0
+        if connection is None:
+            self.db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
+            os.chmod(path, 0o600)
+            self.db.row_factory = sqlite3.Row
+            self.db.execute("PRAGMA foreign_keys=ON")
+            self.db.execute("PRAGMA journal_mode=WAL")
+            self.db.execute("PRAGMA synchronous=FULL")
+        else:
+            self.db = connection
+        from .schema import initialize
+        if initialize_schema:
+            initialize(self.db)
         with self._transaction():
-            for row in self.db.execute("SELECT id,scope,player_id,name,message,sent FROM chat WHERE session_id IS NULL"):
-                self._log_global_chat(dict(row), "legacy_global_chat")
-            self.db.execute("DELETE FROM chat WHERE session_id IS NULL")
+            self.db.execute("INSERT OR IGNORE INTO meta VALUES ('epoch_wall', ?)", (str(time.time()),))
+            epoch = float(self.db.execute("SELECT value FROM meta WHERE key='epoch_wall'").fetchone()[0])
+            checkpoint = self.db.execute("SELECT value FROM meta WHERE key='last_game'").fetchone()
+            anchor_row = self.db.execute("SELECT value FROM meta WHERE key='epoch_game'").fetchone()
+            ratio_row = self.db.execute("SELECT value FROM meta WHERE key='clock_ratio'").fetchone()
+            anchor = float(anchor_row[0]) if anchor_row else 0
+            if checkpoint and (not ratio_row or float(ratio_row[0]) != GameClock.ratio):
+                epoch = time.time()
+                anchor = float(checkpoint[0])
+                self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_wall', ?)", (str(epoch),))
+                self.db.execute("INSERT OR REPLACE INTO meta VALUES ('epoch_game', ?)", (str(anchor),))
+            self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
+            self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
+            self._last_game = float(checkpoint[0]) if checkpoint else 0
+        if connection is None:
+            with self._transaction():
+                for row in self.db.execute("SELECT id,scope,player_id,name,message,sent FROM chat WHERE session_id IS NULL"):
+                    self._log_global_chat(dict(row), "legacy_global_chat")
+                self.db.execute("DELETE FROM chat WHERE session_id IS NULL")
 
     def close(self):
         with self._lock:
@@ -135,11 +107,12 @@ class GameService:
             for handler in self.chat_log.handlers:
                 handler.close()
 
-    def tick(self):
+    def tick(self, session_id=None):
         with self._transaction():
             now = self._now()
             self._expire(now)
-            rows = self.db.execute("SELECT t.session_id FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'").fetchall()
+            query = "SELECT t.session_id FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'"
+            rows = self.db.execute(query + (" AND s.id=?" if session_id is not None else ""), (session_id,) if session_id is not None else ()).fetchall()
             active = {row["session_id"] for row in rows}
             self._tick_errors = {key: value for key, value in self._tick_errors.items() if key in active}
             self._view_errors = {key: value for key, value in self._view_errors.items() if key[0] in active}
@@ -245,6 +218,9 @@ class GameService:
         player = self.db.execute("SELECT * FROM players WHERE token_hash=?", (digest(token),)).fetchone()
         if player is None:
             raise GameError("unauthorized", "Identité invalide.", 401)
+        status = self.db.execute("SELECT suspended FROM account_status WHERE player_id=?", (player["id"],)).fetchone()
+        if status and status[0]:
+            raise GameError("account_suspended", "Compte suspendu.", 403)
         return player
 
     def _active(self, player_id):

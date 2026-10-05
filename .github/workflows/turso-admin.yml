@@ -1,5 +1,10 @@
 name: Administration Turso
 on:
+  push:
+    branches: [alpha-vercel-turso]
+    paths:
+      - multiplayer/schema.py
+      - .github/workflows/turso-admin.yml
   workflow_dispatch:
     inputs:
       operation:
@@ -11,6 +16,7 @@ on:
           - connexion
           - schema
           - integrite
+          - initialiser
 permissions:
   contents: read
 concurrency:
@@ -23,66 +29,16 @@ jobs:
     env:
       TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
       TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-      TURSO_OPERATION: ${{ inputs.operation }}
+      TURSO_OPERATION: ${{ inputs.operation || 'initialiser' }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Executer le controle Turso
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-          import urllib.request
-          from urllib.parse import urlsplit
-
-          queries = {
-              "connexion": "SELECT 1 AS connexion",
-              "schema": "SELECT type, name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
-              "integrite": "PRAGMA quick_check",
-          }
-          operation = os.environ["TURSO_OPERATION"]
-          token = os.environ.get("TURSO_AUTH_TOKEN", "")
-          url = urlsplit(os.environ.get("TURSO_DATABASE_URL", ""))
-          if operation not in queries:
-              sys.exit("Operation inconnue")
-          if not token or any(ord(c) < 33 for c in token):
-              sys.exit("Secret TURSO_AUTH_TOKEN absent ou invalide")
-          if url.scheme not in ("libsql", "https") or not url.hostname or url.username or url.password or url.port not in (None, 443) or url.path not in ("", "/") or url.query or url.fragment:
-              sys.exit("TURSO_DATABASE_URL absent ou invalide")
-          payload = {
-              "requests": [
-                  {"type": "execute", "stmt": {"sql": queries[operation], "want_rows": True}},
-                  {"type": "close"},
-              ]
-          }
-          request = urllib.request.Request(
-              "https://" + url.hostname + "/v2/pipeline",
-              data=json.dumps(payload).encode(),
-              headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-              method="POST",
-          )
-          try:
-              opener = urllib.request.build_opener(type("NoRedirect", (urllib.request.HTTPRedirectHandler,), {"redirect_request": lambda *args: None})())
-              with opener.open(request, timeout=30) as response:
-                  raw = response.read(1024 * 1024 + 1)
-              if len(raw) > 1024 * 1024:
-                  raise ValueError()
-              results = json.loads(raw)["results"]
-              if len(results) != 2 or any(item["type"] != "ok" for item in results):
-                  raise ValueError()
-              result = results[0]["response"]["result"]
-              rows = [[value.get("value") for value in row] for row in result["rows"]]
-              if operation == "connexion" and rows != [["1"]]:
-                  raise ValueError()
-              if operation == "integrite" and rows != [["ok"]]:
-                  sys.exit("Controle d'integrite en echec")
-          except Exception:
-              sys.exit("Echec Turso : verifier URL, secret, permissions et disponibilite de la base")
-          output = json.dumps({"operation": operation, "colonnes": [col["name"] for col in result["cols"]], "lignes": rows}, ensure_ascii=False, indent=2)
-          output = output.replace(token, "[masque]").replace(os.environ["TURSO_DATABASE_URL"], "[URL masquee]")
-          print(output)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write("Controle Turso termine : " + operation + ".\n")
-          PY
+      - run: python -m pip install .
+      - name: Verifier la connexion
+        run: python -m jeuxRPG.multiplayer.turso_admin connexion
+      - name: Executer l'action Turso
+        run: python -m jeuxRPG.multiplayer.turso_admin "$TURSO_OPERATION"
+      - name: Verifier l'integrite
+        run: python -m jeuxRPG.multiplayer.turso_admin integrite

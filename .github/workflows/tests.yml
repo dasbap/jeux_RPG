@@ -40,4 +40,5 @@ jobs:
       - run: python -m pip install .
       - run: npm install --prefix .ui-test jsdom@26.1.0
       - run: node scripts/verify_ui_retry.cjs
+      - run: node scripts/verify_admin_ui.cjs
       - run: python scripts/verify_http_ui.py
