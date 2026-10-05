@@ -11,7 +11,7 @@ def split(state):
             if key != "tutorial":
                 result[f"session/{key}"] = value
         if "tutorial" in session:
-            allowed = {"quest_journal", "hunt_goal", "hunt_name", "hunt_description", "field_map", "field_interactions", "traveller", "achievements", "battle", "control_credit", "encounter_number", "journey", "kills", "location", "mob", "mobs", "moving", "objective", "players", "position", "quest", "step", "transit", "travel_remaining_real_seconds", "world", "world_context", "combat_size"}
+            allowed = {"repop_seconds", "hunt_objective", "quest_journal", "hunt_goal", "hunt_name", "hunt_description", "field_map", "field_interactions", "traveller", "achievements", "battle", "control_credit", "encounter_number", "journey", "kills", "location", "mob", "mobs", "moving", "objective", "players", "position", "quest", "step", "transit", "travel_remaining_real_seconds", "world", "world_context", "combat_size"}
             result["session/tutorial"] = {}
             for key in allowed & session["tutorial"].keys():
                 result[f"session/tutorial/{key}"] = session["tutorial"][key]

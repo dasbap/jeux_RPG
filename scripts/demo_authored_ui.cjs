@@ -209,6 +209,7 @@ async function main() {
     await wait(()=>commandReady(hero) && !$(hero,'party-tutorial').disabled,'groupe');
     press(hero,'#party-tutorial');
     await wait(()=>state(hero)?.tutorial,'tutoriel');
+    if (!Number.isFinite(state(hero).tutorial.repop_seconds) || !state(hero).tutorial.hunt_objective) throw new Error('Règles de quête absentes du client : réinstallez la dernière version du paquet');
     await runUntil(hero,a=>a.field_map==='forest','Clairière : combat, dépeçage et chemin vers la forêt',()=>exitTo(hero,'forest'));
     await runUntil(hero,a=>!a.battle,'Forêt : exploration et sortie vers les chemins rapides',()=>exitTo(hero,null));
     await runUntil(hero,a=>a.field_map==='rosee','Déplacement rapide vers Rosée',()=>travel(hero,'rosee'));
