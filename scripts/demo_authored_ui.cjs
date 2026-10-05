@@ -148,6 +148,9 @@ async function runUntil(dom, predicate, label, target, limit=600000) {
         const corpse=a.battle.corpses.find(c=>!c.harvested.length);
         if(corpse) {
           if(!press(dom,'#corpse-actions button',b=>!b.textContent.includes('déjà'))) walk(dom,corpse.position);
+        } else if(resumeJourneyStep(dom)) {
+          await pause(150);
+          continue;
         } else if(target) await target(a);
         else {
           const unseen=(a.battle.map.spawns||[]).find(p=>!(a.battle.explored||[]).some(q=>q.join()===p.join()));
@@ -159,6 +162,12 @@ async function runUntil(dom, predicate, label, target, limit=600000) {
     await pause(150);
   }
   throw new Error(`${label}: délai dépassé · ${$(dom,'message').textContent} · ${JSON.stringify(state(dom).tutorial.position)}`);
+}
+function resumeJourneyStep(dom) {
+  const adventure = state(dom)?.tutorial;
+  if (!adventure?.battle || adventure.field_map || adventure.battle.hostiles_alive || adventure.battle.corpses.some(corpse => !corpse.harvested.length)) return false;
+  exitTo(dom, null);
+  return true;
 }
 function exitTo(dom,destination) {
   const a=state(dom).tutorial;
@@ -249,5 +258,5 @@ async function main() {
     console.log('DÉMO RÉUSSIE : données réelles, interface uniquement, quête, craft, équipement et Brume.');
   } finally { for(const c of clients) { for(const timer of c.timers) c.window.clearInterval(timer); await wait(()=>c.window.demoIdle(),'fermeture'); c.window.close(); } }
 }
-module.exports = {craftStep, hasEquipment, commandReady, createHuntStep};
+module.exports = {craftStep, hasEquipment, commandReady, createHuntStep, resumeJourneyStep};
 if (require.main === module) main().catch(error=>{console.error(error);process.exitCode=1;});

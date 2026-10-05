@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const {resumeJourneyStep} = require("./demo_authored_ui.cjs");
 const {randomUUID} = require("node:crypto");
 const {JSDOM, VirtualConsole} = require("jsdom");
 const origin = process.env.RPG_TEST_ORIGIN || "http://127.0.0.1:8080";
@@ -43,7 +44,7 @@ async function client(html, app, name, className) {
   dom.window.AbortController = AbortController;
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
-  dom.window.eval(app + ";window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
+  dom.window.eval(app + ";window.demoSnapshot = () => session; window.demoReady = () => !busy; window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
@@ -102,7 +103,15 @@ async function finishCombat(dom) {
       const corpse = adventure.battle.corpses.find(c => !c.harvested.length);
       if (!corpse) {
         const exit = adventure.battle.exit;
-        el(dom, "world-map").querySelector(`[data-cell="${exit.join(",")}"]`).dispatchEvent(new dom.window.Event("dblclick", {bubbles:true}));
+        await waitFor(() => dom.window.demoReady(), "sortie disponible pour le pilote");
+        if (!adventure.field_map) {
+          await waitFor(() => {
+            const snapshot = dom.window.demoSnapshot()?.tutorial;
+            return snapshot?.battle && snapshot.encounter_number === adventure.encounter_number && !snapshot.battle.hostiles_alive && snapshot.battle.corpses.every(corpse => corpse.harvested.length);
+          }, "dépeçage reçu par le client avant reprise du trajet");
+          assert.equal(resumeJourneyStep(dom), true);
+        }
+        else el(dom, "world-map").querySelector(`[data-cell="${exit.join(",")}"]`).dispatchEvent(new dom.window.Event("dblclick", {bubbles:true}));
         try {
           await waitFor(async () => {
             const next = (await request(dom, "/api/state")).session.tutorial;
@@ -154,7 +163,7 @@ async function main() {
     await command(necromancer, "tutorial");
     await command(necromancer, "explore");
     await waitFor(() => el(necromancer, "self-skills").querySelector("button:not(:disabled)"), "invocation accessible sans sélectionner le personnage");
-    assert.equal(el(necromancer, "combat-target").value, "");
+    assert.equal(el(necromancer, "combat-target").value, "mob");
     el(necromancer, "self-skills").querySelector("button").click();
     await waitFor(async () => {
       const adventure = (await request(necromancer, "/api/state")).session.tutorial;

@@ -30,6 +30,45 @@ try {
   assert(el("skills").compareDocumentPosition(el("combat-feedback")) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   assert(el("combat-events").textContent.includes("repéré"));
   assert.equal(el("mob-cards").children.length, 3);
+  const automatic = JSON.parse(JSON.stringify(fixture));
+  automatic.mobs[0].stats.hp.current = 0;
+  automatic.mobs[1].stats.hp.current = 8;
+  automatic.mobs[2].stats.hp.current = 2;
+  render(automatic);
+  assert.equal(el("combat-target").value, "mob-3");
+  event(unit("mob-3"), "click");
+  automatic.mobs[2].stats.hp.current = 0;
+  render(automatic);
+  assert.equal(el("combat-target").value, "mob-3");
+  assert([...el("combat-actions").children].every(button => button.disabled));
+  event(unit("mob-3"), "click");
+  assert.equal(el("combat-target").value, "mob-2");
+  const support = JSON.parse(JSON.stringify(fixture));
+  support.step = "auto-support-test";
+  const healer = support.players[0];
+  healer.hp = Math.max(1, healer.max_hp - 1);
+  healer.skills.push({name: "Soin test", type: "HEAL", available: true, cooldown: 0, energy: healer.energies[0].type, cost: 0, range: 0, targets: [healer.id], can_target_others: false});
+  render(support);
+  assert.equal(el("combat-target").value, healer.id);
+  healer.hp = healer.max_hp;
+  render(support);
+  assert.equal(el("combat-target").value, "mob");
+  event(unit("mob"), "click");
+  healer.hp -= 1;
+  render(support);
+  assert.equal(el("combat-target").value, "mob");
+  event(unit("mob"), "click");
+  support.mobs[0].stats.hp.current = 0;
+  render(support);
+  assert.equal(el("combat-target").value, healer.id);
+  healer.hp = healer.max_hp;
+  healer.skills.at(-1).type = "BUFF";
+  render(support);
+  assert.equal(el("combat-target").value, healer.id);
+  healer.skills.at(-1).cost = healer.energies[0].current + 1;
+  render(support);
+  assert.notEqual(el("combat-target").value, healer.id);
+  render(fixture);
   const retainedDetails = el("character-details").firstElementChild;
   const retainedIntents = el("enemy-intents").firstElementChild;
   const retainedMap = el("world-map").firstElementChild;
@@ -44,8 +83,8 @@ try {
   el("combat-actions").querySelector("button").click();
   assert.equal(dom.window.uiTest.calls.at(-1).params.target, "mob");
   event(unit("mob"), "click");
-  assert([...el("combat-actions").children].every(button => button.disabled));
-  assert.equal(el("combat-target").value, "");
+  assert(!el("combat-actions").querySelector("button").disabled);
+  assert.equal(el("combat-target").value, "mob");
   assert(!el("world-map").querySelector(".objective-ring"));
   event(unit("mob-3"), "click");
   assert([...el("combat-actions").children].every(button => button.disabled));
@@ -309,7 +348,7 @@ try {
     assert.equal(requested, 1);
   }
   assert.equal(errors.length, 0, errors.join(" · "));
-  console.log("UI tactique : focus exclusif, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
+  console.log("UI tactique : ciblage automatique, soin/buff autorisés, focus manuel conservé, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
 } finally {
   dom.window.close();
 }

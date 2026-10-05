@@ -638,6 +638,16 @@ function renderTutorial(adventure, preserveBattle = false) {
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
+  if (fighting && !focusedMob) {
+    const supports = target => !controlledUnits(adventure, me.id).length && me.skills.some(skill => ["HEAL", "BUFF"].includes(skill.type) && skillAllowed(me, skill, target, mob));
+    const current = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
+    const ready = !me.casting && !me.stunned && me.cooldown_real_seconds <= 0;
+    if (!current || current.hp <= 0 || !current.enemy && ready && !supports(current)) {
+      const ally = adventure.players.filter(target => target.hp > 0 && supports(target)).sort((a, b) => a.hp / a.max_hp - b.hp / b.max_hp || a.id.localeCompare(b.id))[0];
+      const enemy = enemies.filter(target => target.hp > 0).sort((a, b) => a.hp - b.hp || a.id.localeCompare(b.id))[0];
+      combatTarget = ally?.id || enemy?.id || "";
+    }
+  }
   const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (target.enemy || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
   $("combat-target").replaceChildren();
   for (const target of possibleTargets) {
@@ -652,7 +662,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = true;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "La zone est calme. Vous pouvez explorer, dépecer les corps proches ou rejoindre une sortie." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? "Choisissez une attaque ou une compétence pour cette cible." : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "La zone est calme. Vous pouvez explorer, dépecer les corps proches ou rejoindre une sortie." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? `Cible ${focusedMob ? "choisie" : "automatique"} : ${selected.name}. Choisissez une attaque ou une compétence.` : "Aucune action disponible sur une cible.";
   if (fighting) {
     renderCombatFeedback(adventure);
     const playerUnit = adventure.battle.players[me.id];

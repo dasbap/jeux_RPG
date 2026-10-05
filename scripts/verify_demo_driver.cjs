@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {JSDOM, VirtualConsole} = require('jsdom');
-const {craftStep, hasEquipment} = require('./demo_authored_ui.cjs');
+const {craftStep, hasEquipment, resumeJourneyStep} = require('./demo_authored_ui.cjs');
 const root = path.resolve(__dirname, '..');
 const fixtures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const errors = [], calls = [];
@@ -65,8 +65,26 @@ try {
   dom.window.driverRender(poor);
   assert.throws(()=>craftStep(dom,'veste'),/matériaux insuffisants/);
   assert.equal(dom.window.driverCalls.length,0);
+  const road = JSON.parse(JSON.stringify(fixtures.combat));
+  road.field_map = null;
+  road.mobs = []; road.mob = null;
+  road.battle.hostiles_alive = 0;
+  road.battle.corpses = [{id: 'mob', name: 'Gobelin', position: [4,6], harvested: ['p0']}];
+  road.battle.players.p0.route = [];
+  dom.window.driverCalls.length = 0;
+  dom.window.driverRender(road);
+  assert.equal(resumeJourneyStep(dom), true);
+  assert.equal(dom.window.driverCalls.length, 1);
+  assert.equal(dom.window.driverCalls[0].action, 'battle_move');
+  road.battle.corpses[0].harvested = [];
+  dom.window.driverRender(road);
+  assert.equal(resumeJourneyStep(dom), false);
+  road.battle.corpses[0].harvested = ['p0'];
+  road.battle.hostiles_alive = 1;
+  dom.window.driverRender(road);
+  assert.equal(resumeJourneyStep(dom), false);
   assert.deepEqual(errors,[]);
-  process.stdout.write('Pilote UI : fabrication ciblée, équipement déjà présent, approche de la forge et manque de matériaux vérifiés.\n');
+  process.stdout.write('Pilote UI : sortie après dépeçage des rencontres de trajet, fabrication ciblée, équipement déjà présent, approche de la forge et manque de matériaux vérifiés.\n');
 } finally {
   dom.window.close();
 }
