@@ -34,6 +34,7 @@ jobs:
           import json
           import os
           import sys
+          import urllib.error
           import urllib.request
           from urllib.parse import urlsplit
 
@@ -78,8 +79,19 @@ jobs:
                   raise ValueError()
               if operation == "integrite" and rows != [["ok"]]:
                   sys.exit("Controle d'integrite en echec")
-          except Exception:
-              sys.exit("Echec Turso : verifier URL, secret, permissions et disponibilite de la base")
+          except urllib.error.HTTPError as error:
+              explanations = {
+                  401: "authentification refusee : utiliser un jeton de base (turso db tokens create), pas un jeton API de gestion ; verifier aussi la base cible et l'expiration",
+                  403: "acces refuse : verifier les permissions du jeton sur cette base",
+                  404: "endpoint introuvable : verifier l'URL de la base",
+                  429: "limite de requetes atteinte : reessayer plus tard",
+              }
+              explanation = explanations.get(error.code, "requete refusee par le serveur Turso")
+              sys.exit(f"Echec Turso HTTP {error.code} : {explanation}")
+          except (urllib.error.URLError, TimeoutError):
+              sys.exit("Echec reseau Turso : verifier DNS, TLS et disponibilite de la base")
+          except (ValueError, KeyError, TypeError, IndexError):
+              sys.exit("Reponse Turso inattendue : erreur SQL ou format de reponse invalide")
           output = json.dumps({"operation": operation, "colonnes": [col["name"] for col in result["cols"]], "lignes": rows}, ensure_ascii=False, indent=2)
           output = output.replace(token, "[masque]").replace(os.environ["TURSO_DATABASE_URL"], "[URL masquee]")
           print(output)
