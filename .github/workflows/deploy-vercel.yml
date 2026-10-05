@@ -4,6 +4,7 @@ on:
     branches: [alpha-vercel-turso]
     paths:
       - .github/workflows/deploy-vercel.yml
+      - scripts/verify_deployment.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +38,13 @@ jobs:
         run: node scripts/verify_admin_ui.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Initialiser et verifier la base Turso
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          python -m jeuxRPG.multiplayer.turso_admin initialiser
+          python -m jeuxRPG.multiplayer.turso_admin integrite
       - name: Cibler exclusivement jeux-rpg
         run: |
           mkdir -p .vercel

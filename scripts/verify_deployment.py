@@ -11,7 +11,7 @@ def main():
     parsed = urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith("-dasbaps-projects.vercel.app") or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise SystemExit("URL de déploiement inattendue")
-    base = "https://" + parsed.netloc
+    base = "https://jeux-rpg.vercel.app"
     for route, expected in (("/", 200), ("/app.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
         status = None
         for attempt in range(3):
@@ -19,8 +19,12 @@ def main():
                 with urlopen(Request(base + route, headers={"Origin": base}), timeout=30) as response:
                     status = response.status
                     body = response.read(2 * 1024 * 1024)
-                    if route == "/api/classes" and (not isinstance(json.loads(body), list) or not json.loads(body)):
-                        raise SystemExit("Catalogue de classes invalide")
+                    if route == "/api/classes":
+                        if "application/json" not in response.headers.get("Content-Type", ""):
+                            raise SystemExit("API de classes inaccessible : réponse non JSON")
+                        catalogue = json.loads(body)
+                        if not isinstance(catalogue, list) or not catalogue:
+                            raise SystemExit("Catalogue de classes invalide")
             except HTTPError as error:
                 status = error.code
             except (URLError, TimeoutError):
