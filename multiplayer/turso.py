@@ -2,6 +2,7 @@ import base64
 import http.client
 import json
 import math
+import re
 import sqlite3
 from collections.abc import Mapping
 from urllib.parse import urlsplit
@@ -11,6 +12,13 @@ class TursoHTTPError(sqlite3.OperationalError):
     def __init__(self, status):
         super().__init__('Accès HTTP Turso refusé')
         self.status = status
+
+
+class TursoProtocolError(sqlite3.OperationalError):
+    def __init__(self, code, request_index):
+        super().__init__('Requête Turso refusée')
+        self.code = code if isinstance(code, str) and re.fullmatch(r'[A-Z0-9_]{1,48}', code) else 'UNKNOWN'
+        self.request_index = request_index
 
 
 class Row(Mapping):
@@ -113,18 +121,19 @@ class TursoConnection:
             results = data['results']
             if len(results) != len(requests):
                 raise ValueError('Réponse incomplète')
-            for result in results:
+            for request_index, result in enumerate(results):
                 if result['type'] != 'ok':
                     if 'CONSTRAINT' in result.get('error', {}).get('code', ''):
                         raise sqlite3.IntegrityError('Contrainte de base de données refusée')
-                    raise sqlite3.OperationalError('Requête Turso refusée')
+                    raise TursoProtocolError(result.get('error', {}).get('code'), request_index)
             return results
-        except (OSError, http.client.HTTPException, ValueError, KeyError):
+        except (OSError, http.client.HTTPException, ValueError, KeyError) as error:
             self.broken = True
             if self.connection:
                 self.connection.close()
                 self.connection = None
-            raise sqlite3.OperationalError('Connexion Turso interrompue ; vérifiez votre état avant de réessayer') from None
+            reason = 'timeout' if isinstance(error, TimeoutError) else 'network' if isinstance(error, (OSError, http.client.HTTPException)) else 'response_format'
+            raise sqlite3.OperationalError('Connexion Turso interrompue : ' + reason) from None
 
     def execute(self, sql, params=()):
         statement = sql.strip().upper()

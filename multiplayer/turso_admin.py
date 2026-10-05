@@ -3,7 +3,7 @@ import os
 import sqlite3
 
 from .schema import initialize
-from .turso import TursoConnection, TursoHTTPError
+from .turso import TursoConnection, TursoHTTPError, TursoProtocolError
 
 
 def main():
@@ -35,11 +35,15 @@ def main():
     except TursoHTTPError as error:
         print(f"Connexion Turso refusée : HTTP {error.status}. Vérifier le jeton de base, ses droits et l’URL.")
         return 1
+    except TursoProtocolError as error:
+        print(f"Requête Turso refusée : code {error.code}, étape {error.request_index + 1} du pipeline.")
+        return 1
     except ValueError:
         print("Configuration Turso invalide : URL libSQL/HTTPS sans chemin, jeton non vide sans espaces.")
         return 1
-    except (OSError, sqlite3.Error):
-        print("Échec Turso : vérifier les secrets, les permissions et la disponibilité de la base.")
+    except (OSError, sqlite3.Error) as error:
+        reasons = {"Connexion Turso interrompue : timeout", "Connexion Turso interrompue : network", "Connexion Turso interrompue : response_format", "Transaction Turso non confirmée"}
+        print(str(error) if str(error) in reasons else "Échec Turso : vérifier les secrets, les permissions et la disponibilité de la base.")
         return 1
     finally:
         if connection:
