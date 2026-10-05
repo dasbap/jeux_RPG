@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {JSDOM} = require('jsdom');
+const {JSDOM} = require(require.resolve('jsdom', {paths: [path.join(__dirname, '..', '.ui-test'), __dirname]}));
 const root = path.join(__dirname, '..', 'multiplayer', 'web');
 const dom = new JSDOM(fs.readFileSync(path.join(root, 'admin.html'), 'utf8'), {url: 'https://rpg.test/admin', runScripts: 'outside-only'});
 const {window} = dom;
