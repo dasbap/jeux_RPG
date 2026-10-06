@@ -496,6 +496,7 @@ function toggleGameMenu(open = $("game-menu-items").hidden) {
 }
 function showView(view) {
   toggleGameMenu(false);
+  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderTutorial(session.tutorial);return;}
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
