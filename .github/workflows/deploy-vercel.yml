@@ -6,6 +6,11 @@ on:
       - .github/workflows/deploy-vercel.yml
       - scripts/verify_deployment.py
       - multiplayer/serverless.py
+      - multiplayer/realtime.py
+      - multiplayer/realtime_store.py
+      - multiplayer/web/realtime.js
+      - app.py
+      - pyproject.toml
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,8 +21,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RPG_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Verifier l'acces de deploiement
         run: |

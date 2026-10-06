@@ -84,7 +84,8 @@ async function api(path, body, authenticated = true) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(path, {method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: controller.signal, cache: "no-store"});
+    const options = {method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: controller.signal, cache: "no-store"};
+    const response = globalThis.rpgRealtime ? await globalThis.rpgRealtime.request(path, options) : await fetch(path, options);
     let data;
     try { data = await response.json(); }
     catch { throw Object.assign(new Error("Le tunnel ne renvoie pas l’API du jeu. Vérifiez son accès et relancez la connexion."), {code: "tunnel_response"}); }
@@ -1243,7 +1244,20 @@ if (invite) { $("invite-code").textContent = invite; $("invite-link").value = in
 window.addEventListener("online", () => refresh(true));
 window.addEventListener("pageshow", () => refresh(true));
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
-setInterval(refresh, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
+if (globalThis.rpgRealtime) {
+  globalThis.rpgRealtime.onState = result => {
+    if (!token || result.status !== 200) return;
+    const state = result.body;
+    if (lastPlayer && state.player?.id !== lastPlayer.id) return;
+    if (state.session && session && state.session.id === session.id && state.session.revision < session.revision) return;
+    session = state.session || null;
+    sessionId = session?.id || "";
+    bundleHashes = result.hashes || {};
+    bundleValues = result.bundles || {};
+    remember();
+    render(state);
+  };
+} else setInterval(refresh, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
 refresh();
 
 for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });

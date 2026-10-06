@@ -7,7 +7,7 @@ import tomllib
 
 def check(root, environment):
     errors = []
-    for name in ("app.py", "multiplayer/serverless.py", "multiplayer/turso.py", "multiplayer/schema.py", "multiplayer/admin.py", "_class/character.py"):
+    for name in ("app.py", "multiplayer/realtime.py", "multiplayer/realtime_store.py", "multiplayer/serverless.py", "multiplayer/turso.py", "multiplayer/schema.py", "multiplayer/admin.py", "_class/character.py"):
         path = root / name
         if not path.is_file():
             errors.append(f"Fichier requis absent : {name}")
@@ -22,6 +22,8 @@ def check(root, environment):
     for name in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
         if not environment.get(name):
             errors.append(f"Variable Vercel requise absente : {name}")
+    if not (environment.get('REDIS_URL') or environment.get('KV_URL')):
+        errors.append('REDIS_URL requis : connectez le stockage Redis au projet Vercel jeux-rpg')
     if len(environment.get("RPG_ADMIN_TOKEN", "")) < 32:
         errors.append("RPG_ADMIN_TOKEN requis : secret administrateur distinct de 32 caractères minimum")
     if not (root / "maps" / "world.json").is_file():

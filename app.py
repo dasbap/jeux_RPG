@@ -1,3 +1,3 @@
-from jeuxRPG.multiplayer.serverless import Application
+from jeuxRPG.multiplayer.realtime import create_app
 
-app = Application()
+app = create_app()
