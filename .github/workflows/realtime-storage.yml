@@ -1,0 +1,29 @@
+name: Controle stockage temps reel
+on:
+  push:
+    branches: [alpha-vercel-turso]
+    paths: [.github/workflows/realtime-storage.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix .tools vercel@62.2.0
+      - name: Cibler jeux-rpg
+        run: |
+          mkdir -p .vercel
+          node -e 'require("fs").writeFileSync(".vercel/project.json", JSON.stringify({projectId:"prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2",orgId:"team_qde9V6kikwwSvLtNrjAsAkRY",projectName:"jeux-rpg"}))'
+      - name: Lister les integrations existantes
+        run: .tools/node_modules/.bin/vercel integration list --token "$VERCEL_TOKEN"
+      - name: Decouvrir le stockage disponible
+        run: .tools/node_modules/.bin/vercel integration discover --category storage --token "$VERCEL_TOKEN"
+      - name: Verifier les options de provisionnement
+        run: .tools/node_modules/.bin/vercel integration add upstash --help

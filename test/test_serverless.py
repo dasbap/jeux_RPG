@@ -153,7 +153,20 @@ class Transport:
         open_stream = True
         for item in payload["requests"]:
             self.requests.append(item)
+            if item["type"] == "batch":
+                step_results, step_errors = [], []
+                for step in item["batch"]["steps"]:
+                    if step.get("condition") and step_results[step["condition"]["step"]] is None:
+                        step_results.append(None); step_errors.append(None)
+                        continue
+                    result = self({"requests": [{"type": "execute", "stmt": step["stmt"]}]})["results"][0]
+                    step_results.append(result["response"]["result"] if result["type"] == "ok" else None)
+                    step_errors.append(result.get("error"))
+                results.append({"type": "ok", "response": {"result": {"step_results": step_results, "step_errors": step_errors}}})
+                continue
             if item["type"] == "close":
+                if self.db.in_transaction:
+                    self.db.rollback()
                 open_stream = False
                 results.append({"type": "ok", "response": {"type": "close"}})
                 continue
@@ -191,6 +204,35 @@ def test_turso_unconfirmed_command_is_not_retried():
     with pytest.raises(sqlite3.OperationalError):
         db.execute("INSERT INTO players VALUES(1)")
     assert len(calls) == 1
+
+
+def test_remote_clock_initialization_uses_two_round_trips():
+    transport = Transport()
+    db = TursoConnection("libsql://test.turso.io", "test-token", transport=transport)
+    initialize(db)
+    before = db.round_trips
+    service = RemoteGameService(connection=db, log_directory="-", initialize_schema=False)
+    assert db.round_trips - before == 2
+    assert service.clock.now() >= 0
+    service.close()
+
+
+def test_failed_batch_does_not_commit_earlier_changes():
+    transport = Transport()
+    db = TursoConnection("libsql://test.turso.io", "test-token", transport=transport)
+    db.execute("CREATE TABLE marker(id INTEGER PRIMARY KEY)")
+    with pytest.raises(sqlite3.Error):
+        db.execute_many([("BEGIN IMMEDIATE", ()), ("INSERT INTO marker VALUES(1)", ()), ("INSERT INTO marker VALUES(1)", ()), ("COMMIT", ())])
+    assert not db.execute("SELECT id FROM marker").fetchone()
+    db.close()
+
+
+def test_static_files_do_not_open_a_database():
+    def unavailable():
+        raise AssertionError("Une page statique ne doit pas ouvrir Turso")
+    app = Application(service_factory=unavailable, environment={})
+    for path in ("/", "/app.js", "/style.css", "/map_artwork.js", "/admin"):
+        assert request(app, path)["status"] == 200
 
 
 def test_game_service_uses_turso_protocol_and_keeps_receipts():

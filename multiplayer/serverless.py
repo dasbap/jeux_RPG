@@ -15,6 +15,7 @@ from . import admin
 from .network_log import create_logger
 from .server import Handler
 from .service import GameError, GameService, digest
+from .clock import GameClock
 from .turso import TursoConnection
 
 
@@ -48,6 +49,31 @@ class RequestHandler(Handler):
 
 
 class RemoteGameService(GameService):
+    def _initialize_clock(self, clock):
+        if not isinstance(self.db, TursoConnection):
+            return super()._initialize_clock(clock)
+        try:
+            rows = self.db.execute_many([('BEGIN IMMEDIATE', ()), ("INSERT OR IGNORE INTO meta VALUES ('epoch_wall', ?)", (str(time.time()),)), ("SELECT key,value FROM meta WHERE key IN ('epoch_wall','last_game','epoch_game','clock_ratio')", ())])[-1]
+            values = {row[0]: row[1] for row in rows}
+            epoch = float(values['epoch_wall'])
+            anchor = float(values.get('epoch_game', 0))
+            minimum = float(values.get('last_game', 0))
+            statements = []
+            if 'last_game' in values and float(values.get('clock_ratio', 0)) != GameClock.ratio:
+                epoch, anchor = time.time(), minimum
+                statements.extend([("INSERT OR REPLACE INTO meta VALUES ('epoch_wall', ?)", (str(epoch),)), ("INSERT OR REPLACE INTO meta VALUES ('epoch_game', ?)", (str(anchor),))])
+            statements.extend([("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),)), ('COMMIT', ())])
+            self.db.execute_many(statements)
+            self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=minimum)
+            self._last_game = minimum
+        except BaseException:
+            if self.db.in_transaction:
+                try:
+                    self.db.execute('ROLLBACK')
+                except sqlite3.Error:
+                    pass
+            raise
+
     def _touch_chat(self, player, now, connection=None):
         import re
         if connection is not None and (not isinstance(connection, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", connection)):
@@ -109,6 +135,7 @@ class Application:
             raise
 
     def __call__(self, environ, start_response):
+        started = time.perf_counter()
         service = None
         logger = create_logger("-")
         status, payload, mime = 503, {"error": "unavailable", "message": "Service indisponible."}, "application/json; charset=utf-8"
@@ -137,7 +164,7 @@ class Application:
                 raise GameError("invalid_origin", "Origine non autorisée.", 403)
             if self.environment.get("VERCEL"):
                 environ = {**environ, "wsgi.url_scheme": "https"}
-            static = {"/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}
+            static = {"/": ("index.html", "text/html; charset=utf-8"), "/app.js": ("app.js", "text/javascript; charset=utf-8"), "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"), "/style.css": ("style.css", "text/css; charset=utf-8"), "/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}
             if method == "GET" and path in static:
                 name, mime = static[path]
                 status, payload = 200, (Path(__file__).parent / "web" / name).read_bytes()
@@ -195,9 +222,15 @@ class Application:
             for handler in logger.handlers:
                 handler.close()
         body = json.dumps(payload, ensure_ascii=False).encode() if isinstance(payload, (dict, list)) else payload
+        milliseconds = (time.perf_counter() - started) * 1000
+        database = getattr(service, 'db', None)
+        db_ms = getattr(database, 'duration', 0) * 1000
+        trips = getattr(database, 'round_trips', 0)
+        print(json.dumps({'event': 'rpg_request', 'method': environ.get('REQUEST_METHOD'), 'route': 'api' if environ.get('PATH_INFO', '').startswith('/api/') else 'static', 'status': status, 'duration_ms': round(milliseconds, 1), 'db_ms': round(db_ms, 1), 'db_round_trips': trips}), flush=True)
         headers = [("Content-Type", mime), ("Content-Length", str(len(body))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"), ("Referrer-Policy", "no-referrer"), ("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")]
         if status == 429:
             headers.append(("Retry-After", "60"))
+        headers.append(('Server-Timing', f'app;dur={milliseconds:.1f}, db;dur={db_ms:.1f}, trips;desc="{trips}"'))
         start_response(f"{status} {HTTPStatus(status).phrase}", headers)
         return [body]
 

@@ -80,6 +80,14 @@ class GameService:
         from .schema import initialize
         if initialize_schema:
             initialize(self.db)
+        self._initialize_clock(clock)
+        if connection is None:
+            with self._transaction():
+                for row in self.db.execute("SELECT id,scope,player_id,name,message,sent FROM chat WHERE session_id IS NULL"):
+                    self._log_global_chat(dict(row), "legacy_global_chat")
+                self.db.execute("DELETE FROM chat WHERE session_id IS NULL")
+
+    def _initialize_clock(self, clock):
         with self._transaction():
             self.db.execute("INSERT OR IGNORE INTO meta VALUES ('epoch_wall', ?)", (str(time.time()),))
             epoch = float(self.db.execute("SELECT value FROM meta WHERE key='epoch_wall'").fetchone()[0])
@@ -95,11 +103,6 @@ class GameService:
             self.db.execute("INSERT OR REPLACE INTO meta VALUES ('clock_ratio', ?)", (str(GameClock.ratio),))
             self.clock = clock or GameClock(epoch, epoch_game=anchor, minimum_game=float(checkpoint[0]) if checkpoint else 0)
             self._last_game = float(checkpoint[0]) if checkpoint else 0
-        if connection is None:
-            with self._transaction():
-                for row in self.db.execute("SELECT id,scope,player_id,name,message,sent FROM chat WHERE session_id IS NULL"):
-                    self._log_global_chat(dict(row), "legacy_global_chat")
-                self.db.execute("DELETE FROM chat WHERE session_id IS NULL")
 
     def close(self):
         with self._lock:
@@ -215,11 +218,10 @@ class GameService:
     def _authenticate(self, token):
         if not isinstance(token, str) or not 32 <= len(token) <= 128:
             raise GameError("unauthorized", "Identité invalide.", 401)
-        player = self.db.execute("SELECT * FROM players WHERE token_hash=?", (digest(token),)).fetchone()
+        player = self.db.execute("SELECT p.*,COALESCE(a.suspended,0) AS suspended FROM players p LEFT JOIN account_status a ON a.player_id=p.id WHERE p.token_hash=?", (digest(token),)).fetchone()
         if player is None:
             raise GameError("unauthorized", "Identité invalide.", 401)
-        status = self.db.execute("SELECT suspended FROM account_status WHERE player_id=?", (player["id"],)).fetchone()
-        if status and status[0]:
+        if player['suspended']:
             raise GameError("account_suspended", "Compte suspendu.", 403)
         return player
 

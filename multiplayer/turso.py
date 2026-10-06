@@ -4,6 +4,7 @@ import json
 import math
 import re
 import sqlite3
+import time
 from collections.abc import Mapping
 from urllib.parse import urlsplit
 
@@ -101,6 +102,8 @@ class TursoConnection:
     def _send(self, requests):
         if self.closed:
             raise sqlite3.ProgrammingError('Connexion Turso fermée')
+        self.round_trips = getattr(self, 'round_trips', 0) + 1
+        started = time.perf_counter()
         payload = {'baton': self.baton, 'requests': requests}
         try:
             if self.transport:
@@ -134,6 +137,45 @@ class TursoConnection:
                 self.connection = None
             reason = 'timeout' if isinstance(error, TimeoutError) else 'network' if isinstance(error, (OSError, http.client.HTTPException)) else 'response_format'
             raise sqlite3.OperationalError('Connexion Turso interrompue : ' + reason) from None
+        finally:
+            self.duration = getattr(self, 'duration', 0) + time.perf_counter() - started
+
+    def execute_many(self, statements):
+        if self.broken:
+            raise sqlite3.OperationalError('Connexion Turso à rétablir')
+        transaction = self.in_transaction
+        requests = []
+        if self.baton is None:
+            requests.append({'type': 'execute', 'stmt': {'sql': 'PRAGMA foreign_keys=ON', 'want_rows': False}})
+        offset = len(requests)
+        steps = []
+        for index, (sql, params) in enumerate(statements):
+            command = sql.strip().upper()
+            if command.startswith('BEGIN'):
+                transaction = True
+            elif command in ('COMMIT', 'ROLLBACK', 'END'):
+                transaction = False
+            step = {'stmt': {'sql': sql, 'args': [encode(v) for v in params], 'want_rows': True}}
+            if index:
+                step['condition'] = {'type': 'ok', 'step': index - 1}
+            steps.append(step)
+        requests.append({'type': 'batch', 'batch': {'steps': steps}})
+        self.in_transaction = transaction
+        if not transaction:
+            requests.append({'type': 'close'})
+        results = self._send(requests)
+        if transaction and not self.baton:
+            self.broken = True
+            raise sqlite3.DatabaseError('Transaction Turso non confirmée')
+        batch = results[offset]['response']['result']
+        for index, error in enumerate(batch['step_errors']):
+            if error:
+                if 'CONSTRAINT' in error.get('code', ''):
+                    raise sqlite3.IntegrityError('Contrainte de base de données refusée')
+                raise TursoProtocolError(error.get('code'), index)
+        if len(batch['step_results']) != len(statements) or any(item is None for item in batch['step_results']):
+            raise sqlite3.DatabaseError('Réponse de lot Turso incomplète')
+        return [Cursor(item) for item in batch['step_results']]
 
     def execute(self, sql, params=()):
         statement = sql.strip().upper()
