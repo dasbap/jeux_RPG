@@ -470,7 +470,8 @@ function renderWorld(adventure, me) {
   }
 }
 function showView(view) {
-  if (["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(view)) currentView = view;
+  if (["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
+  document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial?.battle));
   if (session && session.tutorial) renderTutorial(session.tutorial);
 }
 function skillAllowed(me, skill, target, mob) {
@@ -527,11 +528,11 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (!fighting) combatFullscreenRequested = false;
   if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
   $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
-  $("character-menu").hidden = fighting;
+  $("character-menu").hidden = false;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
-    if (!["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
+    if (!["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
     inspectedCell = null;
@@ -546,15 +547,15 @@ function renderTutorial(adventure, preserveBattle = false) {
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
-  for (const view of ["stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
-  $("quest-view").hidden = false;
+  for (const view of ["options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
+  $("quest-view").hidden = currentView !== "quest";
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
-  for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
+  for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
   }
   $("back-view").hidden = true;
@@ -564,6 +565,9 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("leave").hidden = true;
   $("result").textContent = adventure.step === "complete" ? "Vous êtes arrivé au village de Brume." : "";
   $("location").textContent = adventure.location;
+  const currentZone = adventure.world?.places?.find(place => place.id === adventure.world.current);
+  $("zone-name").textContent = fighting ? adventure.battle.map.name : adventure.location;
+  $("zone-level").textContent = `Niv. ${currentZone?.level ?? me.level}`;
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = !hasQuest ? (adventure.quest_journal?.length ? "Quêtes des PNJ" : "Aucune quête acceptée.") : `${adventure.hunt_name || "Quête de Mira"} : ${{unaccepted: "à accepter", active: `${adventure.kills}/${adventure.hunt_goal || 3} gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
@@ -1192,9 +1196,9 @@ $("restore-form").addEventListener("submit", async event => {
   $("restore-token").value = "";
   await refresh();
 });
-for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
+for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
-$("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ? "combat" : "standby"));
+$("back-view").addEventListener("click", () => { document.body.classList.remove("hud-menu-open"); showView("map"); });
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
