@@ -252,6 +252,11 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .combat-active #character-menu button:before{display:block;font-size:15px;line-height:18px;font-weight:700}
 #show-options:before{content:"⚙"}#show-stats:before{content:"♙"}#show-equipment:before{content:"♜"}#show-inventory:before{content:"▣"}#show-quest:before{content:"!"}#show-map:before{content:"⌖"}#show-bestiary:before{content:"♞"}#show-achievements:before{content:"★"}
 
+*{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent!important}
+::selection{background:transparent!important;color:inherit}
+::-moz-selection{background:transparent!important;color:inherit}
+input,textarea,[contenteditable="true"],[contenteditable=""]{-webkit-user-select:text;user-select:text}
+a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:focus-visible),img:focus:not(:focus-visible),.lb-nav:focus:not(:focus-visible),.lb-close:focus:not(:focus-visible){outline:none}
 #show-social:before{content:"♧"}.social-row{padding:8px 0;border-bottom:1px solid #394556}.social-row p{margin:0 0 6px}.social-row button{margin:2px 5px 2px 0}#social-search{display:flex;flex-wrap:wrap;gap:8px}#social-search label{width:100%}#social-name{min-width:120px;flex:1}#social-content{max-height:42dvh;overflow:auto}#social-travel{margin-top:12px}.world-player{pointer-events:none}.world-player circle{fill:#8694a8;stroke:#fff;stroke-width:2}.world-ally circle{fill:#51cba0}.world-player text{fill:#fff;font-size:10px}#characters[hidden]{display:none}#characters{position:relative;z-index:55}#characters input,#characters select,#registration input{font-size:16px}
 
 .combat-active #battle:not(.combat-mode){padding:0;height:100dvh}
