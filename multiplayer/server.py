@@ -213,7 +213,7 @@ class Handler(BaseHTTPRequestHandler):
             if not combat:
                 write(self.server.network_log, "CONNECTION", peer=self.client_address[0], method="POST" if post else "GET", route=self._network_route)
             if not post:
-                static = {"/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"), "/": ("index.html", "text/html; charset=utf-8"),
+                static = {"/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"), "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"), "/": ("index.html", "text/html; charset=utf-8"),
                           "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
                           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                           "/style.css": ("style.css", "text/css; charset=utf-8")}

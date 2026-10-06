@@ -13,6 +13,10 @@ on:
       - multiplayer/web/app.js
       - multiplayer/web/style.css
       - multiplayer/web/index.html
+      - multiplayer/web/mobile_controls.js
+      - multiplayer/tactics.py
+      - multiplayer/tutorial.py
+      - scripts/verify_touch_controls.cjs
       - multiplayer/web/map_artwork.js
       - multiplayer/service.py
       - scripts/verify_ui_mira.cjs
@@ -61,6 +65,10 @@ jobs:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Verifier la quete de Mira
         run: node scripts/verify_ui_mira.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Verifier les commandes tactiles
+        run: node scripts/verify_touch_controls.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Initialiser et verifier la base Turso

@@ -557,7 +557,7 @@ def execute(party, player_id, action, params, now, error, random):
         return messages, party["step"] == "complete"
     if action in ("control_units", "unit_order", "unit_skill"):
         return tactics.control(party, player_id, action, params, now, error), False
-    if action in ("battle_move", "hide", "harvest", "leave_battle"):
+    if action in ("battle_move", "stop_move", "hide", "harvest", "leave_battle"):
         messages = tactics.execute(party, player_id, action, params, now, error)
         if action == "leave_battle":
             continue_journey(party, now, random, messages)

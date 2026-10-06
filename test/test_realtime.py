@@ -137,6 +137,29 @@ def test_same_zone_room_does_not_change_signature():
     assert progress_signature(a) != progress_signature({**a, 'position': 'brume'})
 
 
+def test_joystick_stop_cancels_route_without_checkpoint():
+    from jeuxRPG.multiplayer import fields
+    store = RuntimeStore(ENV, clock=SimpleNamespace(now=lambda: 0, ratio=240))
+    player, room = adventure(store)
+    identifier = player['player']['id']
+    def prepare(party):
+        fields.enter(party, 'rosee', [32,20], 0)
+        party['battle']['players'][identifier]['route'] = [[33,20]]
+    mutate(store, room, prepare)
+    state = store.request(message('/api/state', token=player['token']))['body']['session']
+    store.saved(store.pending_batch())
+    store.db.execute('UPDATE sessions SET revision=revision+100 WHERE id=?', (room,))
+    params = {'session_id':room, 'revision':state['revision'], 'encounter':state['tutorial']['encounter_number']}
+    result = store.request(message('/api/commands', {'request_id':uuid.uuid4().hex, 'action':'stop_move', 'params':params}, player['token']))
+    assert result['status'] == 200
+    assert result['body']['session']['tutorial']['battle']['players'][identifier]['route'] == []
+    assert not store.pending
+    params['encounter'] += 100
+    result = store.request(message('/api/commands', {'request_id':uuid.uuid4().hex, 'action':'stop_move', 'params':params}, player['token']))
+    assert result['status'] == 409
+    store.close()
+
+
 def test_persistence_is_batched_and_fenced(monkeypatch):
     transport = Transport()
     initialize(transport.db)

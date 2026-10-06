@@ -70,7 +70,7 @@ async function api(path, body, authenticated = true) {
   }
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
-  const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
+  const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "craft", "upgrade", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
   if (compactCommand) headers["X-RPG-Command-Ack"] = "1";
   const bundled = path === "/api/state" || path === "/api/commands" && !compactCommand;
   if (bundled) {
@@ -252,7 +252,7 @@ function tutorialCommand(action, params = {}) {
     const paths = worldPaths(session.tutorial, params.destination);
     if (paths) params = {...params, paths};
   }
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();
@@ -721,6 +721,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
+  touchControls?.sync();
 }
 function requestTravel(destination) {
   const adventure = session?.tutorial;
@@ -1198,7 +1199,7 @@ async function command(action, params = {}) {
       const actor = session.tutorial.players.find(player => player.id === session.me);
       if (actor.hp > 0 && !actor.stunned && !actor.casting && (!pending.controlledIds || JSON.stringify(pending.controlledIds) === JSON.stringify(controlledUnits(session.tutorial, session.me).map(([id]) => id).sort()))) await moveControlled(session.tutorial, actor, pending.destination);
     }
-    await refresh(true);
+    if (!globalThis.rpgRealtime) await refresh(true);
   }
 }
 $("register-form").addEventListener("submit", async event => {
@@ -1330,6 +1331,25 @@ function installWorldCamera(node) {
   node.onclick = () => { activeWorldMap = key; };
   node.onwheel = event => { event.preventDefault(); activeWorldMap = key; adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
 }
+
+const touchControls = globalThis.createRpgTouchControls?.({
+  state: () => {
+    const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];
+    return {active: Boolean(actor), busy, key: `${session?.id}:${adventure?.encounter_number}`, actor};
+  },
+  move: direction => {
+    const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];
+    const me = adventure?.players.find(player => player.id === session.me);
+    if (!actor || busy || me.hp <= 0 || me.stunned || me.casting) return false;
+    const destination = actor.position.map((value, i) => value + direction[i]);
+    const path = gridPath(adventure.battle.map, actor.position, destination);
+    if (!path?.length || path.length > 2) return false;
+    tutorialCommand("battle_move", {x: destination[0], y: destination[1], path});
+    return true;
+  },
+  stop: () => tutorialCommand("stop_move"),
+  actions: () => [...$("combat-actions").querySelectorAll("button"), ...$("skills").querySelectorAll("button")].slice(0, 4)
+});
 
 function enterCombatFullscreen() {
   if (window.matchMedia?.("(pointer: coarse)").matches) return;

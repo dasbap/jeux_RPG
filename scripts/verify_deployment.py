@@ -47,7 +47,7 @@ def main():
     if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith("-dasbaps-projects.vercel.app") or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise SystemExit("URL de déploiement inattendue")
     base = "https://jeux-rpg.vercel.app"
-    for route, expected in (("/", 200), ("/app.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
+    for route, expected in (("/", 200), ("/app.js", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
         status = None
         for attempt in range(3):
             try:
