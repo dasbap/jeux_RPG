@@ -1199,9 +1199,10 @@ function renderBattle(adventure, me) {
   if (fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: Math.min(map.width, 24), x: unit.position[0], y: unit.position[1], follow: true};
   if (fieldCamera.follow) { fieldCamera.x = unit.position[0]; fieldCamera.y = unit.position[1]; }
   const bounds = $("world-map").getBoundingClientRect();
-  const aspect = bounds.width > 0 && bounds.height > 0 ? bounds.width / bounds.height : (window.innerWidth || 1200) / (window.innerHeight || 800);
-  const height = Math.min(map.height, Math.min(map.width, fieldCamera.span) / aspect);
-  const width = Math.min(map.width, fieldCamera.span, height * aspect);
+  const measured = bounds.width > 0 && bounds.height > 0;
+  const aspect = measured ? bounds.width / bounds.height : 1 / .67;
+  const height = Math.min(map.height, measured ? Math.min(map.width, fieldCamera.span) / aspect : Math.ceil(Math.min(map.width, fieldCamera.span) * .67));
+  const width = measured ? Math.min(map.width, fieldCamera.span, height * aspect) : Math.min(map.width, fieldCamera.span);
   const left = Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2)));
   const top = Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2)));
   svg.setAttribute("viewBox", `${left * 40} ${top * 40} ${width * 40} ${height * 40}`);
@@ -1222,7 +1223,7 @@ function renderBattle(adventure, me) {
   svg.setAttribute("clip-path", "url(#battle-viewport-clip)");
   const inView = position => position[0] + .5 >= left && position[0] + .5 < left + width && position[1] + .5 >= top && position[1] + .5 < top + height;
   const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
-  for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
+  for (let y = Math.floor(top); y < Math.ceil(top + height); y++) for (let x = Math.floor(left); x < Math.ceil(left + width); x++) {
     const discovered = !explored || explored.has(`${x},${y}`);
     const cover = map.cover.some(p => p[0] === x && p[1] === y);
     const water = (map.water || []).some(p => p[0] === x && p[1] === y);
