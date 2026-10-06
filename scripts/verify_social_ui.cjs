@@ -39,16 +39,20 @@ async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method
   await until(()=>target.window.socialTest.ready(),'Acceptation terminée');
  }
  await host.window.socialTest.refresh(true);
+ await until(()=>el(host,'social-capacity').textContent.includes('équipe 4/4')&&el(host,'social-content').querySelectorAll('[data-social-row^="member-"]').length===4,'Équipe complète affichée');
  assert(el(host,'social-capacity').textContent.includes('équipe 4/4'));
  assert.equal(el(host,'social-content').querySelectorAll('[data-social-row^="member-"]').length,4);
+ await until(()=>el(host,'social-content').querySelector('[data-social-action="join_ally"]'),'Bouton Rejoindre affiché');
  const join=el(host,'social-content').querySelector('[data-social-action="join_ally"]');
  for(let index=0;index<8;index++)await host.window.socialTest.refresh(true);
  assert.equal(el(host,'social-content').querySelector('[data-social-action="join_ally"]'),join,'Les boutons restent stables');
  const target=clients[1];el(host,'social-name').value=el(target,'account-name').value;
  el(host,'social-search').dispatchEvent(new host.window.Event('submit',{bubbles:true,cancelable:true}));
  await until(()=>host.window.socialTest.ready(),'Demande d’ami terminée');await target.window.socialTest.refresh(true);
+ await until(()=>el(target,'social-content').querySelector('[data-social-action="friend_accept"]'),'Demande d’ami affichée');
  el(target,'social-content').querySelector('[data-social-action="friend_accept"]').click();
  await until(()=>target.window.socialTest.ready(),'Amitié acceptée');await host.window.socialTest.refresh(true);
+ await until(()=>el(host,'social-content').textContent.includes('Ami ·'),'Amitié affichée');
  assert(el(host,'social-content').textContent.includes('Ami ·'));
  const sessions=await Promise.all(clients.map(dom=>rpc(dom,'/api/state')));
  assert.equal(new Set(sessions.map(state=>state.session.id)).size,4,'Tutoriels indépendants');
