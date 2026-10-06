@@ -258,6 +258,8 @@ async function main() {
     assert(el(first, "world-map").querySelector(".battle-map"));
     assert(!el(first, "combat-layout").hidden);
     assert(el(first, "combat-view").closest("#combat-action-panel"));
+    assert(el(first, "skill-main-attack").querySelector(".skill-attack"));
+    assert(el(first, "skill-hud").querySelectorAll(".skill-icon").length >= 2);
     assert(el(first, "map-view").closest("#combat-map-panel"));
     assert(el(first, "mob-cards").closest("#combat-enemy-panel"));
     assert(el(first, "enemy-intents").closest("#combat-enemy-panel"));
