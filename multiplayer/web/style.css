@@ -121,7 +121,7 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .combat-active.hud-menu-open .combat-mode .adventure-grid .dashboard-box{border:0;background:transparent;padding:6px}
 .combat-active.hud-menu-open .combat-mode .zone-actions{display:none}
 .combat-active.hud-menu-open .combat-mode .quest-box:has(#quest-view[hidden]){display:none}
-.combat-active.hud-menu-open .combat-mode .consultation:has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none}
+.combat-active.hud-menu-open .combat-mode .consultation:has(#social-view[hidden]):has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none}
 
 @media(max-width:750px){
   .combat-active #character-menu{top:6px;right:6px;max-width:72vw;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start}
@@ -240,7 +240,7 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .combat-active .combat-mode #combat-map-panel{height:100%;min-height:0}
 .combat-active.hud-menu-open .combat-mode .consultation,.combat-active.hud-menu-open .combat-mode .quest-box{display:block!important}
 .combat-active.hud-menu-open .combat-mode .quest-box:has(#quest-view[hidden]){display:none!important}
-.combat-active.hud-menu-open .combat-mode .consultation:has(#region-view[hidden]):has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none!important}
+.combat-active.hud-menu-open .combat-mode .consultation:has(#region-view[hidden]):has(#social-view[hidden]):has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none!important}
 #combat-action-panel #region-view{display:none}
 #region-map{display:flex;flex-wrap:wrap}#region-map svg{width:100%;height:260px}
 .combat-active #region-view #map-details{display:block!important}
@@ -251,3 +251,24 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .combat-active #combat-allies>h3,.combat-active #combat-stats-details,.combat-active #selected-unit-stats{display:none}
 .combat-active #character-menu button:before{display:block;font-size:15px;line-height:18px;font-weight:700}
 #show-options:before{content:"⚙"}#show-stats:before{content:"♙"}#show-equipment:before{content:"♜"}#show-inventory:before{content:"▣"}#show-quest:before{content:"!"}#show-map:before{content:"⌖"}#show-bestiary:before{content:"♞"}#show-achievements:before{content:"★"}
+
+#show-social:before{content:"♧"}.social-row{padding:8px 0;border-bottom:1px solid #394556}.social-row p{margin:0 0 6px}.social-row button{margin:2px 5px 2px 0}#social-search{display:flex;flex-wrap:wrap;gap:8px}#social-search label{width:100%}#social-name{min-width:120px;flex:1}#social-content{max-height:42dvh;overflow:auto}#social-travel{margin-top:12px}.world-player{pointer-events:none}.world-player circle{fill:#8694a8;stroke:#fff;stroke-width:2}.world-ally circle{fill:#51cba0}.world-player text{fill:#fff;font-size:10px}#characters[hidden]{display:none}#characters{position:relative;z-index:55}#characters input,#characters select,#registration input{font-size:16px}
+
+.combat-active #battle:not(.combat-mode){padding:0;height:100dvh}
+.combat-active #battle:not(.combat-mode) #tutorial-panel{height:100%;position:relative}
+.combat-active #battle:not(.combat-mode)>.section-head,.combat-active #battle:not(.combat-mode) #shared-log-title,.combat-active #battle:not(.combat-mode) #events,.combat-active #battle:not(.combat-mode) #map-help{display:none}
+.combat-active #battle:not(.combat-mode) #map-strip{position:absolute;inset:0;margin:0;padding:0;border:0;background:#17251f}
+.combat-active #battle:not(.combat-mode) #map-view,.combat-active #battle:not(.combat-mode) #world-map{width:100%;height:100%}
+.combat-active #battle:not(.combat-mode) #world-map svg{height:100%;max-height:none}
+.combat-active #battle:not(.combat-mode) #map-view>h3{display:none}
+.combat-active #battle:not(.combat-mode) #map-details{display:none}
+.combat-active #battle:not(.combat-mode) .adventure-grid{display:block;position:absolute;right:12px;bottom:12px;z-index:26;max-width:390px;max-height:45dvh;overflow:auto}
+.combat-active #battle:not(.combat-mode) .consultation,.combat-active #battle:not(.combat-mode) .quest-box{display:none}
+.combat-active #battle:not(.combat-mode) .zone-actions>h2,.combat-active #battle:not(.combat-mode) #position-label{display:none}
+.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{top:130px;bottom:auto;max-height:calc(100dvh - 150px);max-width:min(620px,95vw)}
+.combat-active.hud-menu-open #battle:not(.combat-mode) .consultation,.combat-active.hud-menu-open #battle:not(.combat-mode) .quest-box{display:block}
+.combat-active.hud-menu-open #battle:not(.combat-mode) .quest-box:has(#quest-view[hidden]){display:none}
+.combat-active.hud-menu-open #battle:not(.combat-mode) .zone-actions{display:none}
+.combat-active.hud-menu-open #battle:not(.combat-mode) #map-details{display:block}
+#outing-vitals{position:fixed;top:10px;left:12px;z-index:35;width:210px;max-height:30dvh;overflow:auto;background:#17202bd9;border:1px solid #495264;border-radius:12px;padding:8px}#outing-vitals .vitals-card{padding:0;margin:0;border:0}#outing-vitals .vitals-stats,#outing-vitals .status-list{display:none}
+@media(max-width:750px){#outing-vitals{width:39vw;font-size:.72rem}.combat-active #battle:not(.combat-mode) .adventure-grid{max-width:58vw;max-height:40dvh}.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{top:205px;max-width:95vw;max-height:calc(100dvh - 217px)}}

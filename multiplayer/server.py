@@ -201,7 +201,7 @@ class Handler(BaseHTTPRequestHandler):
             deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
             if deferred_command:
                 combat = True
-            if path.startswith("/api/") and path not in ("/api/register", "/api/classes") and not deferred_command:
+            if path.startswith("/api/") and path not in ("/api/register", "/api/classes") and not path.startswith("/api/account/") and not deferred_command:
                 token = self._token()
                 with self.server.service._lock:
                     player = self.server.service._authenticate(token)
@@ -231,6 +231,10 @@ class Handler(BaseHTTPRequestHandler):
                     from .content import DATA
                     names = {item['id']:item['name'] for item in [*DATA.get('templates',{}).get('classes',[]),*DATA.get('classes',[])]}
                     self._respond(200,[{'id':identifier,'name':names.get(identifier,identifier)} for identifier in self.server.service.classes])
+                elif path == "/api/account/me":
+                    self._respond(200, self.server.service.account_view(self._token()))
+                elif path == "/api/social":
+                    self._respond(200, self.server.service.social_view(self._token()))
                 elif path == "/api/state":
                     token = self._token()
                     if not self.server.limiter.accept(("state", digest(token)), 300):
@@ -245,7 +249,27 @@ class Handler(BaseHTTPRequestHandler):
                     raise GameError("not_found", "Ressource introuvable.", 404)
                 return
             body = self._body()
-            if path == "/api/register":
+            if path in ("/api/account/signup", "/api/account/login"):
+                if set(body) != {"username", "password"}:
+                    raise GameError("invalid_command", "Paramètres de connexion invalides.")
+                if not self.server.limiter.accept(("login", self.client_address[0]), 10):
+                    raise GameError("rate_limit", "Trop de tentatives. Réessayez dans une minute.", 429)
+                self._respond(201 if path.endswith("signup") else 200, self.server.service.account_login(body["username"], body["password"], signup=path.endswith("signup")))
+            elif path == "/api/account/character":
+                if "action" not in body:
+                    raise GameError("invalid_command", "Action requise.")
+                self._respond(200, self.server.service.account_character(self._token(), **body))
+            elif path == "/api/account/logout":
+                if body:
+                    raise GameError("invalid_command", "Paramètres invalides.")
+                self._respond(200, self.server.service.account_logout(self._token()))
+            elif path == "/api/social":
+                if set(body) != {"action", "params"} or not self.server.limiter.accept(("social", digest(self._token())), 30):
+                    raise GameError("rate_limit", "Trop d’actions sociales.", 429)
+                self._respond(200, self.server.service.social_action(self._token(), body["action"], body["params"]))
+            elif path == "/api/register":
+                if not self.server.service.legacy_auth:
+                    raise GameError("account_required", "Créez un compte avec un mot de passe.", 410)
                 if set(body) != {"name", "class_name"}:
                     raise GameError("invalid_command", "Paramètres invalides.")
                 if not self.server.limiter.accept(("register", self.client_address[0]), 10):

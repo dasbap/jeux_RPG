@@ -99,6 +99,9 @@ def main():
                                         env={**os.environ, "NODE_PATH": modules,
                                              "RPG_TEST_ORIGIN": f"http://127.0.0.1:{server.server_address[1]}"},
                                         timeout=180)
+                if result.returncode == 0:
+                    result = subprocess.run(["node", str(root / "scripts" / "verify_social_ui.cjs")],
+                                            env={**os.environ, "NODE_PATH": modules, "RPG_TEST_ORIGIN": f"http://127.0.0.1:{server.server_address[1]}"}, timeout=60)
             finally:
                 server.shutdown()
                 thread.join()

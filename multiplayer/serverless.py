@@ -92,6 +92,10 @@ class RemoteGameService(GameService):
 
     def chat_view(self, player, now, session_id=None, chat_connection=None):
         stream = self._touch_chat(player, now, chat_connection)
+        linked = self.db.execute("SELECT account_id FROM account_characters WHERE player_id=?", (player["id"],)).fetchone()
+        team = self._team(linked[0]) if linked else None
+        if team:
+            session_id = "team:" + team["id"]
         online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON p.id=o.player_id LEFT JOIN account_status a ON a.player_id=p.id WHERE p.scope=? AND o.seen>=? AND COALESCE(a.suspended,0)=0 ORDER BY p.name", (player["scope"], now - 60 * self.clock.ratio))]
         global_messages = [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND session_id IS NULL AND id>? ORDER BY id DESC LIMIT 50", (player["scope"], stream["after_id"])).fetchall())]
         group = [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND session_id=? ORDER BY id DESC LIMIT 50", (player["scope"], session_id)).fetchall())] if session_id else []
@@ -203,7 +207,7 @@ class Application:
                     status = 200
                 else:
                     token = environ.get("HTTP_AUTHORIZATION", "").removeprefix("Bearer ")
-                    if path.startswith("/api/") and path not in ("/api/register", "/api/classes"):
+                    if path.startswith("/api/") and path not in ("/api/register", "/api/classes") and not path.startswith("/api/account/"):
                         with service._transaction():
                             player = service._authenticate(token)
                             active = service._active(player["id"])

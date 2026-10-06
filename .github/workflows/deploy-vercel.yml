@@ -18,6 +18,9 @@ on:
       - multiplayer/tutorial.py
       - scripts/verify_touch_controls.cjs
       - multiplayer/web/map_artwork.js
+      - multiplayer/accounts.py
+      - multiplayer/account_rollout.py
+      - multiplayer/schema.py
       - multiplayer/service.py
       - scripts/verify_ui_mira.cjs
       - app.py
@@ -94,8 +97,10 @@ jobs:
           python - <<'PY'
           import os
           import subprocess
-          for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'):
-              subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive', '--token', os.environ['VERCEL_TOKEN']], input=os.environ[key], text=True, check=True)
+          values = {key: os.environ[key] for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN')}
+          values.update(RPG_RESET_TEST_PLAYERS='1', RPG_RUNTIME_REALMS='1')
+          for key, value in values.items():
+              subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive', '--token', os.environ['VERCEL_TOKEN']], input=value, text=True, check=True)
           PY
       - name: Publier en production
         run: .deploy-tools/node_modules/.bin/vercel deploy --prod --yes --token "$VERCEL_TOKEN" > deployment-url.txt

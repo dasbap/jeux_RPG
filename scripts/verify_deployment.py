@@ -22,10 +22,13 @@ async def verify_realtime(base, catalogue):
                 result = json.loads(await asyncio.wait_for(socket.recv(), 30))
                 if result.get('id') == identifier:
                     return result['result']
-        registered = await rpc('/api/register', {'name': 'Websocket ' + uuid.uuid4().hex[:8], 'class_name': catalogue[0]['id']})
+        registered = await rpc('/api/account/signup', {'username': 'ws_' + uuid.uuid4().hex[:12], 'password': uuid.uuid4().hex + uuid.uuid4().hex})
         if registered['status'] != 201:
             raise RuntimeError('Inscription WebSocket refusée')
         token = registered['body']['token']
+        character = await rpc('/api/account/character', {'action': 'create', 'name': 'WebSocket vérification', 'class_name': catalogue[0]['id']}, token)
+        if character['status'] != 200:
+            raise RuntimeError('Création du personnage WebSocket refusée')
         tutorial = await rpc('/api/commands', {'request_id': uuid.uuid4().hex, 'action': 'tutorial', 'params': {}}, token)
         if tutorial['status'] != 200:
             raise RuntimeError('Tutoriel WebSocket refusé')
@@ -34,8 +37,11 @@ async def verify_realtime(base, catalogue):
             timing = state['headers'].get('Server-Timing', '')
             if state['status'] != 200 or state['headers'].get('X-RPG-Runtime') != 'memory' or 'trips;desc="0"' not in timing:
                 raise RuntimeError('Le rafraîchissement utilise encore la base distante')
-        await asyncio.sleep(6)
-        state = await rpc('/api/state', token=token)
+        for attempt in range(12):
+            await asyncio.sleep(1)
+            state = await rpc('/api/state', token=token)
+            if state['headers'].get('X-RPG-Save-Pending') == '0':
+                break
         if state['headers'].get('X-RPG-Save-Pending') != '0':
             raise RuntimeError('Sauvegarde initiale du tutoriel non terminée')
         print('WebSocket, tutoriel, sauvegarde regroupée et rafraîchissements sans accès Turso vérifiés.')
@@ -74,16 +80,25 @@ def main():
         if status != expected:
             raise SystemExit(f"Vérification échouée : {route}, HTTP {status}, attendu {expected}")
         print(f"Route vérifiée : {route}, HTTP {status}")
-    registration = json.dumps({"name": "Verification " + uuid.uuid4().hex[:8], "class_name": catalogue[0]["id"]}).encode()
-    with urlopen(Request(base + "/api/register", data=registration, headers={"Content-Type": "application/json", "Origin": base}), timeout=30) as response:
+    username = "verify_" + uuid.uuid4().hex[:12]
+    password = uuid.uuid4().hex + uuid.uuid4().hex
+    registration = json.dumps({"username": username, "password": password}).encode()
+    with urlopen(Request(base + "/api/account/signup", data=registration, headers={"Content-Type": "application/json", "Origin": base}), timeout=30) as response:
         if response.status != 201:
             raise SystemExit("Inscription en production refusée")
         account = json.load(response)
+    character = json.dumps({"action": "create", "name": "Vérification", "class_name": catalogue[0]["id"]}).encode()
+    with urlopen(Request(base + "/api/account/character", data=character, headers={"Authorization": "Bearer " + account["token"], "Content-Type": "application/json", "Origin": base}), timeout=30) as response:
+        selected = json.load(response)
+        if not selected.get("selected"):
+            raise SystemExit("Création de personnage refusée")
     with urlopen(Request(base + "/api/state", headers={"Authorization": "Bearer " + account["token"], "Origin": base}), timeout=30) as response:
         state = json.load(response)
+        if response.headers.get("X-RPG-Legacy-Tests-Reset") != "1":
+            raise SystemExit("Remise à zéro unique des anciens tests non confirmée")
         if response.status != 200 or not state.get("player"):
             raise SystemExit("Reprise du compte en production refusée")
-    print("Inscription et reprise du personnage vérifiées, sans afficher le jeton.")
+    print("Comptes par mot de passe, personnage et remise à zéro unique des anciens tests vérifiés, sans afficher les identifiants secrets.")
     print("Jeu et panneau admin disponibles ; accès admin anonyme refusé.")
     asyncio.run(verify_realtime(base, catalogue))
 

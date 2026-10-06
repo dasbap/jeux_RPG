@@ -1,4 +1,13 @@
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, username TEXT NOT NULL, username_key TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS account_sessions (token_hash TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id), player_id TEXT REFERENCES players(id), expires REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS account_characters (account_id TEXT NOT NULL REFERENCES accounts(id), class_name TEXT NOT NULL, player_id TEXT NOT NULL UNIQUE REFERENCES players(id), PRIMARY KEY(account_id,class_name));
+CREATE TABLE IF NOT EXISTS friendships (first_id TEXT NOT NULL REFERENCES accounts(id), second_id TEXT NOT NULL REFERENCES accounts(id), requester TEXT NOT NULL REFERENCES accounts(id), status TEXT NOT NULL, PRIMARY KEY(first_id,second_id));
+CREATE TABLE IF NOT EXISTS teams (id TEXT PRIMARY KEY, owner TEXT NOT NULL REFERENCES accounts(id));
+CREATE TABLE IF NOT EXISTS team_members (account_id TEXT PRIMARY KEY REFERENCES accounts(id), team_id TEXT NOT NULL REFERENCES teams(id), active INTEGER NOT NULL, joined REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS team_invites (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id), sender TEXT NOT NULL REFERENCES accounts(id), recipient TEXT NOT NULL REFERENCES accounts(id), status TEXT NOT NULL, expires REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS account_session_owner ON account_sessions(account_id,expires);
+CREATE INDEX IF NOT EXISTS team_membership ON team_members(team_id,active);
             CREATE TABLE IF NOT EXISTS presence (player_id TEXT PRIMARY KEY, seen REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session_id TEXT, player_id TEXT NOT NULL, name TEXT NOT NULL, message TEXT NOT NULL, sent REAL NOT NULL);
 

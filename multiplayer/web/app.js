@@ -4,6 +4,9 @@ let token = sessionStorage.getItem("rpg-token") || "";
 let chatToken = token;
 let chatConnection = requestId();
 let session = null;
+let accountState = null;
+let socialState = null;
+let presenceState = null;
 let sessionId = sessionStorage.getItem("rpg-session") || "";
 let busy = false;
 let polling = false;
@@ -126,8 +129,8 @@ function renderChat(chat) {
   $("chat-panel").hidden = !token;
   if (!chat) return;
   $("online-players").textContent = `En ligne : ${chat.online.map(player => player.name).join(", ") || "personne"}`;
-  $("chat-channel").querySelector('[value="group"]').disabled = !session;
-  if (!session && $("chat-channel").value === "group") $("chat-channel").value = "global";
+  $("chat-channel").querySelector('[value="group"]').disabled = !session && !socialState?.team;
+  if (!session && !socialState?.team && $("chat-channel").value === "group") $("chat-channel").value = "global";
   for (const channel of ["global", "group"]) {
     const list = $(`chat-${channel}`), follow = list.scrollTop + list.clientHeight >= list.scrollHeight - 20;
     const messages = chat[channel] || [];
@@ -156,9 +159,12 @@ function render(state) {
   if (sectionSignatures.get("state-render") === signature) return;
   sectionSignatures.set("state-render", signature);
   lastPlayer = state.player;
+  if (state.presence) presenceState = state.presence;
+  if (state.social) socialState = state.social;
   renderChat(state.chat);
+  renderSocial();
   $("registration").hidden = Boolean(token);
-  $("lobby").hidden = !token;
+  $("lobby").hidden = !token || !$("characters").hidden;
   $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name] || state.player.class_name}`;
   $("connection").textContent = "Connecté · état partagé";
   $("room-controls").hidden = Boolean(session && session.state !== "finished");
@@ -168,7 +174,7 @@ function render(state) {
     const code = sessionStorage.getItem("rpg-invite") || "";
     $("invite-code").textContent = code;
     $("invite-link").value = invitationLink(code);
-    $("invite-status").textContent = `Invitation valable encore ${Math.ceil(session.remaining_real_seconds / 60)} min · ${session.players.length}/2 joueurs. Attendez votre compagnon avant de démarrer.`;
+    $("invite-status").textContent = `Invitation valable encore ${Math.ceil(session.remaining_real_seconds / 60)} min · ${session.players.length}/4 joueurs. Attendez votre compagnon avant de démarrer.`;
   }
   $("tutorial-panel").hidden = !(session && session.tutorial);
   $("character-menu").hidden = !(session && session.tutorial);
@@ -206,9 +212,9 @@ function render(state) {
   }
   const me = session.players.find(player => player.id === session.me);
   $("start").hidden = session.state !== "lobby" || session.owner !== session.me;
-  $("start").disabled = busy || session.players.length !== 2;
+  $("start").disabled = busy || session.players.length < 2;
   $("party-tutorial").hidden = session.state !== "lobby" || session.owner !== session.me;
-  $("party-tutorial").disabled = busy || session.players.length !== 2;
+  $("party-tutorial").disabled = busy || session.players.length < 2;
   $("attack").hidden = session.state !== "running";
   $("attack").disabled = busy || me.cooldown_real_seconds > 0;
   $("duel-target").replaceChildren();
@@ -360,6 +366,16 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     group.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); requestTravel(p.id); } };
     svg.append(group);
   }
+  for (const member of socialState?.team?.members || []) {
+    if (!member.online || member.player_id === me.id) continue;
+    const place = places.find(point => point.id === member.zone);
+    if (!place) continue;
+    const group = svgElement("g", {class: "world-player world-ally", "data-ally": member.player_id});
+    group.append(svgElement("circle", {cx: place.x + 24, cy: place.y - 12, r: 8}));
+    group.append(svgElement("text", {x: place.x + 24, y: place.y - 28, class: "place-label"}, member.name));
+    group.append(svgElement("title", {}, `${member.name} · ${member.location} · serveur ${member.realm}`));
+    svg.append(group);
+  }
   if (mapMarker) {
     const marker = world.objectives.find(m => m.zone === mapMarker.zone && m.point === mapMarker.point);
     if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
@@ -475,8 +491,9 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   }
 }
 function showView(view) {
-  if (["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
-  document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial?.battle));
+  if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
+  document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
+  renderSocial();
   if (session && session.tutorial) renderTutorial(session.tutorial);
 }
 function skillAllowed(me, skill, target, mob) {
@@ -711,8 +728,10 @@ function renderTutorial(adventure, preserveBattle = false) {
     if ($("combat-enemies").parentElement !== $("combat-view")) $("combat-view").append($("combat-enemies"));
   }
   $("battle").classList.toggle("combat-mode", fighting);
-  document.body.classList.toggle("combat-active", fighting);
-  $("chat-toggle").hidden = !fighting;
+  $("outing-vitals").hidden = fighting;
+  if (!fighting) renderVitals("outing-vitals", adventure.players);
+  document.body.classList.toggle("combat-active", Boolean(session?.tutorial));
+  $("chat-toggle").hidden = !session?.tutorial;
   if (!fighting) combatFullscreenRequested = false;
   if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
   $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
@@ -720,7 +739,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
-    if (!["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
+    if (!["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
     focusedEnemy = "";
@@ -737,7 +756,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
-  for (const view of ["options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats" && !fighting);
+  for (const view of ["social", "options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view;
   $("quest-view").hidden = currentView !== "quest";
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
@@ -747,7 +766,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
-  for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
+  for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
   }
   $("back-view").hidden = !document.body.classList.contains("hud-menu-open");
@@ -907,11 +926,11 @@ function renderTutorial(adventure, preserveBattle = false) {
       element.title = skill.description;
     }
   }
-  const regionOpen = fighting && document.body.classList.contains("hud-menu-open") && currentView === "map";
+  const regionOpen = Boolean(session?.tutorial) && document.body.classList.contains("hud-menu-open") && currentView === "map";
   $("region-view").hidden = !regionOpen;
   const detailsParent = regionOpen ? $("region-view") : $("map-view");
   if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
-  if (fighting && document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.inventory, adventure.achievements, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
     renderWorld(adventure, me, $("region-map"));
     renderAchievements(adventure.achievements);
     if (regionOpen) $("map-details").open = true;
@@ -1210,6 +1229,16 @@ function renderBattle(adventure, me) {
     svg.append(group);
   };
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
+  for (const player of presenceState?.nearby || []) {
+    if (!player.position || player.map !== adventure.field_map && player.map !== battle.map.id || adventure.players.some(member => member.id === player.id)) continue;
+    const x = Math.round(player.position[0]), y = Math.round(player.position[1]);
+    if (x < 0 || y < 0 || x >= map.width || y >= map.height || explored && !explored.has(`${x},${y}`)) continue;
+    const group = element("g", {class: `world-player ${player.ally ? "world-ally" : "world-traveller"}`, "data-nearby": player.id});
+    group.append(element("circle", {cx: player.position[0] * 40 + 20, cy: player.position[1] * 40 + 20, r: 11}));
+    group.append(element("text", {x: player.position[0] * 40 + 20, y: player.position[1] * 40 + 25, "text-anchor": "middle"}, player.name.slice(0, 3)));
+    group.append(element("title", {}, `${player.name} · ${player.ally ? "Allié" : "Joueur"} · PvP désactivé`));
+    svg.append(group);
+  }
   for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit"); }
   for (const [id, summon] of Object.entries(battle.summons || {})) {
     const number = id.match(/:summon:(\d+)$/);
@@ -1304,15 +1333,130 @@ function renderBattle(adventure, me) {
 
 }
 
+function renderCharacters() {
+  if (!accountState) return;
+  document.body.classList.remove("combat-active", "hud-menu-open");
+  $("characters").hidden = false;
+  $("registration").hidden = true;
+  $("lobby").hidden = true;
+  $("battle").hidden = true;
+  $("character-menu").hidden = true;
+  $("chat-panel").hidden = true;
+  $("account-title").textContent = `${accountState.account.username} · mes personnages`;
+  $("character-list").replaceChildren();
+  for (const character of accountState.characters) {
+    const button = document.createElement("button");
+    button.textContent = `${character.name} · ${classes[character.class_name] || character.class_name}`;
+    button.addEventListener("click", () => selectCharacter({action: "select", player_id: character.id}));
+    $("character-list").append(button);
+  }
+  const owned = new Set(accountState.characters.map(character => character.class_name));
+  for (const option of $("new-character-class").options) option.disabled = owned.has(option.value);
+  $("new-character-class").value = [...$("new-character-class").options].find(option => !option.disabled)?.value || "";
+  $("character-create").hidden = !$("new-character-class").value;
+  $("character-cancel").hidden = !accountState.selected;
+}
+async function selectCharacter(body) {
+  if (busy) return;
+  busy = true;
+  stateEpoch++;
+  try {
+    accountState = await api("/api/account/character", body);
+    session = null;
+    sessionId = "";
+    presenceState = null;
+    socialState = null;
+    currentView = "map";
+    sectionSignatures.clear();
+    $("characters").hidden = true;
+    remember();
+  } catch (error) { message(error.message, true); }
+  finally { busy = false; if ($("characters").hidden) await refresh(true); }
+}
+async function socialAction(action, params = {}) {
+  if (busy) return;
+  busy = true;
+  $("social-status").textContent = "";
+  try {
+    socialState = await api("/api/social", {action, params});
+    $("social-status").textContent = action === "rally" ? "Appel envoyé. Chaque allié choisit de vous rejoindre." : "Action effectuée.";
+  } catch (error) { $("social-status").textContent = error.message; }
+  finally { busy = false; renderSocial(); if (!globalThis.rpgRealtime || ["realm", "wait", "resume", "join_ally", "rally_accept"].includes(action)) await refresh(true); }
+}
+function renderSocial() {
+  if (!$("social-view") || currentView !== "social") return;
+  const data = socialState || {friends: [], requests: [], invitations: [], team: null, rallies: []};
+  const presence = presenceState;
+  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/40 joueurs · équipe ${data.team?.members.length || 1}/4 · PvP désactivé` : "Choisissez votre personnage pour retrouver les autres joueurs.";
+  const root = $("social-content");
+  const retained = new Set();
+  function row(key, text, actions) {
+    retained.add(key);
+    let node = [...root.children].find(child => child.dataset.socialRow === key);
+    if (!node) { node = document.createElement("article"); node.dataset.socialRow = key; node.className = "social-row"; node.append(document.createElement("p")); root.append(node); }
+    node.firstChild.textContent = text;
+    const buttons = new Set();
+    for (const [label, action, params] of actions) {
+      buttons.add(action);
+      let button = [...node.querySelectorAll("button")].find(item => item.dataset.socialAction === action);
+      if (!button) { button = document.createElement("button"); button.dataset.socialAction = action; button.className = "secondary"; node.append(button); }
+      button.textContent = label;
+      button.disabled = busy;
+      button.onclick = () => socialAction(action, params);
+    }
+    for (const button of [...node.querySelectorAll("button")]) if (!buttons.has(button.dataset.socialAction)) button.remove();
+  }
+  for (const friend of data.friends) row(`friend-${friend.id}`, `Ami · ${friend.username}`, [["Inviter", "team_invite", {username: friend.username}], ["Retirer", "friend_remove", {account_id: friend.id}]]);
+  for (const friend of data.requests) row(`request-${friend.id}`, `${friend.incoming ? "Demande reçue" : "Demande envoyée"} · ${friend.username}`, [...(friend.incoming ? [["Accepter", "friend_accept", {account_id: friend.id}]] : []), ["Refuser / annuler", "friend_remove", {account_id: friend.id}]]);
+  for (const invite of data.invitations) row(`invite-${invite.id}`, `Invitation dans l’équipe de ${invite.username}`, [["Accepter", "team_accept", {invite_id: invite.id}], ["Refuser", "team_decline", {invite_id: invite.id}]]);
+  for (const member of data.team?.members || []) {
+    const position = member.position ? ` · ${member.position.map(Math.round).join(", ")}` : "";
+    const mode = {travel: "en route", combat: "en combat", exploration: "en exploration", outing: member.waiting ? "attend sur la route" : "vue sortie", lobby: "au salon"}[member.mode] || "";
+    const text = `Équipe · ${member.name} (${member.username}) · ${member.online ? `${member.location} · ${mode} · serveur ${member.realm}${position}` : "hors ligne"}`;
+    row(`member-${member.id}`, text, member.player_id && member.player_id !== lastPlayer?.id && member.mode === "outing" ? [["Rejoindre", "join_ally", {player_id: member.player_id}]] : []);
+  }
+  for (const rally of data.rallies) row(`rally-${rally.id}`, `${rally.username} appelle les alliés vers ${session?.tutorial?.world.places.find(place => place.id === rally.destination)?.name || rally.destination}`, [["M’y diriger", "rally_accept", {rally_id: rally.id}]]);
+  for (const player of presence?.nearby || []) row(`nearby-${player.id}`, `${player.ally ? "Allié" : "Joueur dans la zone"} · ${player.name} · ${player.location}`, []);
+  if (data.team) row("team-leave", "Les alliés voyagent librement. Quitter l’équipe conserve votre progression.", [["Quitter l’équipe", "team_leave", {}]]);
+  for (const child of [...root.children]) if (!retained.has(child.dataset.socialRow)) child.remove();
+  if (!root.children.length) row("empty", "Ajoutez un joueur par son nom de compte ou invitez-le dans votre équipe.", []);
+  const travel = $("social-travel");
+  const adventure = session?.tutorial;
+  if (!sectionChanged("social-travel", [presence?.realm, presence?.realms, adventure?.world.current, adventure?.moving, adventure?.transit?.waiting, Boolean(adventure?.battle), Boolean(data.team), busy])) return;
+  travel.replaceChildren();
+  function button(label, action, params) { const node = document.createElement("button"); node.textContent = label; node.disabled = busy; node.onclick = () => socialAction(action, params); travel.append(node); }
+  if (adventure?.transit && !adventure.battle) button(adventure.transit.waiting ? "Reprendre le trajet" : "Attendre les alliés", adventure.transit.waiting ? "resume" : "wait", {});
+  if (data.team && adventure && !adventure.battle && !adventure.moving) {
+    const select = document.createElement("select"); select.id = "rally-destination"; select.setAttribute("aria-label", "Destination du ralliement");
+    for (const place of adventure.world.places) { const option = document.createElement("option"); option.value = place.id; option.textContent = place.name; select.append(option); }
+    travel.append(select);
+    const call = document.createElement("button"); call.textContent = "Appeler les alliés"; call.disabled = busy; call.onclick = () => socialAction("rally", {destination: select.value}); travel.append(call);
+  }
+  for (let index = 1; index <= (presence?.realms || 0); index++) if (index !== presence.realm) button(`Rejoindre le serveur ${index}`, "realm", {realm: index});
+}
+for (const id of ["choose-character", "choose-character-options"]) $(id).addEventListener("click", async () => {
+  try { accountState = await api("/api/account/me"); renderCharacters(); } catch (error) { message(error.message, true); }
+});
+$("character-create").addEventListener("submit", event => {event.preventDefault(); selectCharacter({action: "create", name: $("new-character-name").value, class_name: $("new-character-class").value});});
+$("character-cancel").addEventListener("click", () => {$("characters").hidden = true; sectionSignatures.clear(); refresh(true);});
+$("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});
+$("social-invite").addEventListener("click", () => socialAction("team_invite", {username: $("social-name").value.trim()}));
+
 async function refresh(force = false) {
+  if (!$("characters").hidden) return;
   if (!token) {
-    $("connection").textContent = "Prêt · créez votre personnage";
+    $("connection").textContent = "Prêt · connectez-vous à votre compte";
     return;
   }
   if (polling || (!force && Date.now() < nextRefreshAt)) return;
   polling = true;
   const epoch = stateEpoch;
   try {
+    if (!accountState) {
+      try { accountState = await api("/api/account/me"); }
+      catch (error) { if (error.code !== "unauthorized") throw error; }
+      if (accountState && !accountState.selected) { renderCharacters(); return; }
+    }
     const state = await api("/api/state");
     if (epoch !== stateEpoch || (state.session && session && state.session.id === session.id && state.session.revision < session.revision)) return;
     if (state.session) {
@@ -1338,7 +1482,10 @@ async function refresh(force = false) {
       $("registration").hidden = false;
       $("lobby").hidden = true;
       $("battle").hidden = true;
-      message("Votre clé n'est plus valide. Reconnectez-vous.", true);
+      message("Votre session a expiré. Connectez-vous avec votre compte.", true);
+    } else if (error.code === "character_required") {
+      accountState = await api("/api/account/me");
+      renderCharacters();
     } else if (error.code === "not_found") {
       sessionId = "";
       session = null;
@@ -1391,7 +1538,7 @@ async function command(action, params = {}) {
       $("invite-link").value = invitationLink(data.invite);
       $("invite-status").textContent = "Invitation créée · valable 30 minutes. Partagez le lien ou le code avec votre compagnon.";
       message("Invitation créée. Le lien et le code sont affichés ci-dessus.");
-      $("party-tutorial").disabled = session.players.length !== 2;
+      $("party-tutorial").disabled = session.players.length < 2;
       $("invitation").hidden = false;
     }
     if (action === "join") message("Vous avez rejoint votre compagnon. Le créateur peut démarrer le tutoriel.");
@@ -1400,7 +1547,7 @@ async function command(action, params = {}) {
     message(error.message, true);
   } finally {
     busy = false;
-    if (lastPlayer) render({player: lastPlayer});
+    if (lastPlayer && $("characters").hidden) render({player: lastPlayer});
     else if (session?.tutorial) renderTutorial(session.tutorial);
     const pending = pendingBattleMove;
     pendingBattleMove = null;
@@ -1416,23 +1563,34 @@ $("register-form").addEventListener("submit", async event => {
   if (busy) return;
   busy = true;
   try {
-    const data = await api("/api/register", {name: $("name").value, class_name: $("class-name").value}, false);
+    const data = await api("/api/account/signup", {username: $("account-name").value, password: $("account-password").value}, false);
     token = data.token;
-    sessionId = "";
+    accountState = data;
     remember();
-    message("Personnage créé. Commencez le tutoriel ou invitez un compagnon.");
-  } catch (error) { message(error.message, true); }
-  finally { busy = false; await refresh(); }
+    accountState = await api("/api/account/character", {action: "create", name: $("name").value, class_name: $("class-name").value});
+    sessionId = "";
+    $("account-password").value = "";
+    message("Compte créé. Commencez le tutoriel et retrouvez vos alliés dans Social.");
+  } catch (error) { message(error.message, true); if (token && accountState) renderCharacters(); }
+  finally { busy = false; await refresh(true); }
 });
 $("restore-form").addEventListener("submit", async event => {
   event.preventDefault();
-  token = $("restore-token").value.trim();
-  sessionId = "";
-  remember();
-  $("restore-token").value = "";
-  await refresh();
+  if (busy) return;
+  busy = true;
+  try {
+    const data = await api("/api/account/login", {username: $("login-name").value, password: $("login-password").value}, false);
+    token = data.token;
+    accountState = data;
+    sessionId = "";
+    $("login-password").value = "";
+    remember();
+    renderCharacters();
+    message("Choisissez votre personnage.");
+  } catch (error) { message(error.message, true); }
+  finally { busy = false; }
 });
-for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
+for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
 $("back-view").addEventListener("click", () => {document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
@@ -1462,19 +1620,23 @@ for (const action of ["start", "attack", "leave"]) $(action).addEventListener("c
   if (session) command(action, {session_id: session.id, revision: session.revision, ...(action === "attack" ? {target: $("duel-target").value} : {})});
 });
 $("new-room").addEventListener("click", () => command("create"));
-$("logout").addEventListener("click", () => {
+async function logout() {
+  try { await api("/api/account/logout", {}); } catch {}
+  stateEpoch++;
   $("chat-panel").hidden = true;
   token = "";
+  accountState = null;
   session = null;
   sessionId = "";
   for (const key of ["rpg-token", "rpg-session", "rpg-invite", "rpg-invite-session"]) sessionStorage.removeItem(key);
   location.reload();
-});
+}
+$("logout").addEventListener("click", logout);
+$("logout-options").addEventListener("click", logout);
 async function copy(text, outputId) {
   try { await navigator.clipboard.writeText(text); message("Copié."); }
   catch { $(outputId).hidden = false; $(outputId).textContent = text; message("Sélectionnez le texte pour le copier."); }
 }
-$("copy-token").addEventListener("click", () => copy(token, "token-output"));
 $("copy-invite-link").addEventListener("click", () => copy($("invite-link").value, "invite-link"));
 $("copy-invite").addEventListener("click", () => copy($("invite-code").textContent, "invite-code"));
 const incomingInvite = location.hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.[1];
@@ -1486,7 +1648,7 @@ window.addEventListener("pageshow", () => refresh(true));
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
 if (globalThis.rpgRealtime) {
   globalThis.rpgRealtime.onState = result => {
-    if (!token || result.status !== 200) return;
+    if (!token || result.status !== 200 || !$("characters").hidden) return;
     const state = result.body;
     if (lastPlayer && state.player?.id !== lastPlayer.id) return;
     if (state.session && session && state.session.id === session.id && state.session.revision < session.revision) return;
@@ -1572,6 +1734,7 @@ if (typeof fetch === 'function') fetch('/api/classes').then(response => { if (!r
       option.value = item.id;
       option.textContent = item.name;
       $('class-name').append(option);
+      $('new-character-class').append(option.cloneNode(true));
     }
   }
 }).catch(() => {});
@@ -1584,7 +1747,7 @@ $("chat-toggle").addEventListener("click", () => {
 });
 $("chat-channel").addEventListener("change", () => $("chat-panel").classList.toggle("group-chat", $("chat-channel").value === "group"));
 
-for (const [view, label] of Object.entries({options:"Options", stats:"Perso.", equipment:"Équip.", inventory:"Sac", quest:"Quêtes", map:"Carte", bestiary:"Bestiaire", achievements:"Succès"})) {
+for (const [view, label] of Object.entries({social:"Social", options:"Options", stats:"Perso.", equipment:"Équip.", inventory:"Sac", quest:"Quêtes", map:"Carte", bestiary:"Bestiaire", achievements:"Succès"})) {
   const button = $("show-" + view);
   button.title = button.textContent;
   button.setAttribute("aria-label", button.textContent);

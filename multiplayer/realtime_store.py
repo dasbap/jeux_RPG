@@ -10,8 +10,9 @@ from .turso import TursoConnection
 from .world import zone_of
 
 
-TABLES = ('meta', 'players', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'admin_audit')
-KEYS = {'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
+SOCIAL_TABLES = ('accounts', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites')
+TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'admin_audit')
+KEYS = {'accounts': ('id',), 'account_characters': ('account_id', 'class_name'), 'account_sessions': ('token_hash',), 'friendships': ('first_id', 'second_id'), 'teams': ('id',), 'team_members': ('account_id',), 'team_invites': ('id',), 'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
         'members': ('session_id', 'player_id'), 'tutorials': ('session_id',), 'events': ('id',),
         'receipts': ('player_id', 'request_id'), 'admin_audit': ('id',)}
 
@@ -27,6 +28,10 @@ def progress_signature(party):
 
 
 class MemoryService(RemoteGameService):
+    def tick(self, session_id=None):
+        if session_id is None:
+            super().tick(prepare_views=False)
+
     def close(self):
         pass
 
@@ -44,6 +49,8 @@ class RuntimeStore:
                     columns = list(row)
                     self.db.execute(f'INSERT INTO {table} ({",".join(columns)}) VALUES ({",".join("?" for _ in columns)})', tuple(row.values()))
         self.service = MemoryService(connection=self.db, log_directory='-', clock=clock)
+        self.service.legacy_auth = not bool(environment.get('VERCEL'))
+        self.service.realm_count = max(1, min(3, int(environment.get('RPG_RUNTIME_REALMS', '1'))))
         self.app = Application(lambda: self.service, environment)
         self.durable = {table: self.rows(table) for table in TABLES}
         self.signatures = self.session_signatures()
@@ -51,30 +58,41 @@ class RuntimeStore:
         self.due = None
         self.save_count = 0
         self.last_save_error = False
+        self.observed_changes = self.db.total_changes
 
     @classmethod
     def load(cls, environment):
         connection = TursoConnection(environment['TURSO_DATABASE_URL'], environment['TURSO_AUTH_TOKEN'])
         try:
             initialize(connection)
+            reset = False
+            if environment.get("RPG_RESET_TEST_PLAYERS") == "1":
+                from .account_rollout import reset_test_players
+                reset = reset_test_players(connection)
             results = connection.execute_many([(f'SELECT * FROM {table}', ()) for table in TABLES])
-            return cls(environment, {table: [dict(row) for row in rows] for table, rows in zip(TABLES, results)})
+            store = cls(environment, {table: [dict(row) for row in rows] for table, rows in zip(TABLES, results)})
+            store.reset_performed = reset
+            return store
         finally:
             connection.close()
 
     def rows(self, table):
         return [dict(row) for row in self.db.execute(f'SELECT * FROM {table}')]
 
-    def session_signatures(self):
+    def session_signatures(self, only=None):
         result = {}
         for row in self.db.execute('SELECT s.id,s.state,t.data FROM sessions s LEFT JOIN tutorials t ON t.session_id=s.id'):
+            if only is not None and row['id'] not in only:
+                continue
             members = tuple(item[0] for item in self.db.execute('SELECT player_id FROM members WHERE session_id=? ORDER BY player_id', (row['id'],)))
             result[row['id']] = (members, bool(row['data']), progress_signature(json.loads(row['data'])) if row['data'] else None)
         return result
 
-    def capture(self, now=None):
+    def capture(self, now=None, dirty_only=False):
         now = time.monotonic() if now is None else now
-        for table in ('players', 'account_status', 'admin_audit'):
+        social_tables = SOCIAL_TABLES if self.service.persistent_social_changed else ()
+        self.service.persistent_social_changed = False
+        for table in ('players', 'account_status', 'admin_audit', *social_tables):
             old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
             for row in self.rows(table):
                 key = tuple(row[value] for value in KEYS[table])
@@ -82,7 +100,9 @@ class RuntimeStore:
                     self.pending[(table, key)] = row
                     old[key] = row
             self.durable[table] = list(old.values())
-        signatures = self.session_signatures()
+        updates = self.session_signatures(self.service.dirty_sessions if dirty_only else None)
+        self.service.dirty_sessions.clear()
+        signatures = {**self.signatures, **updates} if dirty_only else updates
         for session_id, signature in signatures.items():
             if self.signatures.get(session_id) == signature:
                 continue
@@ -105,8 +125,11 @@ class RuntimeStore:
                 self.pending[('meta', (row['key'],))] = row
             if self.due is None:
                 self.due = now + 5
+        self.observed_changes = self.db.total_changes
 
     def request(self, message):
+        if self.db.total_changes != self.observed_changes and not self.service.dirty_sessions and not self.service.persistent_social_changed:
+            self.capture()
         raw = json.dumps(message.get('body')).encode() if message.get('body') is not None else b''
         path, _, query = message['path'].partition('?')
         environment = {'PATH_INFO': path, 'QUERY_STRING': query, 'REQUEST_METHOD': message.get('method', 'GET'),
@@ -120,15 +143,19 @@ class RuntimeStore:
         body = b''.join(self.app(environment, start))
         result['body'] = json.loads(body) if result['headers']['Content-Type'].startswith('application/json') else body.decode()
         result['headers']['X-RPG-Runtime'] = 'memory'
-        self.capture()
+        if self.environment.get('RPG_RESET_TEST_PLAYERS') == '1' and self.db.execute("SELECT 1 FROM meta WHERE key='test_players_reset_accounts_v1' AND value='done'").fetchone():
+            result['headers']['X-RPG-Legacy-Tests-Reset'] = '1'
+        self.capture(dirty_only=True)
         if path == '/api/state' and result['status'] == 200:
             result['headers']['X-RPG-Save-Pending'] = '1' if self.pending else '0'
             result['headers']['X-RPG-Save-Count'] = str(self.save_count)
         return result
 
     def tick(self):
+        if self.db.total_changes != self.observed_changes and not self.service.dirty_sessions and not self.service.persistent_social_changed:
+            self.capture()
         self.service.tick()
-        self.capture()
+        self.capture(dirty_only=True)
 
     def snapshot(self):
         return json.dumps(self.durable, separators=(',', ':'))

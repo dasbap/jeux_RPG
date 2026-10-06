@@ -64,7 +64,7 @@ class Coordinator:
         self.store = store
         self.local = store is not None
         self.uid = uuid.uuid4().hex
-        self.prefix = 'jeux-rpg:runtime:v1:'
+        self.prefix = 'jeux-rpg:runtime:v2:accounts:'
         self.fence = 0
         self.deadline = 0
         self.tasks = []
@@ -104,7 +104,7 @@ class Coordinator:
 
     async def elect(self):
         self.next_election = time.monotonic() + 8
-        result = await self.redis.eval(LEASE, 2, self.prefix + 'lease', self.prefix + 'fence', self.uid, str(time.time_ns() // 1000))
+        result = await self.redis.eval(LEASE, 2, self.prefix + 'lease', self.prefix + 'fence', self.uid, str(4_000_000_000_000_000 + time.time_ns() // 1000))
         if not result:
             self.deadline = 0
             if self.store is not None:
@@ -126,7 +126,15 @@ class Coordinator:
                     self.store.pending[(table, tuple(row[key] for key in KEYS[table]))] = row
                 self.store.due = time.monotonic() + 5 if self.store.pending else None
             else:
-                self.store = await asyncio.to_thread(RuntimeStore.load, self.environment)
+                loaded = await asyncio.to_thread(RuntimeStore.load, self.environment)
+                try:
+                    if self.environment.get("RPG_RESET_TEST_PLAYERS") == "1":
+                        await self.redis.set("jeux-rpg:runtime:v1:lease", "retired-accounts-v1", px=600000)
+                        await self.redis.delete("jeux-rpg:runtime:v1:checkpoint", "jeux-rpg:runtime:v1:fence")
+                except BaseException:
+                    loaded.close()
+                    raise
+                self.store = loaded
                 checkpoint = json.dumps({'durable': json.loads(self.store.snapshot()), 'pending': [], 'save_id': ''})
                 await self.redis.eval(SNAPSHOT, 2, self.prefix + 'lease', self.prefix + 'checkpoint', self.uid + ':' + str(self.fence), checkpoint)
             for identifier, message in list(self.messages.items()):
@@ -206,7 +214,7 @@ class Coordinator:
         async with self.lock:
             if not self.owner():
                 return {'status': 503, 'headers': {}, 'body': {'error': 'unavailable', 'message': 'Reconnexion du moteur en cours.'}}
-            return self.store.request(message)
+            return await asyncio.to_thread(self.store.request, message)
 
     async def rpc(self, message):
         await self.start()
@@ -254,14 +262,14 @@ class Coordinator:
 
     async def ticker(self):
         while True:
-            await asyncio.sleep(.1)
+            await asyncio.sleep(.2)
             if not self.owner():
                 continue
             try:
                 async with self.lock:
                     if not self.owner():
                         continue
-                    self.store.tick()
+                    await asyncio.to_thread(self.store.tick)
                     if self.store.due is not None and self.store.due <= time.monotonic() and (self.saving is None or self.saving.done()):
                         self.saving = asyncio.create_task(self.save(self.store, self.store.pending_batch(), self.store.snapshot(), self.fence))
             except Exception:
@@ -342,8 +350,15 @@ def create_app(environment=None, coordinator=None):
         if host not in allowed or origin != scheme + '://' + host:
             await websocket.close(code=1008)
             return
-        await websocket.accept()
+        if coordinator.connections >= 40:
+            await websocket.close(code=1013)
+            return
         coordinator.connections += 1
+        try:
+            await websocket.accept()
+        except BaseException:
+            coordinator.connections -= 1
+            raise
         send_lock = asyncio.Lock()
         subscription = None
         paused = False

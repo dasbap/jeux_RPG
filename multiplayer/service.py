@@ -20,6 +20,7 @@ from jeuxRPG._class.res.character.class_models import playable
 from .clock import GameClock
 from .network_log import create_chat_logger
 from . import tutorial
+from .accounts import AccountMixin
 
 
 class GameError(Exception):
@@ -38,7 +39,7 @@ def world_context(party):
                               bool(party.get("battle")), (party.get("transit") or {}).get("destination"), party.get("journey", [])]))
 
 
-class GameService:
+class GameService(AccountMixin):
     from jeuxRPG._class.res.character.class_models import playable
     classes = tuple(playable())
     cooldown = 3.6
@@ -67,6 +68,13 @@ class GameService:
         self._chat_connections = {}
         self._chat_sent = {}
         self._chat_cleanup_at = 0
+        self.runtime_presence = {}
+        self.rallies = {}
+        self.location_cache = {}
+        self.dirty_sessions = set()
+        self.realm_count = max(1, min(3, int(os.environ.get('RPG_RUNTIME_REALMS', '1'))))
+        self.persistent_social_changed = False
+        self.legacy_auth = True
         self.chat_log = create_chat_logger(log_directory or path.parent / ".logs")
         if connection is None:
             self.db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10)
@@ -110,7 +118,7 @@ class GameService:
             for handler in self.chat_log.handlers:
                 handler.close()
 
-    def tick(self, session_id=None):
+    def tick(self, session_id=None, prepare_views=True):
         with self._transaction():
             now = self._now()
             self._expire(now)
@@ -137,11 +145,15 @@ class GameService:
                     continue
                 self._tick_errors.pop(row["session_id"], None)
                 if json.dumps(party, sort_keys=True) != before:
+                    self.dirty_sessions.add(row['session_id'])
                     self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
                     self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", row["session_id"]))
                     for message in messages:
                         self._event(row["session_id"], now, message)
+                self.record_party_locations(party)
                 revision = self.db.execute("SELECT revision FROM sessions WHERE id=?", (row["session_id"],)).fetchone()[0]
+                if not prepare_views:
+                    continue
                 for player_id in party["characters"]:
                     key = (row["session_id"], player_id)
                     try:
@@ -218,7 +230,16 @@ class GameService:
     def _authenticate(self, token):
         if not isinstance(token, str) or not 32 <= len(token) <= 128:
             raise GameError("unauthorized", "Identité invalide.", 401)
-        player = self.db.execute("SELECT p.*,COALESCE(a.suspended,0) AS suspended FROM players p LEFT JOIN account_status a ON a.player_id=p.id WHERE p.token_hash=?", (digest(token),)).fetchone()
+        account_session = self.db.execute('SELECT player_id FROM account_sessions WHERE token_hash=?', (digest(token),)).fetchone()
+        if account_session:
+            account = self.account_identity(token)
+            if not account['player_id']:
+                raise GameError('character_required', 'Choisissez un personnage.', 409)
+            player = self.db.execute('SELECT p.*,COALESCE(a.suspended,0) AS suspended FROM players p LEFT JOIN account_status a ON a.player_id=p.id WHERE p.id=?', (account['player_id'],)).fetchone()
+        elif self.legacy_auth:
+            player = self.db.execute("SELECT p.*,COALESCE(a.suspended,0) AS suspended FROM players p LEFT JOIN account_status a ON a.player_id=p.id WHERE p.token_hash=?", (digest(token),)).fetchone()
+        else:
+            player = None
         if player is None:
             raise GameError("unauthorized", "Identité invalide.", 401)
         if player['suspended']:
@@ -269,6 +290,7 @@ class GameService:
                 result["tutorial"] = json.loads(cached[2])
             else:
                 party = json.loads(adventure[0])
+                self.record_party_locations(party)
                 result["tutorial"] = tutorial.view(party, player["id"], now)
                 result["tutorial"]["world_context"] = world_context(party)
         return result
@@ -292,7 +314,9 @@ class GameService:
             return {"player": {"id": player["id"], "name": player["name"], "class_name": player["class_name"]},
                     "game_time": now, "ratio": GameClock.ratio,
                     "chat": self.chat_view(player, now, session["id"] if session else None, chat_connection),
-                    "session": self._snapshot(player, session, now, prepared) if session else None}
+                    "session": self._snapshot(player, session, now, prepared) if session else None,
+                    "presence": self.world_presence(player),
+                    "social": self.social_view(token) if self.db.execute('SELECT 1 FROM account_sessions WHERE token_hash=?', (digest(token),)).fetchone() else None}
 
     def configure_chat_log(self, directory):
         with self._lock:
@@ -328,6 +352,10 @@ class GameService:
 
     def chat_view(self, player, now, session_id=None, chat_connection=None):
         stream = self._touch_chat(player, now, chat_connection)
+        linked = self.db.execute("SELECT account_id FROM account_characters WHERE player_id=?", (player["id"],)).fetchone()
+        team = self._team(linked[0]) if linked else None
+        if team:
+            session_id = "team:" + team["id"]
         online = [dict(row) for row in self.db.execute("SELECT p.id,p.name FROM players p JOIN presence o ON o.player_id=p.id WHERE p.scope=? AND o.seen>=? ORDER BY p.name", (player["scope"], now - 60 * GameClock.ratio))]
         group = [dict(row) for row in reversed(self.db.execute("SELECT id,name,message FROM chat WHERE scope=? AND session_id=? ORDER BY id DESC LIMIT 50", (player["scope"], session_id)).fetchall())] if session_id else []
         return {"online": online, "global": [dict(item) for item in stream["messages"]], "group": group}
@@ -341,7 +369,12 @@ class GameService:
             if channel == "group":
                 if not isinstance(session_id, str):
                     raise GameError("not_in_group", "Rejoignez un groupe avant de discuter.", 409)
-                self._session(player, session_id)
+                linked = self.db.execute("SELECT account_id FROM account_characters WHERE player_id=?", (player["id"],)).fetchone()
+                team = self._team(linked[0]) if linked else None
+                if team:
+                    session_id = "team:" + team["id"]
+                else:
+                    self._session(player, session_id)
             else:
                 session_id = None
             self._touch_chat(player, now, chat_connection)
@@ -399,6 +432,8 @@ class GameService:
             raise GameError("invalid_command", "Paramètres invalides.") from None
         with self._transaction():
             player = self._authenticate(token)
+            if self.db.execute('SELECT 1 FROM account_characters WHERE player_id=?', (player['id'],)).fetchone():
+                self._admit(player['id'])
             old = self.db.execute("SELECT * FROM receipts WHERE player_id=? AND request_id=?", (player["id"], request_id)).fetchone()
             if old:
                 if old["fingerprint"] != fingerprint:
@@ -409,6 +444,7 @@ class GameService:
             if self.db.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] >= 100000:
                 raise GameError("capacity", "Capacité du journal des commandes atteinte.", 429)
             result = self._execute(player, action, params, now, compact=True) if _compact else self._execute(player, action, params, now)
+            self.dirty_sessions.add(result['session']['id'])
             self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, json.dumps(result)))
             return result
 
@@ -426,6 +462,10 @@ class GameService:
 
     def _execute(self, player, action, params, now, compact=False):
         player_id = player["id"]
+        if action in ("start", "attack") and (not self.legacy_auth or self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone()):
+            raise GameError("pvp_disabled", "Le PvP est désactivé.", 403)
+        if action == "join" and not self.legacy_auth:
+            raise GameError("social_required", "Rejoignez une équipe depuis Social ; chacun conserve son aventure.", 410)
         if action == "tutorial":
             session = self._active(player_id)
             if session is None:
@@ -457,6 +497,7 @@ class GameService:
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
+            self.record_party_locations(party)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
             self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", session["id"]))
             for message in messages:
@@ -483,7 +524,8 @@ class GameService:
             if session is None:
                 raise GameError("invalid_invite", "Invitation invalide ou expirée.", 404)
             count = self.db.execute("SELECT COUNT(*) FROM members WHERE session_id=?", (session["id"],)).fetchone()[0]
-            if count >= 2:
+            limit = 4 if self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone() else 2
+            if count >= limit:
                 raise GameError("full", "Le salon contient déjà deux joueurs.", 409)
             self.db.execute("INSERT INTO members VALUES (?, ?, ?, 0)", (session["id"], player_id, player["hp"]))
             self.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (session["id"],))

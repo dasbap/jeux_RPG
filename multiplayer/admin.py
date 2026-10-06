@@ -11,10 +11,11 @@ def accounts(service, search="", offset=0):
         raise GameError("invalid_search", "Recherche invalide.")
     with service._transaction():
         rows = service.db.execute("""SELECT p.id,p.name,p.class_name,p.scope,
-            COALESCE(a.suspended,0) AS suspended FROM players p
+            MAX(COALESCE(a.suspended,0),COALESCE(ac.suspended,0)) AS suspended,ac.id AS account_id,ac.username FROM players p
             LEFT JOIN account_status a ON a.player_id=p.id
-            WHERE instr(lower(p.name),lower(?))>0 OR p.id=?
-            ORDER BY p.name,p.id LIMIT 51 OFFSET ?""", (search, search, offset)).fetchall()
+            LEFT JOIN account_characters c ON c.player_id=p.id LEFT JOIN accounts ac ON ac.id=c.account_id
+            WHERE instr(lower(p.name),lower(?))>0 OR p.id=? OR instr(lower(COALESCE(ac.username,'')),lower(?))>0
+            ORDER BY p.name,p.id LIMIT 51 OFFSET ?""", (search, search, search, offset)).fetchall()
         return {"accounts": [dict(row) for row in rows[:50]], "has_more": len(rows) > 50}
 
 
@@ -37,11 +38,16 @@ def update_account(service, body):
                 party = json.loads(row["data"])
                 if identifier in party.get("characters", {}):
                     party["characters"][identifier]["name"] = name
+                    service.dirty_sessions.add(row['session_id'])
                     service.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
                     service.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (row["session_id"],))
         elif action == "revoke":
+            service.db.execute("UPDATE account_sessions SET expires=0 WHERE account_id IN (SELECT account_id FROM account_characters WHERE player_id=?)", (identifier,))
+            service.persistent_social_changed = True
             service.db.execute("UPDATE players SET token_hash=? WHERE id=?", (digest(secrets.token_urlsafe(32)), identifier))
         else:
+            service.db.execute("UPDATE accounts SET suspended=? WHERE id IN (SELECT account_id FROM account_characters WHERE player_id=?)", (int(action == "suspend"), identifier))
+            service.persistent_social_changed = True
             service.db.execute("INSERT INTO account_status VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET suspended=excluded.suspended", (identifier, int(action == "suspend")))
             service.db.execute("DELETE FROM presence WHERE player_id=?", (identifier,))
         service.db.execute("INSERT INTO admin_audit(player_id,action,created) VALUES(?,?,?)", (identifier, action, time.time()))

@@ -23,7 +23,7 @@ async function load() {
     const row = document.createElement("tr");
     const cell = value => {const td = document.createElement("td"); td.textContent = value; row.append(td); return td;};
     const name = cell(account.name);
-    const identifier = document.createElement("small"); identifier.textContent = account.id; name.append(identifier);
+    const identifier = document.createElement("small"); identifier.textContent = account.username ? `${account.username} · ${account.id}` : account.id; name.append(identifier);
     cell(account.class_name); cell(account.suspended ? "Suspendu" : "Actif");
     const actions = cell("");
     for (const [action, label] of [["rename", "Renommer"], [account.suspended ? "restore" : "suspend", account.suspended ? "Rétablir" : "Suspendre"], ["revoke", "Révoquer l’accès"]]) {

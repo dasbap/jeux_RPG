@@ -45,6 +45,8 @@ async function client(html, app, name, className) {
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
   dom.window.eval(app + ";window.demoSnapshot = () => session; window.demoReady = () => !busy; window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
+  el(dom, "account-name").value = "test_" + randomUUID().slice(0, 8);
+  el(dom, "account-password").value = randomUUID();
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
@@ -163,7 +165,7 @@ async function main() {
     await command(necromancer, "tutorial");
     await command(necromancer, "explore");
     await waitFor(() => el(necromancer, "self-skills").querySelector("button:not(:disabled)"), "invocation accessible sans sélectionner le personnage");
-    assert.equal(el(necromancer, "combat-target").value, "mob");
+    assert.equal(el(necromancer, "combat-auto-target").getAttribute("aria-pressed"), "true");
     el(necromancer, "self-skills").querySelector("button").click();
     await waitFor(async () => {
       const adventure = (await request(necromancer, "/api/state")).session.tutorial;
@@ -235,11 +237,11 @@ async function main() {
     assert(el(first, "combat-view").closest(".zone-actions"));
     assert(el(first, "map-view").closest(".map-strip"));
     assert(el(first, "quest-view").hidden);
-    assert(!el(first, "map-details").open);
+    assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     const selected = el(first, "map-place").value;
     el(first, "quest-actions").querySelector("button").click();
     assert.equal(el(first, "map-place").value, selected);
-    assert(!el(first, "map-details").open);
+    assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     assert(el(first, "world-map").querySelector(".objective-ring"));
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));

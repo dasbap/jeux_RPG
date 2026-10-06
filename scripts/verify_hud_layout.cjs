@@ -36,6 +36,9 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
     await page.locator('#chat-toggle').click();
     assert(await page.locator('#chat-panel').isVisible(),'Chat ouvrable');
    }
+   await page.locator('#show-social').click();
+   assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD');
+   await page.locator('#back-view').click();
    await page.locator('#show-inventory').click();
    assert(await page.locator('#inventory-view').isVisible(),'Inventaire consultable en combat');
    await page.locator('#back-view').click();

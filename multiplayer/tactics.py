@@ -1,4 +1,5 @@
 import math
+import json
 from functools import lru_cache
 from heapq import heappop, heappush
 from copy import deepcopy
@@ -472,7 +473,7 @@ def view(party, now, player=None):
     if not battle:
         return None
     preset = PRESETS[battle["preset"]]
-    result = {**deepcopy(battle), "map": deepcopy(preset), "hostiles_alive": len(party["mobs"]), "exit": exit_cell(party)}
+    result = {**deepcopy(battle), "map": json.loads(json.dumps(preset, separators=(",", ":"))), "hostiles_alive": len(party["mobs"]), "exit": exit_cell(party)}
     result["map"]["sites"] = [site for site in result["map"].get("sites", []) if not site.get("owner")] + list(result.get("companions", {}).values())
     result.pop("arrivals", None)
     result.pop("explored_positions", None)
