@@ -43,6 +43,14 @@ try {
   assert.equal(el("combat-auto-target").getAttribute("aria-pressed"), "true");
   event(unit("mob-3"), "click");
   assert.equal(el("combat-target").value, "mob-2");
+  const removed = JSON.parse(JSON.stringify(fixture));
+  render(removed);
+  event(unit("mob-3"), "click");
+  removed.mobs = removed.mobs.filter(mob => mob.combat_id !== "mob-3");
+  removed.battle.corpses = [{id: "mob-3", name: "Gobelin", position: [2,2]}];
+  render(removed);
+  assert.notEqual(el("combat-target").value, "mob-3");
+  assert.equal(el("combat-auto-target").getAttribute("aria-pressed"), "true");
   const support = JSON.parse(JSON.stringify(fixture));
   const rangeTest = JSON.parse(JSON.stringify(fixture));
   rangeTest.step = "auto-range-test";

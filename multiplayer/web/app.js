@@ -35,6 +35,7 @@ let mapPlace = "";
 let mapPoint = "";
 let mapMarker = null;
 let focusedMob = "";
+let focusedEnemy = "";
 let tacticalInteractionUntil = 0;
 let inspectedCell = null;
 const classes = Object.create(null);
@@ -531,7 +532,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     $("field-camera").append(touchMove);
   }
   let autoTarget = $("combat-auto-target");
-  if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; combatTarget=""; renderTutorial(session.tutorial);}; $("field-camera").append(autoTarget);}
+  if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; focusedEnemy=""; combatTarget=""; renderTutorial(session.tutorial);}; $("field-camera").append(autoTarget);}
   autoTarget.hidden = !fighting;
   touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
@@ -557,6 +558,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     if (!["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
+    focusedEnemy = "";
     inspectedCell = null;
     mapPlace = "";
     mapPoint = "";
@@ -664,7 +666,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
-  if (focusedMob && enemies.some(target => target.id === focusedMob && target.hp <= 0)) {focusedMob = ""; combatTarget = "";}
+  if (focusedMob && (enemies.some(target => target.id === focusedMob && target.hp <= 0) || focusedEnemy === focusedMob && !enemies.some(target => target.id === focusedEnemy && target.hp > 0))) {focusedMob = ""; focusedEnemy = ""; combatTarget = "";}
   const offensive = target => canAttack(target) || me.skills.some(skill => ["DAMAGE", "DEBUFF"].includes(skill.type) && skillAllowed(me, skill, target, mob));
   const distanceToMe = target => {const position = adventure.battle?.players[me.id]?.position; return position && target.position ? Math.hypot(position[0]-target.position[0], position[1]-target.position[1]) : Infinity;};
   const sortedEnemies = enemies.filter(target => target.hp > 0).sort((a,b) => Number(offensive(b))-Number(offensive(a)) || (offensive(a) ? a.hp-b.hp : distanceToMe(a)-distanceToMe(b)) || a.id.localeCompare(b.id));
@@ -743,6 +745,7 @@ function selectEntity(id) {
   tacticalInteractionUntil = Date.now() + 500;
   focusedMob = focusedMob === id ? "" : id;
   combatTarget = focusedMob;
+  focusedEnemy = session.tutorial.mobs?.some(mob => mob.combat_id === focusedMob && mob.stats.hp.current > 0) ? focusedMob : "";
   const adventure = session.tutorial, position = entityPosition(adventure, id);
   inspectedCell = position ? [...position] : null;
   const summon = adventure.battle?.summons?.[id], actor = adventure.players.find(p => p.id === session.me);
@@ -1239,6 +1242,7 @@ $("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ?
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
+  focusedEnemy = session?.tutorial?.mobs?.some(mob => mob.combat_id === focusedMob && mob.stats.hp.current > 0) ? focusedMob : "";
   if (session?.tutorial) renderTutorial(session.tutorial);
 });
 $("chat-form").addEventListener("submit", async event => {
