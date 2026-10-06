@@ -611,7 +611,11 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
   attackButton.className = "skill-icon skill-attack";
   attackButton.setAttribute("aria-label", "Attaque simple");
   attackButton.textContent = "⚔";
-  attackButton.disabled = busy || !selected || !canAttack(selected);
+  const attackCandidates = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+  const attackAvailable = Boolean(selected?.enemy && canAttack(selected) || attackCandidates.some(canAttack));
+  attackButton.disabled = busy;
+  attackButton.classList.toggle("skill-unavailable", !attackAvailable);
+  attackButton.setAttribute("aria-disabled", String(!attackAvailable));
   bindHold(attackButton, () => {
     const enemies = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
     const target = (selected?.enemy && canAttack(selected) ? selected : enemies.filter(canAttack).sort((a,b) => a.hp - b.hp)[0]);
