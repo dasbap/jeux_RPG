@@ -487,6 +487,149 @@ function skillAllowed(me, skill, target, mob) {
   if (skill.type === "HEAL") return target.hp < target.max_hp;
   return skill.type === "BUFF";
 }
+function skillCategory(skill) {
+  if (["DAMAGE"].includes(skill.type)) return "offense";
+  if (["DEBUFF"].includes(skill.type)) return "debuff";
+  if (["BUFF", "HEAL", "RESURRECT", "INVOCATION"].includes(skill.type)) return "buff";
+  return "offense";
+}
+function skillGlyph(skill, category) {
+  if (skill.type === "HEAL") return "✚";
+  if (skill.type === "RESURRECT") return "✦";
+  if (skill.type === "INVOCATION") return "♟";
+  if (category === "debuff") return "⌁";
+  if (category === "buff") return "▲";
+  return "◆";
+}
+function favoriteSkillKey(me, category) {
+  return `rpg-skill-favorite:${me.class_name || "class"}:${category}`;
+}
+function favoriteSkill(me, category, skills) {
+  const saved = localStorage.getItem(favoriteSkillKey(me, category));
+  return skills.find(skill => skill.name === saved) || skills[0] || null;
+}
+function saveFavoriteSkill(me, category, skill) {
+  localStorage.setItem(favoriteSkillKey(me, category), skill.name);
+}
+function skillTargets(adventure, me, skill, mob) {
+  const enemies = (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+  const allies = adventure.players.map(player => ({...player, enemy:false}));
+  const allowed = [...enemies, ...allies].filter(target => skill.targets?.includes(target.id) && skillAllowed(me, skill, target, mob));
+  const current = allowed.find(target => target.id === combatTarget);
+  if (current) return [current, allowed];
+  const ranked = allowed.slice().sort((a,b) => {
+    if (skill.type === "HEAL") return a.hp / a.max_hp - b.hp / b.max_hp;
+    if (skill.type === "RESURRECT") return a.hp - b.hp;
+    if (["BUFF","INVOCATION"].includes(skill.type)) return (a.id === me.id ? -1 : 0) - (b.id === me.id ? -1 : 0) || a.hp / a.max_hp - b.hp / b.max_hp;
+    return a.hp - b.hp;
+  });
+  return [ranked[0] || null, allowed];
+}
+function skillDetails(skill) {
+  const effects = [skill.description, skill.type ? `Type : ${skill.type}` : "", skill.cost !== undefined ? `Coût : ${skill.cost} ${skill.energy || ""}` : "", skill.range !== undefined ? `Portée : ${skill.range}` : "", skill.cast_seconds !== undefined ? `Incantation : ${skill.cast_seconds} s` : "", skill.cooldown !== undefined ? `Recharge : ${skill.cooldown} s` : "", skill.concentration ? "Concentration : interrompue par les dégâts" : ""].filter(Boolean);
+  return effects.join(" · ");
+}
+function renderSkillHud(adventure, me, mob, canAttack, selected) {
+  const root = $("skill-hud");
+  if (!root) return;
+  const categories = {
+    offense: me.skills.filter(skill => skillCategory(skill) === "offense").slice(0, 5),
+    buff: me.skills.filter(skill => skillCategory(skill) === "buff").slice(0, 5),
+    debuff: me.skills.filter(skill => skillCategory(skill) === "debuff").slice(0, 5),
+  };
+  const popover = $("skill-popover"), tooltip = $("skill-tooltip");
+  let openCategory = root.dataset.openCategory || "";
+  const closePopover = () => { openCategory = ""; root.dataset.openCategory = ""; popover.hidden = true; popover.replaceChildren(); };
+  const hideTooltip = () => { tooltip.hidden = true; tooltip.textContent = ""; };
+  const showTooltip = (element, skill) => {
+    tooltip.textContent = `${skill.name} — ${skillDetails(skill)}`;
+    tooltip.hidden = false;
+    tooltip.dataset.anchor = element.dataset.skill || skill.name;
+  };
+  function bindHold(element, shortAction, longAction, skill = null) {
+    let timer = 0, held = false, inside = false;
+    const cancel = () => { if (timer) clearTimeout(timer); timer = 0; };
+    element.onpointerdown = event => {
+      if (event.button !== 0) return;
+      inside = true; held = false; cancel();
+      timer = setTimeout(() => { if (!inside) return; held = true; if (skill) showTooltip(element, skill); else longAction?.(); }, 420);
+    };
+    element.onpointerleave = () => { inside = false; cancel(); hideTooltip(); };
+    element.onpointerenter = () => { inside = true; };
+    element.onpointerup = event => {
+      if (event.button !== 0) return;
+      cancel();
+      if (held) { hideTooltip(); return; }
+      shortAction?.();
+    };
+    element.onpointercancel = () => { inside = false; cancel(); hideTooltip(); };
+    element.onclick = event => event.preventDefault();
+  }
+  function useSkill(skill) {
+    const [target] = skillTargets(adventure, me, skill, mob);
+    if (!target) return message(`Aucune cible valide pour ${skill.name}.`);
+    combatTarget = target.id;
+    if (target.enemy) focusedMob = target.id;
+    tutorialCommand("skill", {skill_name: skill.name, target: target.id});
+  }
+  function iconButton(skill, category, extraClass = "") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `skill-icon skill-${category} ${extraClass}`;
+    button.dataset.skill = skill.name;
+    button.setAttribute("aria-label", skill.name);
+    button.textContent = skillGlyph(skill, category);
+    const [target] = skillTargets(adventure, me, skill, mob);
+    button.disabled = busy || !target;
+    bindHold(button, () => { saveFavoriteSkill(me, category, skill); closePopover(); useSkill(skill); }, null, skill);
+    return button;
+  }
+  function openMenu(category, anchor) {
+    if (openCategory === category && !popover.hidden) return closePopover();
+    openCategory = category; root.dataset.openCategory = category;
+    popover.replaceChildren();
+    popover.className = `skill-popover skill-popover-${category}`;
+    for (const skill of categories[category]) popover.append(iconButton(skill, category, "skill-choice"));
+    popover.hidden = !categories[category].length;
+    if (!popover.hidden) popover.dataset.anchor = anchor.id;
+  }
+  for (const [category, containerId] of [["offense","skill-offense"],["buff","skill-buff"],["debuff","skill-debuff"]]) {
+    const container = $(containerId); container.replaceChildren();
+    const skill = favoriteSkill(me, category, categories[category]);
+    if (!skill) { container.hidden = true; continue; }
+    container.hidden = false;
+    const button = iconButton(skill, category, "skill-favorite");
+    bindHold(button, () => useSkill(skill), () => openMenu(category, container), skill);
+    container.append(button);
+  }
+  const attack = $("skill-main-attack");
+  attack.replaceChildren();
+  const attackButton = document.createElement("button");
+  attackButton.type = "button";
+  attackButton.className = "skill-icon skill-attack";
+  attackButton.setAttribute("aria-label", "Attaque simple");
+  attackButton.textContent = "⚔";
+  attackButton.disabled = busy || !selected || !canAttack(selected);
+  bindHold(attackButton, () => {
+    const enemies = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+    const target = (selected?.enemy && canAttack(selected) ? selected : enemies.filter(canAttack).sort((a,b) => a.hp - b.hp)[0]);
+    if (!target) return message("Aucune cible à portée pour l’attaque.");
+    combatTarget = target.id; focusedMob = target.id;
+    tutorialCommand("strike", {target: target.id});
+  }, null);
+  attack.append(attackButton);
+  root.onpointerleave = event => {
+    if (event.buttons) return;
+    closePopover();
+    root.classList.add("collapsed");
+    hideTooltip();
+  };
+  root.onpointerenter = () => root.classList.remove("collapsed");
+  root.onpointerdown = event => {
+    if (!event.target.closest(".skill-icon")) closePopover();
+  };
+}
+
 function renderCombatFeedback(adventure) {
   const events = (session.events || []).filter(event => event.game_time >= (adventure.battle?.started_at || 0)).slice(-12);
   const latest = events.at(-1);
@@ -700,6 +843,7 @@ function renderTutorial(adventure, preserveBattle = false) {
       element.title = skill.description;
     }
   }
+  if (fighting && !controlledUnits(adventure, me.id).length) renderSkillHud(adventure, me, mob, canAttack, selected);
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
 }
