@@ -308,3 +308,4 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 @media(max-width:750px){.skill-popover-offense{right:116px;bottom:36px}.skill-popover-buff{right:36px;bottom:116px}.skill-popover-debuff{right:116px;bottom:116px}.skill-popover .skill-choice{left:-23px;top:-23px;--arc-radius:126px}}
 @media(max-width:750px){.combat-active #character-menu{top:58px}.combat-active .combat-mode #combat-enemy-panel{top:112px}}
 @media(max-height:500px) and (orientation:landscape){.combat-active #character-menu{top:10px}.combat-active .combat-mode #combat-enemy-panel{top:68px}}
+.combat-active #character-menu{z-index:80}.combat-active .combat-mode #combat-action-panel{z-index:65;pointer-events:none}.combat-active .combat-mode #skill-hud{pointer-events:none}.combat-active .combat-mode #combat-action-panel button{pointer-events:auto}
