@@ -74,7 +74,7 @@ async function waitFor(check) {
   w.mount(states.near);
   assert.equal(get('npc-view').hidden, false);
   assert.equal(get('npc-actions').textContent, 'Accepter la quête');
-  assert.equal(get('quest-view').parentElement.id, 'combat-action-panel');
+  assert.equal(get('quest-view').parentElement.className, 'dashboard-box quest-box');
   mira().dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
   await waitFor(() => w.ready() && /gobelins vaincus/.test(get('quest-progress').textContent));
   assert.equal(calls.length, 1);

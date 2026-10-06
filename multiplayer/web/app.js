@@ -266,8 +266,7 @@ function paragraphs(container, texts) {
     $(container).append(p);
   }
 }
-function mountWorldMap(source) {
-  const container = $("world-map");
+function mountWorldMap(source, container = $("world-map")) {
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
   if (!retained) { container.append(source); installWorldCamera(source); return source; }
   function update(target, fresh) {
@@ -292,7 +291,7 @@ function mountWorldMap(source) {
 function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
-function renderWorld(adventure, me) {
+function renderWorld(adventure, me, mapContainer = $("world-map")) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
@@ -366,7 +365,7 @@ function renderWorld(adventure, me) {
     if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
   }
   svg.dataset.map = "general";
-  const worldMapNodes = [mountWorldMap(svg)];
+  const worldMapNodes = [mountWorldMap(svg, mapContainer)];
   if (place.points.length) {
     const entry = place.entry || [70, 110];
     const localWidth = Math.max(610, entry[0] + 130, ...place.points.map(p => (p.x ?? 450) + 130)), localHeight = Math.max(220, entry[1] + 70, ...place.points.map(p => (p.y ?? 175) + 70));
@@ -396,9 +395,9 @@ function renderWorld(adventure, me) {
       local.append(node);
     });
     local.dataset.map = `detail:${place.id}`;
-    worldMapNodes.push(mountWorldMap(local));
+    worldMapNodes.push(mountWorldMap(local, mapContainer));
   }
-  for (const child of [...$("world-map").children]) if (!worldMapNodes.includes(child)) child.remove();
+  for (const child of [...mapContainer.children]) if (!worldMapNodes.includes(child)) child.remove();
   paragraphs("place-details", [`${place.name} · ${place.type} · ${place.id === world.current ? "vous êtes ici" : place.visited ? "déjà visité" : "encore non visité"}`, place.description]);
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
@@ -622,7 +621,7 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
   attackButton.type = "button";
   attackButton.className = "skill-icon skill-attack";
   attackButton.setAttribute("aria-label", "Attaque simple");
-  attackButton.textContent = "⚔";
+  if (attackButton.textContent !== "⚔") attackButton.textContent = "⚔";
   const attackCandidates = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
   const attackAvailable = Boolean(selected?.enemy && canAttack(selected) || attackCandidates.some(canAttack));
   attackButton.disabled = busy;
@@ -738,13 +737,13 @@ function renderTutorial(adventure, preserveBattle = false) {
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
-  for (const view of ["options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
+  for (const view of ["options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats" && !fighting);
   $("quest-view").hidden = currentView !== "quest";
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
-  const questParent = fighting ? $("combat-action-panel") : document.querySelector(".quest-box");
+  const questParent = document.querySelector(".quest-box");
   if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
@@ -907,6 +906,15 @@ function renderTutorial(adventure, preserveBattle = false) {
       element.className = "secondary";
       element.title = skill.description;
     }
+  }
+  const regionOpen = fighting && document.body.classList.contains("hud-menu-open") && currentView === "map";
+  $("region-view").hidden = !regionOpen;
+  const detailsParent = regionOpen ? $("region-view") : $("map-view");
+  if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
+  if (fighting && document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.inventory, adventure.achievements, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+    renderWorld(adventure, me, $("region-map"));
+    renderAchievements(adventure.achievements);
+    if (regionOpen) $("map-details").open = true;
   }
   const controlledHud = fighting && controlledUnits(adventure, me.id).length > 0;
   $("combat-view").classList.toggle("controlled-hud", controlledHud);
@@ -1575,3 +1583,10 @@ $("chat-toggle").addEventListener("click", () => {
   if (open) $("chat-message").focus();
 });
 $("chat-channel").addEventListener("change", () => $("chat-panel").classList.toggle("group-chat", $("chat-channel").value === "group"));
+
+for (const [view, label] of Object.entries({options:"Options", stats:"Perso.", equipment:"Équip.", inventory:"Sac", quest:"Quêtes", map:"Carte", bestiary:"Bestiaire", achievements:"Succès"})) {
+  const button = $("show-" + view);
+  button.title = button.textContent;
+  button.setAttribute("aria-label", button.textContent);
+  button.textContent = label;
+}

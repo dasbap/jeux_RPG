@@ -238,3 +238,16 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .combat-active .combat-mode #combat-action-panel .controlled-hud #combat-actions,.combat-active .combat-mode #combat-action-panel .controlled-hud #skills{display:flex!important}
 .combat-active .combat-mode #tutorial-panel,.combat-active .combat-mode #combat-layout{height:100%;min-height:0}
 .combat-active .combat-mode #combat-map-panel{height:100%;min-height:0}
+.combat-active.hud-menu-open .combat-mode .consultation,.combat-active.hud-menu-open .combat-mode .quest-box{display:block!important}
+.combat-active.hud-menu-open .combat-mode .quest-box:has(#quest-view[hidden]){display:none!important}
+.combat-active.hud-menu-open .combat-mode .consultation:has(#region-view[hidden]):has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none!important}
+#combat-action-panel #region-view{display:none}
+#region-map{display:flex;flex-wrap:wrap}#region-map svg{width:100%;height:260px}
+.combat-active #region-view #map-details{display:block!important}
+.combat-active.hud-menu-open .combat-mode .adventure-grid{top:145px;max-height:calc(100dvh - 157px)}
+@media(max-width:750px){.combat-active.hud-menu-open .combat-mode .adventure-grid{top:205px;max-height:calc(100dvh - 217px)}}
+@media(max-height:500px) and (orientation:landscape){.combat-active.hud-menu-open .combat-mode .adventure-grid{top:132px;max-height:calc(100dvh - 144px)}}
+.combat-active .combat-mode #combat-action-panel{max-height:none}
+.combat-active #combat-allies>h3,.combat-active #combat-stats-details,.combat-active #selected-unit-stats{display:none}
+.combat-active #character-menu button:before{display:block;font-size:15px;line-height:18px;font-weight:700}
+#show-options:before{content:"⚙"}#show-stats:before{content:"♙"}#show-equipment:before{content:"♜"}#show-inventory:before{content:"▣"}#show-quest:before{content:"!"}#show-map:before{content:"⌖"}#show-bestiary:before{content:"♞"}#show-achievements:before{content:"★"}
