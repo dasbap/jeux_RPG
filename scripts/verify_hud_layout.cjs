@@ -33,6 +33,7 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    await page.mouse.move(1,1);
    assert(await page.locator('#skill-offense').isVisible(),'Compétence rapide visible sans maintien');
    await button.hover();
+   await page.waitForTimeout(200);
    const attackBefore=await button.boundingBox();
    await page.evaluate(()=>{
     document.getElementById('message').textContent='Aucune cible à portée pour l’attaque. Message sur plusieurs lignes pour vérifier la stabilité.';
@@ -54,15 +55,32 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
     assert.equal(await page.evaluate(()=>Boolean(document.getElementById('skill-hud').hudGesture)),false,'Geste terminé');
    }
    await page.evaluate(()=>{document.getElementById('message').textContent='';document.querySelectorAll('[data-layout-fixture]').forEach(node=>node.remove());});
+   await page.evaluate(()=>{
+    window.eval("const arcActor=session.tutorial.players.find(p=>p.id===session.me);const arcSkill=arcActor.skills.find(s=>skillCategory(s)==='offense');if(arcSkill){arcActor.skills.push({...arcSkill,name:'Arc test 2'},{...arcSkill,name:'Arc test 3'});}renderTutorial(session.tutorial);");
+   });
+   await page.mouse.move(1,1);
+   await page.locator('#skill-offense button').evaluate(node=>node.hudLongAction());
+   const arc=await page.locator('#skill-popover button').evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};}));
+   const anchor=await page.locator('#skill-offense button').boundingBox();
+   assert(arc.length>=3,'Sous-compétences disponibles en arc');
+   for(const point of arc){assert(Math.abs(Math.hypot(point.x-anchor.x-anchor.width/2,point.y-anchor.y-anchor.height/2)-(width<751?126:156))<2,'Arc centré sur la compétence correspondante');assert(point.x>=0&&point.x<=width&&point.y>=0&&point.y<=height,'Sous-compétence dans l’écran');}
+   const quickNames=await page.locator('.mob-quick-actions button').evaluateAll(nodes=>nodes.map(node=>node.dataset.quickSkill));
+   const favorites=await page.locator('.skill-favorite').evaluateAll(nodes=>nodes.map(node=>node.dataset.skill));
+   assert(quickNames.every(name=>favorites.includes(name)),'Les monstres proposent uniquement les compétences rapides désignées');
+   assert(await page.locator('.battle-map').getAttribute('clip-path'),'Carte découpée aux limites de la vue');
+   await page.mouse.move(1,1);
+
    if(width<751){
     const stick=await rect('touch-stick');
     assert(stick&&stick.x<width/2&&stick.y>height/2,'Joystick à gauche');
     await page.locator('#chat-toggle').click();
     assert(await page.locator('#chat-panel').isVisible(),'Chat ouvrable');
    }
+   await page.locator('#game-menu-toggle').click();
    await page.locator('#show-social').click();
    assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD');
    await page.locator('#back-view').click();
+   await page.keyboard.press('Escape');
    await page.locator('#show-inventory').click();
    assert(await page.locator('#inventory-view').isVisible(),'Inventaire consultable en combat');
    await page.locator('#back-view').click();

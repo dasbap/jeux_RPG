@@ -290,3 +290,19 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 
 .combat-active .skill-hud.collapsed{width:310px;height:210px;opacity:1}.combat-active .skill-hud.collapsed .skill-offense,.combat-active .skill-hud.collapsed .skill-buff,.combat-active .skill-hud.collapsed .skill-debuff{display:flex!important}
 @media(max-width:750px){.combat-active .skill-hud.collapsed{width:244px;height:166px}}
+
+.combat-active #character-menu{display:block!important;width:auto;max-width:min(300px,70vw);overflow:visible;top:10px;right:12px}
+#game-menu-items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;max-height:65dvh;overflow:auto}
+.combat-active #character-menu #game-menu-toggle{width:96px;min-height:44px;font-size:.85rem}
+#game-menu-toggle:before{display:none!important}
+.combat-active .combat-mode #combat-enemy-panel{top:68px;max-height:40dvh;width:min(230px,35vw)}
+.mob-quick-actions{display:flex;gap:5px;flex-wrap:wrap}.mob-quick-actions button{min-width:40px;min-height:40px;padding:6px;flex:0 0 40px}
+.skill-popover{width:0;height:0;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none;overflow:visible;pointer-events:none;transform:none;max-width:none}
+.skill-popover-offense{right:154px;bottom:48px}.skill-popover-buff{right:50px;bottom:152px}.skill-popover-debuff{right:154px;bottom:152px}
+.skill-popover .skill-choice{position:absolute;left:-29px;top:-29px;pointer-events:auto;--arc-radius:156px;--arc-index:0;--arc-step:22.5deg;--arc-start:0deg;--arc-angle:calc(var(--arc-start) + var(--arc-index)*var(--arc-step));transform:rotate(var(--arc-angle)) translateX(calc(-1*var(--arc-radius))) rotate(calc(-1*var(--arc-angle)))}
+.skill-popover .skill-choice:nth-child(2){--arc-index:1}.skill-popover .skill-choice:nth-child(3){--arc-index:2}.skill-popover .skill-choice:nth-child(4){--arc-index:3}.skill-popover .skill-choice:nth-child(5){--arc-index:4}
+.arc-count-1 .skill-choice{--arc-start:45deg}.arc-count-2 .skill-choice{--arc-step:90deg}.arc-count-3 .skill-choice{--arc-step:45deg}.arc-count-4 .skill-choice{--arc-step:30deg}
+.skill-popover .skill-choice:hover,.skill-popover .skill-gesture-target{outline:3px solid #fff}
+.combat-active #world-map{overflow:hidden}.combat-active #world-map svg{overflow:hidden;border-radius:0;margin:0;min-height:0}
+.unexplored-cell{fill:#26362c!important;stroke:#34463b!important}.combat-active .unexplored-cell{filter:brightness(.7)}
+@media(max-width:750px){.skill-popover-offense{right:116px;bottom:36px}.skill-popover-buff{right:36px;bottom:116px}.skill-popover-debuff{right:116px;bottom:116px}.skill-popover .skill-choice{left:-23px;top:-23px;--arc-radius:126px}}

@@ -490,7 +490,12 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     $("bestiary-details").append(card);
   }
 }
+function toggleGameMenu(open = $("game-menu-items").hidden) {
+  $("game-menu-items").hidden = !open;
+  $("game-menu-toggle").setAttribute("aria-expanded", String(open));
+}
 function showView(view) {
+  toggleGameMenu(false);
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
@@ -617,6 +622,7 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
     popover.replaceChildren();
     popover.className = `skill-popover skill-popover-${category}`;
     for (const skill of categories[category]) popover.append(iconButton(skill, category, "skill-choice"));
+    popover.classList.add(`arc-count-${categories[category].length}`);
     popover.hidden = !categories[category].length;
     if (!popover.hidden) popover.dataset.anchor = anchor.id;
   }
@@ -1192,8 +1198,10 @@ function renderBattle(adventure, me) {
   const svg = document.createElementNS(ns, "svg");
   if (fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: Math.min(map.width, 24), x: unit.position[0], y: unit.position[1], follow: true};
   if (fieldCamera.follow) { fieldCamera.x = unit.position[0]; fieldCamera.y = unit.position[1]; }
-  const width = Math.min(map.width, fieldCamera.span);
-  const height = Math.min(map.height, Math.ceil(width * .67));
+  const bounds = $("world-map").getBoundingClientRect();
+  const aspect = bounds.width > 0 && bounds.height > 0 ? bounds.width / bounds.height : (window.innerWidth || 1200) / (window.innerHeight || 800);
+  const height = Math.min(map.height, Math.min(map.width, fieldCamera.span) / aspect);
+  const width = Math.min(map.width, fieldCamera.span, height * aspect);
   const left = Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2)));
   const top = Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2)));
   svg.setAttribute("viewBox", `${left * 40} ${top * 40} ${width * 40} ${height * 40}`);
@@ -1208,6 +1216,11 @@ function renderBattle(adventure, me) {
     return node;
   };
   mapPatterns(svg, element);
+  const clip = element("clipPath", {id:"battle-viewport-clip", clipPathUnits:"userSpaceOnUse"});
+  clip.append(element("rect", {x:left*40,y:top*40,width:width*40,height:height*40}));
+  svg.querySelector("defs").append(clip);
+  svg.setAttribute("clip-path", "url(#battle-viewport-clip)");
+  const inView = position => position[0] + .5 >= left && position[0] + .5 < left + width && position[1] + .5 >= top && position[1] + .5 < top + height;
   const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
   for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++) {
     const discovered = !explored || explored.has(`${x},${y}`);
@@ -1233,7 +1246,7 @@ function renderBattle(adventure, me) {
   }
   decorateMap(svg, map, element, {left, top, width, height}, explored);
   for (const site of map.sites || []) {
-    if (explored && !explored.has(site.position.join(","))) continue;
+    if (!inView(site.position) || explored && !explored.has(site.position.join(","))) continue;
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id});
     node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
@@ -1247,9 +1260,10 @@ function renderBattle(adventure, me) {
     node.ondblclick = () => moveControlled(adventure, me, site.position);
     svg.append(node);
   }
-  for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
-  for (const step of unit.route) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
+  for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
+  for (const step of unit.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   const draw = (id, position, label, className) => {
+    if (!inView(position)) return null;
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
     group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
     group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
@@ -1257,6 +1271,7 @@ function renderBattle(adventure, me) {
     group.onclick = () => selectEntity(id);
     group.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, id); if (current) approachEntity(current); };
     svg.append(group);
+    return group;
   };
   for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
   for (const player of presenceState?.nearby || []) {
@@ -1273,8 +1288,8 @@ function renderBattle(adventure, me) {
   for (const [id, summon] of Object.entries(battle.summons || {})) {
     const number = id.match(/:summon:(\d+)$/);
     const label = number ? `S${Number(number[1]) + 1}` : "S";
-    draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
-    svg.lastChild.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
+    const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
+    summonNode?.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
   const gateMarkers = map.exits?.length ? map.exits : [{position: battle.exit || [0, Math.floor(map.height / 2)], name: "Sortie"}];
@@ -1326,11 +1341,27 @@ function renderBattle(adventure, me) {
   } else $("world-map").replaceChildren(svg);
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
-    const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("button"); retainedCards.add(card); card.className = "mob-card"; card.dataset.mob = mob.combat_id;
+    const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("article"); retainedCards.add(card); card.className = "mob-card"; card.tabIndex = 0; card.setAttribute("role", "group"); card.dataset.mob = mob.combat_id;
     let vitals = card.querySelector(".enemy-vitals");
     if (!vitals) { vitals = document.createElement("div"); vitals.className = "enemy-vitals"; card.append(vitals); }
     renderVitals(vitals, [{...mob, id: mob.combat_id, hp: mob.stats.hp.current, max_hp: mob.stats.hp.max}]);
     card.classList.toggle("selected", focusedMob === mob.combat_id);
+    let quick = card.querySelector(".mob-quick-actions");
+    if (!quick) {quick = document.createElement("div");quick.className = "mob-quick-actions";card.append(quick);}
+    quick.ondblclick = event => event.stopPropagation();
+    const retainedQuick = new Set();
+    const target = {id:mob.combat_id, position:mob.position, hp:mob.stats.hp.current, max_hp:mob.stats.hp.max, enemy:true};
+    for (const category of ["offense", "buff", "debuff"]) {
+      const skill = favoriteSkill(me, category, me.skills.filter(value => skillCategory(value) === category));
+      if (!skill || !["DAMAGE", "DEBUFF"].includes(skill.type)) continue;
+      const button = [...quick.children].find(node => node.dataset.quickSkill === skill.name) || document.createElement("button");
+      button.type = "button";button.dataset.quickSkill = skill.name;button.textContent = skillGlyph(skill, category);button.title = skill.name;button.setAttribute("aria-label", `${skill.name} sur ${mob.name}`);
+      button.disabled = busy || !skillAllowed(me, skill, target, mob);
+      button.onclick = event => {event.stopPropagation();if (button.disabled || busy) return;combatTarget = mob.combat_id;focusedMob = "";tutorialCommand("skill", {skill_name:skill.name,target:mob.combat_id});};
+      retainedQuick.add(button);if (button.parentElement !== quick) quick.append(button);
+    }
+    for (const button of [...quick.children]) if (!retainedQuick.has(button)) button.remove();
+    card.onkeydown = event => {if (event.target === card && ["Enter", " "].includes(event.key)) {event.preventDefault();selectEntity(mob.combat_id);}};
     card.onclick = () => selectEntity(mob.combat_id);
     card.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, mob.combat_id); if (current) approachEntity(current); };
     if (card.parentElement !== $("mob-cards")) $("mob-cards").append(card);
@@ -1622,7 +1653,9 @@ $("restore-form").addEventListener("submit", async event => {
 });
 for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
-$("back-view").addEventListener("click", () => {document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
+$("game-menu-toggle").addEventListener("click", () => toggleGameMenu());
+document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
+$("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
