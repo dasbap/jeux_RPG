@@ -10,7 +10,9 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
   for(const [width,height] of [[1440,900],[390,844],[844,390]]){
    const page=await browser.newPage({viewport:{width,height}});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.setContent(fs.readFileSync(path.join(root,'multiplayer/web/index.html'),'utf8').replace(/<script[^>]*>.*?<\/script>/gs,''));
+   const html=fs.readFileSync(path.join(root,'multiplayer/web/index.html'),'utf8').replace(/<script[^>]*>.*?<\/script>/gs,'');
+   await page.route('http://hud.test/**',route=>route.fulfill({contentType:route.request().url().endsWith('.css')?'text/css':'text/html',body:route.request().url().endsWith('.css')?fs.readFileSync(path.join(root,'multiplayer/web/style.css'),'utf8'):html}));
+   await page.goto('http://hud.test/');
    await page.addStyleTag({content:fs.readFileSync(path.join(root,'multiplayer/web/style.css'),'utf8')});
    await page.evaluate(()=>{window.fetch=()=>new Promise(()=>{});window.setInterval=()=>0;});
    for(const file of ['map_artwork.js','mobile_controls.js','app.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,'multiplayer/web',file),'utf8')});
