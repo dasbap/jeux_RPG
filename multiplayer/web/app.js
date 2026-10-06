@@ -530,6 +530,9 @@ function renderTutorial(adventure, preserveBattle = false) {
     });
     $("field-camera").append(touchMove);
   }
+  let autoTarget = $("combat-auto-target");
+  if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; combatTarget=""; renderTutorial(session.tutorial);}; $("field-camera").append(autoTarget);}
+  autoTarget.hidden = !fighting;
   touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
   if (fighting) {
@@ -661,13 +664,17 @@ function renderTutorial(adventure, preserveBattle = false) {
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;
   const canAttack = target => Boolean(target.enemy && target.hp > 0 && me.hp > 0 && !me.stunned && !me.casting && me.cooldown_real_seconds <= 0 && me.can_attack && battleAllowed(adventure, me.id, target.id, me.attack_range));
+  if (focusedMob && enemies.some(target => target.id === focusedMob && target.hp <= 0)) {focusedMob = ""; combatTarget = "";}
+  const offensive = target => canAttack(target) || me.skills.some(skill => ["DAMAGE", "DEBUFF"].includes(skill.type) && skillAllowed(me, skill, target, mob));
+  const distanceToMe = target => {const position = adventure.battle?.players[me.id]?.position; return position && target.position ? Math.hypot(position[0]-target.position[0], position[1]-target.position[1]) : Infinity;};
+  const sortedEnemies = enemies.filter(target => target.hp > 0).sort((a,b) => Number(offensive(b))-Number(offensive(a)) || (offensive(a) ? a.hp-b.hp : distanceToMe(a)-distanceToMe(b)) || a.id.localeCompare(b.id));
   if (fighting && !focusedMob) {
     const supports = target => !controlledUnits(adventure, me.id).length && me.skills.some(skill => ["HEAL", "BUFF"].includes(skill.type) && skillAllowed(me, skill, target, mob));
     const current = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
     const ready = !me.casting && !me.stunned && me.cooldown_real_seconds <= 0;
-    if (!current || current.hp <= 0 || !current.enemy && ready && !supports(current)) {
+    if (!current || current.hp <= 0 || ready && (current.enemy ? !offensive(current) : !supports(current))) {
       const ally = adventure.players.filter(target => target.hp > 0 && supports(target)).sort((a, b) => a.hp / a.max_hp - b.hp / b.max_hp || a.id.localeCompare(b.id))[0];
-      const enemy = enemies.filter(target => target.hp > 0).sort((a, b) => a.hp - b.hp || a.id.localeCompare(b.id))[0];
+      const enemy = sortedEnemies[0];
       combatTarget = ally?.id || enemy?.id || "";
     }
   }
@@ -708,19 +715,22 @@ function renderTutorial(adventure, preserveBattle = false) {
     } else $("combat-action-title").textContent = `Actions · ${me.name}`;
   }
   if (fighting && !controlledUnits(adventure, me.id).length) {
-    action("combat-actions", "Attaque simple", "strike", {target: selected?.id}, !selected || !canAttack(selected));
+    const attackTarget = focusedMob ? selected : sortedEnemies.find(canAttack) || sortedEnemies[0];
+    action("combat-actions", "Attaque simple", "strike", {target: attackTarget?.id}, !attackTarget || !canAttack(attackTarget));
     for (const skill of me.skills.filter(s => s.type === "INVOCATION")) {
       const element = action("self-skills", `Invoquer · ${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "skill", {skill_name: skill.name, target: me.id}, !skillAllowed(me, skill, me, mob));
       element.title = me.casting ? "Incantation en cours." : me.invocations.length >= me.invocation_limit ? "Limite d’invocations atteinte." : "Invoquer sur soi, sans changer la cible sélectionnée.";
     }
     for (const skill of me.skills.filter(s => s.type !== "INVOCATION")) {
-      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: selected?.id}, !selected || !skillAllowed(me, skill, selected, mob));
+      const skillTarget = focusedMob ? selected : [...(skill.type === "RESURRECT" ? adventure.players.filter(target => target.hp <= 0) : ["HEAL", "BUFF"].includes(skill.type) ? adventure.players.filter(target => target.hp > 0).sort((a,b) => a.hp/a.max_hp-b.hp/b.max_hp) : sortedEnemies)].find(target => skillAllowed(me, skill, target, mob));
+      const element = action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s${skill.concentration ? " · concentration" : ""}`, "skill", {skill_name: skill.name, target: skillTarget?.id}, !skillTarget || !skillAllowed(me, skill, skillTarget, mob));
       element.className = "secondary";
       element.title = skill.description;
     }
   }
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
+  $("combat-auto-target").setAttribute("aria-pressed", String(!focusedMob));
   touchControls?.sync();
 }
 function requestTravel(destination) {
@@ -1348,7 +1358,7 @@ const touchControls = globalThis.createRpgTouchControls?.({
     return true;
   },
   stop: () => tutorialCommand("stop_move"),
-  actions: () => [...$("combat-actions").querySelectorAll("button"), ...$("skills").querySelectorAll("button")].slice(0, 4)
+  actions: () => [...$("combat-actions").querySelectorAll("button"), ...$("skills").querySelectorAll("button")].slice(0, 3).concat($("combat-auto-target") || []).filter(Boolean)
 });
 
 function enterCombatFullscreen() {

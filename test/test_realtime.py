@@ -199,6 +199,13 @@ def test_save_failure_keeps_changes_for_retry(monkeypatch):
 def test_websocket_rpc_push_and_origin_protection():
     store = RuntimeStore(ENV)
     coordinator = Coordinator(ENV, store=store)
+    reads = []
+    original_rpc = coordinator.rpc
+    async def counted_rpc(message):
+        if message.get('path') == '/api/state':
+            reads.append(message)
+        return await original_rpc(message)
+    coordinator.rpc = counted_rpc
     app = create_app(ENV, coordinator)
     with TestClient(app, base_url='http://localhost') as client:
         with pytest.raises(Exception):
@@ -214,6 +221,17 @@ def test_websocket_rpc_push_and_origin_protection():
             pushed = socket.receive_json()
             assert pushed['type'] == 'state' and pushed['subscription'] == 'state'
             assert pushed['result']['headers']['X-RPG-Runtime'] == 'memory'
+            socket.send_json({'type':'visibility', 'active':False})
+            while socket.receive_json().get('type') != 'visibility':
+                pass
+            before = len(reads)
+            time.sleep(.7)
+            socket.send_json({'type':'ping'})
+            assert socket.receive_json()['type'] == 'pong'
+            assert len(reads) == before
+            socket.send_json({'type':'visibility', 'active':True})
+            assert socket.receive_json()['type'] == 'visibility'
+            assert socket.receive_json()['type'] == 'state'
 
 
 def test_http_compatibility_reads_same_memory():

@@ -17,3 +17,11 @@ Les connexions WebSocket se reconnectent automatiquement avec un délai progress
 Variables de production : `REDIS_URL` ou `KV_URL`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `RPG_ADMIN_TOKEN`. Fluid Compute doit être activé. Les rafraîchissements renvoient `X-RPG-Runtime: memory` et `Server-Timing` avec zéro échange distant. `X-RPG-Save-Pending` indique un lot en attente, et `X-RPG-Save-Count` les lots terminés par le moteur courant.
 
 Le workflow de publication teste deux instances avec Redis réel avant le déploiement, puis vérifie en production le WebSocket, le tutoriel, la sauvegarde et les lectures d'état sans appel à Turso. Le forfait gratuit reste soumis aux quotas CPU, mémoire, transfert et commandes des fournisseurs.
+
+## Commandes mobiles et budget réseau
+
+Le joystick est calculé dans le navigateur. Il regroupe les mouvements du doigt, limite les intentions de déplacement à quatre par seconde et réutilise une trajectoire déjà en cours. Une position identique ne déclenche pas une nouvelle commande dans la même direction. Le relâchement annule la trajectoire avec une seule commande. Les attaques et sorts utilisent les mêmes fonctions et le même moteur autoritaire que les déplacements ; aucun serveur distinct n'est ajouté.
+
+Avec WebSocket, les actions ne déclenchent plus une demande `/api/state` supplémentaire : l'état vient des mises à jour poussées. Un onglet masqué suspend ces mises à jour ; les messages de visibilité et de maintien de connexion sont traités localement, sans relais Redis. Sur l'instance qui détient le moteur, les actions et lectures restent en RAM. Sur les autres instances, le relais conserve ses lots de 500 ms ; Redis n'est pas écrit à chaque mouvement du doigt. Les quotas dépendent encore du nombre d'instances, des joueurs actifs et de la durée des parties.
+
+Le ciblage automatique privilégie les ennemis attaquables, change de cible lorsqu'elle devient inaccessible ou meurt, et choisit une cible propre à chaque soin ou compétence. Le bouton « Ciblage auto » permet de quitter une sélection manuelle. Les décisions de ciblage sont locales et ne provoquent aucune requête supplémentaire.

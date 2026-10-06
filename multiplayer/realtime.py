@@ -346,6 +346,7 @@ def create_app(environment=None, coordinator=None):
         coordinator.connections += 1
         send_lock = asyncio.Lock()
         subscription = None
+        paused = False
 
         async def send(value):
             async with send_lock:
@@ -354,13 +355,15 @@ def create_app(environment=None, coordinator=None):
         async def push():
             while True:
                 await asyncio.sleep(.5 if coordinator.owner() else 1)
-                if subscription is not None:
+                if subscription is not None and not paused:
                     try:
                         result = await coordinator.rpc(subscription)
                     except (TimeoutError, RuntimeError, OSError):
                         with suppress(RuntimeError, WebSocketDisconnect):
                             await websocket.close(code=1012)
                         return
+                    if paused:
+                        continue
                     await send({'type': 'state', 'subscription': subscription['subscription'], 'result': result})
                     if result['body'].get('bundle_protocol') == 1:
                         subscription['headers']['x-rpg-bundle-hashes'] = json.dumps(result['body']['hashes'])
@@ -381,6 +384,10 @@ def create_app(environment=None, coordinator=None):
                     await websocket.close(code=1008)
                     return
                 item = json.loads(raw)
+                if item.get('type') == 'visibility' and type(item.get('active')) is bool:
+                    paused = not item['active']
+                    await send({'type': 'visibility', 'active': not paused})
+                    continue
                 if item.get('type') == 'ping':
                     await send({'type': 'pong'})
                     continue

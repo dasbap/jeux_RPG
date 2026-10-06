@@ -28,6 +28,7 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
             if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({type: "ping"}));
           }, 10000);
           resolve(socket);
+          socket.send(JSON.stringify({type: "visibility", active: !document.hidden}));
           if (subscription) request(subscription.path, subscription.options).then(async response => {
             transport.onState?.({status: response.status, body: await response.json()});
           }).catch(() => {});
@@ -88,6 +89,9 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
       });
       return {ok: result.status >= 200 && result.status < 300, status: result.status, json: async () => result.body};
     }
+    document.addEventListener("visibilitychange", () => {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({type: "visibility", active: !document.hidden}));
+    });
     return transport;
   })();
 }
