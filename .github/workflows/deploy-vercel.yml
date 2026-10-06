@@ -11,6 +11,7 @@ on:
       - multiplayer/web/realtime.js
       - app.py
       - pyproject.toml
+      - test/test_realtime.py
   workflow_dispatch:
 permissions:
   contents: read
