@@ -110,6 +110,25 @@ def test_accepting_mira_quest_is_saved_without_refresh_writes():
     store.close()
 
 
+def test_mira_accepts_time_only_revision_and_rejects_changed_quest():
+    store = RuntimeStore(ENV, clock=SimpleNamespace(now=lambda: 0, ratio=240))
+    player, room = adventure(store)
+    mutate(store, room, lambda party: party.update(step='village', position='mira'))
+    state = store.request(message('/api/state', token=player['token']))['body']['session']
+    params = {'npc': 'mira', 'session_id': room, 'revision': state['revision'],
+              'world_context': state['tutorial']['world_context']}
+    store.db.execute('UPDATE sessions SET revision=revision+100 WHERE id=?', (room,))
+    def talk():
+        return store.request(message('/api/commands', {'request_id': uuid.uuid4().hex, 'action': 'talk', 'params': params}, player['token']))
+    accepted = talk()
+    assert accepted['status'] == 200
+    assert accepted['body']['session']['tutorial']['quest'] == 'active'
+    stale = talk()
+    assert stale['status'] == 409
+    assert stale['body']['error'] == 'stale_revision'
+    store.close()
+
+
 def test_same_zone_room_does_not_change_signature():
     a = {'position': 'rosee', 'inventory': {}, 'characters': {}}
     from jeuxRPG.multiplayer.world import PLACES

@@ -44,6 +44,7 @@ w.fetch = async (url, options) => {
     calls.push(body);
     assert.equal(body.action, 'talk');
     assert.equal(body.params.npc, 'mira');
+    assert.equal(body.params.world_context, current.tutorial.world_context);
     assert.equal(options.headers['X-RPG-Command-Ack'], undefined);
     current = current.tutorial.quest === 'unaccepted' ? states.active : states.completed;
     data = {session:current};
@@ -83,6 +84,7 @@ async function waitFor(check) {
   assert.equal(calls.length, 2);
   assert.match(get('forge-status').textContent, /Forge débloquée/);
   assert.match(get('message').textContent, /750 XP/);
+  assert.equal(w.document.querySelectorAll('[style]').length, 0);
   dom.window.close();
   console.log('Mira : proximité, acceptation, objectif visible et remise de quête vérifiés.');
 })().catch(error => {dom.window.close(); console.error(error); process.exitCode=1;});

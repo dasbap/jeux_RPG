@@ -371,7 +371,7 @@ class GameService:
                    "skill": {"session_id", "revision", "skill_name", "target"},
                    "travel": {"session_id", "revision", "destination", "world_context"},
                    "move": {"session_id", "revision", "destination", "world_context"},
-                   "talk": {"session_id", "revision", "npc"},
+                   "talk": {"session_id", "revision", "npc", "world_context"},
                    "craft": {"session_id", "revision", "recipe"},
                    "upgrade": {"session_id", "revision", "recipe"},
                    "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
@@ -384,7 +384,7 @@ class GameService:
         tactical_actions = {"battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
         for tactical_action in tactical_actions:
             allowed[tactical_action].add("encounter")
-        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in tactical_actions and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore") and set(params) == allowed[action] - {"world_context"}) and not (action == "tutorial" and not params) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
+        if not isinstance(action, str) or action not in allowed or (set(params) != allowed[action] and not (action in tactical_actions and set(params) == allowed[action] - {"encounter"}) and not (action in ("move", "travel") and set(params) in (allowed[action] | {"paths"}, (allowed[action] - {"world_context"}) | {"paths"})) and not (action in ("move", "travel", "explore", "talk") and set(params) == allowed[action] - {"world_context"}) and not (action == "tutorial" and not params) and not (action == "attack" and set(params) == allowed[action] | {"target"})):
             raise GameError("invalid_command", "Commande ou paramètres invalides.")
         if "field_mode" in params and type(params["field_mode"]) is not bool:
             raise GameError("invalid_command", "Mode de zone invalide.")
@@ -450,7 +450,7 @@ class GameService:
             party = json.loads(row[0])
             tactical_action = action in {"battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
             same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
-            world_action = action in ("move", "travel", "explore") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
+            world_action = action in ("move", "travel", "explore", "talk") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
             if session["revision"] != params["revision"] and not ((tactical_action and same_encounter or world_action) and params["revision"] < session["revision"]):
                 raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
             if "encounter" in params and not same_encounter:

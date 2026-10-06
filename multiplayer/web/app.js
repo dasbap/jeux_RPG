@@ -190,9 +190,10 @@ function render(state) {
     bar.setAttribute("aria-valuemin", "0");
     bar.setAttribute("aria-valuemax", String(player.max_hp));
     bar.setAttribute("aria-valuenow", String(player.hp));
-    const fill = document.createElement("div");
+    const fill = document.createElement("progress");
     fill.className = "health-fill";
-    fill.style.width = `${100 * player.hp / player.max_hp}%`;
+    fill.max = player.max_hp;
+    fill.value = player.hp;
     bar.append(fill);
     const hp = document.createElement("div");
     hp.textContent = `${player.hp} / ${player.max_hp} PV`;
@@ -251,7 +252,7 @@ function tutorialCommand(action, params = {}) {
     const paths = worldPaths(session.tutorial, params.destination);
     if (paths) params = {...params, paths};
   }
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();
@@ -1138,7 +1139,7 @@ async function command(action, params = {}) {
         const state = await api("/api/state");
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
         if (!session || session.id !== state.session.id || state.session.revision >= session.revision) session = state.session;
-        currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
+        currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
         if (["move", "travel"].includes(action)) { const paths = worldPaths(session.tutorial, currentParams.destination); if (paths) currentParams.paths = paths; }
         if (action === "battle_move" && session.tutorial?.battle) {
           const battle = session.tutorial.battle;

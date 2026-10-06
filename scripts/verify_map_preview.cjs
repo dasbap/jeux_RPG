@@ -14,7 +14,8 @@ assert(document.querySelectorAll(".terrain-decoration").length);
 for (const item of map.bridge_rotations || []) {
   const cell = document.querySelector(`[data-cell="${item.position.join(",")}"]`);
   assert.equal(cell.dataset.rotation, String(item.rotation));
-  assert(cell.style.fill.includes("river-bridge-"+item.rotation));
+  assert(cell.classList.contains("bridge-rotation-"+item.rotation));
+  assert.equal(cell.hasAttribute("style"), false);
 }
 const initial = document.querySelector("svg").getAttribute("viewBox");
 document.getElementById("more").click();

@@ -12,6 +12,8 @@ on:
       - multiplayer/web/realtime.js
       - multiplayer/web/app.js
       - multiplayer/web/style.css
+      - multiplayer/web/map_artwork.js
+      - multiplayer/service.py
       - scripts/verify_ui_mira.cjs
       - app.py
       - pyproject.toml

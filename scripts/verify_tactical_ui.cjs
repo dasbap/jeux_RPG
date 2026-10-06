@@ -334,7 +334,8 @@ try {
       render(scene);
       const cell = el("world-map").querySelector(`[data-cell="${bridge.join(",")}"]`);
       assert.equal(cell.dataset.rotation, "90");
-      assert(cell.style.fill.includes("river-bridge-90"));
+      assert(cell.classList.contains("bridge-rotation-90"));
+      assert.equal(cell.hasAttribute("style"), false);
       const textures = el("world-map").querySelector("defs");
       render(scene);
       assert.strictEqual(el("world-map").querySelector("defs"), textures);
