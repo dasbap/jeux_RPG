@@ -49,3 +49,75 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 .battle-cell.terrain-forest{fill:#556d42}.battle-cell.terrain-forest.terrain-shade{fill:#627a47}
 
 .combat-active #battle{position:fixed;inset:0;z-index:20;margin:0;padding:8px;border:0;border-radius:0;overflow:hidden;background:#11141b}.combat-mode>.section-head{display:none}.combat-mode #tutorial-panel{height:100%}.combat-mode #combat-layout{height:100%;grid-template-columns:minmax(160px,16vw) minmax(0,1fr) minmax(190px,19vw);grid-template-rows:minmax(0,1fr) minmax(170px,27vh);gap:8px}.combat-mode #combat-map-panel{min-height:0;display:flex}.combat-mode #map-strip,.combat-mode #map-view{height:100%;width:100%;display:flex;flex-direction:column;padding:4px}.combat-mode #map-view>h3,.combat-mode #map-help{display:none}.combat-mode #world-map{flex:1;min-height:0}.combat-mode #combat-map-panel .battle-map{height:100%;min-height:0;max-height:none}.combat-mode .dashboard-box{padding:10px}.combat-mode #combat-action-panel{overflow:auto}.combat-mode #combat-action-panel h2{font-size:1rem;margin:0 0 4px}.combat-mode #combat-action-panel #combat-view{gap:4px}.combat-mode #combat-status{min-height:0;margin:0;font-size:.85rem}.combat-mode #combat-action-panel button{min-height:36px;padding:7px 10px;min-width:100px}.combat-mode #combat-action-panel .actions{min-height:0}.combat-mode #combat-view>.muted{display:none}.combat-mode #combat-feedback{min-height:0}.combat-mode #combat-notice{min-height:0;padding:4px 8px;font-size:.85rem}.combat-mode #combat-feedback details{margin:2px 0}.exit-marker circle{fill:#245b47;stroke:#ffe28c;stroke-width:3}.exit-marker text{font-size:22px;font-weight:bold}@media(max-width:750px){.combat-mode #combat-layout{grid-template-columns:minmax(85px,19vw) minmax(0,1fr) minmax(95px,22vw);grid-template-rows:minmax(0,1fr) minmax(155px,32vh);grid-template-areas:"allies map enemies" "actions actions actions"}.combat-mode .dashboard-box{padding:4px}.combat-mode #combat-layout h2,.combat-mode #combat-layout h3{font-size:.8rem}.combat-mode #combat-action-panel #combat-view{grid-template-columns:repeat(3,minmax(0,1fr))}.combat-mode #field-camera{flex-wrap:wrap;font-size:.7rem}.combat-mode #field-camera button{min-width:28px;min-height:28px;padding:4px}.combat-mode .vitals-card{font-size:.75rem}.combat-mode #combat-enemy-panel .mob-card{padding:6px}.combat-mode #combat-action-panel button{min-width:70px;font-size:.75rem}}
+
+
+/* Single-screen action RPG HUD */
+.zone-banner{display:flex;align-items:center;gap:10px;justify-content:center;font-variant-numeric:tabular-nums}
+.zone-banner strong{font-size:1.05rem}
+.zone-banner span{font-size:.78rem;color:#d7dbe5;padding:4px 8px;border:1px solid #495264;border-radius:999px;background:#151b24}
+
+.combat-active #character-menu{display:flex!important;position:fixed;top:10px;right:12px;z-index:60;margin:0;padding:6px;max-width:min(720px,62vw);justify-content:flex-end;background:rgba(17,20,27,.82);border:1px solid rgba(90,101,120,.65);border-radius:12px;backdrop-filter:blur(9px)}
+.combat-active #character-menu button{padding:7px 9px;font-size:.72rem;min-height:32px;background:#252d3a;color:#eef1f6}
+.combat-active #character-menu button[aria-pressed="true"]{background:#b7a0ff;color:#19102d}
+.combat-active #back-view{display:none!important}
+
+.combat-active #zone-banner{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:58;padding:7px 12px;background:rgba(17,20,27,.82);border:1px solid rgba(90,101,120,.65);border-radius:12px;backdrop-filter:blur(9px)}
+.combat-active #location,.combat-active #objective{display:none!important}
+
+.combat-active .combat-mode #combat-layout{display:block;position:relative;height:100%;width:100%;padding:0}
+.combat-active .combat-mode #combat-map-panel{position:absolute;inset:0;display:block;min-height:0}
+.combat-active .combat-mode #map-strip,.combat-active .combat-mode #map-view,.combat-active .combat-mode #world-map{height:100%;width:100%;margin:0;padding:0;border:0;background:transparent}
+.combat-active .combat-mode #combat-map-panel .battle-map{height:100%;width:100%;max-height:none;min-height:0;border-radius:0}
+.combat-active .combat-mode #field-camera{position:absolute;left:50%;bottom:10px;top:auto;transform:translateX(-50%);z-index:25;width:max-content;max-width:42vw;padding:4px;background:rgba(17,20,27,.72);border-radius:10px;backdrop-filter:blur(8px)}
+.combat-active .combat-mode #field-location{display:none}
+
+.combat-active .combat-mode #combat-player-panel{position:absolute;left:12px;top:12px;z-index:35;width:min(310px,27vw);max-height:42vh;overflow:auto;padding:10px;background:rgba(17,20,27,.78);border:0;border-radius:12px;backdrop-filter:blur(8px)}
+.combat-active .combat-mode #combat-player-panel>h2{display:none}
+.combat-active .combat-mode #combat-player-panel .vitals-card{grid-template-columns:1fr;grid-template-areas:"name" "resources" "statuses";gap:4px;padding:7px 0}
+.combat-active .combat-mode #combat-player-panel .vitals-statuses{font-size:.72rem}
+.combat-active .combat-mode #combat-player-panel .vitals-row{grid-template-columns:1fr auto}
+
+.combat-active .combat-mode #combat-enemy-panel{position:absolute;right:12px;top:66px;z-index:34;width:min(250px,23vw);max-height:38vh;overflow:auto;padding:8px;background:rgba(17,20,27,.72);border:0;border-radius:12px;backdrop-filter:blur(8px)}
+.combat-active .combat-mode #combat-enemy-panel>h2,.combat-active .combat-mode #combat-enemies>h3:not(#mob-name),.combat-active .combat-mode #cell-selection-status{display:none}
+.combat-active .combat-mode #combat-enemy-panel .mob-card{padding:7px;font-size:.74rem}
+
+.combat-active .combat-mode #combat-action-panel{position:absolute;right:12px;bottom:12px;z-index:40;width:min(500px,46vw);max-height:40vh;overflow:visible;padding:8px;background:rgba(17,20,27,.76);border:0;border-radius:16px;backdrop-filter:blur(9px)}
+.combat-active .combat-mode #combat-action-panel>h2,.combat-active .combat-mode #combat-status,.combat-active .combat-mode #combat-feedback{display:none}
+.combat-active .combat-mode #combat-action-panel #combat-view{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-end;gap:8px}
+.combat-active .combat-mode #self-skills,.combat-active .combat-mode #combat-actions,.combat-active .combat-mode #skills,.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.combat-active .combat-mode #combat-action-panel button{flex:0 0 74px;width:74px;min-width:74px;height:74px;min-height:74px;padding:7px;border-radius:22px;font-size:.72rem;line-height:1.1;text-align:center;box-shadow:0 5px 16px rgba(0,0,0,.28)}
+.combat-active .combat-mode #combat-action-panel button:disabled{filter:saturate(.35)}
+.combat-active #target-controls{display:none!important}
+
+.combat-active #chat-panel{display:block!important;position:fixed;left:12px;bottom:12px;z-index:55;width:min(330px,31vw);max-height:235px;overflow:hidden;margin:0;padding:8px;background:rgba(17,20,27,.68);border:0;border-radius:12px;backdrop-filter:blur(8px)}
+.combat-active #chat-panel>h2,.combat-active #online-players{display:none}
+.combat-active .chat-columns{grid-template-columns:1fr;gap:2px}
+.combat-active .chat-columns section:first-child{display:none}
+.combat-active .chat-columns h3{margin:0 0 2px;font-size:.72rem}
+.combat-active .chat-columns ol{height:86px;margin:0;padding-left:18px;font-size:.72rem;line-height:1.35}
+.combat-active #chat-form{grid-template-columns:76px minmax(0,1fr) auto;gap:5px;margin:5px 0 0}
+.combat-active #chat-form label{display:none}
+.combat-active #chat-channel,.combat-active #chat-message,.combat-active #send-chat{padding:7px;font-size:.72rem}
+.combat-active #chat-status{display:none}
+
+.combat-active.hud-menu-open .combat-mode .adventure-grid{display:block;position:fixed;right:12px;top:58px;z-index:70;width:min(520px,45vw);max-height:78vh;overflow:auto;padding:10px;background:rgba(17,20,27,.94);border:1px solid #455064;border-radius:14px;backdrop-filter:blur(10px)}
+.combat-active.hud-menu-open .combat-mode .adventure-grid .dashboard-box{border:0;background:transparent;padding:6px}
+.combat-active.hud-menu-open .combat-mode .zone-actions{display:none}
+.combat-active.hud-menu-open .combat-mode .quest-box:has(#quest-view[hidden]){display:none}
+.combat-active.hud-menu-open .combat-mode .consultation:has(#options-view[hidden]):has(#stats-view[hidden]):has(#equipment-view[hidden]):has(#inventory-view[hidden]):has(#bestiary-view[hidden]):has(#achievements-view[hidden]){display:none}
+
+@media(max-width:750px){
+  .combat-active #character-menu{top:6px;right:6px;max-width:72vw;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start}
+  .combat-active #character-menu button{white-space:nowrap}
+  .combat-active #zone-banner{top:6px;left:6px;transform:none;justify-content:flex-start}
+  .combat-active #zone-banner strong{max-width:24vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .combat-active .combat-mode #combat-player-panel{left:6px;top:52px;width:31vw;max-height:30vh}
+  .combat-active .combat-mode #combat-enemy-panel{right:6px;top:52px;width:29vw;max-height:30vh}
+  .combat-active .combat-mode #combat-action-panel{right:6px;bottom:6px;width:58vw;padding:5px}
+  .combat-active .combat-mode #combat-action-panel button{flex-basis:58px;width:58px;min-width:58px;height:58px;min-height:58px;border-radius:18px;font-size:.62rem}
+  .combat-active #chat-panel{left:6px;bottom:6px;width:38vw;max-height:170px}
+  .combat-active .chat-columns ol{height:55px}
+  .combat-active #chat-form{grid-template-columns:1fr auto}
+  .combat-active #chat-channel{display:none}
+  .combat-active.hud-menu-open .combat-mode .adventure-grid{right:6px;top:48px;width:72vw;max-height:82vh}
+}
