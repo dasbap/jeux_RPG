@@ -12,7 +12,7 @@ from jeuxRPG.multiplayer.realtime_store import RuntimeStore, progress_signature
 from jeuxRPG.multiplayer import realtime_store
 from jeuxRPG.multiplayer.schema import initialize
 from jeuxRPG.multiplayer.turso import TursoConnection
-from test.test_serverless import Transport
+from test_serverless import Transport
 from redis.asyncio import Redis
 
 
