@@ -1061,8 +1061,8 @@ function renderVitals(container, units) {
       const resource = resources[index];
       let row = rows.children[index];
       if (!row) { row = document.createElement("div"); row.className = "vitals-row"; row.append(document.createElement("progress"), document.createElement("span")); rows.append(row); }
-      const bar = row.querySelector("progress"); bar.max = Math.max(1, resource.max); bar.value = Math.max(0, resource.current); bar.className = resource.type === "PV" ? "vitals-hp" : "vitals-energy"; bar.setAttribute("aria-label", `${resource.type} de ${unitName(unit)}`);
-      row.querySelector("span").textContent = `${Number(resource.current.toFixed(1))}/${resource.max} ${resource.type}`;
+      const bar = row.querySelector("progress"); bar.max = Math.max(1, resource.max); bar.value = Math.max(0, resource.current); bar.className = resource.type === "PV" ? "vitals-hp" : "vitals-energy"; bar.dataset.energy = resource.type.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[^a-z]/g, ""); bar.setAttribute("aria-label", `${resource.type === "Foie" ? "Foi" : resource.type} de ${unitName(unit)}`);
+      row.querySelector("span").textContent = `${Number(resource.current.toFixed(1))}/${resource.max} ${resource.type === "Foie" ? "Foi" : resource.type}`;
     }
     while (rows.children.length > resources.length) rows.lastChild.remove();
     const statuses = card.querySelector(".vitals-statuses");

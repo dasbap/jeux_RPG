@@ -23,6 +23,14 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    const menu=await rect('character-menu'),vitals=await rect('combat-player-panel'),zone=await rect('zone-banner'),actions=await rect('skill-hud'),map=await rect('world-map');
    assert(menu&&vitals&&zone&&actions&&map,'HUD visible');
    assert(await page.locator('#combat-enemy-panel').isVisible(),'Raccourcis des monstres visibles sur ordinateur et mobile');
+   assert(!(await page.locator('#chat-panel').isVisible()),'Chat replié par défaut');
+   await page.locator('#chat-toggle').click();
+   assert(await page.locator('#chat-panel').isVisible(),'Icône de chat utilisable sur tous les écrans');
+   await page.locator('#chat-toggle').click();
+   await page.evaluate(()=>window.eval("renderVitals('character-vitals',[{id:'energy-test',name:'Couleurs',hp:5,max_hp:10,energies:[{type:'Mana',current:5,max:10},{type:'Aura',current:5,max:10},{type:'Foie',current:5,max:10}]}]);"));
+   const energyColors=await page.locator('#character-vitals .vitals-energy').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).accentColor));
+   assert.deepEqual(energyColors,['rgb(52, 120, 246)','rgb(115, 207, 245)','rgb(247, 211, 95)'],'Mana bleu, aura bleu ciel et foi jaune');
+
    assert(menu.x>width/2&&vitals.x<width/4,'Menus et PV aux bons coins');
    assert(actions.x+actions.width<=width+1&&actions.y+actions.height<=height+1,'Actions dans l’écran : '+JSON.stringify({width,height,actions}));
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
@@ -76,6 +84,7 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
     assert(stick&&stick.x<width/2&&stick.y>height/2,'Joystick à gauche');
     await page.locator('#chat-toggle').click();
     assert(await page.locator('#chat-panel').isVisible(),'Chat ouvrable');
+    await page.locator('#chat-toggle').click();
    }
    await page.locator('#game-menu-toggle').click();
    await page.locator('#show-social').click();
