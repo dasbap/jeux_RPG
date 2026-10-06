@@ -37,6 +37,24 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0
 """
+ACK = """
+local data = redis.call('GET', KEYS[1])
+if data then
+  local checkpoint = cjson.decode(data)
+  if checkpoint.save_id == ARGV[1] then
+    checkpoint.pending = {}
+    redis.call('SET', KEYS[1], cjson.encode(checkpoint))
+    return 1
+  end
+end
+return 0
+"""
+RELEASE = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
 
 
 class Coordinator:
@@ -51,10 +69,13 @@ class Coordinator:
         self.deadline = 0
         self.tasks = []
         self.pending = {}
+        self.messages = {}
+        self.next_election = 0
         self.outgoing = defaultdict(list)
         self.received = asyncio.Queue(maxsize=256)
         self.seen = OrderedDict()
         self.lock = asyncio.Lock()
+        self.save_lock = asyncio.Lock()
         self.start_lock = asyncio.Lock()
         self.started = False
         self.saving = None
@@ -82,6 +103,7 @@ class Coordinator:
             self.started = True
 
     async def elect(self):
+        self.next_election = time.monotonic() + 8
         result = await self.redis.eval(LEASE, 2, self.prefix + 'lease', self.prefix + 'fence', self.uid, str(time.time_ns() // 1000))
         if not result:
             self.deadline = 0
@@ -96,18 +118,27 @@ class Coordinator:
             self.seen.clear()
             saved = await self.redis.get(self.prefix + 'checkpoint')
             if saved:
-                self.store = RuntimeStore(self.environment, json.loads(saved))
-                for table, rows in self.store.durable.items():
-                    from .realtime_store import KEYS
-                    for row in rows:
-                        self.store.pending[(table, tuple(row[key] for key in KEYS[table]))] = row
-                self.store.due = time.monotonic() + 5
+                checkpoint = json.loads(saved)
+                self.store = RuntimeStore(self.environment, checkpoint.get('durable', checkpoint))
+                from .realtime_store import KEYS
+                for item in checkpoint.get('pending', []):
+                    table, row = item['table'], item['row']
+                    self.store.pending[(table, tuple(row[key] for key in KEYS[table]))] = row
+                self.store.due = time.monotonic() + 5 if self.store.pending else None
             else:
                 self.store = await asyncio.to_thread(RuntimeStore.load, self.environment)
+                checkpoint = json.dumps({'durable': json.loads(self.store.snapshot()), 'pending': [], 'save_id': ''})
+                await self.redis.eval(SNAPSHOT, 2, self.prefix + 'lease', self.prefix + 'checkpoint', self.uid + ':' + str(self.fence), checkpoint)
+            for identifier, message in list(self.messages.items()):
+                future = self.pending.get(identifier)
+                if future is not None and not future.done():
+                    future.set_result(await self.execute(message))
 
     async def leases(self):
         while True:
             await asyncio.sleep(8)
+            if not self.connections and not self.pending:
+                continue
             try:
                 await self.elect()
             except Exception:
@@ -179,6 +210,8 @@ class Coordinator:
 
     async def rpc(self, message):
         await self.start()
+        if not self.owner() and time.monotonic() >= self.next_election:
+            await self.elect()
         if self.owner():
             return await self.execute(message)
         if len(self.pending) >= 256:
@@ -186,23 +219,37 @@ class Coordinator:
         identifier = uuid.uuid4().hex
         future = asyncio.get_running_loop().create_future()
         self.pending[identifier] = future
+        self.messages[identifier] = message
         try:
             self.outgoing['requests'].append({'id': identifier, 'source': self.uid, 'message': message})
             return await asyncio.wait_for(future, 25)
         finally:
             self.pending.pop(identifier, None)
+            self.messages.pop(identifier, None)
 
     async def save(self, store, batch, snapshot, fence):
+        async with self.save_lock:
+            batch = store.pending_batch()
+            if not batch:
+                return
+            snapshot = store.snapshot()
+            await self.write_checkpoint(store, batch, snapshot, fence)
+
+    async def write_checkpoint(self, store, batch, snapshot, fence):
         try:
+            save_id = uuid.uuid4().hex
             if not self.local:
-                accepted = await self.redis.eval(SNAPSHOT, 2, self.prefix + 'lease', self.prefix + 'checkpoint', self.uid + ':' + str(fence), snapshot)
+                checkpoint = json.dumps({'durable': json.loads(snapshot), 'pending': [{'table': table, 'row': row} for (table, key), row in batch.items()], 'save_id': save_id}, separators=(',', ':'))
+                accepted = await self.redis.eval(SNAPSHOT, 2, self.prefix + 'lease', self.prefix + 'checkpoint', self.uid + ':' + str(fence), checkpoint)
                 if not accepted:
                     return
             await asyncio.to_thread(store.persist, fence, batch)
             store.saved(batch)
+            if not self.local:
+                await self.redis.eval(ACK, 1, self.prefix + 'checkpoint', save_id)
         except Exception:
-            store.last_save_error = True
-            store.due = time.monotonic() + 5
+            store.last_save_error = bool(store.pending)
+            store.due = time.monotonic() + 5 if store.pending else None
             logging.getLogger(__name__).warning('Sauvegarde différée ; changements conservés pour nouvelle tentative')
 
     async def ticker(self):
@@ -245,6 +292,19 @@ class Coordinator:
                 return
             store, batch, snapshot, fence = self.store, self.store.pending_batch(), self.store.snapshot(), self.fence
         await self.save(store, batch, snapshot, fence)
+
+    async def release(self):
+        if self.local or not self.owner() or self.connections:
+            return
+        await self.flush()
+        if self.connections:
+            return
+        await self.redis.eval(RELEASE, 1, self.prefix + 'lease', self.uid + ':' + str(self.fence))
+        async with self.lock:
+            self.deadline = 0
+            self.next_election = 0
+            self.store.close()
+            self.store = None
 
 
 def create_app(environment=None, coordinator=None):
@@ -338,11 +398,20 @@ def create_app(environment=None, coordinator=None):
             coordinator.connections -= 1
             if coordinator.connections == 0:
                 await coordinator.flush()
-            with suppress(RuntimeError):
+                await coordinator.release()
+            with suppress(RuntimeError, WebSocketDisconnect):
                 await websocket.close(code=1012)
 
     @app.api_route('/{path:path}', methods=['GET', 'POST'])
     async def http(request: Request, path: str):
+        if path == 'api/classes':
+            from .content import DATA
+            from .map_building import MOBS
+            from .skill_catalog import install
+            from .service import GameService
+            identifiers = (*GameService.playable(DATA.get('templates')), *install(DATA, MOBS))
+            names = {item['id']: item['name'] for item in [*DATA.get('templates', {}).get('classes', []), *DATA.get('classes', [])]}
+            return JSONResponse([{'id': identifier, 'name': names.get(identifier, identifier)} for identifier in identifiers])
         if path.startswith('api/'):
             try:
                 raw = await request.body()
@@ -352,6 +421,8 @@ def create_app(environment=None, coordinator=None):
                 result = await coordinator.rpc(message)
                 if request.method == 'POST' and result['status'] < 300 and coordinator.owner() and not coordinator.connections:
                     await coordinator.flush()
+                if coordinator.owner() and not coordinator.connections:
+                    await coordinator.release()
                 headers = {key: value for key, value in result['headers'].items() if key.lower() != 'content-length'}
                 return JSONResponse(result['body'], status_code=result['status'], headers=headers)
             except Exception:

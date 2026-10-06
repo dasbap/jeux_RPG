@@ -191,10 +191,10 @@ def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
             await a.flush()
             assert len(persisted) == 1
             old_fence = a.fence
-            await a.redis.delete(prefix + 'lease')
-            a.deadline = 0
+            await a.release()
             await b.elect()
             assert b.owner() and b.fence > old_fence
+            assert not b.store.pending
             recovered = await b.rpc(message('/api/state', token=token))
             assert recovered['body']['player']['id'] == registered['body']['player']['id']
             stale = await a.execute(message('/api/state', token=token))
@@ -204,3 +204,15 @@ def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
             await b.redis.delete(prefix + 'lease', prefix + 'fence', prefix + 'checkpoint')
             await b.close()
     asyncio.run(run())
+
+
+def test_catalogue_does_not_start_a_database_or_coordinator(monkeypatch):
+    def blocked(*args, **kwargs):
+        raise AssertionError('Le catalogue ne doit pas démarrer le moteur')
+    monkeypatch.setattr(RuntimeStore, 'load', blocked)
+    app = create_app(ENV)
+    with TestClient(app, base_url='http://localhost') as client:
+        response = client.get('/api/classes')
+        assert response.status_code == 200
+        assert any(item['id'] == 'Knight' for item in response.json())
+        assert not app.state.coordinator.started
