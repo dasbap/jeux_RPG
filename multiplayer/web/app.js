@@ -152,6 +152,9 @@ function renderAchievements(data) {
   $("achievement-titles").textContent = `Titres obtenus : ${data.unlocked_titles.join(" · ") || "aucun"}`;
 }
 function render(state) {
+  const signature = JSON.stringify([state, busy], (key, value) => ["game_time", "revision"].includes(key) ? undefined : value);
+  if (sectionSignatures.get("state-render") === signature) return;
+  sectionSignatures.set("state-render", signature);
   lastPlayer = state.player;
   renderChat(state.chat);
   $("registration").hidden = Boolean(token);
@@ -263,8 +266,7 @@ function paragraphs(container, texts) {
     $(container).append(p);
   }
 }
-function mountWorldMap(source) {
-  const container = $("world-map");
+function mountWorldMap(source, container = $("world-map")) {
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
   if (!retained) { container.append(source); installWorldCamera(source); return source; }
   function update(target, fresh) {
@@ -289,7 +291,7 @@ function mountWorldMap(source) {
 function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
-function renderWorld(adventure, me) {
+function renderWorld(adventure, me, mapContainer = $("world-map")) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
@@ -363,7 +365,7 @@ function renderWorld(adventure, me) {
     if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
   }
   svg.dataset.map = "general";
-  const worldMapNodes = [mountWorldMap(svg)];
+  const worldMapNodes = [mountWorldMap(svg, mapContainer)];
   if (place.points.length) {
     const entry = place.entry || [70, 110];
     const localWidth = Math.max(610, entry[0] + 130, ...place.points.map(p => (p.x ?? 450) + 130)), localHeight = Math.max(220, entry[1] + 70, ...place.points.map(p => (p.y ?? 175) + 70));
@@ -393,9 +395,9 @@ function renderWorld(adventure, me) {
       local.append(node);
     });
     local.dataset.map = `detail:${place.id}`;
-    worldMapNodes.push(mountWorldMap(local));
+    worldMapNodes.push(mountWorldMap(local, mapContainer));
   }
-  for (const child of [...$("world-map").children]) if (!worldMapNodes.includes(child)) child.remove();
+  for (const child of [...mapContainer.children]) if (!worldMapNodes.includes(child)) child.remove();
   paragraphs("place-details", [`${place.name} · ${place.type} · ${place.id === world.current ? "vous êtes ici" : place.visited ? "déjà visité" : "encore non visité"}`, place.description]);
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
@@ -473,7 +475,8 @@ function renderWorld(adventure, me) {
   }
 }
 function showView(view) {
-  if (["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(view)) currentView = view;
+  if (["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
+  document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial?.battle));
   if (session && session.tutorial) renderTutorial(session.tutorial);
 }
 function skillAllowed(me, skill, target, mob) {
@@ -489,6 +492,167 @@ function skillAllowed(me, skill, target, mob) {
   if (skill.type === "HEAL") return target.hp < target.max_hp;
   return skill.type === "BUFF";
 }
+function skillCategory(skill) {
+  if (["DAMAGE"].includes(skill.type)) return "offense";
+  if (["DEBUFF"].includes(skill.type)) return "debuff";
+  if (["BUFF", "HEAL", "RESURRECT", "INVOCATION"].includes(skill.type)) return "buff";
+  return "offense";
+}
+function skillGlyph(skill, category) {
+  if (skill.type === "HEAL") return "✚";
+  if (skill.type === "RESURRECT") return "✦";
+  if (skill.type === "INVOCATION") return "♟";
+  if (category === "debuff") return "⌁";
+  if (category === "buff") return "▲";
+  return "◆";
+}
+function favoriteSkillKey(me, category) {
+  return `rpg-skill-favorite:${me.class_name || "class"}:${category}`;
+}
+function favoriteSkill(me, category, skills) {
+  const saved = localStorage.getItem(favoriteSkillKey(me, category));
+  return skills.find(skill => skill.name === saved) || skills[0] || null;
+}
+function saveFavoriteSkill(me, category, skill) {
+  localStorage.setItem(favoriteSkillKey(me, category), skill.name);
+}
+function skillTargets(adventure, me, skill, mob) {
+  const enemies = (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+  const allies = adventure.players.map(player => ({...player, enemy:false}));
+  const allowed = [...enemies, ...allies].filter(target => skill.targets?.includes(target.id) && skillAllowed(me, skill, target, mob));
+  const current = allowed.find(target => target.id === combatTarget);
+  if (current) return [current, allowed];
+  const ranked = allowed.slice().sort((a,b) => {
+    if (skill.type === "HEAL") return a.hp / a.max_hp - b.hp / b.max_hp;
+    if (skill.type === "RESURRECT") return a.hp - b.hp;
+    if (["BUFF","INVOCATION"].includes(skill.type)) return (a.id === me.id ? -1 : 0) - (b.id === me.id ? -1 : 0) || a.hp / a.max_hp - b.hp / b.max_hp;
+    return a.hp - b.hp;
+  });
+  return [ranked[0] || null, allowed];
+}
+function skillDetails(skill) {
+  const effects = [skill.description, skill.type ? `Type : ${skill.type}` : "", skill.cost !== undefined ? `Coût : ${skill.cost} ${skill.energy || ""}` : "", skill.range !== undefined ? `Portée : ${skill.range}` : "", skill.cast_seconds !== undefined ? `Incantation : ${skill.cast_seconds} s` : "", skill.cooldown !== undefined ? `Recharge : ${skill.cooldown} s` : "", skill.concentration ? "Concentration : interrompue par les dégâts" : ""].filter(Boolean);
+  return effects.join(" · ");
+}
+function renderSkillHud(adventure, me, mob, canAttack, selected) {
+  const root = $("skill-hud");
+  if (!root) return;
+  const categories = {
+    offense: me.skills.filter(skill => skillCategory(skill) === "offense").slice(0, 5),
+    buff: me.skills.filter(skill => skillCategory(skill) === "buff").slice(0, 5),
+    debuff: me.skills.filter(skill => skillCategory(skill) === "debuff").slice(0, 5),
+  };
+  const popover = $("skill-popover"), tooltip = $("skill-tooltip");
+  let openCategory = root.dataset.openCategory || "";
+  const closePopover = () => { openCategory = ""; root.dataset.openCategory = ""; popover.hidden = true; popover.replaceChildren(); };
+  const hideTooltip = () => { tooltip.hidden = true; tooltip.textContent = ""; };
+  const showTooltip = (element, skill) => {
+    tooltip.textContent = `${skill.name} — ${skillDetails(skill)}`;
+    tooltip.hidden = false;
+    tooltip.dataset.anchor = element.dataset.skill || skill.name;
+  };
+  function bindHold(element, shortAction, longAction, skill = null) {
+    element.hudShortAction = shortAction;
+    element.hudLongAction = longAction || (skill ? () => showTooltip(element, skill) : null);
+    if (element.dataset.holdBound) return;
+    element.dataset.holdBound = "true";
+    let timer = 0, held = false, inside = false;
+    const cancel = () => { if (timer) clearTimeout(timer); timer = 0; };
+    element.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      inside = true; held = false; cancel();
+      timer = setTimeout(() => { if (!inside) return; held = true; element.hudLongAction?.(); }, 420);
+    });
+    element.onpointerleave = () => { inside = false; cancel(); hideTooltip(); };
+    element.onpointerenter = () => { inside = true; };
+    element.addEventListener("pointerup", event => {
+      if (event.button !== 0) return;
+      cancel();
+      if (held) { hideTooltip(); return; }
+      if (!busy) element.hudShortAction?.();
+    });
+    element.onpointercancel = () => { inside = false; cancel(); hideTooltip(); };
+    element.onclick = event => {event.preventDefault(); if (event.detail === 0 && !busy) element.hudShortAction?.();};
+    element.onkeydown = event => {if (["ArrowDown", "F2"].includes(event.key)) {event.preventDefault(); element.hudLongAction?.();}};
+  }
+  function useSkill(skill) {
+    const [target] = skillTargets(adventure, me, skill, mob);
+    if (!target) return message(`Aucune cible valide pour ${skill.name}.`);
+    combatTarget = target.id;
+    focusedMob = ""; focusedEnemy = "";
+    tutorialCommand("skill", {skill_name: skill.name, target: target.id});
+  }
+  function iconButton(skill, category, extraClass = "", retained = null) {
+    const button = retained || document.createElement("button");
+    button.type = "button";
+    button.className = `skill-icon skill-${category} ${extraClass}`;
+    button.dataset.skill = skill.name;
+    button.setAttribute("aria-label", skill.name);
+    const glyph = skillGlyph(skill, category);
+    if (button.textContent !== glyph) button.textContent = glyph;
+    const [target] = skillTargets(adventure, me, skill, mob);
+    button.disabled = busy;
+    button.classList.toggle("skill-unavailable", !target);
+    button.setAttribute("aria-disabled", String(!target));
+    bindHold(button, () => { saveFavoriteSkill(me, category, skill); closePopover(); useSkill(skill); }, null, skill);
+    return button;
+  }
+  function openMenu(category, anchor) {
+    if (openCategory === category && !popover.hidden) return closePopover();
+    openCategory = category; root.dataset.openCategory = category;
+    popover.replaceChildren();
+    popover.className = `skill-popover skill-popover-${category}`;
+    for (const skill of categories[category]) popover.append(iconButton(skill, category, "skill-choice"));
+    popover.hidden = !categories[category].length;
+    if (!popover.hidden) popover.dataset.anchor = anchor.id;
+  }
+  for (const [category, containerId] of [["offense","skill-offense"],["buff","skill-buff"],["debuff","skill-debuff"]]) {
+    const container = $(containerId);
+    const skill = favoriteSkill(me, category, categories[category]);
+    if (!skill) { container.hidden = true; container.replaceChildren(); continue; }
+    container.hidden = false;
+    const retained = container.firstElementChild?.dataset.skill === skill.name ? container.firstElementChild : null;
+    const button = iconButton(skill, category, "skill-favorite", retained);
+    bindHold(button, () => useSkill(skill), () => openMenu(category, container), skill);
+    if (!retained) container.replaceChildren(button);
+  }
+  const attack = $("skill-main-attack");
+  const attackButton = attack.firstElementChild || document.createElement("button");
+  attackButton.type = "button";
+  attackButton.className = "skill-icon skill-attack";
+  attackButton.setAttribute("aria-label", "Attaque simple");
+  if (attackButton.textContent !== "⚔") attackButton.textContent = "⚔";
+  const attackCandidates = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+  const attackAvailable = Boolean(selected?.enemy && canAttack(selected) || attackCandidates.some(canAttack));
+  attackButton.disabled = busy;
+  attackButton.classList.toggle("skill-unavailable", !attackAvailable);
+  attackButton.setAttribute("aria-disabled", String(!attackAvailable));
+  bindHold(attackButton, () => {
+    const enemies = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
+    const target = (selected?.enemy && canAttack(selected) ? selected : enemies.filter(canAttack).sort((a,b) => a.hp - b.hp)[0]);
+    if (!target) return message("Aucune cible à portée pour l’attaque.");
+    combatTarget = target.id; focusedMob = ""; focusedEnemy = "";
+    tutorialCommand("strike", {target: target.id});
+  }, null);
+  if (!attackButton.parentElement) attack.append(attackButton);
+  if (!popover.hidden && openCategory) {
+    for (const button of [...popover.children]) {
+      const skill = categories[openCategory]?.find(value => value.name === button.dataset.skill);
+      if (skill) iconButton(skill, openCategory, "skill-choice", button); else button.remove();
+    }
+  }
+  root.onpointerleave = event => {
+    if (event.buttons) return;
+    closePopover();
+    root.classList.add("collapsed");
+    hideTooltip();
+  };
+  root.onpointerenter = () => root.classList.remove("collapsed");
+  root.onpointerdown = event => {
+    if (!event.target.closest(".skill-icon")) closePopover();
+  };
+}
+
 function renderCombatFeedback(adventure) {
   const events = (session.events || []).filter(event => event.game_time >= (adventure.battle?.started_at || 0)).slice(-12);
   const latest = events.at(-1);
@@ -533,7 +697,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   let autoTarget = $("combat-auto-target");
   if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; focusedEnemy=""; combatTarget=""; renderTutorial(session.tutorial);}; $("field-camera").append(autoTarget);}
-  autoTarget.hidden = !fighting;
+  autoTarget.hidden = true;
   touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
   if (fighting) {
@@ -548,14 +712,15 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   $("battle").classList.toggle("combat-mode", fighting);
   document.body.classList.toggle("combat-active", fighting);
+  $("chat-toggle").hidden = !fighting;
   if (!fighting) combatFullscreenRequested = false;
   if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
   $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
-  $("character-menu").hidden = fighting;
+  $("character-menu").hidden = false;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
   if (context !== viewContext) {
-    if (!["stats", "equipment", "inventory", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
+    if (!["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(currentView)) currentView = "map";
     combatTarget = "";
     focusedMob = "";
     focusedEnemy = "";
@@ -572,26 +737,36 @@ function renderTutorial(adventure, preserveBattle = false) {
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
   $("map-view").hidden = false;
-  for (const view of ["stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats");
-  $("quest-view").hidden = false;
+  for (const view of ["options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view && !(currentView === "map" && view === "stats" && !fighting);
+  $("quest-view").hidden = currentView !== "quest";
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
-  const questParent = fighting ? $("combat-action-panel") : document.querySelector(".quest-box");
+  const questParent = document.querySelector(".quest-box");
   if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
-  for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
+  for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
     $(`show-${view}`).setAttribute("aria-pressed", String(currentView === view));
   }
-  $("back-view").hidden = true;
+  $("back-view").hidden = !document.body.classList.contains("hud-menu-open");
   $("back-view").textContent = fighting ? "Retour au combat" : "Retour à l'exploration";
   $("battle-title").textContent = adventure.step === "complete" ? "Aventure accomplie" : "Votre tutoriel";
   $("attack").hidden = true;
   $("leave").hidden = true;
   $("result").textContent = adventure.step === "complete" ? "Vous êtes arrivé au village de Brume." : "";
   $("location").textContent = adventure.location;
+  const currentZone = adventure.world?.places?.find(place => place.id === adventure.world.current);
+  const zoneKey = `${session.id}:${adventure.field_map || adventure.world.current}:${adventure.battle?.map.id || ""}`;
+  if ($("zone-banner").dataset.zone !== zoneKey) {
+    $("zone-banner").dataset.zone = zoneKey;
+    $("zone-banner").classList.remove("zone-arrival");
+    void $("zone-banner").offsetWidth;
+    $("zone-banner").classList.add("zone-arrival");
+  }
+  $("zone-name").textContent = fighting ? adventure.battle.map.name : adventure.location;
+  $("zone-level").textContent = `Niv. ${currentZone?.level ?? me.level}`;
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
   $("quest-progress").textContent = !hasQuest ? (adventure.quest_journal?.length ? "Quêtes des PNJ" : "Aucune quête acceptée.") : `${adventure.hunt_name || "Quête de Mira"} : ${{unaccepted: "à accepter", active: `${adventure.kills}/${adventure.hunt_goal || 3} gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
@@ -651,6 +826,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
   if (vest && adventure.quest === "completed") $("forge-status").textContent = `Veste équipée (+${vest.level}). ${adventure.step === "craft" ? "Votre compagnon doit encore fabriquer la sienne." : "Fabrication validée : rejoignez Brume pour terminer le tutoriel."}`;
   $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${item}`).join(", ") || "aucun matériau"}.`;
+  if (sectionChanged("forge", [session.id, atForge, me.forge, adventure.quest, busy])) {
   $("forge-catalogue").replaceChildren();
   if (atForge) for (const recipe of me.forge) {
     const card = document.createElement("article"); card.className = "codex-card"; card.dataset.recipe = recipe.recipe;
@@ -660,6 +836,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     const adjective = document.createElement("p"); adjective.textContent = `À +10 : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
     if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = recipe.equipped ? "upgrade" : "craft"; craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);
+  }
   }
   $("mob-name").textContent = fighting ? `${(adventure.mobs || []).length} ennemi(s) visible(s)` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
@@ -730,6 +907,21 @@ function renderTutorial(adventure, preserveBattle = false) {
       element.title = skill.description;
     }
   }
+  const regionOpen = fighting && document.body.classList.contains("hud-menu-open") && currentView === "map";
+  $("region-view").hidden = !regionOpen;
+  const detailsParent = regionOpen ? $("region-view") : $("map-view");
+  if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
+  if (fighting && document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.inventory, adventure.achievements, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+    renderWorld(adventure, me, $("region-map"));
+    renderAchievements(adventure.achievements);
+    if (regionOpen) $("map-details").open = true;
+  }
+  const controlledHud = fighting && controlledUnits(adventure, me.id).length > 0;
+  $("combat-view").classList.toggle("controlled-hud", controlledHud);
+  $("skill-hud").hidden = !fighting || controlledHud;
+  $("combat-actions").hidden = !controlledHud;
+  $("skills").hidden = !controlledHud;
+  if (fighting && !controlledHud) renderSkillHud(adventure, me, mob, canAttack, selected);
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
   $("combat-auto-target").setAttribute("aria-pressed", String(!focusedMob));
@@ -796,6 +988,10 @@ function renderVitals(container, units) {
       const statuses = document.createElement("div"); statuses.className = "vitals-statuses";
       card.append(name, resources, statuses); parent.append(card);
     }
+    kept.add(card);
+    const signature = JSON.stringify([unitName(unit), unit.hp, unit.max_hp, unit.energies, unit.hidden, unit.detected, unit.stunned, unit.effects]);
+    if (card.vitalsSignature === signature) continue;
+    card.vitalsSignature = signature;
     const previousHp = Number(card.dataset.hp ?? unit.hp);
     if (unit.hp < previousHp) {
       const change = document.createElement("span"); change.className = "hp-change"; change.textContent = `−${Number((previousHp - unit.hp).toFixed(1))} PV`; card.append(change);
@@ -1236,9 +1432,9 @@ $("restore-form").addEventListener("submit", async event => {
   $("restore-token").value = "";
   await refresh();
 });
-for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
+for (const view of ["options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
-$("back-view").addEventListener("click", () => showView(session?.tutorial?.mob ? "combat" : "standby"));
+$("back-view").addEventListener("click", () => {document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
@@ -1362,16 +1558,10 @@ const touchControls = globalThis.createRpgTouchControls?.({
     return true;
   },
   stop: () => tutorialCommand("stop_move"),
-  actions: () => [...$("combat-actions").querySelectorAll("button"), ...$("skills").querySelectorAll("button")].slice(0, 3).concat($("combat-auto-target") || []).filter(Boolean)
+  actions: () => []
 });
 
-function enterCombatFullscreen() {
-  if (window.matchMedia?.("(pointer: coarse)").matches) return;
-  if (!document.body.classList.contains("combat-active") || combatFullscreenRequested || document.fullscreenElement || !$("battle").requestFullscreen) return;
-  combatFullscreenRequested = true;
-  $("battle").requestFullscreen().catch(() => {});
-}
-document.addEventListener("pointerdown", enterCombatFullscreen, {capture: true});
+
 
 if (typeof fetch === 'function') fetch('/api/classes').then(response => { if (!response.ok) throw new Error('Classes indisponibles'); return response.json(); }).then(available => {
   for (const item of available) {
@@ -1385,3 +1575,18 @@ if (typeof fetch === 'function') fetch('/api/classes').then(response => { if (!r
     }
   }
 }).catch(() => {});
+
+
+$("chat-toggle").addEventListener("click", () => {
+  const open = document.body.classList.toggle("chat-open");
+  $("chat-toggle").setAttribute("aria-expanded", String(open));
+  if (open) $("chat-message").focus();
+});
+$("chat-channel").addEventListener("change", () => $("chat-panel").classList.toggle("group-chat", $("chat-channel").value === "group"));
+
+for (const [view, label] of Object.entries({options:"Options", stats:"Perso.", equipment:"Équip.", inventory:"Sac", quest:"Quêtes", map:"Carte", bestiary:"Bestiaire", achievements:"Succès"})) {
+  const button = $("show-" + view);
+  button.title = button.textContent;
+  button.setAttribute("aria-label", button.textContent);
+  button.textContent = label;
+}

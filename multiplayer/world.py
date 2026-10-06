@@ -138,7 +138,7 @@ def view(party, me, traveller=None):
         if key not in known:
             continue
         place = {"id": key, "name": definition["name"], "type": definition["type"],
-                 "x": definition["x"], "y": definition["y"], "visited": key in visited,
+                 "x": definition["x"], "y": definition["y"], "visited": key in visited, "level": LEVELS.get(key, 1),
                  "description": definition["description"] if key in visited else "Lieu connu, encore non visité. Ses détails seront révélés à votre arrivée.",
                  "points": deepcopy(definition["points"]) if key in visited else [], "entry": deepcopy(definition.get("entry", [70, 110]))}
         if traveller and key in visited and key in ("rosee", "brume") and traveller["location"] and traveller["location"] in definition["name"]:
@@ -313,3 +313,4 @@ def distance_km(source, destination):
 
 def walking_seconds(source, destination):
     return distance_km(source, destination) / 6 * 3600
+

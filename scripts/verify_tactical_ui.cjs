@@ -374,7 +374,7 @@ try {
     el("battle").requestFullscreen = () => { requested++; return Promise.resolve(); };
     event(el("battle"), "pointerdown");
     event(el("battle"), "pointerdown");
-    assert.equal(requested, 1);
+    assert.equal(requested, 0);
   }
   assert.equal(errors.length, 0, errors.join(" · "));
   console.log("UI tactique : ciblage automatique, soin/buff autorisés, focus manuel conservé, désélection, double clic, corps proches, couverture, incantation, squelette et invocation stable pendant les actualisations vérifiés.");
