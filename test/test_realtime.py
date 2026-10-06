@@ -247,6 +247,10 @@ def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
             token = registered['body']['token']
             mirrored = await b.rpc(message('/api/state', token=token))
             assert mirrored['body']['player']['id'] == registered['body']['player']['id']
+            deadline = asyncio.get_running_loop().time() + 5
+            while a.outgoing or not a.received.empty():
+                assert asyncio.get_running_loop().time() < deadline
+                await asyncio.sleep(.05)
             for _ in range(30):
                 assert (await a.rpc(message('/api/state', token=token)))['status'] == 200
             assert not a.outgoing and not a.pending
