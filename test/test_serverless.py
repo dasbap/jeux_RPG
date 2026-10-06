@@ -96,6 +96,15 @@ def test_cross_site_document_navigation_preserves_api_protection(web):
     assert request(app, "/admin", HTTP_SEC_FETCH_SITE="cross-site")["status"] == 403
 
 
+def test_registration_with_duplicate_wsgi_content_headers(web):
+    app, _ = web
+    body = {"name": "Alice", "class_name": "Knight"}
+    headers = {"HTTP_CONTENT_LENGTH": str(len(json.dumps(body).encode())), "HTTP_CONTENT_TYPE": "application/json"}
+    response = request(app, "/api/register", "POST", body, **headers)
+    assert response["status"] == 201
+    assert request(app, "/api/state", token=response["body"]["token"])["status"] == 200
+
+
 def test_database_rate_limit_is_shared_and_bounded(tmp_path):
     a, b = GameService(tmp_path / "limit.db"), GameService(tmp_path / "limit.db")
     try:

@@ -206,11 +206,12 @@ class Application:
         handler = RequestHandler.__new__(RequestHandler)
         handler.headers = Message()
         for key, value in environ.items():
-            if key.startswith("HTTP_"):
+            if key.startswith("HTTP_") and key not in ("HTTP_CONTENT_TYPE", "HTTP_CONTENT_LENGTH"):
                 handler.headers[key[5:].replace("_", "-")] = value
         for key in ("CONTENT_TYPE", "CONTENT_LENGTH"):
-            if key in environ:
-                handler.headers[key.replace("_", "-")] = environ[key]
+            value = environ.get(key, environ.get("HTTP_" + key))
+            if value is not None:
+                handler.headers[key.replace("_", "-")] = value
         handler.path = environ.get("PATH_INFO", "/") + ("?" + environ["QUERY_STRING"] if environ.get("QUERY_STRING") else "")
         handler.rfile = environ.get("wsgi.input", io.BytesIO())
         handler.client_address = (environ.get("REMOTE_ADDR", "unknown"), 0)

@@ -1,5 +1,6 @@
 import json
 import time
+import uuid
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -39,6 +40,16 @@ def main():
         if status != expected:
             raise SystemExit(f"Vérification échouée : {route}, HTTP {status}, attendu {expected}")
         print(f"Route vérifiée : {route}, HTTP {status}")
+    registration = json.dumps({"name": "Verification " + uuid.uuid4().hex[:8], "class_name": catalogue[0]["id"]}).encode()
+    with urlopen(Request(base + "/api/register", data=registration, headers={"Content-Type": "application/json", "Origin": base}), timeout=30) as response:
+        if response.status != 201:
+            raise SystemExit("Inscription en production refusée")
+        account = json.load(response)
+    with urlopen(Request(base + "/api/state", headers={"Authorization": "Bearer " + account["token"], "Origin": base}), timeout=30) as response:
+        state = json.load(response)
+        if response.status != 200 or not state.get("player"):
+            raise SystemExit("Reprise du compte en production refusée")
+    print("Inscription et reprise du personnage vérifiées, sans afficher le jeton.")
     print("Jeu et panneau admin disponibles ; accès admin anonyme refusé.")
 
 
