@@ -526,6 +526,9 @@ def execute(party, player, action, params, now, error):
     battle = party.get("battle")
     if not battle:
         raise error("not_fighting", "Aucun champ de bataille actif.", 409)
+    if action == "stop_move":
+        battle["players"][player]["route"] = []
+        return []
     actor = ready(party, player, now, error, redirect=action in ("battle_move", "leave_battle"))
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]

@@ -1,0 +1,108 @@
+name: Publication Vercel jeux-rpg
+on:
+  push:
+    branches: [alpha-vercel-turso]
+    paths:
+      - .github/workflows/deploy-vercel.yml
+      - scripts/verify_deployment.py
+      - multiplayer/serverless.py
+      - multiplayer/realtime.py
+      - multiplayer/realtime_store.py
+      - multiplayer/catalogue.py
+      - multiplayer/web/realtime.js
+      - multiplayer/web/app.js
+      - multiplayer/web/style.css
+      - multiplayer/web/index.html
+      - multiplayer/web/mobile_controls.js
+      - multiplayer/tactics.py
+      - multiplayer/tutorial.py
+      - scripts/verify_touch_controls.cjs
+      - multiplayer/web/map_artwork.js
+      - multiplayer/service.py
+      - scripts/verify_ui_mira.cjs
+      - app.py
+      - pyproject.toml
+      - test/test_realtime.py
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jeux-rpg-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RPG_TEST_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - name: Verifier l'acces de deploiement
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "Secret GitHub Actions VERCEL_TOKEN absent : nécessaire pour publier le projet Vercel existant jeux-rpg."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m pip install '.[test]'
+      - run: python -m pytest -q
+      - run: npm install --prefix .deploy-tools vercel@62.2.0 jsdom@26.1.0
+      - name: Verifier l'interface admin
+        run: node scripts/verify_admin_ui.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Verifier la quete de Mira
+        run: node scripts/verify_ui_mira.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Verifier les commandes tactiles
+        run: node scripts/verify_touch_controls.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Initialiser et verifier la base Turso
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          python -m jeuxRPG.multiplayer.turso_admin initialiser
+          python -m jeuxRPG.multiplayer.turso_admin integrite
+      - name: Cibler exclusivement jeux-rpg
+        run: |
+          mkdir -p .vercel
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          Path('.vercel/project.json').write_text(json.dumps({'projectId': 'prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2', 'orgId': 'team_qde9V6kikwwSvLtNrjAsAkRY', 'projectName': 'jeux-rpg'}))
+          PY
+      - name: Synchroniser les acces Turso valides vers Vercel
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'):
+              subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive', '--token', os.environ['VERCEL_TOKEN']], input=os.environ[key], text=True, check=True)
+          PY
+      - name: Publier en production
+        run: .deploy-tools/node_modules/.bin/vercel deploy --prod --yes --token "$VERCEL_TOKEN" > deployment-url.txt
+      - name: Verifier les routes et la connexion admin en ligne
+        run: python scripts/verify_deployment.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-jeux-rpg
+          path: deployment-url.txt

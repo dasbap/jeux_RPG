@@ -2,11 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>RPG · De la clairière à Brume</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/map_artwork.js" defer></script>
-  <script src="/app.js" defer></script>
+  <script src="/realtime.js" defer></script>
+  <script src="/mobile_controls.js" defer></script><script src="/app.js" defer></script>
 </head>
 <body>
   <main>
@@ -70,8 +71,9 @@
       <div class="actions"><button id="party-tutorial">Commencer le tutoriel du groupe</button><button id="start" class="secondary">Duel optionnel</button><button id="attack">Attaquer</button><button id="leave" class="secondary">Quitter la session</button><button id="new-room" class="secondary" hidden>Nouveau salon</button></div>
       <details><summary id="shared-log-title">Journal partagé</summary><ol id="events"></ol></details>
     </section>
-<section id="chat-panel" class="panel" hidden><h2>Discussion</h2><p id="online-players"></p><div class="chat-columns"><section><h3>Global</h3><ol id="chat-global"></ol></section><section><h3>Groupe</h3><ol id="chat-group"></ol></section></div><form id="chat-form"><label for="chat-channel">Canal</label><select id="chat-channel"><option value="global">Global</option><option value="group">Mon groupe</option></select><label for="chat-message">Message</label><input id="chat-message" maxlength="400" required autocomplete="off"><button id="send-chat" type="submit">Envoyer</button><p id="chat-status" role="status"></p></form></section>
+<button id="chat-toggle" class="secondary" aria-expanded="false" aria-controls="chat-panel" hidden>Discussion</button><section id="chat-panel" class="panel" hidden><h2>Discussion</h2><p id="online-players"></p><div class="chat-columns"><section><h3>Global</h3><ol id="chat-global"></ol></section><section><h3>Groupe</h3><ol id="chat-group"></ol></section></div><form id="chat-form"><label for="chat-channel">Canal</label><select id="chat-channel"><option value="global">Global</option><option value="group">Mon groupe</option></select><label for="chat-message">Message</label><input id="chat-message" maxlength="400" required autocomplete="off"><button id="send-chat" type="submit">Envoyer</button><p id="chat-status" role="status"></p></form></section>
     <footer>De la clairière à Brume · votre aventure est sauvegardée</footer>
   </main>
 </body>
 </html>
+

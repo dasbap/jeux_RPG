@@ -82,6 +82,13 @@ def main():
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode
+                checked = subprocess.run(["node", str(root / "scripts" / "verify_hud_updates.cjs"), str(fixture_path)], env={**os.environ, "NODE_PATH": modules}, timeout=30)
+                if checked.returncode:
+                    return checked.returncode
+                if os.environ.get("RPG_VERIFY_HUD_LAYOUT") == "1":
+                    checked = subprocess.run(["node", str(root / "scripts" / "verify_hud_layout.cjs"), str(fixture_path)], env={**os.environ, "NODE_PATH": modules}, timeout=60)
+                    if checked.returncode:
+                        return checked.returncode
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_demo_hunt.cjs")], env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode

@@ -1,0 +1,24 @@
+{
+    "stats": {
+        "energie": {}
+    },
+    "alteration": {
+        "buff":[],
+        "debuff":[],
+        "invulnerability": [],
+        "Damage": {
+            "Incoming": [],
+            "Reduction": {
+                "%": [],
+                "+": [],
+                "-": []
+            }
+        },
+        "stun": []
+    },
+    "advantage":{
+        "weakness":[],
+        "resilience":[]
+    },
+    "Death_in": -1
+}

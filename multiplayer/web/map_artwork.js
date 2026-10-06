@@ -44,7 +44,7 @@ function terrainCell(map, x, y, element, discovered = true, exit = false) {
   const cell = element("rect", {x: x * 40, y: y * 40, width: 40, height: 40, class: className, role: "button", tabindex: "0", "data-cell": `${x},${y}`});
   if (bridge) {
     cell.setAttribute("data-rotation", rotation);
-    if (discovered && !exit && !has("cover")) cell.style.fill = `url(#river-bridge-${rotation})`;
+    if (discovered && !exit && !has("cover")) cell.classList.add(`bridge-rotation-${rotation}`);
   }
   return cell;
 }

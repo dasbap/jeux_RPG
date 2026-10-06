@@ -313,3 +313,4 @@ def distance_km(source, destination):
 
 def walking_seconds(source, destination):
     return distance_km(source, destination) / 6 * 3600
+
