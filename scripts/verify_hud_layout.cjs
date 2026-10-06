@@ -30,6 +30,8 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    const button=page.locator('#skill-main-attack button');
    await button.focus();
    assert(await button.evaluate(node=>node===document.activeElement),'Attaque accessible au clavier');
+   await page.mouse.move(1,1);
+   assert(await page.locator('#skill-offense').isVisible(),'Compétence rapide visible sans maintien');
    await button.hover();
    const attackBefore=await button.boundingBox();
    await page.evaluate(()=>{

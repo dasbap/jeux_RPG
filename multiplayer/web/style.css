@@ -287,3 +287,6 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .combat-active .combat-mode #tactical-actions{right:84px}
 .skill-gesture-target{transform:scale(1.08);box-shadow:0 0 0 3px #fff,0 6px 16px #0006}
 @media(max-width:750px){.combat-active .combat-mode #combat-action-panel{width:244px;height:166px}.combat-active .skill-hud.collapsed .skill-main-attack{right:8px;bottom:8px}.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{bottom:176px}}
+
+.combat-active .skill-hud.collapsed{width:310px;height:210px;opacity:1}.combat-active .skill-hud.collapsed .skill-offense,.combat-active .skill-hud.collapsed .skill-buff,.combat-active .skill-hud.collapsed .skill-debuff{display:flex!important}
+@media(max-width:750px){.combat-active .skill-hud.collapsed{width:244px;height:166px}}

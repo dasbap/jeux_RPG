@@ -180,6 +180,15 @@ class Coordinator:
         while True:
             await asyncio.sleep(.5)
             try:
+                while not self.received.empty():
+                    item = self.received.get_nowait()
+                    if not self.owner():
+                        continue
+                    if item['id'] not in self.seen:
+                        self.seen[item['id']] = await self.execute(item['message'])
+                        if len(self.seen) > 256:
+                            self.seen.popitem(last=False)
+                    self.outgoing['reply:' + item['source']].append({'id': item['id'], 'result': self.seen[item['id']]})
                 for target in list(self.outgoing):
                     queue = self.outgoing[target]
                     if target == 'requests':
@@ -196,15 +205,6 @@ class Coordinator:
                     del queue[:len(items)]
                     if not queue:
                         self.outgoing.pop(target, None)
-                while not self.received.empty():
-                    item = self.received.get_nowait()
-                    if not self.owner():
-                        continue
-                    if item['id'] not in self.seen:
-                        self.seen[item['id']] = await self.execute(item['message'])
-                        if len(self.seen) > 256:
-                            self.seen.popitem(last=False)
-                    self.outgoing['reply:' + item['source']].append({'id': item['id'], 'result': self.seen[item['id']]})
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -380,7 +380,8 @@ def create_app(environment=None, coordinator=None):
         async def push():
             while True:
                 fast = coordinator.owner() and len(coordinator.store.service.runtime_presence) <= 16
-                await asyncio.sleep(.5 if fast else 1)
+                small = fast and len(coordinator.store.service.runtime_presence) <= 4
+                await asyncio.sleep(.15 if small else .5 if fast else 1)
                 if subscription is not None and not paused:
                     try:
                         result = await coordinator.rpc(subscription)
