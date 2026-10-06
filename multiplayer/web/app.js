@@ -516,6 +516,21 @@ function renderTutorial(adventure, preserveBattle = false) {
   } else if ($("message").parentElement === $("combat-action-panel")) $("registration").before($("message"));
   $("combat-layout").hidden = !fighting;
   $("field-camera").hidden = false;
+  let touchMove = $("field-move-selected");
+  if (!touchMove) {
+    touchMove = document.createElement("button");
+    touchMove.id = "field-move-selected";
+    touchMove.textContent = "Marcher ici";
+    touchMove.title = "Touchez une case de la carte, puis ce bouton pour vous déplacer.";
+    touchMove.addEventListener("click", () => {
+      if (!session?.tutorial?.battle || !inspectedCell || busy) return;
+      const me = session.tutorial.players.find(player => player.id === session.me);
+      if (focusedMob && entityPosition(session.tutorial, focusedMob)?.join(",") === inspectedCell.join(",")) approachEntity(inspectedCell);
+      else moveControlled(session.tutorial, me, inspectedCell);
+    });
+    $("field-camera").append(touchMove);
+  }
+  touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
   if (fighting) {
     for (const [parent, child] of [["combat-action-panel", "combat-view"], ["combat-player-panel", "combat-allies"], ["combat-player-panel", "unit-controls"], ["combat-map-panel", "map-strip"], ["combat-enemy-panel", "combat-enemies"]]) {
@@ -544,6 +559,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     mapPoint = "";
     viewContext = context;
   }
+  touchMove.disabled = busy || !inspectedCell;
   const me = adventure.players.find(player => player.id === session.me);
   const fieldSites = new Set((adventure.field_interactions || []).map(site => site.id));
   const canTalk = (adventure.position === "mira" && !fighting || fieldSites.has("mira")) && !adventure.moving;
@@ -1316,6 +1332,7 @@ function installWorldCamera(node) {
 }
 
 function enterCombatFullscreen() {
+  if (window.matchMedia?.("(pointer: coarse)").matches) return;
   if (!document.body.classList.contains("combat-active") || combatFullscreenRequested || document.fullscreenElement || !$("battle").requestFullscreen) return;
   combatFullscreenRequested = true;
   $("battle").requestFullscreen().catch(() => {});

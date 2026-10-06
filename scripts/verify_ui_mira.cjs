@@ -53,7 +53,7 @@ w.fetch = async (url, options) => {
   return {ok:true, json:async () => data};
 };
 w.eval(fs.readFileSync(path.join(root, 'multiplayer/web/map_artwork.js'), 'utf8'));
-w.eval(fs.readFileSync(path.join(root, 'multiplayer/web/app.js'), 'utf8') + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy;');
+w.eval(fs.readFileSync(path.join(root, 'multiplayer/web/app.js'), 'utf8') + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy; window.stubMovement = () => {const original = moveControlled; moveControlled = (adventure, me, destination) => {window.touchDestination = destination;}; return () => {moveControlled = original;};};');
 async function waitFor(check) {
   for (let i=0; i<100; i++) { if (check()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
   throw new Error('Dialogue de Mira bloqué');
@@ -66,6 +66,11 @@ async function waitFor(check) {
   assert.equal(calls.length, 0);
   assert.match(get('message').textContent, /Approchez-vous de Mira/);
   assert.equal(get('message').parentElement.id, 'combat-action-panel');
+  assert.equal(get('field-move-selected').disabled, false);
+  const restoreMovement = w.stubMovement();
+  get('field-move-selected').click();
+  assert.deepEqual(Array.from(w.touchDestination), [32,20]);
+  restoreMovement();
   w.mount(states.near);
   assert.equal(get('npc-view').hidden, false);
   assert.equal(get('npc-actions').textContent, 'Accepter la quête');
