@@ -17,13 +17,15 @@ async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console});clients.push(dom);
   dom.window.fetch=(url,opts)=>fetch(new URL(url,origin),opts);dom.window.crypto.randomUUID=randomUUID;dom.window.AbortController=AbortController;dom.window.AbortSignal=AbortSignal;
-  dom.window.eval(app+';window.socialTest={refresh,ready:()=>!busy};');
+  dom.window.eval(app+';window.socialTest={refresh,ready:()=>!busy,snapshot:()=>session};');
   el(dom,'account-name').value='social_'+randomUUID().slice(0,8);el(dom,'account-password').value=randomUUID();el(dom,'name').value='Allié '+index;el(dom,'class-name').value='Knight';
   el(dom,'register-form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await until(()=>!el(dom,'lobby').hidden,'Inscription par compte');
   await until(()=>dom.window.socialTest.ready(),'Inscription terminée');
   await rpc(dom,'/api/commands',{request_id:randomUUID(),action:'tutorial',params:{}});
-  await dom.window.socialTest.refresh(true);el(dom,'show-social').click();
+  await dom.window.socialTest.refresh(true);
+  await until(()=>dom.window.socialTest.snapshot()?.tutorial&&!el(dom,'character-menu').hidden,'Tutoriel affiché avant ouverture de Social');
+  if(el(dom,'social-view').hidden) el(dom,'show-social').click();
   assert(!el(dom,'social-view').hidden,'Social consultable dans le jeu');
  }
  const host=clients[0];
