@@ -1218,10 +1218,7 @@ function renderBattle(adventure, me) {
     return node;
   };
   mapPatterns(svg, element);
-  const clip = element("clipPath", {id:"battle-viewport-clip", clipPathUnits:"userSpaceOnUse"});
-  clip.append(element("rect", {x:left*40,y:top*40,width:width*40,height:height*40}));
-  svg.querySelector("defs").append(clip);
-  svg.setAttribute("clip-path", "url(#battle-viewport-clip)");
+  svg.setAttribute("clip-path", "inset(0)");
   const inView = position => position[0] + .5 >= left && position[0] + .5 < left + width && position[1] + .5 >= top && position[1] + .5 < top + height;
   const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
   for (let y = Math.floor(top); y < Math.ceil(top + height); y++) for (let x = Math.floor(left); x < Math.ceil(left + width); x++) {

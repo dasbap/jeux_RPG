@@ -67,7 +67,7 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    const quickNames=await page.locator('.mob-quick-actions button').evaluateAll(nodes=>nodes.map(node=>node.dataset.quickSkill));
    const favorites=await page.locator('.skill-favorite').evaluateAll(nodes=>nodes.map(node=>node.dataset.skill));
    assert(quickNames.every(name=>favorites.includes(name)),'Les monstres proposent uniquement les compétences rapides désignées');
-   assert(await page.locator('.battle-map').getAttribute('clip-path'),'Carte découpée aux limites de la vue');
+   assert.equal(await page.locator('.battle-map').getAttribute('clip-path'),'inset(0)','Découpe sur le viewport entier sans couper une partie du terrain');
    await page.mouse.move(1,1);
 
    if(width<751){
