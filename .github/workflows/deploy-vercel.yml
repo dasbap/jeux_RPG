@@ -8,6 +8,7 @@ on:
       - multiplayer/serverless.py
       - multiplayer/realtime.py
       - multiplayer/realtime_store.py
+      - multiplayer/catalogue.py
       - multiplayer/web/realtime.js
       - app.py
       - pyproject.toml

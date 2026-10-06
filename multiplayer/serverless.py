@@ -168,6 +168,11 @@ class Application:
             if method == "GET" and path in static:
                 name, mime = static[path]
                 status, payload = 200, (Path(__file__).parent / "web" / name).read_bytes()
+                if name == 'index.html':
+                    from html import escape
+                    from .catalogue import catalogue
+                    options = ''.join(f'<option value="{escape(item["id"], quote=True)}">{escape(item["name"])}</option>' for item in catalogue())
+                    payload = payload.replace(b'{{CLASS_OPTIONS}}', options.encode())
             else:
                 service = self.service()
                 limiter = DatabaseLimiter(service)

@@ -216,3 +216,7 @@ def test_catalogue_does_not_start_a_database_or_coordinator(monkeypatch):
         assert response.status_code == 200
         assert any(item['id'] == 'Knight' for item in response.json())
         assert not app.state.coordinator.started
+        home = client.get('/')
+        assert home.status_code == 200
+        assert '{{CLASS_OPTIONS}}' not in home.text
+        assert 'value="Knight"' in home.text

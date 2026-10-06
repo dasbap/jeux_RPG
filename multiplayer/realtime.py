@@ -355,7 +355,12 @@ def create_app(environment=None, coordinator=None):
             while True:
                 await asyncio.sleep(.5 if coordinator.owner() else 1)
                 if subscription is not None:
-                    result = await coordinator.rpc(subscription)
+                    try:
+                        result = await coordinator.rpc(subscription)
+                    except (TimeoutError, RuntimeError, OSError):
+                        with suppress(RuntimeError, WebSocketDisconnect):
+                            await websocket.close(code=1012)
+                        return
                     await send({'type': 'state', 'subscription': subscription['subscription'], 'result': result})
                     if result['body'].get('bundle_protocol') == 1:
                         subscription['headers']['x-rpg-bundle-hashes'] = json.dumps(result['body']['hashes'])
@@ -405,13 +410,8 @@ def create_app(environment=None, coordinator=None):
     @app.api_route('/{path:path}', methods=['GET', 'POST'])
     async def http(request: Request, path: str):
         if path == 'api/classes':
-            from .content import DATA
-            from .map_building import MOBS
-            from .skill_catalog import install
-            from .service import GameService
-            identifiers = (*GameService.playable(DATA.get('templates')), *install(DATA, MOBS))
-            names = {item['id']: item['name'] for item in [*DATA.get('templates', {}).get('classes', []), *DATA.get('classes', [])]}
-            return JSONResponse([{'id': identifier, 'name': names.get(identifier, identifier)} for identifier in identifiers])
+            from .catalogue import catalogue
+            return JSONResponse(catalogue())
         if path.startswith('api/'):
             try:
                 raw = await request.body()
