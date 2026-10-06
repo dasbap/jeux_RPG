@@ -210,11 +210,20 @@ class Coordinator:
             except Exception:
                 logging.getLogger(__name__).warning('Lot temps réel non livré')
 
+    async def memory_call(self, function, *args):
+        task = asyncio.create_task(asyncio.to_thread(function, *args))
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            with suppress(Exception):
+                await task
+            raise
+
     async def execute(self, message):
         async with self.lock:
             if not self.owner():
                 return {'status': 503, 'headers': {}, 'body': {'error': 'unavailable', 'message': 'Reconnexion du moteur en cours.'}}
-            return await asyncio.to_thread(self.store.request, message)
+            return await self.memory_call(self.store.request, message)
 
     async def rpc(self, message):
         await self.start()
@@ -269,7 +278,7 @@ class Coordinator:
                 async with self.lock:
                     if not self.owner():
                         continue
-                    await asyncio.to_thread(self.store.tick)
+                    await self.memory_call(self.store.tick)
                     if self.store.due is not None and self.store.due <= time.monotonic() and (self.saving is None or self.saving.done()):
                         self.saving = asyncio.create_task(self.save(self.store, self.store.pending_batch(), self.store.snapshot(), self.fence))
             except Exception:
@@ -288,8 +297,9 @@ class Coordinator:
             await self.pubsub.aclose()
         if self.redis:
             await self.redis.aclose()
-        if self.store:
-            self.store.close()
+        async with self.lock:
+            if self.store:
+                self.store.close()
         self.started = False
 
     async def flush(self):
@@ -369,7 +379,8 @@ def create_app(environment=None, coordinator=None):
 
         async def push():
             while True:
-                await asyncio.sleep(.5 if coordinator.owner() else 1)
+                fast = coordinator.owner() and len(coordinator.store.service.runtime_presence) <= 16
+                await asyncio.sleep(.5 if fast else 1)
                 if subscription is not None and not paused:
                     try:
                         result = await coordinator.rpc(subscription)

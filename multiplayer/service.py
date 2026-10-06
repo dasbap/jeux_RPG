@@ -118,12 +118,20 @@ class GameService(AccountMixin):
             for handler in self.chat_log.handlers:
                 handler.close()
 
-    def tick(self, session_id=None, prepare_views=True):
+    def tick(self, session_id=None, prepare_views=True, active_players=None):
         with self._transaction():
             now = self._now()
             self._expire(now)
             query = "SELECT t.session_id FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'"
-            rows = self.db.execute(query + (" AND s.id=?" if session_id is not None else ""), (session_id,) if session_id is not None else ()).fetchall()
+            parameters = ()
+            if session_id is not None:
+                query += ' AND s.id=?'
+                parameters = (session_id,)
+            if active_players is not None:
+                identifiers = tuple(active_players)
+                query += ' AND s.id IN (SELECT session_id FROM members WHERE player_id IN (' + ','.join('?' for _ in identifiers) + '))' if identifiers else ' AND 0'
+                parameters += identifiers
+            rows = self.db.execute(query, parameters).fetchall()
             active = {row["session_id"] for row in rows}
             self._tick_errors = {key: value for key, value in self._tick_errors.items() if key in active}
             self._view_errors = {key: value for key, value in self._view_errors.items() if key[0] in active}

@@ -257,6 +257,8 @@ class AccountMixin:
                     if team['owner'] == account['id'] and replacement:
                         self.db.execute('UPDATE teams SET owner=? WHERE id=?', (replacement[0], team['id']))
             elif action == 'realm':
+                if type(params['realm']) is not int:
+                    raise GameError('invalid_server', 'Serveur invalide.')
                 player = self._authenticate(token)
                 self._admit(player['id'], params['realm'])
             else:

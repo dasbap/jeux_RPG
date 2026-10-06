@@ -264,3 +264,19 @@ def test_suspension_and_revocation_apply_to_the_account(game):
     for token in (player['token'],other['token']):
         with pytest.raises(GameError) as failure:game.account_view(token)
         assert failure.value.status == 401
+
+
+def test_production_ticks_only_recently_active_players():
+    clock=Clock()
+    store=RuntimeStore({},clock=clock)
+    store.service.legacy_auth=False
+    alice=account(store.service,'Active');bob=account(store.service,'Offline')
+    a=start(store.service,alice,field=True);b=start(store.service,bob,field=True)
+    store.service.runtime_presence[bob['player_id']]['seen']=time.monotonic()-61
+    before=store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(b,)).fetchone()[0]
+    active_before=store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(a,)).fetchone()[0]
+    clock.value=20
+    store.tick()
+    assert store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(b,)).fetchone()[0] == before
+    assert store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(a,)).fetchone()[0] != active_before
+    store.close()

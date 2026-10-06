@@ -30,7 +30,8 @@ def progress_signature(party):
 class MemoryService(RemoteGameService):
     def tick(self, session_id=None):
         if session_id is None:
-            super().tick(prepare_views=False)
+            players = None if self.legacy_auth else {key for key, value in self.runtime_presence.items() if time.monotonic() - value['seen'] < 60}
+            super().tick(prepare_views=False, active_players=players)
 
     def close(self):
         pass
