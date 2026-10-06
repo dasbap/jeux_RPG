@@ -15,7 +15,7 @@
     <p class="intro">Découvrez votre classe, remportez votre premier combat et rejoignez les villages de Rosée et de Brume. Jouez seul ou invitez un compagnon avant de commencer.</p>
     <p id="message" role="status" aria-live="polite"></p>
     <nav id="character-menu" class="panel actions" aria-label="Menu du personnage" hidden>
-      <button id="show-stats" class="secondary">Caractéristiques</button><button id="show-equipment" class="secondary">Équipement équipé</button><button id="show-inventory" class="secondary">Inventaire</button><button id="show-quest" class="secondary">Journal de quêtes</button><button id="show-map" class="secondary">Carte</button><button id="show-bestiary" class="secondary">Bestiaire</button><button id="show-achievements" class="secondary">Succès et titres</button><button id="back-view" class="quiet" hidden>Retour</button>
+      <button id="show-options" class="secondary">Options</button><button id="show-stats" class="secondary">Personnage</button><button id="show-equipment" class="secondary">Équipement</button><button id="show-inventory" class="secondary">Inventaire</button><button id="show-quest" class="secondary">Journal de quêtes</button><button id="show-map" class="secondary">Carte</button><button id="show-bestiary" class="secondary">Bestiaire</button><button id="show-achievements" class="secondary">Succès</button><button id="back-view" class="quiet" hidden>Retour</button>
     </nav>
     <section id="registration" class="panel">
       <h2>Votre personnage</h2>
@@ -37,11 +37,12 @@
       <div class="section-head"><h2 id="battle-title">Salon</h2><span id="version" hidden></span></div>
       <div id="fighters" class="fighters"></div>
       <section id="tutorial-panel" hidden>
+        <div id="zone-banner" class="zone-banner"><strong id="zone-name"></strong><span id="zone-level"></span></div>
         <h3 id="location"></h3><p id="objective"></p>
         <div id="combat-layout" hidden><aside id="combat-player-panel" class="dashboard-box"><h2>Alliés · PV et ressources</h2></aside><div id="combat-map-panel"></div><aside id="combat-enemy-panel" class="dashboard-box"><h2>Ennemis et intentions</h2></aside><section id="combat-action-panel" class="dashboard-box"><h2 id="combat-action-title">Actions et sorts</h2></section></div>
         <section id="map-strip" class="dashboard-box map-strip">        <section id="map-view" hidden><h3>Carte</h3><p class="muted" id="map-help">Cliquez sur une icône de votre zone pour la rejoindre et interagir. Les autres zones restent consultables.</p><div id="field-camera" class="actions" hidden><button id="field-zoom-in" aria-label="Zoomer">+</button><button id="field-zoom-out" aria-label="Dézoomer">−</button><button id="field-center">Suivre le personnage</button><button id="field-left" aria-label="Vue vers la gauche">←</button><button id="field-up" aria-label="Vue vers le haut">↑</button><button id="field-down" aria-label="Vue vers le bas">↓</button><button id="field-right" aria-label="Vue vers la droite">→</button><span id="field-location"></span></div><div id="world-map"></div><details id="map-details"><summary>Détails, chemins et points connus</summary><label for="map-place">Lieu connu</label><select id="map-place"></select><div id="place-details"></div><div id="map-routes" class="actions"></div><h3>Points stratégiques</h3><div id="map-points" class="actions"></div><div id="point-details"></div><div id="point-actions" class="actions"></div></details></section></section>
         <div class="adventure-grid">
-          <section class="dashboard-box consultation"><h2>Personnage</h2>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-vitals"></div><div id="character-details"></div></section>
+          <section class="dashboard-box consultation"><h2>Menu</h2><section id="options-view" hidden><h3>Options</h3><p class="muted">Interface de jeu compacte. Les réglages de compte restent accessibles depuis le salon.</p></section>        <section id="stats-view" hidden><h3>Caractéristiques et compétences</h3><div id="character-vitals"></div><div id="character-details"></div></section>
         <section id="equipment-view" hidden><h3>Équipement équipé</h3><div id="equipment-details"></div></section>
         <section id="inventory-view" hidden><h3>Inventaire</h3><div id="inventory-details"></div></section>
 
@@ -55,11 +56,10 @@
         <section id="combat-view" hidden>
           <section id="combat-allies"><div id="combat-resources"></div><h3>Invocations · PV et Mana</h3><div id="combat-stats-details"></div><div id="selected-unit-stats"></div></section><section id="unit-controls" hidden><h3>Alliés contrôlables</h3><p id="control-status"></p><div id="unit-control-list"></div><div id="unit-control-actions" class="actions"></div></section><section id="combat-enemies"><h3>Entités de la sélection</h3><p id="cell-selection-status"></p><div id="cell-entities" class="actions"></div><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div></section><p id="combat-status" role="status"></p>
           <div id="self-skills" class="actions" aria-label="Invocations personnelles"></div>
-          <div id="target-controls" hidden><label for="combat-target">Choisir la cible de votre action</label><select id="combat-target"></select></div>
+          <div id="target-controls" hidden><select id="combat-target" aria-label="Cible automatique"></select></div>
           <div id="combat-actions" class="actions"></div><div id="skills" class="actions"></div>
           <div id="corpse-actions" class="actions"></div><div id="tactical-actions" class="actions"></div>
           <section id="combat-feedback"><p id="combat-notice" role="status" aria-live="polite"></p><details><summary>Journal du combat</summary><ol id="combat-events"></ol></details></section>
-          <p class="muted">Sélectionnez votre cible sur la carte ou dans le panneau des entités à droite.</p>
         </section>
           </section>
           <section class="dashboard-box quest-box">        <section id="quest-view" hidden><h3>Journal de quête</h3><p id="quest-progress"></p><p id="quest-description"></p><div id="quest-actions" class="actions"></div></section></section>
