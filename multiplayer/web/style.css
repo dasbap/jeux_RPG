@@ -121,3 +121,48 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
   .combat-active #chat-channel{display:none}
   .combat-active.hud-menu-open .combat-mode .adventure-grid{right:6px;top:48px;width:72vw;max-height:82vh}
 }
+
+
+.skill-hud{position:relative;width:310px;height:210px;transition:width .18s ease,height .18s ease,opacity .18s ease}
+.skill-slot{position:absolute;display:flex;align-items:center;justify-content:center}
+.skill-main-attack{right:14px;bottom:12px}
+.skill-offense{right:118px;bottom:12px}
+.skill-buff{right:14px;bottom:116px}
+.skill-debuff{right:118px;bottom:116px}
+.skill-icon{width:72px;height:72px;min-width:72px;min-height:72px;border-radius:50%;padding:0;font-size:1.8rem;line-height:1;display:grid;place-items:center;border:2px solid rgba(255,255,255,.2);box-shadow:0 6px 16px rgba(0,0,0,.35);transition:transform .12s ease,filter .12s ease,opacity .12s ease}
+.skill-icon:hover:not(:disabled){transform:scale(1.06)}
+.skill-icon:disabled{opacity:.38}
+.skill-attack{width:90px;height:90px;min-width:90px;min-height:90px;font-size:2.25rem;background:#c55353;color:#fff;border-color:#f4b0b0}
+.skill-offense .skill-icon,.skill-icon.skill-offense{background:#9d3d3d;color:#fff;border-color:#d88c8c}
+.skill-buff .skill-icon,.skill-icon.skill-buff{background:#3e7fb0;color:#fff;border-color:#8ac3eb}
+.skill-debuff .skill-icon,.skill-icon.skill-debuff{background:#7353a5;color:#fff;border-color:#b7a0df}
+.skill-popover{position:absolute;z-index:12;display:flex;gap:7px;padding:7px;background:rgba(12,16,23,.94);border:1px solid #4a566a;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.4);backdrop-filter:blur(10px)}
+.skill-popover[hidden]{display:none!important}
+.skill-popover .skill-icon{width:58px;height:58px;min-width:58px;min-height:58px;font-size:1.35rem}
+.skill-popover-offense{right:105px;bottom:96px;transform:translateX(-35%)}
+.skill-popover-buff{right:94px;bottom:102px}
+.skill-popover-debuff{right:108px;bottom:98px;transform:translateX(-38%)}
+.skill-tooltip{position:absolute;right:0;bottom:100%;z-index:15;width:min(360px,70vw);margin-bottom:8px;padding:9px 11px;border-radius:10px;background:rgba(8,11,17,.96);border:1px solid #566177;color:#f3f5f8;font-size:.74rem;line-height:1.45;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.skill-tooltip[hidden]{display:none!important}
+.skill-hud.collapsed{width:104px;height:104px;opacity:.74}
+.skill-hud.collapsed .skill-offense,.skill-hud.collapsed .skill-buff,.skill-hud.collapsed .skill-debuff,.skill-hud.collapsed .skill-popover,.skill-hud.collapsed .skill-tooltip{display:none!important}
+.skill-hud.collapsed .skill-main-attack{right:7px;bottom:7px}
+.skill-hud.collapsed:hover{opacity:1}
+.combat-active .combat-mode #combat-action-panel{width:auto;min-width:0;max-width:none;background:transparent;backdrop-filter:none;padding:0}
+.combat-active .combat-mode #combat-action-panel #combat-view{display:block}
+.combat-active .combat-mode #combat-action-panel #self-skills,.combat-active .combat-mode #combat-action-panel #combat-actions,.combat-active .combat-mode #combat-action-panel #skills{display:none!important}
+
+@media(max-width:750px){
+  .skill-hud{width:244px;height:166px}
+  .skill-main-attack{right:8px;bottom:8px}
+  .skill-offense{right:88px;bottom:8px}
+  .skill-buff{right:8px;bottom:88px}
+  .skill-debuff{right:88px;bottom:88px}
+  .skill-icon{width:56px;height:56px;min-width:56px;min-height:56px;font-size:1.35rem}
+  .skill-attack{width:70px;height:70px;min-width:70px;min-height:70px;font-size:1.7rem}
+  .skill-popover .skill-icon{width:46px;height:46px;min-width:46px;min-height:46px;font-size:1.05rem}
+  .skill-popover-offense{right:78px;bottom:70px}
+  .skill-popover-buff{right:70px;bottom:78px}
+  .skill-popover-debuff{right:82px;bottom:76px}
+  .skill-hud.collapsed{width:80px;height:80px}
+}
