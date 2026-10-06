@@ -16,7 +16,10 @@ def main():
         status = None
         for attempt in range(3):
             try:
-                with urlopen(Request(base + route, headers={"Origin": base}), timeout=30) as response:
+                headers = {"Origin": base}
+                if route in ("/", "/admin"):
+                    headers.update({"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document", "Referer": "https://vercel.com/"})
+                with urlopen(Request(base + route, headers=headers), timeout=30) as response:
                     status = response.status
                     body = response.read(2 * 1024 * 1024)
                     if route == "/api/classes":

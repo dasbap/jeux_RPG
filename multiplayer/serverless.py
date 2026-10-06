@@ -132,7 +132,8 @@ class Application:
             origin = environ.get("HTTP_ORIGIN")
             if origin and origin != ("https://" if self.environment.get("VERCEL") else environ.get("wsgi.url_scheme", "http") + "://") + host:
                 raise GameError("invalid_origin", "Origine non autorisée.", 403)
-            if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site":
+            navigation = method == "GET" and environ.get("HTTP_SEC_FETCH_MODE") == "navigate" and environ.get("HTTP_SEC_FETCH_DEST") == "document" and path in ("/", "/admin")
+            if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site" and not navigation:
                 raise GameError("invalid_origin", "Origine non autorisée.", 403)
             if self.environment.get("VERCEL"):
                 environ = {**environ, "wsgi.url_scheme": "https"}

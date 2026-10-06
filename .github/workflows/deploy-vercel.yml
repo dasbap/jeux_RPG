@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/deploy-vercel.yml
       - scripts/verify_deployment.py
+      - multiplayer/serverless.py
   workflow_dispatch:
 permissions:
   contents: read

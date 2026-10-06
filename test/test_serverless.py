@@ -85,6 +85,17 @@ def test_vercel_hosts_and_https_origin_with_proxy_http(web):
     assert request(app, "/admin", HTTP_HOST="unrelated.vercel.app")["status"] == 403
 
 
+def test_cross_site_document_navigation_preserves_api_protection(web):
+    app, _ = web
+    headers = {"HTTP_SEC_FETCH_SITE": "cross-site", "HTTP_SEC_FETCH_MODE": "navigate", "HTTP_SEC_FETCH_DEST": "document"}
+    assert request(app, "/", **headers)["status"] == 200
+    assert request(app, "/admin", **headers)["status"] == 200
+    assert request(app, "/api/classes", **headers)["status"] == 403
+    assert request(app, "/api/admin/accounts", "POST", {}, "a" * 40, **headers)["status"] == 403
+    assert request(app, "/admin", HTTP_ORIGIN="https://evil.test", **headers)["status"] == 403
+    assert request(app, "/admin", HTTP_SEC_FETCH_SITE="cross-site")["status"] == 403
+
+
 def test_database_rate_limit_is_shared_and_bounded(tmp_path):
     a, b = GameService(tmp_path / "limit.db"), GameService(tmp_path / "limit.db")
     try:
