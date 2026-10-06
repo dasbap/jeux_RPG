@@ -30,6 +30,28 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    const button=page.locator('#skill-main-attack button');
    await button.focus();
    assert(await button.evaluate(node=>node===document.activeElement),'Attaque accessible au clavier');
+   await button.hover();
+   const attackBefore=await button.boundingBox();
+   await page.evaluate(()=>{
+    document.getElementById('message').textContent='Aucune cible à portée pour l’attaque. Message sur plusieurs lignes pour vérifier la stabilité.';
+    for(const id of ['corpse-actions','tactical-actions']){
+     const extra=document.createElement('button');extra.dataset.layoutFixture='true';extra.textContent=id==='corpse-actions'?'Dépecer':'Se cacher';document.getElementById(id).append(extra);
+    }
+   });
+   assert.deepEqual(await button.boundingBox(),attackBefore,'Messages et actions contextuelles ne déplacent pas l’attaque');
+   const favorite=page.locator('#skill-offense button');
+   if(await favorite.count()){
+    await favorite.evaluate(node=>{node.hudShortAction=()=>{window.slideSkillUsed=(window.slideSkillUsed||0)+1;};});
+    const target=await favorite.boundingBox();
+    await page.mouse.move(attackBefore.x+attackBefore.width/2,attackBefore.y+attackBefore.height/2);
+    await page.mouse.down();
+    await page.waitForTimeout(450);
+    await page.mouse.move(target.x+target.width/2,target.y+target.height/2);
+    await page.mouse.up();
+    assert.equal(await page.evaluate(()=>window.slideSkillUsed),1,'Maintenir l’attaque puis glisser active la compétence au relâchement');
+    assert.equal(await page.evaluate(()=>Boolean(document.getElementById('skill-hud').hudGesture)),false,'Geste terminé');
+   }
+   await page.evaluate(()=>{document.getElementById('message').textContent='';document.querySelectorAll('[data-layout-fixture]').forEach(node=>node.remove());});
    if(width<751){
     const stick=await rect('touch-stick');
     assert(stick&&stick.x<width/2&&stick.y>height/2,'Joystick à gauche');

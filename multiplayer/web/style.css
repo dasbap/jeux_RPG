@@ -277,3 +277,13 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .combat-active.hud-menu-open #battle:not(.combat-mode) #map-details{display:block}
 #outing-vitals{position:fixed;top:10px;left:12px;z-index:35;width:210px;max-height:30dvh;overflow:auto;background:#17202bd9;border:1px solid #495264;border-radius:12px;padding:8px}#outing-vitals .vitals-card{padding:0;margin:0;border:0}#outing-vitals .vitals-stats,#outing-vitals .status-list{display:none}
 @media(max-width:750px){#outing-vitals{width:39vw;font-size:.72rem}.combat-active #battle:not(.combat-mode) .adventure-grid{max-width:58vw;max-height:40dvh}.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{top:205px;max-width:95vw;max-height:calc(100dvh - 217px)}}
+
+.combat-active .combat-mode #combat-action-panel{width:310px;height:210px;overflow:visible}
+.combat-active .combat-mode .skill-hud{position:absolute;right:0;bottom:0;touch-action:none}
+.combat-active .skill-hud.collapsed .skill-main-attack{right:14px;bottom:12px}
+.combat-active .combat-mode #combat-action-panel #message{position:absolute;right:0;bottom:100%;width:min(310px,70vw);margin:0 0 8px;padding:8px;border-radius:8px;background:#11141bd9;pointer-events:none}
+.combat-active .combat-mode #combat-action-panel #message:empty{display:none}
+.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{position:absolute;right:0;bottom:220px;max-width:310px;margin:0}
+.combat-active .combat-mode #tactical-actions{right:84px}
+.skill-gesture-target{transform:scale(1.08);box-shadow:0 0 0 3px #fff,0 6px 16px #0006}
+@media(max-width:750px){.combat-active .combat-mode #combat-action-panel{width:244px;height:166px}.combat-active .skill-hud.collapsed .skill-main-attack{right:8px;bottom:8px}.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{bottom:176px}}

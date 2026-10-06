@@ -573,22 +573,19 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
     element.hudLongAction = longAction || (skill ? () => showTooltip(element, skill) : null);
     if (element.dataset.holdBound) return;
     element.dataset.holdBound = "true";
-    let timer = 0, held = false, inside = false;
-    const cancel = () => { if (timer) clearTimeout(timer); timer = 0; };
     element.addEventListener("pointerdown", event => {
-      if (event.button !== 0) return;
-      inside = true; held = false; cancel();
-      timer = setTimeout(() => { if (!inside) return; held = true; element.hudLongAction?.(); }, 420);
+      if (event.button !== 0 || busy || root.hudGesture) return;
+      event.preventDefault();
+      root.classList.remove("collapsed");
+      const gesture = {pointerId:event.pointerId, start:element, over:element, held:false, timer:0};
+      root.hudGesture = gesture;
+      root.setPointerCapture?.(event.pointerId);
+      gesture.timer = setTimeout(() => {
+        if (root.hudGesture !== gesture) return;
+        gesture.held = true;
+        gesture.over?.hudLongAction?.();
+      }, 420);
     });
-    element.onpointerleave = () => { inside = false; cancel(); hideTooltip(); };
-    element.onpointerenter = () => { inside = true; };
-    element.addEventListener("pointerup", event => {
-      if (event.button !== 0) return;
-      cancel();
-      if (held) { hideTooltip(); return; }
-      if (!busy) element.hudShortAction?.();
-    });
-    element.onpointercancel = () => { inside = false; cancel(); hideTooltip(); };
     element.onclick = event => {event.preventDefault(); if (event.detail === 0 && !busy) element.hudShortAction?.();};
     element.onkeydown = event => {if (["ArrowDown", "F2"].includes(event.key)) {event.preventDefault(); element.hudLongAction?.();}};
   }
@@ -658,8 +655,41 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
       if (skill) iconButton(skill, openCategory, "skill-choice", button); else button.remove();
     }
   }
+  root.hudHideTooltip = hideTooltip;
+  if (!root.dataset.gestureBound) {
+    root.dataset.gestureBound = "true";
+    root.addEventListener("pointermove", event => {
+      const gesture = root.hudGesture;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      const hit = document.elementFromPoint?.(event.clientX, event.clientY)?.closest(".skill-icon");
+      const next = hit && root.contains(hit) && !hit.disabled ? hit : null;
+      if (next === gesture.over) return;
+      clearTimeout(gesture.timer);
+      root.hudHideTooltip?.();
+      gesture.over?.classList.remove("skill-gesture-target");
+      gesture.over = next;
+      if (next) {
+        next.classList.add("skill-gesture-target");
+        if (next !== gesture.start) { gesture.held = true; next.hudLongAction?.(); }
+      }
+    });
+    const finish = event => {
+      const gesture = root.hudGesture;
+      if (!gesture || event && gesture.pointerId !== event.pointerId) return;
+      clearTimeout(gesture.timer);
+      root.hudGesture = null;
+      gesture.over?.classList.remove("skill-gesture-target");
+      root.hudHideTooltip?.();
+      if (root.hasPointerCapture?.(gesture.pointerId)) root.releasePointerCapture(gesture.pointerId);
+      if (event?.type === "pointerup" && !busy && gesture.over && (!gesture.held || gesture.over !== gesture.start)) gesture.over.hudShortAction?.();
+    };
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) root.addEventListener(type, finish);
+    window.addEventListener("blur", () => finish());
+    document.addEventListener("visibilitychange", () => {if (document.hidden) finish();});
+  }
   root.onpointerleave = event => {
-    if (event.buttons) return;
+    if (event.buttons || root.hudGesture) return;
     closePopover();
     root.classList.add("collapsed");
     hideTooltip();
