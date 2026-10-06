@@ -580,7 +580,9 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
     button.setAttribute("aria-label", skill.name);
     button.textContent = skillGlyph(skill, category);
     const [target] = skillTargets(adventure, me, skill, mob);
-    button.disabled = busy || !target;
+    button.disabled = busy;
+    button.classList.toggle("skill-unavailable", !target);
+    button.setAttribute("aria-disabled", String(!target));
     bindHold(button, () => { saveFavoriteSkill(me, category, skill); closePopover(); useSkill(skill); }, null, skill);
     return button;
   }
