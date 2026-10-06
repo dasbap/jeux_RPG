@@ -70,7 +70,7 @@ async function api(path, body, authenticated = true) {
   }
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
-  const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
+  const compactCommand = path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "craft", "upgrade", "battle_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
   if (compactCommand) headers["X-RPG-Command-Ack"] = "1";
   const bundled = path === "/api/state" || path === "/api/commands" && !compactCommand;
   if (bundled) {
@@ -510,6 +510,9 @@ function renderCombatFeedback(adventure) {
 function renderTutorial(adventure, preserveBattle = false) {
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
+  if (fighting) {
+    if ($("message").parentElement !== $("combat-action-panel")) $("combat-action-panel").prepend($("message"));
+  } else if ($("message").parentElement === $("combat-action-panel")) $("registration").before($("message"));
   $("combat-layout").hidden = !fighting;
   $("field-camera").hidden = false;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
@@ -553,6 +556,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("npc-view").hidden = !canTalk;
   $("craft-view").hidden = !atForge;
   for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
+  const questParent = fighting ? $("combat-action-panel") : document.querySelector(".quest-box");
+  if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
   $("fighters").hidden = true;
   for (const view of ["stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) {
@@ -618,7 +623,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-dialogue").textContent = adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : "Mira : vous avez vaincu les trois gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.";
-  if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills === (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
+  if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
@@ -956,7 +961,13 @@ function renderBattle(adventure, me) {
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id});
     node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
-    node.onclick = () => { inspectedCell = site.position; renderTutorial(session.tutorial, true); message(site.name); if (site.dialogue && Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5) tutorialCommand("talk", {npc: site.id}); };
+    node.onclick = () => {
+      inspectedCell = site.position;
+      renderTutorial(session.tutorial, true);
+      const nearby = Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5;
+      if (nearby && (site.id === "mira" && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3)) || site.dialogue)) tutorialCommand("talk", {npc: site.id});
+      else message(site.id === "mira" && !nearby ? "Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle." : site.name);
+    };
     node.ondblclick = () => moveControlled(adventure, me, site.position);
     svg.append(node);
   }
@@ -1143,6 +1154,7 @@ async function command(action, params = {}) {
       if (session?.id === data.session.id && data.session.revision >= session.revision) session = {...session, revision: data.session.revision, state: data.session.state};
     } else if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
     if (!session) return;
+    if (action === "talk") message(data.session.events?.at(-1)?.message || "Dialogue mis à jour dans le journal de quête.");
     sessionId = session.id;
     remember();
     if (data.invite) {

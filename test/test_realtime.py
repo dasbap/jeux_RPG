@@ -3,6 +3,7 @@ import json
 import os
 import time
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -87,6 +88,25 @@ def test_completed_quests_and_level_trigger_checkpoint():
     mutate(store, room, lambda party: party['characters'][player['player']['id']].update(level=2))
     store.capture()
     assert ('tutorials', (room,)) in store.pending
+    store.close()
+
+
+def test_accepting_mira_quest_is_saved_without_refresh_writes():
+    store = RuntimeStore(ENV, clock=SimpleNamespace(now=lambda: 0, ratio=240))
+    player, room = adventure(store)
+    mutate(store, room, lambda party: party.update(step='village', position='mira'))
+    store.capture()
+    store.saved(store.pending_batch())
+    state = store.request(message('/api/state', token=player['token']))['body']['session']
+    result = store.request(message('/api/commands', {'request_id': uuid.uuid4().hex, 'action': 'talk',
+                           'params': {'npc': 'mira', 'session_id': room, 'revision': state['revision']}}, player['token']))
+    assert result['status'] == 200
+    assert result['body']['session']['tutorial']['quest'] == 'active'
+    assert json.loads(store.pending[('tutorials', (room,))]['data'])['quest'] == 'active'
+    store.saved(store.pending_batch())
+    for _ in range(5):
+        assert store.request(message('/api/state', token=player['token']))['status'] == 200
+    assert not store.pending
     store.close()
 
 

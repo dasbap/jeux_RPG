@@ -20,7 +20,7 @@ def progress_signature(party):
     completed = sorted(key for key, value in party.get('custom_quests', {}).items() if value.get('status') == 'completed')
     value = {'inventory': party.get('inventory'), 'equipment': party.get('equipment'),
              'characters': {key: [value.get('level'), value.get('exp')] for key, value in party.get('characters', {}).items()},
-             'quests': [party.get('quest') == 'completed', completed],
+             'quests': [party.get('quest'), completed],
              'zone': zone_of(party.get('position')) or zone_of(party.get('field_map')),
              'checkpoint': party.get('autosave_checkpoint')}
     return json.dumps(value, sort_keys=True, separators=(',', ':'))

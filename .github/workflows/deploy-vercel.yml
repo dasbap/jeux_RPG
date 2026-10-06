@@ -10,6 +10,9 @@ on:
       - multiplayer/realtime_store.py
       - multiplayer/catalogue.py
       - multiplayer/web/realtime.js
+      - multiplayer/web/app.js
+      - multiplayer/web/style.css
+      - scripts/verify_ui_mira.cjs
       - app.py
       - pyproject.toml
       - test/test_realtime.py
@@ -51,6 +54,10 @@ jobs:
       - run: npm install --prefix .deploy-tools vercel@62.2.0 jsdom@26.1.0
       - name: Verifier l'interface admin
         run: node scripts/verify_admin_ui.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Verifier la quete de Mira
+        run: node scripts/verify_ui_mira.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Initialiser et verifier la base Turso

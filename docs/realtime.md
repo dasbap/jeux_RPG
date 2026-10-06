@@ -4,7 +4,7 @@ L'entrée Vercel est une application ASGI FastAPI. Le navigateur de production u
 
 Le moteur calcule les combats dans une base SQLite en RAM. Turso est chargé au démarrage du moteur, puis utilisé pour les sauvegardes. Les lectures d'état, les déplacements, les pertes de PV, les cooldowns et les changements de salle dans une même zone ne consultent pas Turso et ne déclenchent pas de sauvegarde.
 
-Un changement d'inventaire, d'équipement, d'XP, de niveau, une quête complétée, un changement de zone ou un marqueur de checkpoint automatique capture un point de sauvegarde. La première modification ouvre une fenêtre fixe de cinq secondes. Les modifications suivantes remplacent les lignes concernées dans le même lot, sans repousser indéfiniment la sauvegarde. Le point capturé ne suit pas les déplacements ultérieurs dans la même zone.
+Un changement d'inventaire, d'équipement, d'XP, de niveau, une quête acceptée ou complétée, un changement de zone ou un marqueur de checkpoint automatique capture un point de sauvegarde. La première modification ouvre une fenêtre fixe de cinq secondes. Les modifications suivantes remplacent les lignes concernées dans le même lot, sans repousser indéfiniment la sauvegarde. Le point capturé ne suit pas les déplacements ultérieurs dans la même zone.
 
 Les comptes, les modifications administratives, la création d'une partie et ses participants sont également conservés. Une sauvegarde échouée reste en attente et est retentée après cinq secondes. Les comptes et les parties existants sont repris sans migration destructive du schéma.
 
