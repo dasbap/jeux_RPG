@@ -552,7 +552,7 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
     element.onpointerdown = event => {
       if (event.button !== 0) return;
       inside = true; held = false; cancel();
-      timer = setTimeout(() => { if (!inside) return; held = true; if (skill) showTooltip(element, skill); else longAction?.(); }, 420);
+      timer = setTimeout(() => { if (!inside) return; held = true; if (longAction) longAction(); else if (skill) showTooltip(element, skill); }, 420);
     };
     element.onpointerleave = () => { inside = false; cancel(); hideTooltip(); };
     element.onpointerenter = () => { inside = true; };
