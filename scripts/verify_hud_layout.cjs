@@ -22,6 +22,7 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    const rect=async id=>page.locator('#'+id).boundingBox();
    const menu=await rect('character-menu'),vitals=await rect('combat-player-panel'),zone=await rect('zone-banner'),actions=await rect('skill-hud'),map=await rect('world-map');
    assert(menu&&vitals&&zone&&actions&&map,'HUD visible');
+   assert(await page.locator('#combat-enemy-panel').isVisible(),'Raccourcis des monstres visibles sur ordinateur et mobile');
    assert(menu.x>width/2&&vitals.x<width/4,'Menus et PV aux bons coins');
    assert(actions.x+actions.width<=width+1&&actions.y+actions.height<=height+1,'Actions dans l’écran : '+JSON.stringify({width,height,actions}));
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
