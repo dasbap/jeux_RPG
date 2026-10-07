@@ -2,7 +2,15 @@
 function requestTravel(destination) {
   const adventure = session?.tutorial;
   if (!adventure) return;
-  if (adventure.battle) return message("Terminez le combat avant de voyager.");
+  if (adventure.field_map && adventure.battle) {
+    const site = adventure.battle.map?.sites?.find(item => item.id === destination);
+    if (site) {
+      const me = adventure.players.find(player => player.id === session.me);
+      if (!me) return;
+      return moveControlled(adventure, me, site.position);
+    }
+    if (adventure.battle.hostiles_alive) return message("Terminez le combat avant de voyager.");
+  } else if (adventure.battle) return message("Terminez le combat avant de voyager.");
   return tutorialCommand("move", {destination});
 }
 function selectEntity(id) {
@@ -270,7 +278,9 @@ function renderBattle(adventure, me) {
       renderTutorial(session.tutorial, true);
       const nearby = Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5;
       if (nearby && (site.id === "mira" && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3)) || site.dialogue)) tutorialCommand("talk", {npc: site.id});
-      else message(site.id === "mira" && !nearby ? "Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle." : site.name);
+      else if (!nearby && site.id === "mira") message("Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle.");
+      else if (!nearby && site.dialogue) message(`Approchez-vous de ${site.name} : double-cliquez sur sa position pour marcher jusqu’à lui parler.`);
+      else message(site.name);
     };
     node.ondblclick = () => moveControlled(adventure, me, site.position);
     svg.append(node);
