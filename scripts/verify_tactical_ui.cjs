@@ -8,10 +8,10 @@ const fixture = fixtures.combat;
 const errors = [];
 const virtualConsole = new VirtualConsole();
 virtualConsole.on("jsdomError", error => errors.push(error.message));
-const dom = new JSDOM(fs.readFileSync(path.join(root, "multiplayer/web/index.html"), "utf8"), {url: "http://127.0.0.1:8080", runScripts: "outside-only", virtualConsole});
+const dom = new JSDOM(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/index.html"), "utf8"), {url: "http://127.0.0.1:8080", runScripts: "outside-only", virtualConsole});
 dom.window.setInterval = () => 0;
-dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/map_artwork.js"), "utf8"));
-dom.window.eval(fs.readFileSync(path.join(root, "multiplayer/web/app.js"), "utf8") + `
+dom.window.eval(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/map_artwork.js"), "utf8"));
+dom.window.eval(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/app.js"), "utf8") + `
 window.uiTest = {gridPath, calls: [], world: adventure => {worldCameras.clear(); mapPlace = adventure.world.places[0].id; renderWorld(adventure, adventure.players[0]);}, render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
 `);
