@@ -160,13 +160,16 @@ def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None, fi
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seconds", type=int, default=30)
+    parser.add_argument("--users", type=int, choices=range(1, 501), default=30)
     parser.add_argument("--output", default="test/load/30_users.json")
-    parser.add_argument("--combat-users", type=int, choices=range(31), default=15)
+    parser.add_argument("--combat-users", type=int, choices=range(501), default=15)
     parser.add_argument("--poll-interval", type=float, choices=(.25, .5, 1), default=1)
     parser.add_argument("--max-p95", type=float)
     parser.add_argument("--fixed-zones", action="store_true")
     args = parser.parse_args()
-    report = run(args.seconds, combat_users=args.combat_users, poll_interval=args.poll_interval, max_p95=args.max_p95, fixed_zones=args.fixed_zones)
+    if args.combat_users > args.users:
+        parser.error("--combat-users ne peut pas dépasser --users")
+    report = run(args.seconds, users=args.users, combat_users=args.combat_users, poll_interval=args.poll_interval, max_p95=args.max_p95, fixed_zones=args.fixed_zones)
     Path(args.output).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False))
     raise SystemExit(bool(report["errors"]) or not report["server_alive"] or not report["ticker_alive"] or not report["latency_target_met"])
