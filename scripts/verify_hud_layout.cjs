@@ -3,6 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
+const webAppSource=require('./web_app_source.cjs');
 const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
 (async()=>{
  const browser=await chromium.launch({headless:true});
@@ -16,7 +17,8 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    await page.goto('http://hud.test/');
    await page.addStyleTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/style.css'),'utf8')});
    await page.evaluate(()=>{window.fetch=()=>new Promise(()=>{});window.setInterval=()=>0;});
-   for(const file of ['map_artwork.js','mobile_controls.js','app.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web',file),'utf8')});
+   for(const file of ['map_artwork.js','mobile_controls.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web',file),'utf8')});
+   await page.addScriptTag({content:webAppSource(root)});
    await page.evaluate(adventure=>{
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderTutorial(session.tutorial);`);
    },fixture);
