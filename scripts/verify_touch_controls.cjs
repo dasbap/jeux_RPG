@@ -9,7 +9,7 @@ const state={active:true,busy:false,key:'room:1',actor:{route:[]}};
 w.Date.now=()=>now;
 w.setInterval=callback=>{assert.equal(timer,null); timer=callback; return 1;};
 w.clearInterval=()=>{timer=null;};
-w.eval(fs.readFileSync(path.join(__dirname,'../multiplayer/web/mobile_controls.js'),'utf8'));
+w.eval(fs.readFileSync(path.join(__dirname,'../jeuxRPG/multiplayer/web/mobile_controls.js'),'utf8'));
 const source=w.document.createElement('button');
 source.textContent='Attaque simple'; source.onclick=()=>{clicks++;};
 const controls=w.createRpgTouchControls({state:()=>state,move:()=>{moves++;return true;},stop:()=>{stops++;},actions:()=>[source]});

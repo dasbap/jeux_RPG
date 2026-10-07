@@ -16,23 +16,23 @@ if TYPE_CHECKING:
 class SkillMixin:
     """
     Mixin providing skill-related functionality.
-    
+
     Handles:
     - Skill retrieval
     - Skill usage with validation
     - Available skills listing
     """
-    
+
     def get_skill(self: 'Character', skill_name: str) -> Skill:
         """
         Get skill by name.
-        
+
         Args:
             skill_name: Name of skill to retrieve
-            
+
         Returns:
             Requested Skill object
-            
+
         Raises:
             KeyError: If skill doesn't exist
         """
@@ -41,22 +41,22 @@ class SkillMixin:
         raise KeyError(f"Skill '{skill_name}' not found for {self.name}")
 
     def use_skill(
-        self: 'Character', 
-        skill_name: str, 
+        self: 'Character',
+        skill_name: str,
         target: Optional['Character'] = None
     ) -> Tuple[bool, str]:
         """
         Attempt to use a skill, with comprehensive checks and execution.
-        
+
         Args:
             skill_name: Name of skill to use
             target: Optional target character (default: None)
-            
+
         Returns:
             Tuple of (success, message) where:
             - success: Boolean indicating if skill was used
             - message: String describing result
-            
+
         The method performs the following checks in order:
         1. Skill existence
         2. Energy requirements
@@ -67,20 +67,20 @@ class SkillMixin:
         try:
             # Get the skill instance
             skill = self.get_skill(skill_name)
-            
+
             # Check energy requirements
             if not self.has_required_energie(skill):
                 return False, f"Not enough energy to use {skill_name}"
-                
+
             # Check cooldown status
             if not skill.is_ready():
                 remaining = skill.current_cooldown
                 return False, f"{skill.name} is on cooldown ({remaining} rounds remaining)"
-            
+
             # Validate target if skill requires one
             if skill.requires_target and target is None:
                 return False, f"{skill.name} requires a target"
-                
+
             # Check if target is valid (alive and not self for harmful skills)
             if target is not None:
                 if not target.is_alive() and skill.skill_type != SkillType.RESURRECT:
@@ -101,13 +101,13 @@ class SkillMixin:
     def get_available_skills(self: 'Character') -> Dict[str, Skill]:
         """Get dictionary of all available skills."""
         return self.skills.copy()
-    
+
     def rest(self: 'Character') -> str:
         """Restore energy and reduce skill cooldowns."""
         # Regenerate energy
         for energie in self.energie:
             energie.regenerate()
-        
+
         # Reduce skill cooldowns
         for skill in self.skills.values():
             skill.update_cooldown()

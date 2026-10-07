@@ -47,6 +47,8 @@ class Project:
             self.maps = load(self.directory/'world.json')
         finally:
             map_building.MOBS = previous
+        from .map_assets import read_catalog
+        self.encounters = read_catalog('encounters', self.directory)
         self.migrate_classes()
         self.snapshot = self.state()
 
@@ -75,7 +77,58 @@ class Project:
             blueprint.cache_clear()
 
     def state(self):
-        return deepcopy((self.maps, self.mobs, self.content))
+        return deepcopy((self.maps, self.mobs, self.content, self.encounters))
+
+    def document(self):
+        return {'maps': deepcopy(self.maps), 'encounters': deepcopy(self.encounters), 'mobs': deepcopy(self.mobs), 'content': deepcopy(self.content)}
+
+    def replace_document(self, document):
+        roots = {'maps', 'encounters', 'mobs', 'content'}
+        if not isinstance(document, dict) or set(document) != roots:
+            raise ValueError('Le projet complet doit contenir exactement maps, encounters, mobs et content.')
+        if not all(isinstance(document[key], dict) for key in roots):
+            raise ValueError('Les racines du projet doivent être des objets JSON.')
+        before = self.state()
+        try:
+            self.maps = deepcopy(document['maps'])
+            self.encounters = deepcopy(document['encounters'])
+            self.mobs = deepcopy(document['mobs'])
+            self.content = deepcopy(document['content'])
+            self.validate()
+        except Exception:
+            self.maps, self.mobs, self.content, self.encounters = before
+            raise
+        return self.document()
+
+    def validate_encounters(self):
+        import re
+        from . import tactics
+        if not isinstance(self.encounters, dict) or not self.encounters or len(self.encounters) > 100:
+            raise ValueError('Le catalogue de rencontres doit contenir de 1 à 100 terrains.')
+        required = {'clearing_1', 'clearing_2', 'clearing_3', 'lisiere_1', 'lisiere_2', 'lisiere_3', 'road_1', 'road_2', 'road_3', 'rosee_1', 'rosee_2', 'rosee_3', 'brume_1', 'brume_2', 'brume_3'}
+        if not required <= self.encounters.keys():
+            raise ValueError('Les quinze terrains de rencontre de base doivent être conservés.')
+        for identifier, definition in self.encounters.items():
+            if not isinstance(identifier, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', identifier) or not isinstance(definition, dict):
+                raise ValueError('Terrain de rencontre invalide.')
+            width, height = definition.get('width'), definition.get('height')
+            if type(width) is not int or type(height) is not int or not 4 <= width <= 128 or not 4 <= height <= 128:
+                raise ValueError(f'{identifier} : dimensions invalides.')
+            if definition.get('id') != identifier or not isinstance(definition.get('name'), str) or not definition['name']:
+                raise ValueError(f'{identifier} : identifiant interne ou nom invalide.')
+            def point(value):
+                return isinstance(value, list) and len(value) == 2 and all(type(n) is int for n in value) and 0 <= value[0] < width and 0 <= value[1] < height
+            for field in ('cover', 'blocked', 'water', 'bridges', 'paths'):
+                values = definition.get(field, [])
+                if not isinstance(values, list) or any(not point(value) for value in values):
+                    raise ValueError(f'{identifier} : {field} invalide.')
+            for item in definition.get('decorations', []):
+                if not isinstance(item, dict) or not point(item.get('position')):
+                    raise ValueError(f'{identifier} : décoration invalide.')
+            route = tactics.patrol_route(definition, 0)
+            if len(route) < 2 or any(not tactics.walkable(definition, value) for value in route) or any(tactics.path(definition, a, b) is None for a, b in zip(route, route[1:] + route[:1])):
+                raise ValueError(f'{identifier} : terrain non parcourable.')
+        return True
 
     def validate(self):
         validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
@@ -92,6 +145,7 @@ class Project:
                 else:
                     definitions[identifier] = skill_to_data(make_skill(available[identifier],{}))
         validate_content(self.content)
+        self.validate_encounters()
         from .skill_catalog import validate as validate_catalog
         validate_catalog(self.content,self.mobs)
         from . import map_building, forge
@@ -247,7 +301,7 @@ class Project:
                 raise ValueError('Ce type de définition ne possède pas d’identifiant modifiable.')
             self.validate()
         except Exception:
-            self.maps, self.mobs, self.content = before
+            self.maps, self.mobs, self.content, self.encounters = before
             raise
 
     def duplicate(self, section, identifier, replacement):
@@ -284,12 +338,12 @@ class Project:
                 values.append(value)
             self.validate()
         except Exception:
-            self.maps, self.mobs, self.content = before
+            self.maps, self.mobs, self.content, self.encounters = before
             raise
 
     def save(self):
         self.validate()
-        payloads = {'world.json': self.maps, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': {key:value for key,value in self.content.items() if key != 'templates'}}, 'classes.json':self.content['templates']}
+        payloads = {'world.json': self.maps, 'encounters.json': {'kind': 'encounters', 'maps': self.encounters}, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': {key:value for key,value in self.content.items() if key != 'templates'}}, 'classes.json':self.content['templates']}
         originals, staged, replaced = {}, {}, []
         try:
             for name, value in payloads.items():
@@ -328,7 +382,7 @@ class Controller:
         root.protocol('WM_DELETE_WINDOW', self.close)
         bar = ttk.Frame(root, padding=8)
         bar.pack(fill='x')
-        for name, action in [('Builder', self.builder), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo), ('Rétablir', self.redo)]:
+        for name, action in [('Builder', self.builder), ('Projet complet (JSON)', self.edit_project_document), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo), ('Rétablir', self.redo)]:
             ttk.Button(bar, text=name, command=action).pack(side='left', padx=4)
         self.status = tk.StringVar(value=f'{project.directory} · Modifiez puis enregistrez. Redémarrez le serveur pour appliquer.')
         ttk.Label(root, textvariable=self.status, wraplength=1080).pack(fill='x', padx=8)
@@ -384,13 +438,13 @@ class Controller:
     def undo(self):
         if self.history:
             self.future.append(self.project.state())
-            self.project.maps, self.project.mobs, self.project.content = self.history.pop()
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = self.history.pop()
             self.refresh()
 
     def redo(self):
         if self.future:
             self.history.append(self.project.state())
-            self.project.maps, self.project.mobs, self.project.content = self.future.pop()
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = self.future.pop()
             self.refresh()
 
     def inspect(self, section):
@@ -427,6 +481,39 @@ class Controller:
         area.insert('1.0',text(value))
         area.configure(state='disabled')
         self.ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=8)
+        window.transient(self.root)
+
+    def edit_project_document(self):
+        window = self.tk.Toplevel(self.root)
+        window.title('Projet complet — JSON')
+        window.geometry('1100x760')
+        frame = self.ttk.Frame(window, padding=8)
+        frame.pack(fill='both', expand=True)
+        area = self.tk.Text(frame, wrap='none', undo=True)
+        yscroll = self.ttk.Scrollbar(frame, orient='vertical', command=area.yview)
+        xscroll = self.ttk.Scrollbar(frame, orient='horizontal', command=area.xview)
+        area.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        area.grid(row=0, column=0, sticky='nsew')
+        yscroll.grid(row=0, column=1, sticky='ns')
+        xscroll.grid(row=1, column=0, sticky='ew')
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        area.insert('1.0', json.dumps(self.project.document(), ensure_ascii=False, indent=2))
+        actions = self.ttk.Frame(window, padding=8)
+        actions.pack(fill='x')
+        def apply():
+            before = self.project.state()
+            try:
+                value = json.loads(area.get('1.0', 'end-1c'))
+                self.project.replace_document(value)
+                self.remember(before)
+                self.refresh()
+                self.status.set('Projet complet validé en mémoire. Enregistrez pour le conserver.')
+                window.destroy()
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                self.messagebox.showerror('Projet complet', str(exc), parent=window)
+        self.ttk.Button(actions, text='Appliquer et valider', command=apply).pack(side='left', padx=4)
+        self.ttk.Button(actions, text='Annuler', command=window.destroy).pack(side='left', padx=4)
         window.transient(self.root)
 
     def duplicate(self, section):
@@ -709,7 +796,7 @@ class Controller:
             self.tables['mobs'].selection_set(identifier)
             self.edit('mobs')
         except ValueError as exc:
-            self.project.maps, self.project.mobs, self.project.content = before
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
 
     def edit_skill_model(self,key,new):
@@ -1013,7 +1100,7 @@ class Controller:
             self.remember(before)
             self.refresh()
         except (ValueError, KeyError) as exc:
-            self.project.maps, self.project.mobs, self.project.content = before
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
             self.messagebox.showerror('Suppression refusée', str(exc), parent=self.root)
 
     def builder(self, new=False):

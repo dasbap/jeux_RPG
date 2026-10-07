@@ -26,3 +26,11 @@ def test_import_all_submodules():
     if failures:
         msgs = [f"{n}: {type(e).__name__}: {e}" for n, e in failures]
         pytest.fail("Some modules failed to import:\n" + "\n".join(msgs))
+
+
+def test_runtime_has_single_physical_source_tree():
+    root = Path(__file__).parent.parent
+    for name in ('_balance', '_class', '_core', '_function', 'game_engine', 'i18n', 'maps', 'multiplayer'):
+        assert not (root / name).exists(), f'{name} doit exister uniquement sous jeuxRPG/'
+    assert Path(jeuxRPG.__file__).resolve().parent == (root / 'jeuxRPG').resolve()
+    assert list(jeuxRPG.__path__) == [str((root / 'jeuxRPG').resolve())]

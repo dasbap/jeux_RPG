@@ -4,11 +4,11 @@ const path = require('node:path');
 const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const fixtures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-const dom = new JSDOM(fs.readFileSync(path.join(root, 'multiplayer/web/index.html'), 'utf8'), {url:'http://localhost',runScripts:'outside-only'});
+const dom = new JSDOM(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/index.html'), 'utf8'), {url:'http://localhost',runScripts:'outside-only'});
 dom.window.setInterval = () => 0;
 dom.window.fetch = () => new Promise(() => {});
-dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/map_artwork.js'),'utf8'));
-dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/app.js'),'utf8') + `
+dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
+dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8') + `
 window.mountHud = adventure => {session={id:'hud',me:'p0',tutorial:adventure,events:[]};renderTutorial(adventure);};
 window.hudCalls=[];tutorialCommand=async (action,params)=>window.hudCalls.push({action,params});
 `);

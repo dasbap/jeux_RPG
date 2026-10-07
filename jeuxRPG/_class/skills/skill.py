@@ -48,23 +48,23 @@ class Skill:
         self.current_cooldown = 0
         self.description = description or t("skill.default_desc", name=name, skill_type=skill_type.name)
         self._register_skill()
-        
+
     def __str__(self) -> str:
         costs = []
         if self.energie_cost > 0:
             costs.append(f"{self.energie_target.__name__}: {self.energie_cost}")
         cost_str = ", ".join(costs) if costs else t("skill.no_cost")
-        return t("skill.str", name=self.name, skill_type=self.skill_type.name, 
+        return t("skill.str", name=self.name, skill_type=self.skill_type.name,
                  cost_str=cost_str, cooldown=self.cooldown, description=self.description)
     def __repr__(self):
         return f"{self.name} (cost: {self.energie_cost} {self.energie_target.__name__}, cooldown: {self.current_cooldown})"
 
     def _register_skill(self):
         """Enregistre le sort s'il est unique"""
-        if not any(skill.name.lower() == self.name.lower() 
+        if not any(skill.name.lower() == self.name.lower()
                 for skill in Skill.all_Skills):
             Skill.all_Skills.append(self)
-    
+
     def is_ready(self) -> bool:
         return self.current_cooldown <= 0
 
@@ -74,7 +74,7 @@ class Skill:
             return isinstance(act, self.energie_target) and act.current_value >= self.energie_cost
         except (AttributeError, TypeError):
             return False
-    
+
     def get_true_damage(self, caster, target):
         copy_caster = copy.deepcopy(caster)
         copy_target = copy.deepcopy(target)
@@ -85,7 +85,7 @@ class Skill:
     def setcooldown(self) -> None:
         if self.current_cooldown > 0: raise RuntimeError(f"cooldown is not ready for : {self.name}")
         self.current_cooldown = self.cooldown
-    
+
     def execute(self, caster: Any, target: Any) -> Dict[str, Any]:
         if not self.is_ready():
             raise RuntimeError(f"Compétence {self.name} en cooldown")
@@ -196,10 +196,10 @@ class Skill:
 
         damage = int(max(1, damage * modifier))
         initial_hp = target.get_stat("HP").current_value
-        
+
         results["message"] = target.lose_hp(caster, damage)
         results["effects"]["true_damage"] = initial_hp - target.get_stat("HP").current_value
-        
+
         return results
 
     def _execute_heal_action(self, caster: Any, target: Any, results: Dict[str, Any]) -> Dict[str, Any]:
@@ -224,7 +224,7 @@ class Skill:
     def _execute_invocation_action(self, caster: Any, target: Any, results: Dict[str, Any]) -> Dict[str, Any]:
         """Gère les actions d'invocation"""
         dict_invoc = self.effects["invocation"].invocation
-        
+
         if len(caster.invocations.get_all()) >= caster.invocations.get_limit():
             results["message"] = f"{caster.name} ne peut pas invoquer !"
             results["success"] = False
@@ -238,7 +238,7 @@ class Skill:
             results["message"] = f"{caster.name} a invoqué un {invocation.__class__.__name__} !"
             results["success"] = True
             results["invocation"] = invocation
-        
+
         return results
 
     def _execute_buff_debuff_action(self, caster: Any, target: Any, results: Dict[str, Any]) -> Dict[str, Any]:
@@ -267,7 +267,7 @@ class Skill:
 
         results["effects"] = ", ".join(effects_list)
         results["message"] = f"Altérations appliquées sur {target.name} par {caster.name} : {total_success}/{total_pass} {all_message}"
-        
+
         return results
 
     def update_cooldown(self) -> None:
@@ -283,7 +283,7 @@ class Skill:
         target = target if target else caster
         ok, msg, _ = target.add_alteration(caster, skill_effect)
         return ok, msg
-    
+
     @classmethod
     def get_skill_by_name(cls, name: str) -> 'Skill':
         """Retourne le skill ou lève une exception si non trouvé"""
@@ -291,4 +291,3 @@ class Skill:
         if skill is None:
             raise ValueError(f"Skill '{name}' not found")
         return skill
-        

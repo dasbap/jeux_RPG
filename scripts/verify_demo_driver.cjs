@@ -8,11 +8,11 @@ const fixtures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const errors = [], calls = [];
 const console = new VirtualConsole();
 console.on('jsdomError', error => errors.push(error.message));
-const dom = new JSDOM(fs.readFileSync(path.join(root,'multiplayer/web/index.html'),'utf8'), {url:'http://127.0.0.1:8080',runScripts:'outside-only',virtualConsole:console});
+const dom = new JSDOM(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/index.html'),'utf8'), {url:'http://127.0.0.1:8080',runScripts:'outside-only',virtualConsole:console});
 dom.actions = [];
 dom.window.setInterval = () => 0;
-dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/map_artwork.js'),'utf8'));
-dom.window.eval(fs.readFileSync(path.join(root,'multiplayer/web/app.js'),'utf8') + `
+dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
+dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8') + `
 window.demoSnapshot = () => session;
 window.demoReady = () => !busy;
 window.demoPath = gridPath;

@@ -15,7 +15,7 @@ class Fight:
     All participants are grouped into Alliance instances that don't modify
     their original team affiliations.
     """
-    
+
     def __init__(
         self,
         attackers: Union[List[Union[Character, Team]], Character, Team],
@@ -32,10 +32,10 @@ class Fight:
         self.can_play : List[Character]
         self.log_message : list[str] = []
         self._new_round()
-    
+
     def clear_log(self) -> None:
         self.log_message = []
-        
+
     def _normalize_participants(
         self,
         participants: Union[List[Union[Character, Team]], Character, Team]
@@ -43,33 +43,33 @@ class Fight:
         """Normalize input into a list of Characters or Teams."""
         if participants is None:
             return []
-        
+
         if isinstance(participants, (Character, Team)):
             return [participants]
-        
+
         if isinstance(participants, list):
             return participants
-        
+
         raise TypeError("Participants must be Character, Team, or list of them")
-    
+
     def _validate_participants(self) -> None:
         """Ensure no character is on both sides."""
         attackers_chars = set(self.attackers.fighters)
         defenders_chars = set(self.defenders.fighters)
-        
+
         common = attackers_chars & defenders_chars
         if common:
             names = ", ".join(c.name for c in common)
             raise ValueError(f"Characters cannot be on both sides: {names}")
-    
+
     def add_attacker(self, participant: Union[Character, Team]) -> None:
         """Add a participant to the attackers alliance."""
         self._add_participant(participant, self.attackers)
-    
+
     def add_defender(self, participant: Union[Character, Team]) -> None:
         """Add a participant to the defenders alliance."""
         self._add_participant(participant, self.defenders)
-    
+
     def _add_participant(
         self,
         participant: Union[Character, Team],
@@ -85,14 +85,14 @@ class Fight:
             self._validate_participants()
         else:
             raise TypeError("Can only add Character or Team instances")
-    
+
     def _new_round(self) -> None:
         self.can_play = self._get_alive_participant()
         self.round += 1
 
     def _get_alive_participant(self) -> list[Character]:
         return [c for c in self.get_all_individuals() if c.is_alive()]
-    
+
     def who_next(self) -> Character:
         can_play = self.can_play
         can_play = [player for player in can_play if player.is_alive()]
@@ -110,34 +110,34 @@ class Fight:
             seen.add(marker)
             individuals.append(fighter)
         return individuals
-    
+
     def get_original_teams(self) -> List[Team]:
         """Get all original teams of participants (excluding alliances)."""
         teams = set()
-        
+
         for fighter in self.get_all_individuals():
             if fighter.team:
                 teams.add(fighter.team)
-        
+
         return list(teams)
-    
+
     def _merge_and_shuffle_fighters(self) -> List[Character]:
         """Fusionne et mélange les combattants des deux alliances sans modifier les équipes d'origine.
-        
+
         Returns:
             Liste mélangée de tous les combattants vivants des deux côtés
         """
         # 1. Fusion des combattants vivants
         all_fighters = [
-            fighter 
-            for fighter in self.attackers.fighters + self.defenders.fighters 
+            fighter
+            for fighter in self.attackers.fighters + self.defenders.fighters
             if fighter.is_alive()
         ]
-        
+
         # 2. Mélange aléatoire
         import random
         random.shuffle(all_fighters)
-        
+
         return all_fighters
 
     def start_round(self, rest: bool = True) -> None:
@@ -222,13 +222,13 @@ class Fight:
         if not rest: return self._new_round()
         self.rest()
         self._new_round()
-    
+
     def rest(self):
         for fighter in self.get_all_individuals():
             if fighter.is_alive():
                 fighter.rest()
 
-                
+
     def play(self, who_play : Character, target : Character, skill_name : str) -> bool:
         if self.is_over() or not who_play.is_alive():
             return False
@@ -258,18 +258,18 @@ class Fight:
         if success:
             self.can_play.remove(who_play)
         return success
-    
+
     def get_winner(self) -> Optional[Alliance]:
         """Get the winning alliance."""
         return self._winner
-    
+
     def __str__(self) -> str:
         """String representation of the fight."""
         att_count = len(self.attackers.fighters)
         def_count = len(self.defenders.fighters)
-        
+
         if self._winner:
-            return t("fight.str_completed", att_count=att_count, def_count=def_count, 
+            return t("fight.str_completed", att_count=att_count, def_count=def_count,
                      winner=self._winner.name)
         else:
             return t("fight.str_ongoing", att_count=att_count, def_count=def_count)

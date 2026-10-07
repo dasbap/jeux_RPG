@@ -20,7 +20,7 @@ class Biome(Enum):
     SWAMP = "swamp"
     OCEAN = "ocean"
     SNOW = "snow"
-    
+
     def get_symbol(self) -> str:
         """Get ASCII symbol for map display."""
         symbols = {
@@ -34,7 +34,7 @@ class Biome(Enum):
             Biome.SNOW: "*",
         }
         return symbols.get(self, "?")
-    
+
     def get_emoji(self) -> str:
         """Get emoji for Discord display."""
         emojis = {
@@ -48,18 +48,18 @@ class Biome(Enum):
             Biome.SNOW: "❄️",
         }
         return emojis.get(self, "❓")
-    
+
     def get_name(self, lang: str = "en") -> str:
         """Get translated biome name."""
         key = f"biome.{self.value}"
         translated = t(key, lang)
         # If no translation, return capitalized value
         return translated if translated != key else self.value.capitalize()
-    
+
     def is_passable(self) -> bool:
         """Check if this biome can be walked through."""
         return self != Biome.OCEAN
-    
+
     def get_movement_cost(self) -> float:
         """Get movement cost multiplier for this biome."""
         costs = {

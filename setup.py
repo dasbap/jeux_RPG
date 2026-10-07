@@ -1,9 +1,0 @@
-if __name__ == "__main__":
-    from setuptools import find_namespace_packages, setup
-
-    packages = find_namespace_packages(include=["_class*", "_core*", "_function*", "game_engine*", "i18n*", "multiplayer*", "_balance*"])
-    setup(
-        packages=["jeuxRPG", *[f"jeuxRPG.{name}" for name in packages]],
-        package_dir={"jeuxRPG": "."},
-        package_data={"jeuxRPG": ["_class/**/*.json", "i18n/translations/*.json", "multiplayer/web/*", "maps/*.json", "_balance/**/*.json"]},
-    )

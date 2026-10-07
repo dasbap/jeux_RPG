@@ -3,7 +3,7 @@ from enum import Enum, auto
 
 class JobType(Enum):
     """Types de métiers disponibles pour les joueurs et PNJ."""
-    
+
     # Artisanat
     BLACKSMITH = auto()      # Forgeron - armes/armures
     ALCHEMIST = auto()       # Alchimiste - potions
@@ -11,7 +11,7 @@ class JobType(Enum):
     TAILOR = auto()          # Tailleur - vêtements/robes
     JEWELER = auto()         # Joaillier - bijoux/accessoires
     CARPENTER = auto()       # Charpentier - arcs/bâtons/meubles
-    
+
     # Récolte
     MINER = auto()           # Mineur - minerais
     FARMER = auto()          # Fermier - cultures
@@ -19,7 +19,7 @@ class JobType(Enum):
     HUNTER = auto()          # Chasseur - peaux/viande
     FISHER = auto()          # Pêcheur - poissons
     LUMBERJACK = auto()      # Bûcheron - bois
-    
+
     # Services
     MERCHANT = auto()        # Marchand - commerce
     INNKEEPER = auto()       # Aubergiste - repos/nourriture
@@ -27,7 +27,7 @@ class JobType(Enum):
     GUARD = auto()           # Garde - protection
     MAYOR = auto()           # Maire - administration
     BANKER = auto()          # Banquier - stockage/prêts
-    
+
     # Spéciaux
     ADVENTURER = auto()      # Aventurier - quêtes diverses
     SCHOLAR = auto()         # Érudit - connaissances/livres
@@ -35,7 +35,7 @@ class JobType(Enum):
 
 class ServiceType(Enum):
     """Types de services qu'un métier peut offrir."""
-    
+
     BUY = auto()             # Acheter des objets au joueur
     SELL = auto()            # Vendre des objets au joueur
     CRAFT = auto()           # Fabriquer des objets

@@ -15,22 +15,22 @@ MOB_XP_REWARD_MULTIPLIER = 0.5
 class Mob(Character):
     """
     Enemy character class with XP drop mechanics.
-    
+
     Mobs are non-playable characters that players can fight.
     They can be initialized with XP to set their starting level.
-    
+
     Attributes:
         class_skills_dict: Skills available to mobs by level
         is_boss: Whether this mob is a boss (higher stats/rewards)
     """
-    
+
     class_skills_dict = mob_table["class_skills_dict"]
     is_playable = False
-    
+
     def __init__(self, user_id: str, name: str, xp_drop: int = 0, is_boss: bool = False):
         """
         Initialize a new Mob.
-        
+
         Args:
             user_id: Unique identifier for this mob instance
             name: Display name of the mob
@@ -45,24 +45,24 @@ class Mob(Character):
         self.is_boss = is_boss
         if xp_drop > 0:
             self.gain_exp(xp_drop)
-    
+
     def exp_for_level_up(self) -> int:
         """
         Calculate XP needed for next level.
-        
+
         Mobs level up faster than players (10 XP per level vs 100).
-        
+
         Returns:
             XP required for next level
         """
         return self.level * 10
-    
+
     def get_xp_reward(self) -> int:
         """
         Calculate XP reward for defeating this mob.
-        
+
         Boss mobs give double XP.
-        
+
         Returns:
             XP reward value
         """

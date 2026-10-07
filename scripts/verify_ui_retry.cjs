@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const source = fs.readFileSync(path.join(__dirname, "../multiplayer/web/app.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../jeuxRPG/multiplayer/web/app.js"), "utf8");
 const command = source.slice(source.indexOf("async function command("), source.indexOf('$("register-form").addEventListener'));
 async function check(conflicts, failure) {
   const revisions = [], messages = [];

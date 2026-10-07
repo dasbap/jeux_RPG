@@ -8,10 +8,10 @@ class Config:
     BASE_DIR = Path(os.getenv("BOTKIRITOGAME", Path(__file__).parent))
     CLASS_DIR = BASE_DIR / "_class"
     SUBS_DIR = CLASS_DIR / "sub_character"
-    
+
     DEBUG = os.getenv("DEBUG_MODE", "False") == "True"
     DB_URL = os.getenv("DATABASE_URL")
-    
+
     PROJECT_STRUCTURE = {
         "root": str(BASE_DIR),
         "_class": {

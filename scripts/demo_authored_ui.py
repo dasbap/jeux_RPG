@@ -6,7 +6,7 @@ import threading
 import time
 
 root = Path(__file__).resolve().parent.parent
-os.environ['RPG_MAPS_FILE'] = str(root / 'maps')
+os.environ['RPG_MAPS_FILE'] = str(root / 'jeuxRPG' / 'maps')
 
 from jeuxRPG.multiplayer.server import RPGServer
 from jeuxRPG.multiplayer.service import GameService

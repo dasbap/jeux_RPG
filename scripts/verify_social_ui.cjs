@@ -12,7 +12,7 @@ async function until(check,label){for(let i=0;i<350;i++){if(await check())return
 async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method:body?'POST':'GET',headers:{Authorization:'Bearer '+dom.window.sessionStorage.getItem('rpg-token'),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.message);return data;}
 (async()=>{
  const html=await(await fetch(origin)).text();
- const app=fs.readFileSync(path.join(root,'multiplayer/web/app.js'),'utf8');
+ const app=fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8');
  for(let index=0;index<4;index++){
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console});clients.push(dom);

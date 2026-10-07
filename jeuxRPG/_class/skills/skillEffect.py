@@ -9,13 +9,13 @@ class SkillEffect:
         self.stat_target = stat_target
         self.invocation = invocation
         self.alterationtype = alterationtype
-        self.name = name 
-        if not alterationtype and not invocation : 
+        self.name = name
+        if not alterationtype and not invocation :
             if not value:
                 raise ValueError("une erreur dans la creation d'un skill effect")
         if not value and not duration and not stat_target and not invocation:
             raise ValueError("Le skill effect ne peux pas fonctionner")
-        
+
         if alterationtype:
             if not name : raise ValueError("un SkillEffect de type alteration dois avoir un nom")
             if self.invocation : raise ValueError("un SkillEffect de type alteration ne peux pas avoir d'invocation")
@@ -23,7 +23,7 @@ class SkillEffect:
             if not value :
                 if self.alterationtype in [AlterationType.BUFFSTAT, AlterationType.DEBUFFSTAT,AlterationType.DOT, AlterationType.RESISTENCE]:
                     raise ValueError("un SkillEffect de type alteration dois avoir une valeur")
-        
+
         if invocation:
             if not value:
                 self.value = 1

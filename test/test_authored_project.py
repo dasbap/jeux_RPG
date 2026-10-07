@@ -7,7 +7,7 @@ from jeuxRPG._class.character import CharacterMeta
 
 
 def test_authored_catalogues_are_valid_and_all_spawners_can_create_their_mobs(tmp_path,monkeypatch):
-    source = Path(__file__).resolve().parent.parent/'maps'
+    source = Path(__file__).resolve().parent.parent/'jeuxRPG'/'maps'
     directory = tmp_path/'authored'
     shutil.copytree(source,directory)
     p = controller.Project(directory)

@@ -7,7 +7,7 @@ from jeuxRPG._class.res.classType import Build_type, Build_state
 class Town:
     """
     Représente une ville ou un village.
-    
+
     Attributes:
         name: Nom de la ville
         population: Population totale
@@ -17,12 +17,12 @@ class Town:
         connected_towns: Villes/villages accessibles depuis celle-ci
         entry_district: Quartier d'entrée par défaut (arrivée des voyageurs)
     """
-    
+
     def __init__(
-        self, 
-        name: str, 
-        population: int = 0, 
-        wealth: int = 0, 
+        self,
+        name: str,
+        population: int = 0,
+        wealth: int = 0,
         reputation: int = 0
     ):
         self.name = name
@@ -38,29 +38,29 @@ class Town:
         self.entry_district: District | None = None
 
     # === Navigation entre villes ===
-    
+
     def connect_to(self, other: Town, bidirectional: bool = True) -> None:
         """Connecte cette ville à une autre pour le voyage."""
         if other.name not in self.connected_towns:
             self.connected_towns[other.name] = other
         if bidirectional and self.name not in other.connected_towns:
             other.connected_towns[self.name] = self
-    
+
     def disconnect_from(self, other: Town, bidirectional: bool = True) -> None:
         """Déconnecte cette ville d'une autre."""
         if other.name in self.connected_towns:
             del self.connected_towns[other.name]
         if bidirectional and self.name in other.connected_towns:
             del other.connected_towns[self.name]
-    
+
     def can_travel_to(self, town_name: str) -> bool:
         """Vérifie si on peut voyager vers une ville."""
         return town_name in self.connected_towns
-    
+
     def get_travel_destinations(self) -> list[str]:
         """Retourne la liste des villes accessibles."""
         return list(self.connected_towns.keys())
-    
+
     def set_entry_district(self, district_name: str) -> bool:
         """Définit le quartier d'entrée. Retourne True si réussi."""
         district = self.districts.get(district_name)
@@ -85,11 +85,11 @@ class Town:
         district = District(name, town=self)
         self.add_district(district)
         return district
-    
+
     def get_district(self, name: str) -> District | None:
         """Récupère un quartier par son nom."""
         return self.districts.get(name)
-    
+
     def connect_districts(self, name1: str, name2: str) -> bool:
         """Connecte deux quartiers entre eux. Retourne True si réussi."""
         d1 = self.districts.get(name1)
@@ -108,7 +108,7 @@ class Town:
             district.add_building(building)
             return True
         return False
-    
+
     def create_building(
         self,
         district_name: str,
@@ -146,23 +146,23 @@ class Town:
         if district:
             return district.spend_resource(resource_name, quantity)
         return False
-    
+
     # === Recherche ===
-    
+
     def get_all_npcs(self) -> list:
         """Récupère tous les PNJ de la ville."""
         npcs = []
         for district in self.districts.values():
             npcs.extend(district.npcs)
         return npcs
-    
+
     def get_all_buildings(self) -> list[Building]:
         """Récupère tous les bâtiments de la ville."""
         buildings = []
         for district in self.districts.values():
             buildings.extend(district.buildings.values())
         return buildings
-    
+
     def find_npc_by_name(self, name: str):
         """Cherche un PNJ par son nom dans toute la ville."""
         for district in self.districts.values():
@@ -170,7 +170,7 @@ class Town:
             if npc:
                 return npc
         return None
-    
+
     def find_building_by_name(self, name: str) -> Building | None:
         """Cherche un bâtiment par son nom dans toute la ville."""
         for district in self.districts.values():
@@ -178,7 +178,7 @@ class Town:
             if building:
                 return building
         return None
-    
+
     def find_building_by_type(self, b_type: Build_type) -> list[Building]:
         """Cherche tous les bâtiments d'un certain type."""
         result = []
@@ -203,6 +203,6 @@ class Town:
             "travel_destinations": self.get_travel_destinations(),
             "entry_district": self.entry_district.name if self.entry_district else None
         }
-    
+
     def __repr__(self) -> str:
         return f"Town({self.name!r}, pop={self.population}, {len(self.districts)} districts)"

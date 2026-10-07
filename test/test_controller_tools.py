@@ -214,3 +214,47 @@ def test_reused_stun_skill_executes_without_stat_target():
     result = skill.execute(caster,target)
     assert result['success']
     assert target.is_stunned()
+
+
+def test_full_project_document_can_modify_any_nested_definition(tmp_path):
+    p = project(tmp_path)
+    document = p.document()
+    document['content']['world']['player_vision'] = 17
+    document['maps']['clearing']['name'] = 'Clairière modifiée'
+    document['mobs']['orc']['name'] = 'Orc modifié'
+    document['encounters']['clearing_1']['name'] = 'Terrain modifié'
+    p.replace_document(document)
+    assert p.content['world']['player_vision'] == 17
+    assert p.maps['clearing']['name'] == 'Clairière modifiée'
+    assert p.mobs['orc']['name'] == 'Orc modifié'
+    assert p.encounters['clearing_1']['name'] == 'Terrain modifié'
+    p.save()
+    loaded = project(tmp_path)
+    assert loaded.document() == p.document()
+
+
+def test_full_project_document_rejects_invalid_changes_atomically(tmp_path):
+    p = project(tmp_path)
+    before = p.state()
+    document = p.document()
+    document['content']['world']['player_vision'] = 0
+    document['mobs']['orc']['rank'] = 'INVALID'
+    with pytest.raises(ValueError):
+        p.replace_document(document)
+    assert p.state() == before
+
+
+def test_full_project_document_requires_complete_roots(tmp_path):
+    p = project(tmp_path)
+    with pytest.raises(ValueError):
+        p.replace_document({'maps': {}, 'mobs': {}})
+
+
+def test_full_project_document_rejects_invalid_encounter_atomically(tmp_path):
+    p = project(tmp_path)
+    before = p.state()
+    document = p.document()
+    document['encounters']['clearing_1']['width'] = 1
+    with pytest.raises(ValueError):
+        p.replace_document(document)
+    assert p.state() == before

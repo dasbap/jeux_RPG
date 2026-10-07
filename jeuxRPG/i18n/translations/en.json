@@ -68,7 +68,7 @@
 
     "stat.str": "{name}: {current}/{max}",
     "stat.attr_str": "{name}: {current}",
-    
+
     "stat.HP": "HP",
     "stat.Mana": "Mana",
     "stat.Aura": "Aura",
@@ -80,7 +80,7 @@
     "stat.Sagesse": "Wisdom",
 
     "character.str": "[{char_class}] {name} lvl {level}: {hp} / {energie}",
-    
+
     "alteration.str": "{name}: is a {type} and changes {stat} of {target} by {value} for {duration} round(s)",
     "invocation_pocket.str": "Invocation pocket of {master}: has {invocations}",
 

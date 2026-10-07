@@ -24,7 +24,7 @@ class GameController:
     def __init_factory(self):
         self.add_factory(Character_factory())
 
-    
+
 
     def set_save_path(self, path: str) -> bool:
         self.save_path = path
@@ -57,7 +57,7 @@ class GameController:
         except Exception as e:
             logger.exception(f"Erreur lecture sauvegarde : {e}")
             return None
-    
+
     def del_save(self, id) -> bool:
         if not self.save_path:
             return False
@@ -74,19 +74,19 @@ class GameController:
                 return False
         else:
             return False
-    
+
     def add_factory(self, factory : ObjectCreation):
         self.factory.add(factory)
-    
+
     def get_factory(self, type : ObjectCreation):
         return self.factory.get(type)
-    
+
     def clear_memory(self):
         self.memory = {"creation":[],"last creation":None}
-    
+
     def set_factory_target(self,type : ObjectCreation, new_target : object):
         self.factory.get(type).set_object_target(new_target)
-    
+
     def update_factory_target(self,type : ObjectCreation, new_target : object):
         # `ObjectCreation` définit `set_object_target`, not `update_object_target`.
         # Use `set_object_target` to change the target class/type for the factory.
@@ -94,27 +94,27 @@ class GameController:
         if factory is None:
             raise ValueError("Factory not found for given type")
         return factory.set_object_target(new_target)
-    
+
     def update_factory_attribute(self, type : ObjectCreation, attribute : dict):
         self.factory.get(type).update_attribute_required(**attribute)
-    
+
     def set_factory_attribute(self, type : ObjectCreation, attribute : dict):
         self.factory.get(type).set_attribute_required(**attribute)
-    
+
     def factory_create(self, type : ObjectCreation | str, **arg) -> object:
         if isinstance(type, str):
             type = self.factory.get_by_name(type)
         if type is None:
             raise ValueError("a unknow str for a reach factory")
-        
+
         # Extract to_level if provided, otherwise use default
         to_level = arg.pop('to_level', {'to_level': 0})
-        
+
         # Set the required attributes before creating
         factory_instance = self.factory.get(type)
         if arg:  # If there are remaining args (id, name, class_name)
             factory_instance.set_attribute_required(**arg)
-        
+
         last_create = factory_instance.create_object(to_level)
         self.memory["last creation"] = last_create
         self.memory["creation"].append(last_create)
