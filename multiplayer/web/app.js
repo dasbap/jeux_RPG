@@ -28,6 +28,9 @@ function sectionChanged(name, value) {
 }
 let pendingBattleMove = null;
 let fieldCamera = null;
+let cameraDrag = null;
+let cameraReturnTimer = null;
+let suppressMapClickUntil = 0;
 const worldCameras = new Map();
 let activeWorldMap = "general";
 let currentView = "map";
@@ -1378,7 +1381,7 @@ function renderBattle(adventure, me) {
   $("enemy-intents").replaceChildren(table);
   }
   $("tactical-actions").replaceChildren();
-  const hide = document.createElement("button"); hide.textContent = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture";
+  const hide = document.createElement("button"); hide.textContent = "◈"; hide.title = unit.hidden ? "Vous êtes dissimulé" : "Se cacher derrière une couverture"; hide.setAttribute("aria-label", hide.title);
   hide.disabled = disabled || unit.hidden || unit.can_hide === false || !map.cover.some(p => Math.hypot(unit.position[0] - p[0], unit.position[1] - p[1]) <= 1.5);
   hide.addEventListener("click", () => tutorialCommand("hide"));
   if (!hide.disabled) $("tactical-actions").append(hide);
@@ -1386,7 +1389,9 @@ function renderBattle(adventure, me) {
   $("corpse-actions").replaceChildren();
   for (const corpse of battle.corpses) {
     if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5) continue;
-    const button = document.createElement("button"); button.textContent = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
+    const button = document.createElement("button"); button.textContent = "✂";
+    button.title = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
+    button.setAttribute("aria-label", button.title);
     button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
     button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
   }
@@ -1749,7 +1754,7 @@ function adjustFieldCamera(action) {
   fieldCamera.y = Math.max(0, Math.min(map.height - 1, fieldCamera.y));
   renderTutorial(session.tutorial);
 }
-for (const action of ["in", "out", "center", "left", "up", "down", "right"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
+for (const action of ["in", "out", "center"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
 
 function installWorldCamera(node) {
   const key = node.dataset.map;
@@ -1815,3 +1820,59 @@ for (const [view, label] of Object.entries({social:"Social", options:"Options", 
   button.setAttribute("aria-label", button.textContent);
   button.textContent = label;
 }
+
+$("mob-list-toggle").addEventListener("click", () => {
+  const collapsed = document.body.classList.toggle("mobs-collapsed");
+  $("mob-list-toggle").setAttribute("aria-expanded", String(!collapsed));
+  $("mob-list-toggle").setAttribute("aria-label", collapsed ? "Afficher la liste des monstres" : "Réduire la liste des monstres");
+});
+function returnCameraToPlayer() {
+  clearTimeout(cameraReturnTimer);
+  cameraReturnTimer = null;
+  if (fieldCamera && session?.tutorial?.battle?.map.id === fieldCamera.map) {
+    fieldCamera.follow = true;
+    renderTutorial(session.tutorial);
+  }
+}
+const cameraSurface = $("world-map");
+cameraSurface.addEventListener("pointerdown", event => {
+  if (!event.isPrimary || event.button !== 0 || cameraDrag || !session?.tutorial?.battle || !fieldCamera) return;
+  clearTimeout(cameraReturnTimer);
+  cameraReturnTimer = null;
+  const node = cameraSurface.querySelector(".battle-map");
+  if (!node) return;
+  const view = node.viewBox.baseVal, bounds = node.getBoundingClientRect();
+  cameraDrag = {pointer: event.pointerId, map: fieldCamera.map, startX: event.clientX, startY: event.clientY, x: fieldCamera.x, y: fieldCamera.y, scaleX: view.width / bounds.width / 40, scaleY: view.height / bounds.height / 40, moved: false};
+});
+cameraSurface.addEventListener("pointermove", event => {
+  const drag = cameraDrag;
+  if (!drag || event.pointerId !== drag.pointer) return;
+  if (fieldCamera?.map !== drag.map || session?.tutorial?.battle?.map.id !== drag.map) { cameraDrag = null; return; }
+  const dx = event.clientX - drag.startX, dy = event.clientY - drag.startY;
+  if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+  if (!drag.moved) { drag.moved = true; cameraSurface.setPointerCapture(event.pointerId); }
+  event.preventDefault();
+  fieldCamera.follow = false;
+  const map = session.tutorial.battle.map;
+  fieldCamera.x = Math.max(0, Math.min(map.width - 1, drag.x - dx * drag.scaleX));
+  fieldCamera.y = Math.max(0, Math.min(map.height - 1, drag.y - dy * drag.scaleY));
+  suppressMapClickUntil = Date.now() + 500;
+  renderBattle(session.tutorial, session.tutorial.players.find(player => player.id === session.me));
+});
+function releaseCamera(event) {
+  const drag = cameraDrag;
+  if (!drag || event && event.pointerId !== drag.pointer) return;
+  cameraDrag = null;
+  if (drag.moved) {
+    suppressMapClickUntil = Date.now() + 500;
+    cameraReturnTimer = setTimeout(() => {
+      if (fieldCamera?.map === drag.map) returnCameraToPlayer();
+    }, 2000);
+  }
+}
+for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) cameraSurface.addEventListener(name, releaseCamera);
+for (const name of ["click", "dblclick"]) cameraSurface.addEventListener(name, event => {
+  if (Date.now() < suppressMapClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); }
+}, true);
+window.addEventListener("blur", () => releaseCamera());
+window.addEventListener("resize", () => { if (session?.tutorial?.battle) renderTutorial(session.tutorial); });

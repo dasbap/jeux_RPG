@@ -8,7 +8,8 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
  const browser=await chromium.launch({headless:true});
  try{
   for(const [width,height] of [[1440,900],[390,844],[844,390]]){
-   const page=await browser.newPage({viewport:{width,height}});
+   const mobile=width<751||height<500;
+   const page=await browser.newPage({viewport:{width,height},isMobile:mobile,hasTouch:mobile});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    const html=fs.readFileSync(path.join(root,'multiplayer/web/index.html'),'utf8').replace(/<script[^>]*>.*?<\/script>/gs,'');
    await page.route('http://hud.test/**',route=>route.fulfill({contentType:route.request().url().endsWith('.css')?'text/css':'text/html',body:route.request().url().endsWith('.css')?fs.readFileSync(path.join(root,'multiplayer/web/style.css'),'utf8'):html}));
@@ -36,6 +37,36 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
    const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
    assert(!overlaps(zone,menu)&&!overlaps(zone,vitals),'Zone lisible sans chevauchement');
+   assert.equal(await page.locator('#field-left,#field-up,#field-down,#field-right').count(),0,'Flèches de caméra retirées');
+   await page.locator('#mob-list-toggle').click();
+   assert(!(await page.locator('#combat-enemy-panel').isVisible()),'Liste entièrement repliable');
+   await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+   assert(!(await page.locator('#combat-enemy-panel').isVisible()),'Liste reste repliée après mise à jour');
+   await page.locator('#mob-list-toggle').click();
+   assert(await page.locator('#combat-enemy-panel').isVisible(),'Liste réouvrable hors menu');
+   await page.evaluate(()=>window.eval('window.cameraRequests=0;window.savedTutorialCommand=tutorialCommand;tutorialCommand=()=>{window.cameraRequests++;};'));
+   const dragX=width*.45,dragY=height*.5;
+   if(mobile){
+    const cdp=await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:dragX,y:dragY}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:dragX-60,y:dragY+30}]});
+    assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Caméra tactile libre pendant le glissement');
+    await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await cdp.detach();
+   }else{
+    await page.mouse.move(dragX,dragY);await page.mouse.down();
+    await page.mouse.move(dragX-60,dragY+30,{steps:4});
+    assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Caméra libre pendant le clic maintenu');
+    await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+    await page.mouse.up();
+   }
+   await page.waitForTimeout(1000);
+   assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Attente avant retour au suivi');
+   await page.waitForTimeout(1150);
+   assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),true,'Suivi repris après deux secondes');
+   assert.equal(await page.evaluate(()=>window.cameraRequests),0,'Glissement sans déplacement ni requête serveur');
+   await page.evaluate(()=>window.eval('tutorialCommand=window.savedTutorialCommand;'));
    const button=page.locator('#skill-main-attack button');
    await button.focus();
    assert(await button.evaluate(node=>node===document.activeElement),'Attaque accessible au clavier');
@@ -79,9 +110,11 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert.equal(await page.locator('.battle-map').getAttribute('clip-path'),'inset(0)','Découpe sur le viewport entier sans couper une partie du terrain');
    await page.mouse.move(1,1);
 
-   if(width<751){
+   if(mobile){
     const stick=await rect('touch-stick');
     assert(stick&&stick.x<width/2&&stick.y>height/2,'Joystick à gauche');
+    assert(!overlaps(stick,await rect('chat-toggle')),'Joystick sans collision avec le chat');
+    assert((await rect('combat-enemy-panel')).height<=Math.min(140,height*.25)+2,'Liste des monstres compacte');
     await page.locator('#chat-toggle').click();
     assert(await page.locator('#chat-panel').isVisible(),'Chat ouvrable');
     await page.locator('#chat-toggle').click();

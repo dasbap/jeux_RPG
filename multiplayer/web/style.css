@@ -320,3 +320,28 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .vitals-energy[data-energy="rage"],.vitals-energy[data-energy="fureur"]{--energy-color:#f28b42}.vitals-energy[data-energy="endurance"],.vitals-energy[data-energy="stamina"]{--energy-color:#9ad45b}.vitals-energy[data-energy="qi"],.vitals-energy[data-energy="chi"]{--energy-color:#56d9bf}
 .vitals-energy::-webkit-progress-value{background:var(--energy-color,#b78cf6)}.vitals-energy::-moz-progress-bar{background:var(--energy-color,#b78cf6)}
 @media(max-width:750px){.combat-active #chat-toggle,.combat-active.chat-open #chat-toggle{bottom:124px;left:10px}.combat-active #chat-panel{bottom:176px;max-height:180px}}
+
+.combat-active #character-menu #game-menu-toggle,.combat-active #character-menu #mob-list-toggle{display:inline-grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;font-size:1.2rem;vertical-align:top}
+#mob-list-toggle{margin-left:6px}#mob-list-toggle:before{display:none!important}
+.combat-active.mobs-collapsed .combat-mode #combat-enemy-panel{display:none!important}
+.combat-active #world-map{touch-action:none;display:block!important}
+.combat-active #world-map svg{display:block;width:100%;height:100%;flex:none}
+.combat-active .combat-mode #field-camera{width:auto;display:flex;gap:4px;padding:4px}
+.combat-active #field-camera button{min-width:36px;min-height:36px;width:36px;height:36px;padding:0}
+.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{bottom:12px;right:230px;max-width:44px;gap:4px}
+.combat-active .combat-mode #tactical-actions{bottom:64px}
+.combat-active .combat-mode #corpse-actions button,.combat-active .combat-mode #tactical-actions button{flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;font-size:1.2rem}
+@media(max-width:750px),(pointer:coarse){
+.combat-active #touch-controls{bottom:calc(72px + env(safe-area-inset-bottom))}
+.combat-active #chat-toggle,.combat-active.chat-open #chat-toggle{bottom:calc(12px + env(safe-area-inset-bottom));left:10px}
+.combat-active #chat-panel{bottom:68px}
+.combat-active .combat-mode #combat-enemy-panel{display:block;width:min(180px,40vw);max-height:min(140px,25dvh);padding:4px;scrollbar-gutter:auto}
+.combat-active .combat-mode #combat-enemy-panel h2,.combat-active .combat-mode #combat-enemy-panel h3,.combat-active .combat-mode #cell-selection-status,.combat-active .combat-mode #cell-entities,.combat-active .combat-mode #mob-hp,.combat-active .combat-mode #enemy-intents,.combat-active .combat-mode #combat-enemy-panel .vitals-statuses,.combat-active .combat-mode #combat-enemy-panel .vitals-stats,.combat-active .combat-mode #combat-enemy-panel .vitals-row:not(:first-child){display:none}
+.combat-active .combat-mode #combat-enemy-panel .mob-card{padding:4px;gap:3px;margin:0;font-size:.7rem}
+.combat-active .combat-mode #combat-enemy-panel .vitals-card{padding:0;margin:0;border:0}
+.combat-active .combat-mode #combat-enemy-panel .vitals-name{font-size:.7rem;margin:0}
+.combat-active .combat-mode #combat-enemy-panel .vitals-row{font-size:.65rem;gap:3px;margin:0}
+.combat-active .combat-mode #combat-enemy-panel .mob-quick-actions{gap:3px;flex-wrap:nowrap}
+.combat-active .combat-mode #combat-enemy-panel .mob-quick-actions button{width:32px;height:32px;min-width:32px;min-height:32px;padding:3px;flex:0 0 32px;font-size:.75rem}
+}
+@media(max-width:750px){.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{right:180px}}
