@@ -256,6 +256,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._respond(200,[{'id':identifier,'name':names.get(identifier,identifier)} for identifier in self.server.service.classes])
                 elif path == "/api/account/me":
                     self._respond(200, self.server.service.account_view(self._token()))
+                elif path == "/api/account/sessions":
+                    self._respond(200, self.server.service.account_sessions(self._token()))
                 elif path == "/api/social":
                     self._respond(200, self.server.service.social_view(self._token()))
                 elif path == "/api/state":
@@ -286,6 +288,17 @@ class Handler(BaseHTTPRequestHandler):
                 if body:
                     raise GameError("invalid_command", "Paramètres invalides.")
                 self._respond(200, self.server.service.account_logout(self._token()))
+            elif path == "/api/account/password":
+                if set(body) != {"current_password", "new_password"}:
+                    raise GameError("invalid_command", "Paramètres de mot de passe invalides.")
+                token = self._token()
+                if not self.server.limiter.accept(("account-security", digest(token)), 10):
+                    raise GameError("rate_limit", "Trop de tentatives. Réessayez dans une minute.", 429)
+                self._respond(200, self.server.service.account_change_password(token, body["current_password"], body["new_password"]))
+            elif path == "/api/account/logout-all":
+                if body:
+                    raise GameError("invalid_command", "Paramètres invalides.")
+                self._respond(200, self.server.service.account_logout_all(self._token()))
             elif path == "/api/social":
                 if set(body) != {"action", "params"} or not self.server.limiter.accept(("social", digest(self._token())), 30):
                     raise GameError("rate_limit", "Trop d’actions sociales.", 429)
