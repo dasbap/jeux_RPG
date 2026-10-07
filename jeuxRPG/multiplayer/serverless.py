@@ -5,6 +5,7 @@ import os
 import sqlite3
 import threading
 import time
+import uuid
 from email.message import Message
 from http import HTTPStatus
 from pathlib import Path
@@ -17,6 +18,7 @@ from .server import CLIENT_STATIC, Handler
 from .service import GameError, GameService, digest
 from .clock import GameClock
 from .distributed import RedisRateLimiter
+from .observability import health, ready, metrics
 from .turso import TursoConnection
 
 
@@ -143,6 +145,7 @@ class Application:
 
     def __call__(self, environ, start_response):
         started = time.perf_counter()
+        request_id = uuid.uuid4().hex
         service = None
         logger = create_logger("-")
         status, payload, mime = 503, {"error": "unavailable", "message": "Service indisponible."}, "application/json; charset=utf-8"
@@ -172,7 +175,18 @@ class Application:
             if self.environment.get("VERCEL"):
                 environ = {**environ, "wsgi.url_scheme": "https"}
             static = {**CLIENT_STATIC, "/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}
-            if method == "GET" and path in static:
+            special = None
+            if method == "GET" and path == "/health":
+                special = (200, health(), "application/json; charset=utf-8")
+            elif method == "GET" and path == "/ready":
+                service = self.service()
+                special = (200, ready(service), "application/json; charset=utf-8")
+            elif method == "GET" and path == "/metrics":
+                service = self.service()
+                special = (200, metrics(service).encode("utf-8"), "text/plain; version=0.0.4; charset=utf-8")
+            if special is not None:
+                status, payload, mime = special
+            elif method == "GET" and path in static:
                 name, mime = static[path]
                 status, payload = 200, (Path(__file__).parent / "web" / name).read_bytes()
                 if name == 'index.html':
@@ -238,8 +252,8 @@ class Application:
         database = getattr(service, 'db', None)
         db_ms = getattr(database, 'duration', 0) * 1000
         trips = getattr(database, 'round_trips', 0)
-        print(json.dumps({'event': 'rpg_request', 'method': environ.get('REQUEST_METHOD'), 'route': 'api' if environ.get('PATH_INFO', '').startswith('/api/') else 'static', 'status': status, 'duration_ms': round(milliseconds, 1), 'db_ms': round(db_ms, 1), 'db_round_trips': trips}), flush=True)
-        headers = [("Content-Type", mime), ("Content-Length", str(len(body))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"), ("Referrer-Policy", "no-referrer"), ("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")]
+        print(json.dumps({'event': 'rpg_request', 'request_id': request_id, 'method': environ.get('REQUEST_METHOD'), 'route': 'api' if environ.get('PATH_INFO', '').startswith('/api/') else 'static', 'status': status, 'duration_ms': round(milliseconds, 1), 'db_ms': round(db_ms, 1), 'db_round_trips': trips}), flush=True)
+        headers = [("Content-Type", mime), ("Content-Length", str(len(body))), ("Cache-Control", "no-store"), ("X-Request-ID", request_id), ("X-Content-Type-Options", "nosniff"), ("X-Frame-Options", "DENY"), ("Referrer-Policy", "no-referrer"), ("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")]
         if status == 429:
             headers.append(("Retry-After", "60"))
         headers.append(('Server-Timing', f'app;dur={milliseconds:.1f}, db;dur={db_ms:.1f}, trips;desc="{trips}"'))

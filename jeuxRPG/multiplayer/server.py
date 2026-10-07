@@ -5,9 +5,11 @@ import os
 import socket
 import threading
 import time
+import uuid
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from time import perf_counter
 from urllib.parse import urlsplit
 
 from .command_queue import CommandQueue
@@ -15,6 +17,7 @@ from .state_bundles import encode
 from .network_log import create_logger, write
 from .service import GameService, GameError, digest
 from .distributed import build_rate_limiter
+from .observability import health, ready, metrics
 
 
 CLIENT_MODULES = (
@@ -82,6 +85,7 @@ class RPGServer(ThreadingHTTPServer):
                 raise ValueError("L'origine publique doit être une URL HTTPS sans chemin")
             self.hosts.add(parsed.netloc)
             self.origins.add(f"https://{parsed.netloc}")
+        self.last_tick_seconds = 0.0
         self._stop = threading.Event()
         self._ticker = threading.Thread(target=self._tick, daemon=True)
         self._ticker.start()
@@ -89,8 +93,10 @@ class RPGServer(ThreadingHTTPServer):
 
     def _tick(self):
         while not self._stop.wait(0.1):
+            started = perf_counter()
             try:
                 self.service.tick()
+                self.last_tick_seconds = perf_counter() - started
             except Exception:
                 logging.getLogger(__name__).exception("Erreur de simulation : le serveur reste accessible, nouvel essai dans une seconde.")
                 if self._stop.wait(1):
@@ -151,6 +157,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Connection", "close")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Request-ID", getattr(self, "_request_id", ""))
         self.send_header("Server-Timing", f"app;dur={(time.monotonic() - getattr(self, '_network_started', time.monotonic())) * 1000:.2f}")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
@@ -161,7 +168,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
         if not getattr(self, "_network_combat", False):
-            write(self.server.network_log, "HTTP_RESPONSE", route=getattr(self, "_network_route", "unknown"), status=status, bytes=len(body), milliseconds=int((time.monotonic() - getattr(self, "_network_started", time.monotonic())) * 1000))
+            write(self.server.network_log, "HTTP_RESPONSE", request_id=getattr(self, "_request_id", ""), route=getattr(self, "_network_route", "unknown"), status=status, bytes=len(body), milliseconds=int((time.monotonic() - getattr(self, "_network_started", time.monotonic())) * 1000))
 
     def _guard(self):
         hosts = self.headers.get_all("Host", [])
@@ -213,6 +220,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self, post):
         started = time.monotonic()
         self._network_started = started
+        self._request_id = uuid.uuid4().hex
         self._network_combat = False
         self._network_route = "unknown"
         combat = False
@@ -238,6 +246,15 @@ class Handler(BaseHTTPRequestHandler):
             self._network_combat = combat
             if not combat:
                 write(self.server.network_log, "CONNECTION", peer=self.client_address[0], method="POST" if post else "GET", route=self._network_route)
+            if not post and path == "/health":
+                self._respond(200, health())
+                return
+            if not post and path == "/ready":
+                self._respond(200, ready(self.server.service))
+                return
+            if not post and path == "/metrics":
+                self._respond(200, metrics(self.server.service, self.server.last_tick_seconds).encode("utf-8"), "text/plain; version=0.0.4; charset=utf-8")
+                return
             if not post:
                 static = CLIENT_STATIC
                 if path in static:
