@@ -5,23 +5,23 @@ on:
     paths:
       - .github/workflows/deploy-vercel.yml
       - scripts/verify_deployment.py
-      - multiplayer/serverless.py
-      - multiplayer/realtime.py
-      - multiplayer/realtime_store.py
-      - multiplayer/catalogue.py
-      - multiplayer/web/realtime.js
-      - multiplayer/web/app.js
-      - multiplayer/web/style.css
-      - multiplayer/web/index.html
-      - multiplayer/web/mobile_controls.js
-      - multiplayer/tactics.py
-      - multiplayer/tutorial.py
+      - jeuxRPG/multiplayer/serverless.py
+      - jeuxRPG/multiplayer/realtime.py
+      - jeuxRPG/multiplayer/realtime_store.py
+      - jeuxRPG/multiplayer/catalogue.py
+      - jeuxRPG/multiplayer/web/realtime.js
+      - jeuxRPG/multiplayer/web/app.js
+      - jeuxRPG/multiplayer/web/style.css
+      - jeuxRPG/multiplayer/web/index.html
+      - jeuxRPG/multiplayer/web/mobile_controls.js
+      - jeuxRPG/multiplayer/tactics.py
+      - jeuxRPG/multiplayer/tutorial.py
       - scripts/verify_touch_controls.cjs
-      - multiplayer/web/map_artwork.js
-      - multiplayer/accounts.py
-      - multiplayer/account_rollout.py
-      - multiplayer/schema.py
-      - multiplayer/service.py
+      - jeuxRPG/multiplayer/web/map_artwork.js
+      - jeuxRPG/multiplayer/accounts.py
+      - jeuxRPG/multiplayer/account_rollout.py
+      - jeuxRPG/multiplayer/schema.py
+      - jeuxRPG/multiplayer/service.py
       - scripts/verify_ui_mira.cjs
       - app.py
       - pyproject.toml
