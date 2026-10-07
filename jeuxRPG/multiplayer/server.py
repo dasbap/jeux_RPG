@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import os
 import socket
 import threading
 import time
@@ -13,6 +14,7 @@ from .command_queue import CommandQueue
 from .state_bundles import encode
 from .network_log import create_logger, write
 from .service import GameService, GameError, digest
+from .distributed import build_rate_limiter
 
 
 CLIENT_MODULES = (
@@ -67,7 +69,7 @@ class RPGServer(ThreadingHTTPServer):
         self.network_log = create_logger(log_directory)
         service.configure_chat_log(log_directory)
         self.service = service
-        self.limiter = RateLimiter()
+        self.limiter = build_rate_limiter(os.environ, fallback=RateLimiter())
         self._slots = threading.BoundedSemaphore(128)
         super().__init__(address, Handler)
         port = self.server_address[1]
@@ -99,6 +101,8 @@ class RPGServer(ThreadingHTTPServer):
             self._stop.set()
             self._ticker.join(timeout=5)
         super().server_close()
+        if hasattr(self.limiter, "close"):
+            self.limiter.close()
         if hasattr(self, "commands"):
             self.commands.close()
         for handler in self.network_log.handlers:
