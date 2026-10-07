@@ -77,6 +77,25 @@ class Project:
     def state(self):
         return deepcopy((self.maps, self.mobs, self.content))
 
+    def document(self):
+        return {'maps': deepcopy(self.maps), 'mobs': deepcopy(self.mobs), 'content': deepcopy(self.content)}
+
+    def replace_document(self, document):
+        if not isinstance(document, dict) or set(document) != {'maps', 'mobs', 'content'}:
+            raise ValueError('Le projet complet doit contenir exactement maps, mobs et content.')
+        if not all(isinstance(document[key], dict) for key in ('maps', 'mobs', 'content')):
+            raise ValueError('maps, mobs et content doivent être des objets JSON.')
+        before = self.state()
+        try:
+            self.maps = deepcopy(document['maps'])
+            self.mobs = deepcopy(document['mobs'])
+            self.content = deepcopy(document['content'])
+            self.validate()
+        except Exception:
+            self.maps, self.mobs, self.content = before
+            raise
+        return self.document()
+
     def validate(self):
         validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
         from .skill_catalog import library, make_skill
@@ -328,7 +347,7 @@ class Controller:
         root.protocol('WM_DELETE_WINDOW', self.close)
         bar = ttk.Frame(root, padding=8)
         bar.pack(fill='x')
-        for name, action in [('Builder', self.builder), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo), ('Rétablir', self.redo)]:
+        for name, action in [('Builder', self.builder), ('Projet complet (JSON)', self.edit_project_document), ('Valider', self.validate), ('Enregistrer le projet', self.save), ('Annuler modification', self.undo), ('Rétablir', self.redo)]:
             ttk.Button(bar, text=name, command=action).pack(side='left', padx=4)
         self.status = tk.StringVar(value=f'{project.directory} · Modifiez puis enregistrez. Redémarrez le serveur pour appliquer.')
         ttk.Label(root, textvariable=self.status, wraplength=1080).pack(fill='x', padx=8)
@@ -427,6 +446,39 @@ class Controller:
         area.insert('1.0',text(value))
         area.configure(state='disabled')
         self.ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=8)
+        window.transient(self.root)
+
+    def edit_project_document(self):
+        window = self.tk.Toplevel(self.root)
+        window.title('Projet complet — JSON')
+        window.geometry('1100x760')
+        frame = self.ttk.Frame(window, padding=8)
+        frame.pack(fill='both', expand=True)
+        area = self.tk.Text(frame, wrap='none', undo=True)
+        yscroll = self.ttk.Scrollbar(frame, orient='vertical', command=area.yview)
+        xscroll = self.ttk.Scrollbar(frame, orient='horizontal', command=area.xview)
+        area.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        area.grid(row=0, column=0, sticky='nsew')
+        yscroll.grid(row=0, column=1, sticky='ns')
+        xscroll.grid(row=1, column=0, sticky='ew')
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        area.insert('1.0', json.dumps(self.project.document(), ensure_ascii=False, indent=2))
+        actions = self.ttk.Frame(window, padding=8)
+        actions.pack(fill='x')
+        def apply():
+            before = self.project.state()
+            try:
+                value = json.loads(area.get('1.0', 'end-1c'))
+                self.project.replace_document(value)
+                self.remember(before)
+                self.refresh()
+                self.status.set('Projet complet validé en mémoire. Enregistrez pour le conserver.')
+                window.destroy()
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                self.messagebox.showerror('Projet complet', str(exc), parent=window)
+        self.ttk.Button(actions, text='Appliquer et valider', command=apply).pack(side='left', padx=4)
+        self.ttk.Button(actions, text='Annuler', command=window.destroy).pack(side='left', padx=4)
         window.transient(self.root)
 
     def duplicate(self, section):
