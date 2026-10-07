@@ -16,7 +16,14 @@ function worldPaths(adventure, destination) {
   }));
 }
 
-function tutorialCommand(action, params = {}
+function tutorialCommand(action, params = {}) {
+  if (["move", "travel"].includes(action) && session?.tutorial) {
+    const paths = worldPaths(session.tutorial, params.destination);
+    if (paths) params = {...params, paths};
+  }
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
+}
+
 function mountWorldMap(source, container = $("world-map")) {
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
   if (!retained) { container.append(source); installWorldCamera(source); return source; }
