@@ -146,7 +146,7 @@ async function move(dom, destination) {
 }
 async function main() {
   const html = await (await fetch(origin)).text();
-  const app = await (await fetch(new URL("/map_artwork.js", origin))).text() + "\n" + await (await fetch(new URL("/app.js", origin))).text();
+  const app = await (await fetch(new URL("/map_artwork.js", origin))).text() + "\n" + (await Promise.all(["/core.js","/skills.js","/world.js","/combat.js","/ui.js","/camera.js","/app.js"].map(async file => await (await fetch(new URL(file, origin))).text()))).join("\n");
   try {
     const group = await client(html, app, "Groupe", "Knight");
     await command(group, "tutorial");
