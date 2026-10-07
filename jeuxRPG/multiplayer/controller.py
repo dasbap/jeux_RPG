@@ -45,10 +45,10 @@ class Project:
         try:
             map_building.MOBS = self.mobs
             self.maps = load(self.directory/'world.json')
-        from .map_assets import read_catalog
-        self.encounters = read_catalog('encounters', self.directory)
         finally:
             map_building.MOBS = previous
+        from .map_assets import read_catalog
+        self.encounters = read_catalog('encounters', self.directory)
         self.migrate_classes()
         self.snapshot = self.state()
 
