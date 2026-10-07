@@ -62,6 +62,75 @@ class AccountMixin:
             self.persistent_social_changed = True
             return {'token': token, **self.account_view(token)}
 
+    def account_sessions(self, token):
+        from .service import digest
+        with self._transaction():
+            account = self.account_identity(token)
+            current = digest(token)
+            rows = self.db.execute(
+                "SELECT token_hash,player_id,expires FROM account_sessions WHERE account_id=? AND expires>? ORDER BY expires DESC",
+                (account["id"], time.time()),
+            ).fetchall()
+            return {
+                "sessions": [
+                    {
+                        "current": row["token_hash"] == current,
+                        "player_id": row["player_id"],
+                        "expires": row["expires"],
+                    }
+                    for row in rows
+                ]
+            }
+
+    def account_change_password(self, token, current_password, new_password):
+        from .service import GameError, digest
+        if not isinstance(current_password, str) or not isinstance(new_password, str):
+            raise GameError("invalid_password", "Mot de passe invalide.")
+        with self._transaction():
+            account = self.account_identity(token)
+            row = self.db.execute(
+                "SELECT password_hash FROM accounts WHERE id=?", (account["id"],)
+            ).fetchone()
+            expected = row["password_hash"]
+            calculated = password_hash(current_password, expected.split("$")[1])
+            if not hmac.compare_digest(calculated, expected):
+                raise GameError("unauthorized", "Mot de passe actuel incorrect.", 401)
+            replacement = password_hash(new_password)
+            new_token = secrets.token_urlsafe(32)
+            expires = time.time() + SESSION_SECONDS
+            self.db.execute(
+                "UPDATE accounts SET password_hash=? WHERE id=?",
+                (replacement, account["id"]),
+            )
+            self.db.execute(
+                "UPDATE account_sessions SET expires=0 WHERE account_id=?",
+                (account["id"],),
+            )
+            self.db.execute(
+                "INSERT INTO account_sessions(token_hash,account_id,player_id,expires) VALUES(?,?,?,?)",
+                (digest(new_token), account["id"], account["player_id"], expires),
+            )
+            self.persistent_social_changed = True
+            return {"token": new_token, **self.account_view(new_token)}
+
+    def account_logout_all(self, token):
+        with self._transaction():
+            account = self.account_identity(token)
+            self.db.execute(
+                "UPDATE account_sessions SET expires=0 WHERE account_id=?",
+                (account["id"],),
+            )
+            for row in self.db.execute(
+                "SELECT player_id FROM account_characters WHERE account_id=?",
+                (account["id"],),
+            ):
+                self.runtime_presence.pop(row["player_id"], None)
+                self.db.execute(
+                    "DELETE FROM presence WHERE player_id=?", (row["player_id"],)
+                )
+            self.persistent_social_changed = True
+            return {"ok": True}
+
     def account_character(self, token, action, **params):
         from .service import GameError, digest
         with self._transaction():
