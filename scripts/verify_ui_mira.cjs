@@ -29,7 +29,7 @@ print(json.dumps({'far':far, 'near':near, 'active':active, 'ready':ready, 'compl
 `], {cwd: root, encoding:'utf8'});
 assert.equal(fixture.status, 0, fixture.stderr);
 const states = JSON.parse(fixture.stdout);
-const dom = new JSDOM(fs.readFileSync(path.join(root, 'multiplayer/web/index.html'), 'utf8'), {url:'https://rpg.test', runScripts:'outside-only'});
+const dom = new JSDOM(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/index.html'), 'utf8'), {url:'https://rpg.test', runScripts:'outside-only'});
 const w = dom.window;
 const get = id => w.document.getElementById(id);
 const calls = [];
@@ -52,8 +52,8 @@ w.fetch = async (url, options) => {
   if (url === '/api/state') data = {session:current};
   return {ok:true, json:async () => data};
 };
-w.eval(fs.readFileSync(path.join(root, 'multiplayer/web/map_artwork.js'), 'utf8'));
-w.eval(fs.readFileSync(path.join(root, 'multiplayer/web/app.js'), 'utf8') + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy; window.stubMovement = () => {const original = moveControlled; moveControlled = (adventure, me, destination) => {window.touchDestination = destination;}; return () => {moveControlled = original;};};');
+w.eval(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/map_artwork.js'), 'utf8'));
+w.eval(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/app.js'), 'utf8') + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy; window.stubMovement = () => {const original = moveControlled; moveControlled = (adventure, me, destination) => {window.touchDestination = destination;}; return () => {moveControlled = original;};};');
 async function waitFor(check) {
   for (let i=0; i<100; i++) { if (check()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
   throw new Error('Dialogue de Mira bloqué');
