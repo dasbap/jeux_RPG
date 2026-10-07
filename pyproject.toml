@@ -25,4 +25,4 @@ entrypoint = "app:app"
 include = ["jeuxRPG*"]
 
 [tool.setuptools.package-data]
-jeuxRPG = ["_class/**/*.json", "i18n/translations/*.json", "multiplayer/web/*", "maps/*.json", "_balance/**/*.json", "resources/**/*.json"]
+jeuxRPG = ["_class/**/*.json", "i18n/translations/*.json", "multiplayer/web/*", "multiplayer/migrations/*.sql", "maps/*.json", "_balance/**/*.json", "resources/**/*.json"]
