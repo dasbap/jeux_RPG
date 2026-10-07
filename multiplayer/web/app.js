@@ -30,6 +30,7 @@ let pendingBattleMove = null;
 let fieldCamera = null;
 let cameraDrag = null;
 let cameraReturnTimer = null;
+let cameraFrame = null;
 let suppressMapClickUntil = 0;
 const worldCameras = new Map();
 let activeWorldMap = "general";
@@ -1207,8 +1208,8 @@ function renderBattle(adventure, me) {
   const aspect = measured ? bounds.width / bounds.height : 1 / .67;
   const height = Math.min(map.height, measured ? Math.min(map.width, fieldCamera.span) / aspect : Math.ceil(Math.min(map.width, fieldCamera.span) * .67));
   const width = measured ? Math.min(map.width, fieldCamera.span, height * aspect) : Math.min(map.width, fieldCamera.span);
-  const left = Math.max(0, Math.min(map.width - width, Math.floor(fieldCamera.x - width / 2)));
-  const top = Math.max(0, Math.min(map.height - height, Math.floor(fieldCamera.y - height / 2)));
+  const left = Math.max(0, Math.min(map.width - width, fieldCamera.x - width / 2));
+  const top = Math.max(0, Math.min(map.height - height, fieldCamera.y - height / 2));
   svg.setAttribute("viewBox", `${left * 40} ${top * 40} ${width * 40} ${height * 40}`);
   svg.onwheel = event => { event.preventDefault(); adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
   svg.setAttribute("class", "battle-map");
@@ -1857,7 +1858,10 @@ cameraSurface.addEventListener("pointermove", event => {
   fieldCamera.x = Math.max(0, Math.min(map.width - 1, drag.x - dx * drag.scaleX));
   fieldCamera.y = Math.max(0, Math.min(map.height - 1, drag.y - dy * drag.scaleY));
   suppressMapClickUntil = Date.now() + 500;
-  renderBattle(session.tutorial, session.tutorial.players.find(player => player.id === session.me));
+  if (cameraFrame === null) cameraFrame = requestAnimationFrame(() => {
+    cameraFrame = null;
+    if (session?.tutorial?.battle?.map.id === drag.map && fieldCamera?.map === drag.map) renderBattle(session.tutorial, session.tutorial.players.find(player => player.id === session.me));
+  });
 });
 function releaseCamera(event) {
   const drag = cameraDrag;
