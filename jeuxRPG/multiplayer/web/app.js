@@ -1,5 +1,4 @@
 "use strict";
-const $ = id => document.getElementById(id);
 let token = sessionStorage.getItem("rpg-token") || "";
 let chatToken = token;
 let chatConnection = requestId();
@@ -19,13 +18,6 @@ let bundleHashes = {};
 let bundleValues = {};
 let bundleSequence = 0;
 let appliedBundleSequence = 0;
-const sectionSignatures = new Map();
-function sectionChanged(name, value) {
-  const signature = JSON.stringify(value);
-  if (sectionSignatures.get(name) === signature) return false;
-  sectionSignatures.set(name, signature);
-  return true;
-}
 let pendingBattleMove = null;
 let fieldCamera = null;
 let cameraDrag = null;
@@ -46,29 +38,6 @@ let focusedEnemy = "";
 let tacticalInteractionUntil = 0;
 let inspectedCell = null;
 const classes = Object.create(null);
-function message(text, error = false) {
-  $("message").textContent = text;
-  $("message").classList.toggle("error", error);
-}
-function requestId() {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 15) | 64;
-  bytes[8] = (bytes[8] & 63) | 128;
-  const hex = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-}
-function invitationCode(value) {
-  const trimmed = value.trim();
-  try { return new URL(trimmed).hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.[1] || trimmed; }
-  catch { return trimmed; }
-}
-function invitationLink(code) {
-  const url = new URL(location.href);
-  url.hash = `invite=${code}`;
-  url.search = "";
-  return url.href;
-}
 async function api(path, body, authenticated = true) {
   const headers = {Accept: "application/json"};
   if (authenticated && token) headers.Authorization = `Bearer ${token}`;
@@ -268,14 +237,6 @@ function tutorialCommand(action, params = {}) {
   }
   if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
-function paragraphs(container, texts) {
-  $(container).replaceChildren();
-  for (const text of texts) {
-    const p = document.createElement("p");
-    p.textContent = text;
-    $(container).append(p);
-  }
-}
 function mountWorldMap(source, container = $("world-map")) {
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
   if (!retained) { container.append(source); installWorldCamera(source); return source; }
@@ -297,9 +258,6 @@ function mountWorldMap(source, container = $("world-map")) {
   update(retained, source);
   installWorldCamera(retained);
   return retained;
-}
-function equipmentBonuses(piece) {
-  return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
 function renderWorld(adventure, me, mapContainer = $("world-map")) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
@@ -505,61 +463,6 @@ function showView(view) {
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
   if (session && session.tutorial) renderTutorial(session.tutorial);
-}
-function skillAllowed(me, skill, target, mob) {
-  if (!session.tutorial.battle?.hostiles_alive || me.casting || me.hp <= 0 || me.stunned || me.cooldown_real_seconds > 0 || !skill.available || skill.cooldown > 0) return false;
-  const energy = me.energies.find(e => e.type === skill.energy);
-  if (!battleAllowed(session.tutorial, me.id, target.id, skill.range)) return false;
-  if (!energy || energy.current < skill.cost || !skill.targets.includes(target.id)) return false;
-  if (["DAMAGE", "DEBUFF"].includes(skill.type)) return target.enemy && target.hp > 0;
-  if (skill.type === "INVOCATION") return target.id === me.id && me.invocations.length < me.invocation_limit;
-  if (target.enemy || target.id !== me.id && !skill.can_target_others) return false;
-  if (skill.type === "RESURRECT") return target.hp <= 0;
-  if (target.hp <= 0) return false;
-  if (skill.type === "HEAL") return target.hp < target.max_hp;
-  return skill.type === "BUFF";
-}
-function skillCategory(skill) {
-  if (["DAMAGE"].includes(skill.type)) return "offense";
-  if (["DEBUFF"].includes(skill.type)) return "debuff";
-  if (["BUFF", "HEAL", "RESURRECT", "INVOCATION"].includes(skill.type)) return "buff";
-  return "offense";
-}
-function skillGlyph(skill, category) {
-  if (skill.type === "HEAL") return "✚";
-  if (skill.type === "RESURRECT") return "✦";
-  if (skill.type === "INVOCATION") return "♟";
-  if (category === "debuff") return "⌁";
-  if (category === "buff") return "▲";
-  return "◆";
-}
-function favoriteSkillKey(me, category) {
-  return `rpg-skill-favorite:${me.class_name || "class"}:${category}`;
-}
-function favoriteSkill(me, category, skills) {
-  const saved = localStorage.getItem(favoriteSkillKey(me, category));
-  return skills.find(skill => skill.name === saved) || skills[0] || null;
-}
-function saveFavoriteSkill(me, category, skill) {
-  localStorage.setItem(favoriteSkillKey(me, category), skill.name);
-}
-function skillTargets(adventure, me, skill, mob) {
-  const enemies = (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
-  const allies = adventure.players.map(player => ({...player, enemy:false}));
-  const allowed = [...enemies, ...allies].filter(target => skill.targets?.includes(target.id) && skillAllowed(me, skill, target, mob));
-  const current = allowed.find(target => target.id === combatTarget);
-  if (current) return [current, allowed];
-  const ranked = allowed.slice().sort((a,b) => {
-    if (skill.type === "HEAL") return a.hp / a.max_hp - b.hp / b.max_hp;
-    if (skill.type === "RESURRECT") return a.hp - b.hp;
-    if (["BUFF","INVOCATION"].includes(skill.type)) return (a.id === me.id ? -1 : 0) - (b.id === me.id ? -1 : 0) || a.hp / a.max_hp - b.hp / b.max_hp;
-    return a.hp - b.hp;
-  });
-  return [ranked[0] || null, allowed];
-}
-function skillDetails(skill) {
-  const effects = [skill.description, skill.type ? `Type : ${skill.type}` : "", skill.cost !== undefined ? `Coût : ${skill.cost} ${skill.energy || ""}` : "", skill.range !== undefined ? `Portée : ${skill.range}` : "", skill.cast_seconds !== undefined ? `Incantation : ${skill.cast_seconds} s` : "", skill.cooldown !== undefined ? `Recharge : ${skill.cooldown} s` : "", skill.concentration ? "Concentration : interrompue par les dégâts" : ""].filter(Boolean);
-  return effects.join(" · ");
 }
 function renderSkillHud(adventure, me, mob, canAttack, selected) {
   const root = $("skill-hud");
