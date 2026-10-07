@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.query or parsed.fragment:
                 raise GameError("invalid_path", "URL invalide.", 404)
             path = parsed.path
-            self._network_route = path if path in ("/", "/app.js", "/map_artwork.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
+            self._network_route = path if path in ("/", "/app.js", "/core.js", "/skills.js", "/world.js", "/combat.js", "/ui.js", "/camera.js", "/map_artwork.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
             deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
             if deferred_command:
                 combat = True
@@ -215,6 +215,9 @@ class Handler(BaseHTTPRequestHandler):
             if not post:
                 static = {"/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"), "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"), "/": ("index.html", "text/html; charset=utf-8"),
                           "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
+                          "/core.js": ("core.js", "text/javascript; charset=utf-8"), "/skills.js": ("skills.js", "text/javascript; charset=utf-8"),
+                          "/world.js": ("world.js", "text/javascript; charset=utf-8"), "/combat.js": ("combat.js", "text/javascript; charset=utf-8"),
+                          "/ui.js": ("ui.js", "text/javascript; charset=utf-8"), "/camera.js": ("camera.js", "text/javascript; charset=utf-8"),
                           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
                           "/style.css": ("style.css", "text/css; charset=utf-8")}
                 if path in static:
