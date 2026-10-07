@@ -30,6 +30,9 @@ class GameEngine:
             self._active_characters.update(seen)
         return seen
 
+    def _check_overlaps(self, fights):
+        return self._reserve(fights)
+
     async def _thread(self, function, *args):
         worker = asyncio.create_task(asyncio.to_thread(function, *args))
         cancelled = False

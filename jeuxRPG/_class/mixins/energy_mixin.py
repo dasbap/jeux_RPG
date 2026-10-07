@@ -16,20 +16,20 @@ if TYPE_CHECKING:
 class EnergyMixin:
     """
     Mixin providing energy-related functionality.
-    
+
     Handles:
     - Energy consumption
     - Energy regeneration
     - Energy type management (add, change, get)
     """
-    
+
     def has_required_energie(self: 'Character', skill) -> bool:
         """
         Check if character has enough energy to use skill.
-        
+
         Args:
             skill: Skill to check
-            
+
         Returns:
             True if enough energy, False otherwise
         """
@@ -42,11 +42,11 @@ class EnergyMixin:
     def consume_energie(self: 'Character', amount: int, energie_type: Type['Energie']) -> None:
         """
         Consume specified amount of energy.
-        
+
         Args:
             amount: Amount to consume
             energie_type: Type of energy to consume
-            
+
         Raises:
             ValueError: If not enough energy available
         """
@@ -60,14 +60,14 @@ class EnergyMixin:
     def gain_energie(self: 'Character', amount: int, energie_type: Type['Energie']) -> str:
         """
         Restore specified amount of energy.
-        
+
         Args:
             amount: Amount to restore
             energie_type: Type of energy to restore
-            
+
         Returns:
             Result message string
-            
+
         Raises:
             ValueError: If amount is not positive
         """
@@ -84,10 +84,10 @@ class EnergyMixin:
     def add_energie(self: 'Character', energie: 'Energie') -> None:
         """
         Add new energy type to character.
-        
+
         Args:
             energie: Energy instance to add
-            
+
         Raises:
             ValueError: If energy type already exists
         """
@@ -98,11 +98,11 @@ class EnergyMixin:
     def change_energie(self: 'Character', old_energie: Type['Energie'], new_energie: 'Energie') -> None:
         """
         Replace one energy type with another.
-        
+
         Args:
             old_energie: Energy type to replace
             new_energie: New energy instance
-            
+
         Raises:
             TypeError: If old energy type doesn't exist
         """
@@ -115,13 +115,13 @@ class EnergyMixin:
     def get_energie(self: 'Character', energie_type: Type['Energie']) -> 'Energie':
         """
         Get energy instance of specified type.
-        
+
         Args:
             energie_type: Type of energy to retrieve
-            
+
         Returns:
             Requested energy instance
-            
+
         Raises:
             TypeError: If energy type doesn't exist
         """

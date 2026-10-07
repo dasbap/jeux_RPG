@@ -16,31 +16,31 @@ if TYPE_CHECKING:
 class CombatMixin:
     """
     Mixin providing combat-related functionality.
-    
+
     Handles:
     - Attack actions
     - Heal actions
     - Combat flow management
     """
-    
+
     def attack(
-        self: 'Character', 
-        target: 'Character', 
+        self: 'Character',
+        target: 'Character',
         skill_name: Optional[str] = None
     ) -> Tuple[bool, str]:
         """
         Perform an attack action against target.
-        
+
         Args:
             target: Character to attack
             skill_name: Optional specific skill to use
-            
+
         Returns:
             Tuple of (success, message)
         """
         success = False
         message = t("combat.no_attack_skill")
-        
+
         if skill_name:
             success, message = self.use_skill(skill_name, target)
         else:
@@ -50,7 +50,7 @@ class CombatMixin:
                 success, message = self.use_skill(skill.name, target)
                 if success:
                     break
-        
+
         updates = self._update_status()
         if isinstance(updates, list) and updates:
             extra_msgs = [m for m, _ in updates if m]
@@ -59,26 +59,26 @@ class CombatMixin:
         return success, message
 
     def heal(
-        self: 'Character', 
-        target: 'Character', 
+        self: 'Character',
+        target: 'Character',
         skill_name: Optional[str] = None
     ) -> Tuple[bool, str]:
         """
         Perform a heal action on target.
-        
+
         Args:
             target: Character to heal
             skill_name: Optional specific skill to use
-            
+
         Returns:
             Tuple of (success, message)
         """
         if target.hp.current_value == target.hp.value:
             return False, t("combat.target_full_hp", name=target.name)
-            
+
         success = False
         message = t("combat.no_heal_skill")
-        
+
         if skill_name:
             success, message = self.use_skill(skill_name, target)
         else:
@@ -89,5 +89,5 @@ class CombatMixin:
                 success, message = self.use_skill(skill.name, target)
                 if success:
                     break
-                    
+
         return success, message

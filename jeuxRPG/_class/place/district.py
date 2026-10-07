@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class District:
     """
     Représente un quartier d'une ville.
-    
+
     Attributes:
         name: Nom du quartier
         buildings: Dictionnaire des bâtiments (nom -> Building)
@@ -21,7 +21,7 @@ class District:
         town: Ville parente
         connected_districts: Quartiers accessibles depuis celui-ci
     """
-    
+
     def __init__(self, name: str, town: Town | None = None):
         self.name = name
         self.buildings: dict[str, Building] = {}
@@ -32,29 +32,29 @@ class District:
         self.connected_districts: list[District] = []
 
     # === Navigation ===
-    
+
     def connect_to(self, other: District, bidirectional: bool = True) -> None:
         """Connecte ce quartier à un autre pour la navigation."""
         if other not in self.connected_districts:
             self.connected_districts.append(other)
         if bidirectional and self not in other.connected_districts:
             other.connected_districts.append(self)
-    
+
     def disconnect_from(self, other: District, bidirectional: bool = True) -> None:
         """Déconnecte ce quartier d'un autre."""
         if other in self.connected_districts:
             self.connected_districts.remove(other)
         if bidirectional and self in other.connected_districts:
             other.connected_districts.remove(self)
-    
+
     def can_go_to(self, district_name: str) -> bool:
         """Vérifie si on peut aller à un quartier depuis celui-ci."""
         return any(d.name == district_name for d in self.connected_districts)
-    
+
     def get_accessible_districts(self) -> list[str]:
         """Retourne la liste des noms de quartiers accessibles."""
         return [d.name for d in self.connected_districts]
-    
+
     def get_accessible_buildings(self) -> list[str]:
         """Retourne la liste des bâtiments accessibles dans ce quartier."""
         return list(self.buildings.keys())
@@ -66,19 +66,19 @@ class District:
         if building.name not in self.buildings:
             self.buildings[building.name] = building
             building.district = self
-    
+
     def create_building(
-        self, 
-        name: str, 
-        b_type: Build_type, 
-        level: int = 1, 
+        self,
+        name: str,
+        b_type: Build_type,
+        level: int = 1,
         status: Build_state = Build_state.OPERATIONAL
     ) -> Building:
         """Crée et ajoute un nouveau bâtiment."""
         building = Building(name, b_type, level, status)
         self.add_building(building)
         return building
-    
+
     def get_building(self, name: str) -> Building | None:
         """Récupère un bâtiment par son nom."""
         return self.buildings.get(name)
@@ -100,7 +100,7 @@ class District:
             from jeuxRPG._class.place.jobs.job_types import JobType
             if npc.job.job_type == JobType.GUARD:
                 self.guards.append(npc)
-    
+
     def remove_npc(self, npc: NPC) -> bool:
         """Retire un PNJ du quartier. Retourne True si réussi."""
         if npc in self.npcs:
@@ -109,11 +109,11 @@ class District:
                 self.guards.remove(npc)
             return True
         return False
-    
+
     def get_npcs_by_job(self, job_type) -> list[NPC]:
         """Récupère tous les PNJ d'un certain métier."""
         return [npc for npc in self.npcs if npc.job.job_type == job_type]
-    
+
     def find_npc(self, name: str) -> NPC | None:
         """Cherche un PNJ par son nom."""
         for npc in self.npcs:
@@ -135,7 +135,7 @@ class District:
             self.resources[resource_name] -= quantity
             return True
         return False
-    
+
     def get_resource(self, resource_name: str) -> int:
         """Retourne la quantité d'une ressource."""
         return self.resources.get(resource_name, 0)
@@ -153,6 +153,6 @@ class District:
             "town": self.town.name if self.town else None,
             "connected_to": self.get_accessible_districts()
         }
-    
+
     def __repr__(self) -> str:
         return f"District({self.name!r}, {len(self.buildings)} buildings, {len(self.npcs)} NPCs)"

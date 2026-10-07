@@ -5,12 +5,12 @@ from ..object_creation import ObjectCreation
 class Character_factory(ObjectCreation):
     def __init__(self):
         super().__init__()
-    
+
     def set_object_target(self, new_object_target):
         success = super().set_object_target(new_object_target)
         if success:self.set_attribute_required(class_name = new_object_target.__name__)
         return success
-    
+
     def set_attribute_required(self, **arg: str):
         if not set(arg.keys()).issubset({"id", "name","class_name"}):
             raise ValueError("Keys must be exactly 'id' 'name' or 'class_name'")
@@ -18,7 +18,7 @@ class Character_factory(ObjectCreation):
             raise TypeError("All values must be strings")
         self.attribute_required = arg
 
-    
+
     def reset_attribute_required(self):
         return super().reset_attribute_required()
 

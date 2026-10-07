@@ -20,21 +20,21 @@ if TYPE_CHECKING:
 class ProgressionMixin:
     """
     Mixin providing progression-related functionality.
-    
+
     Handles:
     - Experience gain
     - Level up mechanics
     - Stat upgrades on level up
     - XP drop on death
     """
-    
+
     def drop_xp(self: 'Character', killer: 'Character') -> str:
         """
         Handle XP drop when character is defeated.
-        
+
         Args:
             killer: Character who defeated this character
-            
+
         Returns:
             Result message string
         """
@@ -49,13 +49,13 @@ class ProgressionMixin:
     def gain_exp(self: 'Character', amount: int) -> str:
         """
         Gain experience points, potentially leveling up multiple times.
-        
+
         Args:
             amount: Amount of XP to gain
-            
+
         Returns:
             Result message string
-            
+
         Raises:
             ValueError: If amount is not positive
         """
@@ -72,7 +72,7 @@ class ProgressionMixin:
                 messages.append(level_msg)
 
         return " ".join(messages)
-    
+
     def can_level_up(self: 'Character') -> bool:
         """Check if character has enough XP to level up."""
         return self.exp >= self._required_exp_for_next_level()
@@ -115,11 +115,11 @@ class ProgressionMixin:
 
         self.exp -= self._required_exp_for_next_level()
         self.level += 1
-        
+
         for level_skills_dict in self.class_skills_dict.keys():
             if level_skills_dict == "level " + str(self.level):
                 self.skills.update(deepcopy(self.class_skills_dict[level_skills_dict]))
-        
+
         upgrades: Dict[int, Dict] = self.class_table["upgrade_stats"]
         for threshold in sorted(upgrades.keys()):
             if self.level < threshold:

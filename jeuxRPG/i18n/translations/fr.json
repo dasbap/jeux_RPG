@@ -68,7 +68,7 @@
 
     "stat.str": "{name}: {current}/{max}",
     "stat.attr_str": "{name}: {current}",
-    
+
     "stat.HP": "PV",
     "stat.Mana": "Mana",
     "stat.Aura": "Aura",
@@ -80,7 +80,7 @@
     "stat.Sagesse": "Sagesse",
 
     "character.str": "[{char_class}] {name} niv {level}: {hp} / {energie}",
-    
+
     "alteration.str": "{name} : est un {type} et modifie {stat} de {target} de {value} pendant {duration} tour(s)",
     "invocation_pocket.str": "Poche d'invocations de {master} : contient {invocations}",
 

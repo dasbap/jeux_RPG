@@ -6,10 +6,10 @@ class ObjectCreation:
         self.object_target: type | None = None
         self.last_instance_create: Any | None = None
         self.group = None
-    
+
     def __str__(self):
         return self.__class__.__name__ + self.object_target.__str__()
-    
+
     def __repr__(self):
         return self.__str__()
 
@@ -40,8 +40,8 @@ class ObjectCreation:
 
     def reset_attribute_required(self) -> None:
         self.attribute_required = {}
-        
-    
+
+
     def _update_groupe(self,creation):
         if hasattr(self.group,"last_create"):
                 self.group.last_create = creation

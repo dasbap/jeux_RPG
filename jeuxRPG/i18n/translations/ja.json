@@ -68,7 +68,7 @@
 
     "stat.str": "{name}: {current}/{max}",
     "stat.attr_str": "{name}: {current}",
-    
+
     "stat.HP": "HP",
     "stat.Mana": "マナ",
     "stat.Aura": "オーラ",
@@ -80,7 +80,7 @@
     "stat.Sagesse": "賢さ",
 
     "character.str": "[{char_class}] {name} Lv{level}: {hp} / {energie}",
-    
+
     "alteration.str": "{name}: {type}であり、{target}の{stat}を{value}だけ{duration}ターン変更します",
     "invocation_pocket.str": "{master}の召喚ポケット: {invocations}を持っています",
 

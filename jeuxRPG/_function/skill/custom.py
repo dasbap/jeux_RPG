@@ -30,13 +30,13 @@ def multy_action_skill(caster, target, skill: Skill) -> dict:
         "damage": handle_damage_effect,
         "Stun": handle_stun_effect
     }
-    
+
     result : dict[str,Union[bool, list, dict]] = {
         "success":True,
         "message":[],
         "effect":{}
     }
-    
+
     for effect_name, effect in skill.effects.items():
         if effect_name in effect_handlers:
             result_of = effect_handlers[effect_name](caster, target, effect)
@@ -45,5 +45,5 @@ def multy_action_skill(caster, target, skill: Skill) -> dict:
                 success = False
         else:
             NotImplementedError(f"no funct for {effect_name}")
-    
+
     return result

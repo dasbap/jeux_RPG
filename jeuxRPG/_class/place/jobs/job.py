@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 class Job:
     """
     Représente un métier que peut exercer un joueur ou un PNJ.
-    
+
     Attributes:
         name: Nom affiché du métier (ex: "Forgeron du village")
         job_type: Type de métier (JobType enum)
@@ -19,10 +19,10 @@ class Job:
         recipes: Liste des recettes/crafts disponibles
         workplace: Bâtiment où le métier est exercé (optionnel)
     """
-    
+
     MAX_LEVEL = 100
     EXP_PER_LEVEL = 100  # Exp nécessaire par niveau
-    
+
     def __init__(
         self,
         name: str,
@@ -40,7 +40,7 @@ class Job:
         self.services = services or self._default_services()
         self.recipes = recipes or []
         self.workplace = workplace
-    
+
     def _default_services(self) -> list[ServiceType]:
         """Retourne les services par défaut selon le type de métier."""
         defaults = {
@@ -56,7 +56,7 @@ class Job:
             JobType.SCHOLAR: [ServiceType.TEACH, ServiceType.QUEST],
         }
         return defaults.get(self.job_type, [])
-    
+
     def gain_exp(self, amount: int) -> bool:
         """
         Ajoute de l'expérience au métier.
@@ -64,26 +64,26 @@ class Job:
         """
         if self.level >= self.MAX_LEVEL:
             return False
-        
+
         self.exp += amount
         leveled_up = False
-        
+
         while self.exp >= self.EXP_PER_LEVEL and self.level < self.MAX_LEVEL:
             self.exp -= self.EXP_PER_LEVEL
             self.level += 1
             leveled_up = True
-        
+
         return leveled_up
-    
+
     def can_provide(self, service: ServiceType) -> bool:
         """Vérifie si ce métier peut fournir un service donné."""
         return service in self.services
-    
+
     def add_recipe(self, recipe_id: str) -> None:
         """Ajoute une recette au métier."""
         if recipe_id not in self.recipes:
             self.recipes.append(recipe_id)
-    
+
     def get_info(self) -> dict:
         """Retourne les informations du métier."""
         return {
@@ -96,6 +96,6 @@ class Job:
             "recipes_count": len(self.recipes),
             "workplace": self.workplace.name if self.workplace else None
         }
-    
+
     def __repr__(self) -> str:
         return f"Job({self.name!r}, {self.job_type.name}, lv{self.level})"

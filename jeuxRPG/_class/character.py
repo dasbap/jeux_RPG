@@ -49,21 +49,21 @@ with open(json_path, "r", encoding="utf-8") as f:
 class CharacterMeta(ABCMeta):
     """
     Metaclass for Character system to manage character class registration.
-    
+
     Maintains a registry of all character classes for dynamic creation.
     """
-    
+
     _classes: Dict[str, Type['Character']] = {}
 
     def __new__(cls, name, bases, namespace):
         """
         Create new character class and register it if not the base Character class.
-        
+
         Args:
             name: Name of the class being created
             bases: Base classes
             namespace: Class namespace dictionary
-            
+
         Returns:
             Newly created class
         """
@@ -75,7 +75,7 @@ class CharacterMeta(ABCMeta):
 
 class Character(
     HealthMixin,
-    EnergyMixin, 
+    EnergyMixin,
     AlterationMixin,
     SkillMixin,
     ProgressionMixin,
@@ -86,7 +86,7 @@ class Character(
 ):
     """
     Base abstract class representing a game character.
-    
+
     This class uses mixins to separate concerns:
     - HealthMixin: HP management, damage, healing
     - EnergyMixin: Energy systems management
@@ -94,7 +94,7 @@ class Character(
     - SkillMixin: Skill usage and management
     - ProgressionMixin: Experience and leveling
     - CombatMixin: Combat actions
-    
+
     Attributes:
         is_playable: Whether this class can be selected by players (False for mobs)
         class_skills_dict: Dictionary mapping levels to available skills
@@ -115,31 +115,34 @@ class Character(
         team: Team affiliation
         invocations: Container for summoned creatures
     """
-    
-    is_playable: bool = False 
+
+    is_playable: bool = False
     class_skills_dict: Dict[str, Dict[str, Skill]] = {}
 
     @classmethod
     def create(cls, class_name: str, *args, **kwargs) -> 'Character':
         """
         Factory method to create character instances by class name.
-        
+
         Args:
             class_name: Name of the character class to instantiate
             *args: Positional arguments for constructor
             **kwargs: Keyword arguments for constructor
-            
+
         Returns:
             New character instance
-            
+
         Raises:
             ValueError: If class_name doesn't exist
         """
         char_class = CharacterMeta._classes.get(class_name.lower())
         if not char_class:
             raise ValueError(f"Unknown class: {class_name}")
-        return char_class(*args, **kwargs)
-    
+        character = char_class(*args, **kwargs)
+        if char_class.__name__.lower() == class_name.lower():
+            character.char_class = char_class.__name__
+        return character
+
     @classmethod
     def recreate(
         cls,
@@ -176,7 +179,7 @@ class Character(
         character.level = level
         character.exp = exp
         return character
-    
+
     def __init__(
         self,
         user_id: str,
@@ -187,14 +190,14 @@ class Character(
     ):
         """
         Initialize a new character instance.
-        
+
         Args:
             user_id: Unique identifier for the character owner
             name: Character's display name
             class_table: Class stats table to load
             skills: Optional dictionary of initial skills
             char_class: Optional explicit class name override
-            
+
         Raises:
             ValueError: If user_id is empty or invalid
         """
@@ -204,7 +207,7 @@ class Character(
         self.user_id = user_id
         self.name = name
         self.char_class = char_class or self.__class__.__name__
-        
+
         # Initialize base stats
         base_stats = class_table["base_stats"]
         self.hp = HP(base_stats["hp"])
@@ -214,13 +217,13 @@ class Character(
         self.sagesse = Sagesse(base_stats["sagesse"])
         self.class_table = deepcopy(class_table)
         self.combat_profile = deepcopy(class_table.get("combat",{}))
-        
+
         # Initialize energy systems
         self.energie: List[Energie] = []
         for num in base_stats["energie"].keys():
             energie_info = base_stats["energie"][num]
             self.add_energie(energie_info["type"](energie_info["value"], energie_info["regen_rate"]))
-        
+
         self._class_type: ClassType = class_table["class_type"]
         try:
             if self.class_type == ClassType.INVOCATION:
@@ -229,13 +232,13 @@ class Character(
                 class_skills: Dict[str, Skill] = class_table["class_skills_dict"]["level 1"].copy()
         except:
             class_skills = {}
-        
+
         self.skills = deepcopy(skills) if skills else deepcopy(class_skills)
         self.status = deepcopy(status_dict)  # Deep copy to avoid shared state between instances
-        
+
         # Initialize status effects and stats references
         self._init_status_stats()
-        
+
         self.level = 1
         self.exp = 0
         self.team = None
@@ -246,7 +249,7 @@ class Character(
         except Exception:
             # Be resilient if navigation subsystem is not available
             pass
-    
+
     def _init_status_stats(self) -> None:
         """Initialize the status dictionary with references to character stats."""
         self.status["stats"] = {
@@ -259,33 +262,33 @@ class Character(
                 energie.name: energie for energie in self.energie
             }
         }
-    
+
     def __str__(self) -> str:
         """Return basic character info as string (uses default language)."""
         return self.format()
-    
+
     def format(self, lang: str = "en") -> str:
         """
         Return character info formatted in the specified language.
-        
+
         Args:
             lang: Language code (en, fr, ja). Defaults to English.
-            
+
         Returns:
             Formatted character string in the specified language.
         """
         from jeuxRPG.i18n import t, translate_class_name
-        
+
         # Translate class name
         translated_class = translate_class_name(self.char_class, lang)
-        
+
         # Format HP with language
         hp_str = self.hp.format(lang)
-        
+
         # Format energies list with language
         energie_strs = [e.format(lang) for e in self.energie]
         energie_str = "[" + ", ".join(energie_strs) + "]" if energie_strs else "[]"
-        
+
         return t(
             "character.str",
             lang,
@@ -305,10 +308,10 @@ class Character(
     def class_type(self, value: ClassType) -> None:
         """
         Set the character's class type.
-        
+
         Args:
             value: New class type to set
-            
+
         Raises:
             ValueError: If value is not a valid ClassType
         """
@@ -323,30 +326,30 @@ class Character(
     def have_invocation(self) -> bool:
         """Check if character has active summons."""
         return self.invocations.get_all() != []
-    
+
     def get_stat(self, stat_name: str) -> Union[DefaultStat, AttributeStat, VitalStat]:
         """
         Get a stat by its name.
-        
+
         Args:
             stat_name: Name of the stat to retrieve
-            
+
         Returns:
             The requested stat object
-            
+
         Raises:
             TypeError: If stat doesn't exist
         """
         stat_dict: Dict[str, Union[DefaultStat, AttributeStat, VitalStat]] = self.status["stats"]
-        
+
         # Check main stats
         if stat_name in stat_dict:
             return stat_dict[stat_name]
-        
+
         # Check energy stats
         if stat_name in stat_dict["energie"]:
             return stat_dict["energie"][stat_name]
-            
+
         raise TypeError(f"{stat_name} not found in character stats")
 
     def get_invocation(self) -> List['Character']:

@@ -23,7 +23,7 @@ class Alteration():
                 raise ValueError("error in Alteration.value must be positif")
         if time <= 0: raise ValueError("time can't be negative or null")
         if caster == None: raise TypeError("caster must be a Character")
-        
+
         self.name = name
         self.caster = caster
         self.value = value
@@ -31,34 +31,34 @@ class Alteration():
         self.target = target
         self.stat_target = stat_target
         self.type = alterationType
-    
+
     def get_value(self) -> int:
         return self.value
-    
+
     def get_target(self):
         return self.target
-    
+
     def get_duration(self) -> int:
         return self.duration
-    
+
     def get_stat_target(self):
         return self.stat_target
-    
+
     def decrease(self) -> None:
         self.duration -= 1
-        
+
     def get_caster(self):
         return self.caster
-    
+
     def is_over(self) -> bool:
         if self.duration < 0 : raise RuntimeError("invalide Alteration.duration")
         return self.duration == 0
-    
+
     def __str__(self) -> str:
-        return t("alteration.str", name=self.name, type=self.type.name, 
-                 stat=self.stat_target.__name__, target=self.target.name, 
+        return t("alteration.str", name=self.name, type=self.type.name,
+                 stat=self.stat_target.__name__, target=self.target.name,
                  value=self.value, duration=self.duration)
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -69,7 +69,7 @@ class Buff(Alteration):
 class DeBuff(Alteration):
     def __init__(self, name, caster, value, time, target, stat_target):
         super().__init__(name, caster, value, time, target, stat_target, AlterationType.DEBUFFSTAT)
-    
+
 class Dot(Alteration):
     def __init__(self, name, caster, value, time, target):
         super().__init__(name, caster, value, time, target, None, AlterationType.DOT)
@@ -81,4 +81,3 @@ class Stun(Alteration):
 class Resistance(Alteration):
     def __init__(self, name, caster, value, time, target, alterationType : AlterationType.RESISTENCE):
         super().__init__(name, caster, value, time, target, alterationType)
-        

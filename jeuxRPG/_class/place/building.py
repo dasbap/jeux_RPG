@@ -19,7 +19,7 @@ class Building:
                 "OPERATIONAL": Build_state.OPERATIONAL,
                 "DESTROY": Build_state.DESTROY
             }
-            new_status = mapping.get(new_status.upper(), self.status)  
+            new_status = mapping.get(new_status.upper(), self.status)
         self.status = new_status
 
     def get_info(self):

@@ -15,7 +15,7 @@ from .navigation_mixin import NavigationMixin
 
 __all__ = [
     "HealthMixin",
-    "EnergyMixin", 
+    "EnergyMixin",
     "AlterationMixin",
     "SkillMixin",
     "ProgressionMixin",

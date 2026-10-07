@@ -28,58 +28,58 @@ def _get_translations_dir() -> Path:
 def _load_language(lang: str) -> dict[str, str]:
     """
     Load translations for a specific language.
-    
+
     Args:
         lang: Language code (fr, en, ja)
-        
+
     Returns:
         Dict of translation key -> translated string
     """
     if lang in _translations:
         return _translations[lang]
-    
+
     translations_path = _get_translations_dir() / f"{lang}.json"
-    
+
     if not translations_path.exists():
         # Fallback to default language
         if lang != DEFAULT_LANGUAGE:
             return _load_language(DEFAULT_LANGUAGE)
         return {}
-    
+
     with open(translations_path, "r", encoding="utf-8") as f:
         _translations[lang] = json.load(f)
-    
+
     return _translations[lang]
 
 
 def t(key: str, lang: str = DEFAULT_LANGUAGE, **kwargs: Any) -> str:
     """
     Translate a key to the specified language.
-    
+
     Args:
         key: Translation key (e.g., "nav.enter_building")
         lang: Language code (fr, en, ja)
         **kwargs: Format variables to inject into the string
-        
+
     Returns:
         Translated string with variables interpolated
-        
+
     Example:
         >>> t("nav.enter_building", "fr", building_name="Forge")
         "Tu entres dans Forge."
     """
     translations = _load_language(lang)
-    
+
     # Get nested keys (e.g., "nav.enter_building" -> translations["nav"]["enter_building"])
     text = translations.get(key)
-    
+
     if text is None:
         # Fallback to default language
         if lang != DEFAULT_LANGUAGE:
             return t(key, DEFAULT_LANGUAGE, **kwargs)
         # Return the key itself if not found
         return key
-    
+
     # Format with provided variables
     if kwargs:
         try:
@@ -87,20 +87,20 @@ def t(key: str, lang: str = DEFAULT_LANGUAGE, **kwargs: Any) -> str:
         except KeyError:
             # If format fails, return unformatted text
             pass
-    
+
     return text
 
 
 def get_translator(lang: str = DEFAULT_LANGUAGE):
     """
     Get a translator function for a specific language.
-    
+
     Args:
         lang: Language code
-        
+
     Returns:
         Function that translates keys for the specified language
-        
+
     Example:
         >>> tr = get_translator("en")
         >>> tr("nav.enter_building", building_name="Forge")
@@ -124,13 +124,13 @@ def is_supported_language(lang: str) -> bool:
 def get_player_language(user_id: str) -> str:
     """
     Get the language preference for a player.
-    
+
     This integrates with the bot's storage system to get
     the player's chosen language from their save file.
-    
+
     Args:
         user_id: Discord user ID
-        
+
     Returns:
         Language code (fr, en, ja)
     """
@@ -144,12 +144,12 @@ def get_player_language(user_id: str) -> str:
 def t_player(key: str, user_id: str, **kwargs: Any) -> str:
     """
     Translate a key using the player's language preference.
-    
+
     Args:
         key: Translation key
         user_id: Discord user ID
         **kwargs: Format variables
-        
+
     Returns:
         Translated string in player's language
     """
@@ -160,11 +160,11 @@ def t_player(key: str, user_id: str, **kwargs: Any) -> str:
 def translate_class_name(class_name: str, lang: str = DEFAULT_LANGUAGE) -> str:
     """
     Translate a class name to the specified language.
-    
+
     Args:
         class_name: Internal class name (e.g., "Knight", "Priest")
         lang: Language code (fr, en, ja)
-        
+
     Returns:
         Translated class name, or original if no translation found
     """
@@ -177,11 +177,11 @@ def translate_class_name(class_name: str, lang: str = DEFAULT_LANGUAGE) -> str:
 def translate_class_name_player(class_name: str, user_id: str) -> str:
     """
     Translate a class name using the player's language preference.
-    
+
     Args:
         class_name: Internal class name
         user_id: Discord user ID
-        
+
     Returns:
         Translated class name in player's language
     """
@@ -192,11 +192,11 @@ def translate_class_name_player(class_name: str, user_id: str) -> str:
 def translate_class_list(class_names: list[str], lang: str = DEFAULT_LANGUAGE) -> list[str]:
     """
     Translate a list of class names.
-    
+
     Args:
         class_names: List of internal class names
         lang: Language code
-        
+
     Returns:
         List of translated class names
     """
@@ -206,11 +206,11 @@ def translate_class_list(class_names: list[str], lang: str = DEFAULT_LANGUAGE) -
 def translate_class_list_player(class_names: list[str], user_id: str) -> list[str]:
     """
     Translate a list of class names using the player's language.
-    
+
     Args:
         class_names: List of internal class names
         user_id: Discord user ID
-        
+
     Returns:
         List of translated class names in player's language
     """
@@ -221,30 +221,30 @@ def translate_class_list_player(class_names: list[str], user_id: str) -> list[st
 def get_internal_class_name(translated_name: str, available_classes: list[str]) -> str | None:
     """
     Find the internal class name from a translated name.
-    
+
     Searches all languages to find a match.
-    
+
     Args:
         translated_name: The translated class name (e.g., "Chevalier", "ナイト")
         available_classes: List of valid internal class names
-        
+
     Returns:
         Internal class name if found, None otherwise
     """
     translated_lower = translated_name.lower()
-    
+
     # First check if it's already an internal name
     for internal_name in available_classes:
         if internal_name.lower() == translated_lower:
             return internal_name
-    
+
     # Search in all languages
     for lang in SUPPORTED_LANGUAGES:
         for internal_name in available_classes:
             translated = translate_class_name(internal_name, lang)
             if translated.lower() == translated_lower:
                 return internal_name
-    
+
     return None
 
 
