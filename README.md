@@ -9,12 +9,12 @@ Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaq
 Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou service de base de données n'est nécessaire.
 
 ```bash
-git clone --branch secure-multiplayer-poc https://github.com/dasbap/jeux_RPG.git
+git clone https://github.com/dasbap/jeux_RPG.git
 cd jeux_RPG
 python main.py
 ```
 
-Ouvrir **http://127.0.0.1:8080**. Tant que la pull request du POC n'est pas fusionnée, utiliser la branche `secure-multiplayer-poc`.
+Ouvrir **http://127.0.0.1:8080**.
 
 1. Créer un personnage puis cliquer sur **Commencer le tutoriel en solo**.
 2. Pour jouer à deux, cliquer plutôt sur **Inviter un compagnon**, partager l'invitation, puis démarrer le tutoriel du groupe une fois le compagnon arrivé. Ouvrir un nouvel onglet plutôt que dupliquer l'onglet existant, pour garder des identités distinctes.
@@ -90,7 +90,7 @@ Le proxy doit transmettre le `Host` public, laisser passer `Authorization` et d�
 
 ## Entrées réutilisables par un bot Discord
 
-`multiplayer/discord_adapter.py` expose une interface asynchrone indépendante du SDK Discord. Elle reçoit l'objet d'interaction **issu du SDK côté serveur** ; `guild_id`, `user.id` et `interaction.id` ne doivent jamais provenir de paramètres saisis par le joueur. Les personnages et invitations sont isolés par serveur Discord et du monde web local.
+`jeuxRPG/multiplayer/discord_adapter.py` expose une interface asynchrone indépendante du SDK Discord. Elle reçoit l'objet d'interaction **issu du SDK côté serveur** ; `guild_id`, `user.id` et `interaction.id` ne doivent jamais provenir de paramètres saisis par le joueur. Les personnages et invitations sont isolés par serveur Discord et du monde web local.
 
 ```python
 from jeuxRPG.multiplayer import GameService
@@ -137,9 +137,9 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 
 | Répertoire | Rôle |
 | --- | --- |
-| `multiplayer/` | Horloge PNJ, tutoriel, service transactionnel, serveur HTTP et adaptateur Discord |
-| `multiplayer/web/` | Interface navigateur autonome en français |
-| `_class/`, `_core/`, `game_engine/` | Moteur RPG historique et sauvegardes sécurisées |
+| `jeuxRPG/multiplayer/` | Horloge PNJ, tutoriel, service transactionnel, serveur HTTP et adaptateur Discord |
+| `jeuxRPG/multiplayer/web/` | Interface navigateur autonome en français |
+| `jeuxRPG/_class/`, `jeuxRPG/_core/`, `jeuxRPG/game_engine/` | Moteur RPG historique et sauvegardes sécurisées |
 | `test/` | Tests du moteur et du POC |
 
 Les anciennes sauvegardes JSON restent accessibles au moteur historique, mais ne sont pas importées automatiquement dans le POC SQLite. Les identifiants invalides sont maintenant rejetés, plutôt que transformés silencieusement en noms de fichiers susceptibles de se collisionner.
@@ -165,12 +165,12 @@ Le calcul des groupes est commun aux rangs SSS, SS, S, AA, A, B, C, D et E et s'
 | 4 | 3 % |
 | 5 | 0,1 % |
 
-Ainsi, rencontrer au moins deux gobelins a une probabilité de 90 % × 30 % = 27 %. Ces probabilités ne sont pas des poids pour choisir directement une taille de groupe. Le niveau de zone comparé au niveau du membre le moins avancé multiplie les seuils par `2 ** ((niveau_zone - niveau_joueur) / 5)`, borné entre 0,25 et 1,5. Chaque seuil final est limité à 100 %. Les rangs plus difficiles réduisent les probabilités d'ajouter des créatures, selon un diviseur croissant ; leur premier seuil de base vaut 100 %. Le rang E est passif et ne déclenche aucun combat hostile. Les lapins et cerfs ne sont pas encore ajoutés. Les coefficients des rangs SSS à C constituent un premier équilibrage configurable dans `multiplayer/encounters.py`.
+Ainsi, rencontrer au moins deux gobelins a une probabilité de 90 % × 30 % = 27 %. Ces probabilités ne sont pas des poids pour choisir directement une taille de groupe. Le niveau de zone comparé au niveau du membre le moins avancé multiplie les seuils par `2 ** ((niveau_zone - niveau_joueur) / 5)`, borné entre 0,25 et 1,5. Chaque seuil final est limité à 100 %. Les rangs plus difficiles réduisent les probabilités d'ajouter des créatures, selon un diviseur croissant ; leur premier seuil de base vaut 100 %. Le rang E est passif et ne déclenche aucun combat hostile. Les lapins et cerfs ne sont pas encore ajoutés. Les coefficients des rangs SSS à C constituent un premier équilibrage configurable dans `jeuxRPG/multiplayer/encounters.py`.
 
 Chaque ennemi possède un identifiant de cible et sa propre prochaine attaque. Les attaques autonomes sont traitées par le serveur, même sans commande du joueur. Après une interruption du serveur, une seule attaque par ennemi est exécutée à la reprise, sans rafale de rattrapage. La révision, les droits de session, la présence du joueur et la validité de la cible restent vérifiés transactionnellement.
 
 
-Les chemins actuels ont des distances de démonstration, configurées dans `multiplayer/world.py` :
+Les chemins actuels ont des distances de démonstration, configurées dans `jeuxRPG/multiplayer/world.py` :
 
 | Chemin | Distance | Marche réelle sans combat au ratio 1:3 |
 | --- | --- | --- |
@@ -368,7 +368,7 @@ Le [guide complet du builder](docs/BUILDER_GUIDE.md) décrit les outils, les nom
 
 ## Alpha 0.11.0a4 — catalogue JSON et forêt de départ
 
-Les définitions des cartes fixes et des quinze presets de rencontre sont maintenant dans le dossier [maps](maps/README.md), sous forme de JSON. Elles sont incluses dans le paquet installé. Le builder lancé depuis le dépôt ouvre `maps/world.json` par défaut ; le serveur peut aussi charger un dossier de plusieurs JSON via `RPG_MAPS_FILE`.
+Les définitions des cartes fixes et des quinze presets de rencontre sont maintenant dans le dossier [jeuxRPG/maps](jeuxRPG/maps/README.md), sous forme de JSON. Elles sont incluses dans le paquet installé. Le builder lancé depuis le dépôt ouvre `jeuxRPG/maps/world.json` par défaut ; le serveur peut aussi charger un dossier de plusieurs JSON via `RPG_MAPS_FILE`.
 
 La forêt de départ comporte trois secteurs raccordés : sentier oublié, vieux pont et route entretenue. Ils reprennent le terrain des références, avec quatre colonnes de chevauchement identiques. La troisième carte dispose d’un chemin en bon état et de la sortie vers les chemins rapides ; les retours restent possibles. [Vue d’ensemble](docs/STARTING_MAPS.svg).
 
