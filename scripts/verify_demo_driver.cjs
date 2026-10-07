@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const webAppSource = require('./web_app_source.cjs');
 const path = require('node:path');
 const {JSDOM, VirtualConsole} = require('jsdom');
 const {craftStep, hasEquipment, resumeJourneyStep} = require('./demo_authored_ui.cjs');
@@ -12,7 +13,7 @@ const dom = new JSDOM(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/in
 dom.actions = [];
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
-dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8') + `
+dom.window.eval(webAppSource(root) + `
 window.demoSnapshot = () => session;
 window.demoReady = () => !busy;
 window.demoPath = gridPath;
