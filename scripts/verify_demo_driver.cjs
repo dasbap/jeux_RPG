@@ -12,7 +12,7 @@ const dom = new JSDOM(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/in
 dom.actions = [];
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
-dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8') + `
+dom.window.eval(require('./client_source.cjs')() + `
 window.demoSnapshot = () => session;
 window.demoReady = () => !busy;
 window.demoPath = gridPath;
