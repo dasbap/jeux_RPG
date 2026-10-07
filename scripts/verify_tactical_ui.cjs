@@ -331,9 +331,7 @@ try {
     const initialBox = el("world-map").querySelector("svg").getAttribute("viewBox");
     el("field-zoom-in").click();
     assert.notEqual(el("world-map").querySelector("svg").getAttribute("viewBox"), initialBox);
-    const zoomBox = el("world-map").querySelector("svg").getAttribute("viewBox");
-    el("field-right").click();
-    assert.notEqual(el("world-map").querySelector("svg").getAttribute("viewBox"), zoomBox);
+    for (const direction of ["left", "up", "down", "right"]) assert.equal(el(`field-${direction}`), null);
     el("field-center").click();
     assert.equal(el("npc-view").hidden, false);
     assert.equal(el("npc-view").parentElement.id, "combat-action-panel");
