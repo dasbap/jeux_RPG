@@ -178,7 +178,7 @@ class TursoConnection:
         return [Cursor(item) for item in batch['step_results']]
 
     def execute(self, sql, params=()):
-        statement = sql.strip().upper()
+        statement = sql.strip().rstrip(';').strip().upper()
         if self.broken and statement != 'ROLLBACK':
             raise sqlite3.OperationalError('Connexion Turso à rétablir')
         beginning = statement.startswith('BEGIN')
@@ -211,14 +211,18 @@ class TursoConnection:
                 pending = ''
         if pending.strip():
             statements.append(pending)
-        self.execute('BEGIN IMMEDIATE')
+        explicit = bool(statements) and statements[0].strip().upper().startswith('BEGIN')
+        if not explicit:
+            self.execute('BEGIN IMMEDIATE')
         try:
             for statement in statements:
                 self.execute(statement)
-            self.execute('COMMIT')
+            if not explicit:
+                self.execute('COMMIT')
         except BaseException:
             try:
-                self.execute('ROLLBACK')
+                if self.in_transaction:
+                    self.execute('ROLLBACK')
             except sqlite3.Error:
                 pass
             raise
