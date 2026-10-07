@@ -134,8 +134,8 @@ class AccountMixin:
         from .service import GameError
         if realm is not None and (type(realm) is not int or not 1 <= realm <= self.realm_count):
             raise GameError('invalid_server', 'Serveur invalide.')
-        now = time.monotonic()
-        self.runtime_presence = {key: value for key, value in self.runtime_presence.items() if now - value['seen'] < 60}
+        now = time.time()
+        self.runtime_presence.prune(now - 60)
         existing = self.runtime_presence.get(player_id)
         counts = [sum(value['realm'] == index for value in self.runtime_presence.values()) for index in range(1, self.realm_count + 1)]
         selected = realm or (existing or {}).get('realm')
@@ -181,7 +181,7 @@ class AccountMixin:
             if team:
                 members = []
                 for row in self.db.execute('SELECT a.id,a.username FROM team_members m JOIN accounts a ON a.id=m.account_id WHERE m.team_id=? AND m.active=1 ORDER BY m.joined', (team['id'],)):
-                    player = next((item for item in self.db.execute('SELECT p.id,p.name FROM players p JOIN account_characters c ON c.player_id=p.id WHERE c.account_id=?', (row['id'],)) if item['id'] in self.runtime_presence and time.monotonic() - self.runtime_presence[item['id']]['seen'] < 60), None)
+                    player = next((item for item in self.db.execute('SELECT p.id,p.name FROM players p JOIN account_characters c ON c.player_id=p.id WHERE c.account_id=?', (row['id'],)) if item['id'] in self.runtime_presence and time.time() - self.runtime_presence[item['id']]['seen'] < 60), None)
                     members.append({**dict(row), 'online': player is not None, 'player_id': player['id'] if player else None, 'name': player['name'] if player else row['username'], 'realm': self.runtime_presence[player['id']]['realm'] if player else None, **(self._character_location(player['id']) if player else {})})
                 result['team'] = {'id': team['id'], 'owner': team['owner'], 'members': members, 'capacity': 4}
                 result['rallies'] = [item for item in self.rallies.values() if item['team_id'] == team['id'] and item['expires'] > time.time() and item['sender'] != account['id']]
