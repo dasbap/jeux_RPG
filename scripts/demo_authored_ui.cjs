@@ -30,7 +30,7 @@ async function wait(condition, label, duration=15000) {
 }
 async function client(name, className) {
   const html = await (await fetch(origin)).text();
-  const js = await (await fetch(origin+'/map_artwork.js')).text()+'\n'+await (await fetch(origin+'/app.js')).text();
+  const js = await (await fetch(origin+'/map_artwork.js')).text()+'\n'+(await Promise.all(require('./client_source.cjs').files.map(async file=>await (await fetch(origin+'/'+file)).text()))).join('\n');
   const console = new VirtualConsole();
   console.on('jsdomError', error => errors.push(error.message));
   const dom = new JSDOM(html, {url:origin,runScripts:'outside-only',virtualConsole:console});
