@@ -796,7 +796,7 @@ class Controller:
             self.tables['mobs'].selection_set(identifier)
             self.edit('mobs')
         except ValueError as exc:
-            self.project.maps, self.project.mobs, self.project.content = before
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
 
     def edit_skill_model(self,key,new):
@@ -1100,7 +1100,7 @@ class Controller:
             self.remember(before)
             self.refresh()
         except (ValueError, KeyError) as exc:
-            self.project.maps, self.project.mobs, self.project.content = before
+            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
             self.messagebox.showerror('Suppression refusée', str(exc), parent=self.root)
 
     def builder(self, new=False):
