@@ -211,14 +211,18 @@ class TursoConnection:
                 pending = ''
         if pending.strip():
             statements.append(pending)
-        self.execute('BEGIN IMMEDIATE')
+        explicit = bool(statements) and statements[0].strip().upper().startswith('BEGIN')
+        if not explicit:
+            self.execute('BEGIN IMMEDIATE')
         try:
             for statement in statements:
                 self.execute(statement)
-            self.execute('COMMIT')
+            if not explicit:
+                self.execute('COMMIT')
         except BaseException:
             try:
-                self.execute('ROLLBACK')
+                if self.in_transaction:
+                    self.execute('ROLLBACK')
             except sqlite3.Error:
                 pass
             raise
