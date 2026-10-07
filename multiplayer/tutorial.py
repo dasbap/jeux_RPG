@@ -166,7 +166,7 @@ def view(party, me, now):
         result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
-    result["moving"] = bool(transit and not party["battle"])
+    result["moving"] = bool(transit and not party["battle"] and transit.get('paused_at') is None)
     result["travel_remaining_real_seconds"] = max(0, transit["remaining"] - (min(now, transit.get("paused_at", transit["ready_at"])) - transit["started_at"])) / progression.RATIO if transit else 0
     result["traveller"] = npc(now)
     result["world"] = world.view(party, me, result["traveller"])
@@ -424,6 +424,12 @@ def continue_journey(party, now, random, messages):
     party["field_now"] = now
     transit = party["transit"]
     if transit:
+        if transit.get('waiting'):
+            if transit.get('next_encounter', now + 1) <= now:
+                transit['next_encounter'] = now + 150
+                if transit.get('hazard') and random() < TRAVEL_ENCOUNTER_CHANCE:
+                    spawn(party, now, random, messages)
+            return
         if transit.get("paused_at") is not None:
             delay = now - transit.pop("paused_at")
             transit["started_at"] += delay
@@ -557,7 +563,7 @@ def execute(party, player_id, action, params, now, error, random):
         return messages, party["step"] == "complete"
     if action in ("control_units", "unit_order", "unit_skill"):
         return tactics.control(party, player_id, action, params, now, error), False
-    if action in ("battle_move", "hide", "harvest", "leave_battle"):
+    if action in ("battle_move", "stop_move", "hide", "harvest", "leave_battle"):
         messages = tactics.execute(party, player_id, action, params, now, error)
         if action == "leave_battle":
             continue_journey(party, now, random, messages)
@@ -604,5 +610,21 @@ def advance(party, now, random):
             party["effect_at"][key] = now + progression.ACTION_SECONDS * progression.RATIO
     sync_mobs(party)
     continue_journey(party, now, random, messages)
+    meeting = party.get('rendezvous')
+    if meeting and not meeting.get('arriving') and not party.get('battle') and not party.get('transit') and not party.get('journey') and party['position'] == meeting['source']:
+        duration = meeting['duration']
+        party['transit'] = {'source': meeting['source'], 'destination': meeting['source'], 'remaining': duration, 'total': duration, 'segment': duration, 'started_at': now, 'ready_at': now + duration, 'hazard': meeting['transit'].get('hazard', False)}
+        meeting['arriving'] = True
+    elif meeting and meeting.get('arriving') and not party.get('battle') and not party.get('transit'):
+        transit = deepcopy(meeting['transit'])
+        delay = now - transit['paused_at']
+        transit['paused_at'] = now
+        transit['started_at'] += delay
+        transit['ready_at'] += delay
+        transit['next_encounter'] = now + 150
+        party['transit'] = transit
+        party['position'] = meeting.get('point', meeting['source'])
+        party.pop('rendezvous', None)
+        messages.append('Vous rejoignez votre allié sur la route. Reprenez le trajet quand vous le souhaitez.')
     achievements.record(party)
     return messages

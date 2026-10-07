@@ -57,6 +57,8 @@ async function client(name, className) {
   dom.window.eval(js+';window.demoSnapshot = () => session; window.demoPath = gridPath; window.demoIdle=()=>!busy&&!polling; window.demoReady=()=>!busy;');
   $(dom,'name').value = name;
   $(dom,'class-name').value = className;
+  $(dom,'account-name').value = 'demo_' + Math.random().toString(36).slice(2,10);
+  $(dom,'account-password').value = 'demo-secure-password-123';
   $(dom,'register-form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await wait(()=>!$(dom,'lobby').hidden,'inscription');
   return dom;

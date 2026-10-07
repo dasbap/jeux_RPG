@@ -45,6 +45,8 @@ async function client(html, app, name, className) {
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
   dom.window.eval(app + ";window.demoSnapshot = () => session; window.demoReady = () => !busy; window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
+  el(dom, "account-name").value = "test_" + randomUUID().slice(0, 8);
+  el(dom, "account-password").value = randomUUID();
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
@@ -163,7 +165,7 @@ async function main() {
     await command(necromancer, "tutorial");
     await command(necromancer, "explore");
     await waitFor(() => el(necromancer, "self-skills").querySelector("button:not(:disabled)"), "invocation accessible sans sélectionner le personnage");
-    assert.equal(el(necromancer, "combat-target").value, "mob");
+    assert.equal(el(necromancer, "combat-auto-target").getAttribute("aria-pressed"), "true");
     el(necromancer, "self-skills").querySelector("button").click();
     await waitFor(async () => {
       const adventure = (await request(necromancer, "/api/state")).session.tutorial;
@@ -234,28 +236,32 @@ async function main() {
     assert(el(first, "quest-view").closest(".quest-box"));
     assert(el(first, "combat-view").closest(".zone-actions"));
     assert(el(first, "map-view").closest(".map-strip"));
-    assert(!el(first, "quest-view").hidden);
-    assert(!el(first, "map-details").open);
+    assert(el(first, "quest-view").hidden);
+    assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     const selected = el(first, "map-place").value;
     el(first, "quest-actions").querySelector("button").click();
     assert.equal(el(first, "map-place").value, selected);
-    assert(!el(first, "map-details").open);
+    assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     assert(el(first, "world-map").querySelector(".objective-ring"));
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.equal(el(first, "combat-target").options.length, 0);
     el(first, "show-stats").click();
-    assert(!el(first, "stats-view").hidden && !el(first, "standby-view").hidden && !el(first, "quest-view").hidden);
+    assert(!el(first, "stats-view").hidden && !el(first, "standby-view").hidden && el(first, "quest-view").hidden);
     el(first, "show-map").click();
     const explore = [...el(first, "tutorial-actions").querySelectorAll("button")].find(b => b.textContent === "Explorer ce lieu");
     explore.click();
     await waitFor(() => !el(first, "combat-view").hidden && !el(second, "combat-view").hidden, "combat");
-    assert(!el(first, "map-view").hidden && !el(first, "quest-view").hidden);
+    assert(!el(first, "map-view").hidden && el(first, "quest-view").hidden);
     assert(el(first, "battle").classList.contains("combat-mode"));
-    assert(el(first, "character-menu").hidden);
+    assert(!el(first, "character-menu").hidden);
+    assert(el(first, "zone-name").textContent.length > 0);
+    assert(/^Niv\. \d+$/.test(el(first, "zone-level").textContent));
     assert(el(first, "world-map").querySelector(".battle-map"));
     assert(!el(first, "combat-layout").hidden);
     assert(el(first, "combat-view").closest("#combat-action-panel"));
+    assert(el(first, "skill-main-attack").querySelector(".skill-attack"));
+    assert(el(first, "skill-hud").querySelectorAll(".skill-icon").length >= 2);
     assert(el(first, "map-view").closest("#combat-map-panel"));
     assert(el(first, "mob-cards").closest("#combat-enemy-panel"));
     assert(el(first, "enemy-intents").closest("#combat-enemy-panel"));
@@ -316,7 +322,7 @@ async function main() {
     assert(el(first, "map-view").closest(".map-strip"));
     assert(el(first, "combat-view").closest(".zone-actions"));
     el(first, "show-inventory").click();
-    assert(!el(first, "inventory-view").hidden && !el(first, "quest-view").hidden);
+    assert(!el(first, "inventory-view").hidden && el(first, "quest-view").hidden);
     el(first, "show-bestiary").click();
     assert(el(first, "bestiary-details").textContent.includes("rang D"));
     el(first, "show-map").click();
@@ -326,3 +332,4 @@ async function main() {
   } finally { for (const dom of clients) await closeClient(dom); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
+

@@ -38,10 +38,10 @@ async function checkLateSnapshot() {
   const refreshSource = source.slice(source.indexOf("async function refresh("), source.indexOf("async function command("));
   let resolveRead;
   let renders = 0;
-  const context = {token: "token", polling: false, busy: false, tacticalInteractionUntil: 0, stateEpoch: 0,
+  const context = {token: "token", accountState: {selected: "p0"}, polling: false, busy: false, tacticalInteractionUntil: 0, stateEpoch: 0,
     sessionId: "room", session: {id: "room", revision: 1}, Date, nextRefreshAt: 0, refreshFailures: 0,
     api: () => new Promise(resolve => {resolveRead = resolve;}), remember: () => {},
-    render: () => {renders++;}, $: () => ({}), message: () => {}};
+    render: () => {renders++;}, $: () => ({hidden: true}), message: () => {}};
   vm.createContext(context);
   const pending = vm.runInContext(`${refreshSource}; refresh();`, context);
   context.stateEpoch++;

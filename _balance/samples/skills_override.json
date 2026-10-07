@@ -1,0 +1,22 @@
+{
+  "Knight": {
+    "level 1": {
+      "Sword Slash": {
+        "energie_cost": 7,
+        "cooldown": 1,
+        "effects": {
+          "damage": { "value": 10 }
+        }
+      }
+    }
+  },
+  "DragonWhelp": {
+    "level 1": {
+      "Small Breath": {
+        "effects": {
+          "damage": { "value": 13 }
+        }
+      }
+    }
+  }
+}

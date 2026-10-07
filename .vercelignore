@@ -34,6 +34,8 @@ dist/
 *.egg-info/
 node_modules/
 .ui-test/
+.deploy-tools/
+deployment-url.txt
 test/
 docs/
 __doc__/

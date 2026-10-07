@@ -1,9 +1,16 @@
 import logging
 import os
+import sys
 from pathlib import Path
 
 
 def create_logger(directory, filename="network.log"):
+    if directory == "-":
+        logger = logging.Logger("rpg.network")
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+        logger.addHandler(handler)
+        return logger
     root = Path(directory)
     root.mkdir(parents=True, exist_ok=True)
     if os.name == "nt":

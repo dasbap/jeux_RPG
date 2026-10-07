@@ -82,6 +82,13 @@ def main():
                                          env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode
+                checked = subprocess.run(["node", str(root / "scripts" / "verify_hud_updates.cjs"), str(fixture_path)], env={**os.environ, "NODE_PATH": modules}, timeout=30)
+                if checked.returncode:
+                    return checked.returncode
+                if os.environ.get("RPG_VERIFY_HUD_LAYOUT") == "1":
+                    checked = subprocess.run(["node", str(root / "scripts" / "verify_hud_layout.cjs"), str(fixture_path)], env={**os.environ, "NODE_PATH": modules}, timeout=60)
+                    if checked.returncode:
+                        return checked.returncode
                 checked = subprocess.run(["node", str(root / "scripts" / "verify_demo_hunt.cjs")], env={**os.environ, "NODE_PATH": modules}, timeout=30)
                 if checked.returncode:
                     return checked.returncode
@@ -92,6 +99,9 @@ def main():
                                         env={**os.environ, "NODE_PATH": modules,
                                              "RPG_TEST_ORIGIN": f"http://127.0.0.1:{server.server_address[1]}"},
                                         timeout=180)
+                if result.returncode == 0:
+                    result = subprocess.run(["node", str(root / "scripts" / "verify_social_ui.cjs")],
+                                            env={**os.environ, "NODE_PATH": modules, "RPG_TEST_ORIGIN": f"http://127.0.0.1:{server.server_address[1]}"}, timeout=60)
             finally:
                 server.shutdown()
                 thread.join()
