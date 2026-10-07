@@ -16,6 +16,7 @@ from .network_log import create_logger
 from .server import CLIENT_STATIC, Handler
 from .service import GameError, GameService, digest
 from .clock import GameClock
+from .distributed import RedisRateLimiter
 from .turso import TursoConnection
 
 
@@ -124,6 +125,8 @@ class Application:
         self.factory = service_factory
         self.initialized = False
         self.lock = threading.Lock()
+        url = self.environment.get("REDIS_URL") or self.environment.get("KV_URL")
+        self.redis_limiter = RedisRateLimiter(url) if url else None
 
     def service(self):
         if self.factory:
@@ -179,7 +182,7 @@ class Application:
                     payload = payload.replace(b'{{CLASS_OPTIONS}}', options.encode())
             else:
                 service = self.service()
-                limiter = DatabaseLimiter(service)
+                limiter = self.redis_limiter or DatabaseLimiter(service)
                 peer = environ.get("REMOTE_ADDR", "unknown")
                 if path.startswith("/api/admin/"):
                     if not limiter.accept(("admin", peer), 30):
