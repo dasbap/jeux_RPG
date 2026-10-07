@@ -1838,8 +1838,6 @@ function returnCameraToPlayer() {
 const cameraSurface = $("world-map");
 cameraSurface.addEventListener("pointerdown", event => {
   if (!event.isPrimary || event.button !== 0 || cameraDrag || !session?.tutorial?.battle || !fieldCamera) return;
-  clearTimeout(cameraReturnTimer);
-  cameraReturnTimer = null;
   const node = cameraSurface.querySelector(".battle-map");
   if (!node) return;
   const view = node.viewBox.baseVal, bounds = node.getBoundingClientRect();
@@ -1851,7 +1849,7 @@ cameraSurface.addEventListener("pointermove", event => {
   if (fieldCamera?.map !== drag.map || session?.tutorial?.battle?.map.id !== drag.map) { cameraDrag = null; return; }
   const dx = event.clientX - drag.startX, dy = event.clientY - drag.startY;
   if (!drag.moved && Math.hypot(dx, dy) < 6) return;
-  if (!drag.moved) { drag.moved = true; cameraSurface.setPointerCapture(event.pointerId); }
+  if (!drag.moved) { clearTimeout(cameraReturnTimer); cameraReturnTimer = null; drag.moved = true; cameraSurface.setPointerCapture(event.pointerId); }
   event.preventDefault();
   fieldCamera.follow = false;
   const map = session.tutorial.battle.map;

@@ -63,6 +63,8 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    }
    await page.waitForTimeout(1000);
    assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Attente avant retour au suivi');
+   await page.dispatchEvent('#world-map','pointerdown',{pointerId:42,isPrimary:true,button:0,clientX:dragX,clientY:dragY});
+   await page.dispatchEvent('#world-map','pointerup',{pointerId:42,isPrimary:true,button:0,clientX:dragX,clientY:dragY});
    await page.waitForTimeout(1150);
    assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),true,'Suivi repris après deux secondes');
    assert.equal(await page.evaluate(()=>window.cameraRequests),0,'Glissement sans déplacement ni requête serveur');
@@ -109,6 +111,11 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert(quickNames.every(name=>favorites.includes(name)),'Les monstres proposent uniquement les compétences rapides désignées');
    assert.equal(await page.locator('.battle-map').getAttribute('clip-path'),'inset(0)','Découpe sur le viewport entier sans couper une partie du terrain');
    await page.mouse.move(1,1);
+   await page.evaluate(()=>window.eval("session.tutorial.battle.corpses=[{id:'layout-corpse',name:'Corps test',position:[...session.tutorial.battle.players[session.me].position],harvested:[]}];renderTutorial(session.tutorial);"));
+   const harvest=page.locator('#corpse-actions button');
+   assert.equal(await harvest.getAttribute('aria-label'),'Dépecer Corps test','Dépeçage accessible avec une icône compacte');
+   const harvestBox=await harvest.boundingBox();
+   assert(harvestBox&&harvestBox.y>height/2&&!overlaps(harvestBox,menu)&&!overlaps(harvestBox,await button.boundingBox()),'Dépeçage près du combat sans collision avec les paramètres ou l’attaque');
 
    if(mobile){
     const stick=await rect('touch-stick');
