@@ -231,7 +231,7 @@ def test_static_files_do_not_open_a_database():
     def unavailable():
         raise AssertionError("Une page statique ne doit pas ouvrir Turso")
     app = Application(service_factory=unavailable, environment={})
-    for path in ("/", "/app.js", "/style.css", "/map_artwork.js", "/admin"):
+    for path in ("/", "/app_core.js", "/app_world.js", "/app_skills.js", "/app_tutorial.js", "/app_battle.js", "/app_camera.js", "/app_social.js", "/app.js", "/app_bootstrap.js", "/app_session.js", "/style.css", "/map_artwork.js", "/admin"):
         assert request(app, path)["status"] == 200
 
 

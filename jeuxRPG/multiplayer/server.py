@@ -15,6 +15,28 @@ from .network_log import create_logger, write
 from .service import GameService, GameError, digest
 
 
+CLIENT_MODULES = (
+    "app_core.js",
+    "app_world.js",
+    "app_skills.js",
+    "app_tutorial.js",
+    "app_battle.js",
+    "app_camera.js",
+    "app_social.js",
+    "app.js",
+    "app_bootstrap.js",
+    "app_session.js",
+)
+CLIENT_STATIC = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/style.css": ("style.css", "text/css; charset=utf-8"),
+    "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
+    "/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"),
+    "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"),
+    **{f"/{name}": (name, "text/javascript; charset=utf-8") for name in CLIENT_MODULES},
+}
+
+
 class RateLimiter:
     def __init__(self):
         self._lock = threading.Lock()
@@ -197,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.query or parsed.fragment:
                 raise GameError("invalid_path", "URL invalide.", 404)
             path = parsed.path
-            self._network_route = path if path in ("/", "/app.js", "/map_artwork.js", "/style.css", "/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
+            self._network_route = path if path in CLIENT_STATIC or path in ("/api/register", "/api/state", "/api/commands") else "session" if path.startswith("/api/sessions/") else "unknown"
             deferred_command = post and path == "/api/commands" and self.headers.get("X-RPG-Command-Ack") == "1"
             if deferred_command:
                 combat = True
@@ -213,10 +235,7 @@ class Handler(BaseHTTPRequestHandler):
             if not combat:
                 write(self.server.network_log, "CONNECTION", peer=self.client_address[0], method="POST" if post else "GET", route=self._network_route)
             if not post:
-                static = {"/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"), "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"), "/": ("index.html", "text/html; charset=utf-8"),
-                          "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
-                          "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-                          "/style.css": ("style.css", "text/css; charset=utf-8")}
+                static = CLIENT_STATIC
                 if path in static:
                     name, mime = static[path]
                     payload = (Path(__file__).parent/'web'/name).read_bytes()
