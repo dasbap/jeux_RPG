@@ -178,7 +178,7 @@ class TursoConnection:
         return [Cursor(item) for item in batch['step_results']]
 
     def execute(self, sql, params=()):
-        statement = sql.strip().upper()
+        statement = sql.strip().rstrip(';').strip().upper()
         if self.broken and statement != 'ROLLBACK':
             raise sqlite3.OperationalError('Connexion Turso à rétablir')
         beginning = statement.startswith('BEGIN')
