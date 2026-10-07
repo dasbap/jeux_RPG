@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from . import admin
 from .network_log import create_logger
-from .server import Handler
+from .server import CLIENT_STATIC, Handler
 from .service import GameError, GameService, digest
 from .clock import GameClock
 from .turso import TursoConnection
@@ -168,7 +168,7 @@ class Application:
                 raise GameError("invalid_origin", "Origine non autorisée.", 403)
             if self.environment.get("VERCEL"):
                 environ = {**environ, "wsgi.url_scheme": "https"}
-            static = {"/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"), "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"), "/": ("index.html", "text/html; charset=utf-8"), "/app.js": ("app.js", "text/javascript; charset=utf-8"), "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"), "/style.css": ("style.css", "text/css; charset=utf-8"), "/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}
+            static = {**CLIENT_STATIC, "/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}
             if method == "GET" and path in static:
                 name, mime = static[path]
                 status, payload = 200, (Path(__file__).parent / "web" / name).read_bytes()
