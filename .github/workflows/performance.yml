@@ -16,6 +16,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install '.[test]'
       - run: python -m pytest -m performance --junitxml=performance.xml -o junit_family=legacy
+      - run: python scripts/verify_load.py --seconds 5 --users 10 --combat-users 5 --poll-interval 1 --output test/load/ci_smoke.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
