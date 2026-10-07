@@ -17,7 +17,8 @@ async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console});clients.push(dom);
   dom.window.fetch=(url,opts)=>fetch(new URL(url,origin),opts);dom.window.crypto.randomUUID=randomUUID;dom.window.AbortController=AbortController;dom.window.AbortSignal=AbortSignal;
-  dom.window.eval(app+';window.socialTest={refresh,ready:()=>!busy,snapshot:()=>session};');
+  dom.window.setInterval=()=>0;
+  dom.window.eval(app+';window.socialTest={refresh,ready:()=>!busy&&!polling,snapshot:()=>session};');
   el(dom,'account-name').value='social_'+randomUUID().slice(0,8);el(dom,'account-password').value=randomUUID();el(dom,'name').value='Allié '+index;el(dom,'class-name').value='Knight';
   el(dom,'register-form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await until(()=>!el(dom,'lobby').hidden,'Inscription par compte');
@@ -59,6 +60,7 @@ async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method
  el(host,'choose-character-options').click();
  await until(()=>!el(host,'characters').hidden,'Choix du personnage accessible');
  assert(!host.window.document.querySelector('#copy-token'),'Aucune clé affichée');
+ await until(()=>clients.every(dom=>dom.window.socialTest.ready()),'Requêtes terminées avant fermeture des fenêtres');
  assert.deepEqual(errors,[]);
  console.log('Social UI : 4 comptes, invitations après début du tutoriel, équipe 4/4, amis, boutons stables et personnages indépendants vérifiés.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>{for(const dom of clients)dom.window.close();});
