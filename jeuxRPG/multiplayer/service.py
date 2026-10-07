@@ -21,6 +21,7 @@ from .clock import GameClock
 from .network_log import create_chat_logger
 from . import tutorial
 from .accounts import AccountMixin
+from .distributed import PresenceRegistry
 
 
 class GameError(Exception):
@@ -68,7 +69,7 @@ class GameService(AccountMixin):
         self._chat_connections = {}
         self._chat_sent = {}
         self._chat_cleanup_at = 0
-        self.runtime_presence = {}
+        self.runtime_presence = PresenceRegistry.from_environment(os.environ)
         self.rallies = {}
         self.location_cache = {}
         self.dirty_sessions = set()
@@ -114,6 +115,7 @@ class GameService(AccountMixin):
 
     def close(self):
         with self._lock:
+            self.runtime_presence.close()
             self.db.close()
             for handler in self.chat_log.handlers:
                 handler.close()
