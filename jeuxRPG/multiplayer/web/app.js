@@ -98,13 +98,6 @@ function remember() {
   sessionStorage.setItem("rpg-token", token);
   sessionStorage.setItem("rpg-session", sessionId);
 }
-) {
-  if (["move", "travel"].includes(action) && session?.tutorial) {
-    const paths = worldPaths(session.tutorial, params.destination);
-    if (paths) params = {...params, paths};
-  }
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
-}
 
 
 async function socialAction(action, params = {}) {
