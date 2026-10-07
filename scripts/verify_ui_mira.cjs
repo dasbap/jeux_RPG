@@ -53,7 +53,7 @@ w.fetch = async (url, options) => {
   return {ok:true, json:async () => data};
 };
 w.eval(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/map_artwork.js'), 'utf8'));
-w.eval(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/app.js'), 'utf8') + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy; window.stubMovement = () => {const original = moveControlled; moveControlled = (adventure, me, destination) => {window.touchDestination = destination;}; return () => {moveControlled = original;};};');
+w.eval(require('./client_source.cjs')() + ';window.mount = value => {token="test"; session=value; sessionId=value.id; renderTutorial(value.tutorial);}; window.ready = () => !busy; window.stubMovement = () => {const original = moveControlled; moveControlled = (adventure, me, destination) => {window.touchDestination = destination;}; return () => {moveControlled = original;};};');
 async function waitFor(check) {
   for (let i=0; i<100; i++) { if (check()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
   throw new Error('Dialogue de Mira bloqué');
