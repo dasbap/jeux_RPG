@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const webAppSource = require('./web_app_source.cjs');
 const path = require('node:path');
 const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
@@ -8,7 +9,7 @@ const dom = new JSDOM(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/i
 dom.window.setInterval = () => 0;
 dom.window.fetch = () => new Promise(() => {});
 dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
-dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/app.js'),'utf8') + `
+dom.window.eval(webAppSource(root) + `
 window.mountHud = adventure => {session={id:'hud',me:'p0',tutorial:adventure,events:[]};renderTutorial(adventure);};
 window.hudCalls=[];tutorialCommand=async (action,params)=>window.hudCalls.push({action,params});
 `);
