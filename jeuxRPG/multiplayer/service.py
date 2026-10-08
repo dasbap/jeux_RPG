@@ -501,9 +501,8 @@ class GameService(AccountMixin):
             party = json.loads(row[0])
             tactical_action = action in {"battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
             same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
-            world_action = action in ("move", "travel", "explore", "talk") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
-            if session["revision"] != params["revision"] and not ((tactical_action and same_encounter or world_action) and params["revision"] < session["revision"]):
-                raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
+            if params["revision"] > session["revision"]:
+                raise GameError("stale_revision", "La version demandée est plus récente que l'état serveur.", 409)
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
