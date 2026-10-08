@@ -79,8 +79,10 @@ function renderTutorial(adventure, preserveBattle = false) {
   }
   touchMove.disabled = busy || !inspectedCell;
   const me = adventure.players.find(player => player.id === session.me);
-  const fieldSites = new Set((adventure.field_interactions || []).map(site => site.id));
-  const canTalk = (adventure.position === "mira" && !fighting || fieldSites.has("mira")) && !adventure.moving;
+  const fieldInteractions = adventure.field_interactions || [];
+  const fieldSites = new Set(fieldInteractions.map(site => site.id));
+  const nearbyNpc = fieldInteractions.find(site => site.dialogue) || null;
+  const canTalk = (adventure.position === "mira" && !fighting || fieldSites.has("mira") || Boolean(nearbyNpc)) && !adventure.moving;
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
@@ -167,8 +169,11 @@ function renderTutorial(adventure, preserveBattle = false) {
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
-  $("npc-dialogue").textContent = adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
-  if (canTalk && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
+  const talkingToMira = !nearbyNpc || nearbyNpc.id === "mira";
+  $("npc-title").textContent = nearbyNpc ? `Parler à ${nearbyNpc.name}` : "Parler à Mira";
+  $("npc-dialogue").textContent = nearbyNpc && nearbyNpc.id !== "mira" ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || "Bonjour, voyageur."}` : adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
+  if (canTalk && nearbyNpc && nearbyNpc.id !== "mira") action("npc-actions", "Parler", "talk", {npc: nearbyNpc.id});
+  else if (canTalk && talkingToMira && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});

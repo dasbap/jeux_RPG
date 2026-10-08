@@ -12,7 +12,7 @@ PLACES = {
     "rosee": {"name": "Village de Rosée", "type": "village", "x": 290, "y": 160,
               "description": "Un village forestier avec une place, une forge et un terrain d'entraînement. Il relie la clairière, la lisière et la route de Brume.",
               "points": [{"id": "mira", "name": "Place du village · Mira", "type": "pnj", "description": "Mira propose une quête pour protéger la lisière."},
-                         {"id": "forge", "name": "Forge", "type": "atelier", "description": "La forge fabrique six pièces d’armure et les améliore jusqu’à +10 avec des matériaux communs et rares."},
+                         {"id": "forge", "name": "Garrik · maître forgeron", "type": "pnj", "description": "Garrik tient la forge de Rosée et fabrique ou améliore six pièces d’armure jusqu’à +10."},
                          {"id": "training", "name": "Terrain d'entraînement", "type": "rencontre", "description": "Essayez vos nouvelles compétences sans récompense supplémentaire."}]},
     "lisiere": {"name": "Lisière de Rosée", "type": "zone", "x": 290, "y": 45,
                 "description": "Une zone de chasse proche de Rosée, fréquentée par des gobelins.",
