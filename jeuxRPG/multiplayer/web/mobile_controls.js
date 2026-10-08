@@ -7,7 +7,7 @@ globalThis.createRpgTouchControls = api => {
   stick.id = "touch-stick";
   stick.tabIndex = 0;
   stick.setAttribute("role", "application");
-  stick.setAttribute("aria-label", "Joystick de déplacement. Glissez pour marcher, relâchez pour arrêter.");
+  stick.setAttribute("aria-label", "Joystick de déplacement. Glissez ou utilisez les flèches pour marcher, relâchez pour arrêter.");
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 100");
@@ -55,6 +55,24 @@ globalThis.createRpgTouchControls = api => {
     pointer = null; reset(); pendingStop = true;
     tick();
   }
+  const keys = new Map();
+  const arrows = {ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0]};
+  stick.addEventListener("keydown", event => {
+    if (!arrows[event.key] || !api.state().active) return;
+    event.preventDefault();
+    keys.set(event.key, arrows[event.key]);
+    key = api.state().key; pendingStop = false;
+    vector = [...keys.values()].reduce((sum, next) => sum.map((v,i) => Math.max(-1, Math.min(1, v + next[i]))), [0,0]);
+    if (timer === null) timer = setInterval(tick, 100);
+    tick();
+  });
+  stick.addEventListener("keyup", event => {
+    if (!arrows[event.key]) return;
+    event.preventDefault(); keys.delete(event.key);
+    if (!keys.size) release();
+    else vector = [...keys.values()].reduce((sum, next) => sum.map((v,i) => Math.max(-1, Math.min(1, v + next[i]))), [0,0]);
+  });
+  stick.addEventListener("blur", () => { if (keys.size) { keys.clear(); release(); } });
   stick.addEventListener("pointerdown", event => {
     if (pointer !== null || !api.state().active) return;
     event.preventDefault(); pointer = event.pointerId; key = api.state().key; pendingStop = false;
@@ -64,8 +82,8 @@ globalThis.createRpgTouchControls = api => {
   });
   stick.addEventListener("pointermove", event => {if (event.pointerId === pointer) {event.preventDefault(); position(event);}});
   for (const name of ["pointerup","pointercancel","lostpointercapture"]) stick.addEventListener(name, release);
-  window.addEventListener("blur", () => {if (pointer !== null) release();});
-  document.addEventListener("visibilitychange", () => {if (document.hidden && pointer !== null) release();});
+  window.addEventListener("blur", () => {if (pointer !== null || keys.size) { keys.clear(); release(); }});
+  document.addEventListener("visibilitychange", () => {if (document.hidden && (pointer !== null || keys.size)) release();});
   return {sync() {
     const state = api.state();
     panel.hidden = !state.active;

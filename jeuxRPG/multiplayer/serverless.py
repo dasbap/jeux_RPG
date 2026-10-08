@@ -271,6 +271,7 @@ class Application:
             value = environ.get(key, environ.get("HTTP_" + key))
             if value is not None:
                 handler.headers[key.replace("_", "-")] = value
+        handler.prepared_login = environ.get("rpg.prepared_login")
         handler.path = environ.get("PATH_INFO", "/") + ("?" + environ["QUERY_STRING"] if environ.get("QUERY_STRING") else "")
         handler.rfile = environ.get("wsgi.input", io.BytesIO())
         handler.client_address = (environ.get("REMOTE_ADDR", "unknown"), 0)

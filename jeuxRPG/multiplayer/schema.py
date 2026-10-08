@@ -18,6 +18,7 @@ REQUIRED_TABLES = {
     "members",
     "events",
     "receipts",
+    "receipt_expiry",
     "tutorials",
     "account_status",
     "admin_audit",

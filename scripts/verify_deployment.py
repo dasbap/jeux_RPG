@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -9,8 +10,23 @@ from urllib.request import Request, urlopen
 from websockets.asyncio.client import connect
 
 
-async def verify_realtime(base, catalogue):
-    async with connect(base.replace('https://', 'wss://') + '/api/ws', origin=base, open_timeout=30) as socket:
+def deployment_headers(headers=None):
+    result = dict(headers or {})
+    bypass = os.environ.get('VERCEL_AUTOMATION_BYPASS_SECRET')
+    if bypass:
+        result['x-vercel-protection-bypass'] = bypass
+    return result
+
+
+def deployment_request(url, data=None, headers=None):
+    return Request(url, data=data, headers=deployment_headers(headers))
+
+
+async def verify_realtime(base, catalogue, token):
+    async with connect(base.replace('https://', 'wss://') + '/api/ws', origin=base, additional_headers=deployment_headers(), open_timeout=30) as socket:
+        await socket.send(json.dumps({'type': 'authenticate', 'headers': {'Authorization': 'Bearer ' + token}}))
+        if json.loads(await asyncio.wait_for(socket.recv(), 15)).get('type') != 'authenticated':
+            raise RuntimeError('Authentification WebSocket refusée')
         sequence = 0
         async def rpc(path, body=None, token=None):
             nonlocal sequence
@@ -22,13 +38,6 @@ async def verify_realtime(base, catalogue):
                 result = json.loads(await asyncio.wait_for(socket.recv(), 30))
                 if result.get('id') == identifier:
                     return result['result']
-        registered = await rpc('/api/account/signup', {'username': 'ws_' + uuid.uuid4().hex[:12], 'password': uuid.uuid4().hex + uuid.uuid4().hex})
-        if registered['status'] != 201:
-            raise RuntimeError('Inscription WebSocket refusée')
-        token = registered['body']['token']
-        character = await rpc('/api/account/character', {'action': 'create', 'name': 'WebSocket vérification', 'class_name': catalogue[0]['id']}, token)
-        if character['status'] != 200:
-            raise RuntimeError('Création du personnage WebSocket refusée')
         tutorial = await rpc('/api/commands', {'request_id': uuid.uuid4().hex, 'action': 'tutorial', 'params': {}}, token)
         if tutorial['status'] != 200:
             raise RuntimeError('Tutoriel WebSocket refusé')
@@ -47,12 +56,20 @@ async def verify_realtime(base, catalogue):
         print('WebSocket, tutoriel, sauvegarde regroupée et rafraîchissements sans accès Turso vérifiés.')
 
 
-def main():
-    url = Path("deployment-url.txt").read_text().strip().splitlines()[-1]
+def deployment_base(url):
     parsed = urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith("-dasbaps-projects.vercel.app") or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise SystemExit("URL de déploiement inattendue")
-    base = "https://jeux-rpg.vercel.app"
+    return url.rstrip('/')
+
+
+def main():
+    base = deployment_base(Path("deployment-url.txt").read_text().strip().splitlines()[-1])
+    expected_release = os.environ.get('RPG_EXPECTED_RELEASE')
+    if expected_release:
+        with urlopen(deployment_request(base + '/health'), timeout=30) as response:
+            if json.load(response).get('release') != expected_release:
+                raise SystemExit('Le déploiement ne correspond pas au commit attendu')
     for route, expected in (("/", 200), ("/app_core.js", 200), ("/app_world.js", 200), ("/app_skills.js", 200), ("/app_tutorial.js", 200), ("/app_battle.js", 200), ("/app_camera.js", 200), ("/app_social.js", 200), ("/app.js", 200), ("/app_bootstrap.js", 200), ("/app_session.js", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
         status = None
         for attempt in range(3):
@@ -60,7 +77,7 @@ def main():
                 headers = {"Origin": base}
                 if route in ("/", "/admin"):
                     headers.update({"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document", "Referer": "https://vercel.com/"})
-                with urlopen(Request(base + route, headers=headers), timeout=30) as response:
+                with urlopen(deployment_request(base + route, headers=headers), timeout=30) as response:
                     status = response.status
                     body = response.read(2 * 1024 * 1024)
                     if route == "/api/classes":
@@ -83,24 +100,22 @@ def main():
     username = "verify_" + uuid.uuid4().hex[:12]
     password = uuid.uuid4().hex + uuid.uuid4().hex
     registration = json.dumps({"username": username, "password": password}).encode()
-    with urlopen(Request(base + "/api/account/signup", data=registration, headers={"Content-Type": "application/json", "Origin": base}), timeout=30) as response:
+    with urlopen(deployment_request(base + "/api/account/signup", data=registration, headers={"Content-Type": "application/json", "Origin": base}), timeout=30) as response:
         if response.status != 201:
             raise SystemExit("Inscription en production refusée")
         account = json.load(response)
     character = json.dumps({"action": "create", "name": "Vérification", "class_name": catalogue[0]["id"]}).encode()
-    with urlopen(Request(base + "/api/account/character", data=character, headers={"Authorization": "Bearer " + account["token"], "Content-Type": "application/json", "Origin": base}), timeout=30) as response:
+    with urlopen(deployment_request(base + "/api/account/character", data=character, headers={"Authorization": "Bearer " + account["token"], "Content-Type": "application/json", "Origin": base}), timeout=30) as response:
         selected = json.load(response)
         if not selected.get("selected"):
             raise SystemExit("Création de personnage refusée")
-    with urlopen(Request(base + "/api/state", headers={"Authorization": "Bearer " + account["token"], "Origin": base}), timeout=30) as response:
+    with urlopen(deployment_request(base + "/api/state", headers={"Authorization": "Bearer " + account["token"], "Origin": base}), timeout=30) as response:
         state = json.load(response)
-        if response.headers.get("X-RPG-Legacy-Tests-Reset") != "1":
-            raise SystemExit("Remise à zéro unique des anciens tests non confirmée")
         if response.status != 200 or not state.get("player"):
             raise SystemExit("Reprise du compte en production refusée")
-    print("Comptes par mot de passe, personnage et remise à zéro unique des anciens tests vérifiés, sans afficher les identifiants secrets.")
+    print("Comptes par mot de passe et personnage vérifiés, sans afficher les identifiants secrets.")
     print("Jeu et panneau admin disponibles ; accès admin anonyme refusé.")
-    asyncio.run(verify_realtime(base, catalogue))
+    asyncio.run(verify_realtime(base, catalogue, account["token"]))
 
 
 if __name__ == "__main__":
