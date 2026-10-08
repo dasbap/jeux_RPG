@@ -290,6 +290,26 @@ def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
     asyncio.run(run())
 
 
+def test_realtime_serves_all_modular_frontend_assets():
+    app = create_app(ENV, Coordinator(ENV, store=RuntimeStore(ENV)))
+    with TestClient(app, base_url='http://localhost') as client:
+        for path in (
+            '/app_core.js',
+            '/app_world.js',
+            '/app_skills.js',
+            '/app_tutorial.js',
+            '/app_battle.js',
+            '/app_camera.js',
+            '/app_social.js',
+            '/app_bootstrap.js',
+            '/app_session.js',
+            '/app.js',
+        ):
+            response = client.get(path)
+            assert response.status_code == 200, path
+            assert response.headers['content-type'].startswith('text/javascript')
+
+
 def test_catalogue_does_not_start_a_database_or_coordinator(monkeypatch):
     def blocked(*args, **kwargs):
         raise AssertionError('Le catalogue ne doit pas démarrer le moteur')
