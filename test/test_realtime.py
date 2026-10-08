@@ -110,7 +110,7 @@ def test_accepting_mira_quest_is_saved_without_refresh_writes():
     store.close()
 
 
-def test_mira_accepts_time_only_revision_and_rejects_changed_quest():
+def test_mira_accepts_stale_revision_then_revalidates_changed_quest():
     store = RuntimeStore(ENV, clock=SimpleNamespace(now=lambda: 0, ratio=240))
     player, room = adventure(store)
     mutate(store, room, lambda party: party.update(step='village', position='mira'))
@@ -125,7 +125,7 @@ def test_mira_accepts_time_only_revision_and_rejects_changed_quest():
     assert accepted['body']['session']['tutorial']['quest'] == 'active'
     stale = talk()
     assert stale['status'] == 409
-    assert stale['body']['error'] == 'stale_revision'
+    assert stale['body']['error'] == 'quest_incomplete'
     store.close()
 
 
