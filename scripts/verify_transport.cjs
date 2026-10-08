@@ -21,7 +21,7 @@ class Socket {
     if (item.type === 'authenticate') {this.authentication=item;queueMicrotask(()=>this.emit('message',{data:JSON.stringify({type:'authenticated'})}));}
     else if (item.id) {this.lastRequest=item; if(this.drop) this.close(); else queueMicrotask(()=>this.emit('message',{data:JSON.stringify({id:item.id,result:{status:200,body:{ok:true}}})}));}
   }
-  close() {this.readyState=3;this.emit('close');}
+  close() {this.readyState=3;queueMicrotask(()=>this.emit('close'));}
 }
 (async () => {
   const blocked = setup(Blocked);
@@ -35,15 +35,18 @@ class Socket {
   assert.equal(Socket.last.authentication.headers.Authorization,'Bearer token');
   assert.equal(active.transport.connected,true);
   assert.equal(active.calls.length,1);
+  await active.transport.request('/api/state', {headers:{Authorization:'Bearer changed'}});
+  assert.equal(Socket.last.authentication.headers.Authorization,'Bearer changed');
+  assert.equal(active.transport.connected,true);
   Socket.last.drop=true;
-  const options={method:'POST',headers:{Authorization:'Bearer token'},body:JSON.stringify({request_id:'same-id',action:'rest',params:{}})};
+  const options={method:'POST',headers:{Authorization:'Bearer changed'},body:JSON.stringify({request_id:'same-id',action:'rest',params:{}})};
   await active.transport.request('/api/commands',options);
   assert.equal(active.calls.length,2);
   assert.equal(active.calls[1].options.body,options.body);
   assert.equal(active.transport.connected,false);
-  await active.transport.request('/api/state', {headers:{Authorization:'Bearer token'}});
+  await active.transport.request('/api/state', {headers:{Authorization:'Bearer changed'}});
   Socket.last.drop=true;
-  await assert.rejects(active.transport.request('/api/social', {method:'POST',headers:{Authorization:'Bearer token'},body:'{}'}));
+  await assert.rejects(active.transport.request('/api/social', {method:'POST',headers:{Authorization:'Bearer changed'},body:'{}'}));
   assert.equal(active.calls.length,2);
   console.log('Transport : connexion bloquée, authentification, repli HTTP et rejouabilité des commandes vérifiés.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -97,6 +97,8 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
       const credentials = options.headers?.Authorization || options.headers?.authorization;
       if (path.startsWith("/api/account/") || path === "/api/classes" || !credentials) return fetch(path, options);
       if (authorization && authorization !== credentials) {
+        connected = false;
+        clearInterval(heartbeat);
         subscription = null;
         socket?.close();
         socket = null;
