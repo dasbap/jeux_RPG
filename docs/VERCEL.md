@@ -2,7 +2,7 @@
 
 Le projet cible est `dasbaps-projects/jeux-rpg`. `fleet-test` ne doit pas être modifié.
 
-L’application WSGI est `app:app`, déclarée dans `pyproject.toml`. Le serveur local conserve son entrée `main.py`. Python 3.12 et la région Francfort sont configurés.
+L’application déployée expose `app:app`, une application FastAPI/ASGI créée par `jeuxRPG.multiplayer.realtime.create_app`. Le serveur HTTP local conserve son entrée dédiée. Python 3.12 et la région Francfort sont configurés.
 
 ## Variables Vercel
 
@@ -10,6 +10,7 @@ L’application WSGI est `app:app`, déclarée dans `pyproject.toml`. Le serveur
 - `TURSO_AUTH_TOKEN` : secret de cette base avec lecture et écriture.
 - `RPG_ADMIN_TOKEN` : secret aléatoire distinct, au moins 32 caractères, pour le panneau administrateur.
 - `RPG_PUBLIC_ORIGIN` : origine HTTPS sans chemin si un domaine personnalisé est utilisé.
+- `REDIS_URL` ou `KV_URL` : Redis partagé pour coordination temps réel, présence et rate limiting distribué.
 
 Configurer ces valeurs pour les environnements réellement déployés. Les previews doivent utiliser une base distincte pour isoler les données. Les secrets GitHub ne sont pas transmis automatiquement à Vercel.
 
@@ -29,10 +30,10 @@ Ouvrir `/admin` sur le déploiement et saisir `RPG_ADMIN_TOKEN`. La clé reste e
 
 Le panneau permet de rechercher et renommer les identités de joueurs existantes, de les suspendre ou rétablir, et de révoquer leur jeton. Une révocation invalide définitivement l’ancien jeton ; aucun jeton de remplacement n’est remis par le panneau. Les comptes et leurs parties restent conservés. Les actions sont consignées dans `admin_audit`.
 
-Les identités actuelles du jeu reposent sur des jetons générés lors de la création de personnages. Ce panneau ne crée pas encore un système d’inscription email/mot de passe, de récupération de compte ou de rôles administrateurs individuels.
+Le jeu dispose désormais de comptes nom d’utilisateur/mot de passe avec plusieurs personnages, sessions révocables, changement de mot de passe et déconnexion globale. Le panneau administrateur reste distinct et ne fournit pas encore de récupération de compte par email ni de rôles administrateurs individuels.
 
 ## Exécution et validation
 
-La simulation avance lors des requêtes des joueurs, sans thread permanent. Les transactions, reçus de commandes, chat et limites sont partagés dans Turso. Aucun état de jeu durable n’est sauvegardé sur le disque Vercel. La migration est également exécutée au premier accès d’une instance.
+La production utilise un moteur temps réel coordonné par Redis avec WebSocket sur `/api/ws`. Un propriétaire actif maintient l’état en mémoire, publie les changements et persiste les checkpoints vers Turso avec fencing ; les autres instances relaient les requêtes via Redis. Aucun état durable n’est sauvegardé sur le disque Vercel. Les migrations versionnées sont appliquées à l’initialisation.
 
-Le contrôle avant build vérifie les fichiers et les variables sans afficher les secrets. Il ne valide pas la connexion distante. Après déploiement, vérifier inscription, reprise de partie, combat, chat entre deux navigateurs, suspension/rétablissement et conservation des données après redéploiement. La charge de 30 joueurs et les quotas Turso gratuits restent à mesurer sur une preview.
+Le contrôle avant build vérifie les fichiers et les variables sans afficher les secrets. Il ne valide pas la connexion distante. Après déploiement, vérifier inscription, reprise de partie, chargement de tous les modules frontend, WebSocket, combat, chat entre deux navigateurs, suspension/rétablissement et conservation des données après redéploiement. La CI contient également un smoke test de charge configurable ; les limites réelles du plan Turso/Redis doivent encore être validées sur une preview de production.
