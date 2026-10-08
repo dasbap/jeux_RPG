@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
 
 from .realtime_store import RuntimeStore
+from .server import CLIENT_STATIC
 from .serverless import Application
 
 
@@ -461,7 +462,9 @@ def create_app(environment=None, coordinator=None):
                 return JSONResponse(result['body'], status_code=result['status'], headers=headers)
             except Exception:
                 return JSONResponse({'error': 'unavailable', 'message': 'Moteur temps réel indisponible.'}, status_code=503)
-        if path not in ('', 'app.js', 'mobile_controls.js', 'realtime.js', 'map_artwork.js', 'style.css', 'admin', 'admin.js', 'admin.css'):
+        static_paths = {key.removeprefix('/') for key in CLIENT_STATIC}
+        static_paths.update({'admin', 'admin.js', 'admin.css'})
+        if path not in static_paths:
             return Response(status_code=404)
         result = {}
         def start(status, headers):
