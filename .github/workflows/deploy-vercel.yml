@@ -4,27 +4,15 @@ on:
     branches: [alpha-vercel-turso]
     paths:
       - .github/workflows/deploy-vercel.yml
-      - scripts/verify_deployment.py
-      - jeuxRPG/multiplayer/serverless.py
-      - jeuxRPG/multiplayer/realtime.py
-      - jeuxRPG/multiplayer/realtime_store.py
-      - jeuxRPG/multiplayer/catalogue.py
-      - jeuxRPG/multiplayer/web/realtime.js
-      - jeuxRPG/multiplayer/web/app.js
-      - jeuxRPG/multiplayer/web/style.css
-      - jeuxRPG/multiplayer/web/index.html
-      - jeuxRPG/multiplayer/web/mobile_controls.js
-      - jeuxRPG/multiplayer/tactics.py
-      - jeuxRPG/multiplayer/tutorial.py
-      - scripts/verify_touch_controls.cjs
-      - jeuxRPG/multiplayer/web/map_artwork.js
-      - jeuxRPG/multiplayer/accounts.py
-      - jeuxRPG/multiplayer/account_rollout.py
-      - jeuxRPG/multiplayer/schema.py
-      - jeuxRPG/multiplayer/service.py
-      - scripts/verify_ui_mira.cjs
       - app.py
       - pyproject.toml
+      - scripts/verify_deployment.py
+      - scripts/verify_admin_ui.cjs
+      - scripts/verify_ui_mira.cjs
+      - scripts/verify_touch_controls.cjs
+      - scripts/verify_map_navigation.cjs
+      - jeuxRPG/multiplayer/**
+      - jeuxRPG/maps/**
       - test/test_realtime.py
   workflow_dispatch:
 permissions:
