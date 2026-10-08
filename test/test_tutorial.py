@@ -548,3 +548,51 @@ def test_delayed_strike_rechecks_current_combat_and_cooldown(game):
     with pytest.raises(GameError) as failure:
         game.command(token, uuid.uuid4().hex, 'strike', **params)
     assert failure.value.code in ('stale_encounter', 'stale_revision')
+
+
+def test_stale_tutorial_intent_is_revalidated_against_current_state(game):
+    player = game.register("Aventurier", "Knight")
+    state = command(game, player["token"], "tutorial")
+    stale_revision = state["revision"]
+    game.db.execute(
+        "UPDATE sessions SET revision=revision+5 WHERE id=?",
+        (state["id"],),
+    )
+    result = game.command(
+        player["token"],
+        uuid.uuid4().hex,
+        "rest",
+        session_id=state["id"],
+        revision=stale_revision,
+    )
+    assert result["session"]["revision"] == stale_revision + 6
+
+
+def test_stale_tutorial_intent_returns_current_business_error(game):
+    player = game.register("Aventurier", "Knight")
+    state = command(game, player["token"], "tutorial")
+    stale_revision = state["revision"]
+    command(game, player["token"], "explore")
+    with pytest.raises(GameError) as failure:
+        game.command(
+            player["token"],
+            uuid.uuid4().hex,
+            "explore",
+            session_id=state["id"],
+            revision=stale_revision,
+        )
+    assert failure.value.code == "wrong_location"
+
+
+def test_future_tutorial_revision_is_rejected(game):
+    player = game.register("Aventurier", "Knight")
+    state = command(game, player["token"], "tutorial")
+    with pytest.raises(GameError) as failure:
+        game.command(
+            player["token"],
+            uuid.uuid4().hex,
+            "rest",
+            session_id=state["id"],
+            revision=state["revision"] + 1,
+        )
+    assert failure.value.code == "stale_revision"
