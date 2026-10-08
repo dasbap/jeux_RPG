@@ -4,7 +4,7 @@
 
 Le POC permet un tutoriel coopératif et des duels entre joueurs dans un environnement contrôlé. Il ne constitue pas une certification de sécurité ni une infrastructure de production publique.
 
-Le serveur HTTP est limité à la boucle locale. Toute exposition distante doit passer par un proxy HTTPS sur la même machine. Ne pas transmettre les clés personnelles en URL, dans un journal ou dans un canal Discord public.
+Le serveur HTTP local reste limité à la boucle locale. Le déploiement web utilise l’entrée FastAPI/ASGI et impose les contrôles d’hôte et d’origine. Toute exposition personnalisée doit rester sous HTTPS. Ne pas transmettre les jetons de session, mots de passe ou secrets administrateur en URL, dans un journal ou dans un canal public.
 
 ## Protections mises en place
 
@@ -20,13 +20,13 @@ Le serveur HTTP est limité à la boucle locale. Toute exposition distante doit 
 
 ## Limites explicites
 
-Le serveur accepte au maximum 32 traitements HTTP concurrents. Les limites en mémoire sont de 600 requêtes par minute et par adresse, 10 créations de personnages par minute et par adresse, 60 commandes par minute et par identité. Derrière un proxy local, l'adresse du proxy est commune aux utilisateurs. Ces limites sont des garde-fous de démonstration, pas une protection contre une attaque réseau distribuée.
+Le serveur local accepte au maximum 128 traitements HTTP concurrents. Les routes appliquent des limites distinctes, notamment 10 tentatives de connexion ou créations de compte par minute et par adresse et 60 commandes par minute et par identité. Quand Redis est configuré, les limites et la présence runtime sont partagées entre instances ; sans Redis, des fallbacks locaux ou base de données sont utilisés selon le mode d’exécution. Ces garde-fous ne remplacent pas une protection réseau en amont.
 
 Le stockage est borné à 1 000 personnages, 2 000 sessions et 100 000 reçus de commande. Une session conserve les 100 derniers événements. Les reçus ne sont pas purgés automatiquement afin de conserver la déduplication. Une limite atteinte produit un refus 429. L'administrateur peut démarrer un nouveau monde avec un autre fichier de base ; aucune suppression des données existantes n'est automatique.
 
-Un possesseur de clé possède l'accès au personnage. Les clés doivent être conservées en privé. Le POC n'inclut ni OAuth, ni rotation/révocation des clés web, ni récupération de compte. La fermeture d'un onglet ne bloque pas l'identité sur le serveur.
+Les comptes utilisent un nom d’utilisateur et un mot de passe dérivé avec scrypt. Les sessions sont des jetons révocables, avec un maximum de sessions actives conservées par compte ; le changement de mot de passe révoque les anciennes sessions et une déconnexion globale est disponible. Le POC n’inclut pas encore OAuth ni récupération de compte par email.
 
-Les fichiers sont protégés contre les entrées du joueur, mais le POC suppose que le compte système et le répertoire de données sont de confiance. Un utilisateur local capable de modifier les fichiers du serveur ne fait pas partie du modèle de menace. Utiliser un seul processus applicatif propriétaire du monde pour le déploiement du POC ; SQLite protège aussi les transactions concurrentes, mais le rate limiting et les instances d'horloge restent locaux au processus.
+Les fichiers sont protégés contre les entrées du joueur, mais le POC suppose que le compte système et le répertoire de données sont de confiance. Un utilisateur local capable de modifier les fichiers du serveur ne fait pas partie du modèle de menace. En production temps réel, Redis coordonne le propriétaire du moteur, les fences de sauvegarde, la présence et le rate limiting distribué ; Turso conserve l’état durable.
 
 La reprise compte le temps hors ligne à partir de l'horloge système UTC et empêche un retour en arrière du temps de jeu. Une modification importante de l'heure pendant l'arrêt peut faire avancer les échéances. Les durées des compétences du moteur historique restent exprimées en tours ; elles ne sont pas implicitement converties en secondes du POC.
 
