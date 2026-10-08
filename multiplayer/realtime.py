@@ -1,5 +1,7 @@
 import asyncio
 import json
+import hashlib
+from pathlib import Path
 import logging
 import os
 import time
@@ -11,6 +13,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
 
+from .json_protocol import object_json
 from .realtime_store import RuntimeStore
 from .serverless import Application
 
@@ -81,6 +84,8 @@ class Coordinator:
         self.saving = None
         self.pubsub = None
         self.connections = 0
+        self.handshakes = 0
+        self.auth_slots = asyncio.Semaphore(2)
 
     def owner(self):
         return self.local or self.store is not None and time.monotonic() < self.deadline
@@ -123,12 +128,12 @@ class Coordinator:
                 from .realtime_store import KEYS
                 for item in checkpoint.get('pending', []):
                     table, row = item['table'], item['row']
-                    self.store.pending[(table, tuple(row[key] for key in KEYS[table]))] = row
+                    self.store.pending[(table, tuple(item.get('key', ())) if row is None else tuple(row[key] for key in KEYS[table]))] = row
                 self.store.due = time.monotonic() + 5 if self.store.pending else None
             else:
                 loaded = await asyncio.to_thread(RuntimeStore.load, self.environment)
                 try:
-                    if self.environment.get("RPG_RESET_TEST_PLAYERS") == "1":
+                    if getattr(loaded, "reset_performed", False):
                         await self.redis.set("jeux-rpg:runtime:v1:lease", "retired-accounts-v1", px=600000)
                         await self.redis.delete("jeux-rpg:runtime:v1:checkpoint", "jeux-rpg:runtime:v1:fence")
                 except BaseException:
@@ -220,10 +225,28 @@ class Coordinator:
             raise
 
     async def execute(self, message):
+        prepared = None
+        store = None
+        body = message.get('body')
+        login = message.get('method') == 'POST' and message.get('path') in ('/api/account/login', '/api/account/signup')
+        if login and isinstance(body, dict) and set(body) == {'username', 'password'}:
+            from .service import GameError
+            from .serverless import DatabaseLimiter
+            async with self.auth_slots:
+                async with self.lock:
+                    if self.owner():
+                        store = self.store
+                        if not DatabaseLimiter(store.service).accept(('password_work', message.get('peer', 'unknown')), 10):
+                            return {'status': 429, 'headers': {}, 'body': {'error': 'rate_limit', 'message': 'Trop de connexions. Réessayez dans une minute.'}}
+                if store is not None:
+                    try:
+                        prepared = await self.memory_call(store.service.prepare_account_login, body['username'], body['password'], message['path'].endswith('signup'))
+                    except GameError as error:
+                        return {'status': error.status, 'headers': {}, 'body': {'error': error.code, 'message': str(error)}}
         async with self.lock:
-            if not self.owner():
+            if not self.owner() or store is not None and self.store is not store:
                 return {'status': 503, 'headers': {}, 'body': {'error': 'unavailable', 'message': 'Reconnexion du moteur en cours.'}}
-            return await self.memory_call(self.store.request, message)
+            return await self.memory_call(self.store.request, message, prepared)
 
     async def rpc(self, message):
         await self.start()
@@ -256,7 +279,7 @@ class Coordinator:
         try:
             save_id = uuid.uuid4().hex
             if not self.local:
-                checkpoint = json.dumps({'durable': json.loads(snapshot), 'pending': [{'table': table, 'row': row} for (table, key), row in batch.items()], 'save_id': save_id}, separators=(',', ':'))
+                checkpoint = json.dumps({'durable': json.loads(snapshot), 'pending': [{'table': table, 'key': key, 'row': row} for (table, key), row in batch.items()], 'save_id': save_id}, separators=(',', ':'))
                 accepted = await self.redis.eval(SNAPSHOT, 2, self.prefix + 'lease', self.prefix + 'checkpoint', self.uid + ':' + str(fence), checkpoint)
                 if not accepted:
                     return
@@ -293,6 +316,8 @@ class Coordinator:
         if self.saving is not None:
             with suppress(Exception):
                 await self.saving
+        if not self.local:
+            await self.flush()
         if self.pubsub:
             await self.pubsub.aclose()
         if self.redis:
@@ -338,6 +363,18 @@ def create_app(environment=None, coordinator=None):
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.coordinator = coordinator
 
+    @app.middleware('http')
+    async def response_security(request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault('Cache-Control', 'no-store')
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'no-referrer')
+        response.headers.setdefault('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        if environment.get('VERCEL'):
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+        return response
+
     def trusted(connection, path, method, body=None, headers=None):
         incoming = dict(connection.headers)
         forwarded = {key.lower(): value for key, value in (headers or incoming).items() if key.lower() in
@@ -360,15 +397,39 @@ def create_app(environment=None, coordinator=None):
         if host not in allowed or origin != scheme + '://' + host:
             await websocket.close(code=1008)
             return
-        if coordinator.connections >= 40:
+        if coordinator.connections >= 40 or coordinator.handshakes >= 16:
             await websocket.close(code=1013)
             return
-        coordinator.connections += 1
+        coordinator.handshakes += 1
+        authenticated = None
         try:
             await websocket.accept()
-        except BaseException:
-            coordinator.connections -= 1
-            raise
+            if environment.get('VERCEL'):
+                raw = await asyncio.wait_for(websocket.receive_text(), 10)
+                if len(raw.encode()) > 4096:
+                    await websocket.close(code=1009)
+                    return
+                item = object_json(raw)
+                headers = item.get('headers', {})
+                if item.get('type') != 'authenticate' or not isinstance(headers, dict) or set(headers) != {'Authorization'} or not isinstance(headers['Authorization'], str):
+                    await websocket.close(code=1008)
+                    return
+                identity = await coordinator.rpc(trusted(websocket, '/api/account/me', 'GET', headers=headers))
+                if identity['status'] != 200:
+                    await websocket.close(code=1008)
+                    return
+                authenticated = headers['Authorization']
+                await websocket.send_json({'type': 'authenticated'})
+            if coordinator.connections >= 40:
+                await websocket.close(code=1013)
+                return
+        except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):
+            with suppress(RuntimeError, WebSocketDisconnect):
+                await websocket.close(code=1008)
+            return
+        finally:
+            coordinator.handshakes -= 1
+        coordinator.connections += 1
         send_lock = asyncio.Lock()
         subscription = None
         paused = False
@@ -388,6 +449,9 @@ def create_app(environment=None, coordinator=None):
                     except (TimeoutError, RuntimeError, OSError):
                         with suppress(RuntimeError, WebSocketDisconnect):
                             await websocket.close(code=1012)
+                        return
+                    if result['status'] in (401, 403):
+                        await websocket.close(code=1008)
                         return
                     if paused:
                         continue
@@ -410,7 +474,7 @@ def create_app(environment=None, coordinator=None):
                 if count > 20:
                     await websocket.close(code=1008)
                     return
-                item = json.loads(raw)
+                item = object_json(raw)
                 if item.get('type') == 'visibility' and type(item.get('active')) is bool:
                     paused = not item['active']
                     await send({'type': 'visibility', 'active': not paused})
@@ -420,7 +484,10 @@ def create_app(environment=None, coordinator=None):
                     continue
                 path = item.get('path', '')
                 headers = item.get('headers', {})
-                if not isinstance(path, str) or len(path) > 256 or not path.startswith('/api/') or path.startswith('/api/admin/') or path == '/api/ws' or not isinstance(headers, dict) or any(not isinstance(v, str) or len(v) > 8192 for v in headers.values()):
+                if not isinstance(path, str) or len(path) > 256 or not path.startswith('/api/') or path.startswith('/api/admin/') or path == '/api/ws' or not isinstance(headers, dict) or any(not isinstance(k, str) or len(k) > 64 or not isinstance(v, str) or len(v) > 8192 for k, v in headers.items()):
+                    await websocket.close(code=1008)
+                    return
+                if item.get('method', 'GET') not in ('GET', 'POST') or authenticated and headers.get('Authorization', headers.get('authorization')) != authenticated:
                     await websocket.close(code=1008)
                     return
                 request = trusted(websocket, path, item.get('method', 'GET'), item.get('body'), headers)
@@ -451,7 +518,7 @@ def create_app(environment=None, coordinator=None):
                 raw = await request.body()
                 if len(raw) > 65536:
                     return JSONResponse({'error': 'too_large', 'message': 'Requête trop volumineuse.'}, status_code=413)
-                message = trusted(request, '/' + path + ('?' + request.url.query if request.url.query else ''), request.method, json.loads(raw) if raw else None)
+                message = trusted(request, '/' + path + ('?' + request.url.query if request.url.query else ''), request.method, object_json(raw) if raw else None)
                 result = await coordinator.rpc(message)
                 if request.method == 'POST' and result['status'] < 300 and coordinator.owner() and not coordinator.connections:
                     await coordinator.flush()
@@ -459,6 +526,8 @@ def create_app(environment=None, coordinator=None):
                     await coordinator.release()
                 headers = {key: value for key, value in result['headers'].items() if key.lower() != 'content-length'}
                 return JSONResponse(result['body'], status_code=result['status'], headers=headers)
+            except (ValueError, UnicodeError, RecursionError):
+                return JSONResponse({'error': 'invalid_json', 'message': 'JSON invalide.'}, status_code=400)
             except Exception:
                 return JSONResponse({'error': 'unavailable', 'message': 'Moteur temps réel indisponible.'}, status_code=503)
         if path not in ('', 'app.js', 'mobile_controls.js', 'realtime.js', 'map_artwork.js', 'style.css', 'admin', 'admin.js', 'admin.css'):
@@ -470,6 +539,21 @@ def create_app(environment=None, coordinator=None):
         for key, value in request.headers.items():
             environment_wsgi['HTTP_' + key.upper().replace('-', '_')] = value
         content = b''.join(static(environment_wsgi, start))
+        if result['status'] == 200:
+            web = Path(__file__).parent / 'web'
+            if path in ('', 'admin'):
+                for asset in ('app.js', 'realtime.js', 'mobile_controls.js', 'map_artwork.js', 'style.css', 'admin.js', 'admin.css'):
+                    digest = hashlib.sha256((web / asset).read_bytes()).hexdigest()[:16]
+                    content = content.replace(('"/' + asset + '"').encode(), ('"/' + asset + '?v=' + digest + '"').encode())
+                result['headers']['Content-Length'] = str(len(content))
+                result['headers']['Cache-Control'] = 'no-cache'
+            else:
+                digest = hashlib.sha256(content).hexdigest()[:16]
+                result['headers']['Cache-Control'] = 'public, max-age=31536000, immutable' if request.query_params.get('v') == digest else 'public, max-age=0, must-revalidate'
+                result['headers']['ETag'] = '"' + digest + '"'
+                if request.headers.get('if-none-match') == result['headers']['ETag']:
+                    result['headers'].pop('Content-Length', None)
+                    return Response(status_code=304, headers=result['headers'])
         return Response(content, status_code=result['status'], headers=result['headers'])
 
     return app

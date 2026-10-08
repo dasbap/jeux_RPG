@@ -345,3 +345,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .combat-active .combat-mode #combat-enemy-panel .mob-quick-actions button{width:32px;height:32px;min-width:32px;min-height:32px;padding:3px;flex:0 0 32px;font-size:.75rem}
 }
 @media(max-width:750px){.combat-active .combat-mode #corpse-actions,.combat-active .combat-mode #tactical-actions{right:180px}}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

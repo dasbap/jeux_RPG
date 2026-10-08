@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>RPG · De la clairière à Brume</title>
+  <meta name="description" content="Jeu RPG multijoueur en français : explorez le monde, progressez avec votre personnage et participez aux combats tactiques.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Jeux RPG">
+  <meta property="og:description" content="Explorez le monde et participez aux combats tactiques de ce RPG multijoueur en français.">
+  <meta property="og:url" content="https://jeux-rpg.vercel.app/">
+  <meta name="twitter:card" content="summary">
+  <link rel="canonical" href="https://jeux-rpg.vercel.app/">
   <link rel="stylesheet" href="/style.css">
   <script src="/map_artwork.js" defer></script>
   <script src="/realtime.js" defer></script>
@@ -22,7 +30,7 @@
     <section id="registration" class="panel">
       <h2>Votre compte</h2>
       <p>Un compte, un personnage par classe. Les équipes accueillent jusqu’à quatre joueurs.</p>
-      <form id="register-form"><label for="account-name">Nom de compte</label><input id="account-name" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><label for="account-password">Mot de passe</label><input id="account-password" type="password" required minlength="12" maxlength="128" autocomplete="new-password">
+      <form id="register-form"><label for="account-name">Nom de compte</label><input id="account-name" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><label for="account-password">Mot de passe</label><input id="account-password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" aria-describedby="password-help"><small id="password-help">12 à 128 caractères. Conservez ce mot de passe : la récupération automatique n’est pas disponible.</small>
         <label for="name">Nom du personnage</label><input id="name" maxlength="32" required autocomplete="off" placeholder="Votre nom">
         <label for="class-name">Classe</label><select id="class-name">{{CLASS_OPTIONS}}</select>
         <button type="submit">Créer mon compte et mon personnage</button>
@@ -75,7 +83,7 @@
       <details><summary id="shared-log-title">Journal partagé</summary><ol id="events"></ol></details>
     </section>
 <button id="chat-toggle" class="secondary" aria-expanded="false" aria-controls="chat-panel" aria-label="Discussion" title="Discussion" hidden>💬</button><section id="chat-panel" class="panel" hidden><h2>Discussion</h2><p id="online-players"></p><div class="chat-columns"><section><h3>Global</h3><ol id="chat-global"></ol></section><section><h3>Groupe</h3><ol id="chat-group"></ol></section></div><form id="chat-form"><label for="chat-channel">Canal</label><select id="chat-channel"><option value="global">Global</option><option value="group">Mon groupe</option></select><label for="chat-message">Message</label><input id="chat-message" maxlength="400" required autocomplete="off"><button id="send-chat" type="submit">Envoyer</button><p id="chat-status" role="status"></p></form></section>
-    <footer>De la clairière à Brume · votre aventure est sauvegardée</footer>
+    <footer>De la clairière à Brume · sauvegarde aux étapes de progression, après quelques secondes</footer>
   </main>
 </body>
 </html>

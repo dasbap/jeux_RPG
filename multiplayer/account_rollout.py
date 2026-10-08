@@ -8,7 +8,7 @@ def reset_test_players(connection):
         if connection.execute('SELECT value FROM meta WHERE key=?', (RESET_KEY,)).fetchone():
             connection.execute('COMMIT')
             return False
-        tables = ('chat_streams', 'presence', 'chat', 'receipts', 'events', 'tutorials', 'members', 'sessions',
+        tables = ('chat_streams', 'presence', 'chat', 'receipt_expiry', 'receipts', 'events', 'tutorials', 'members', 'sessions',
                   'admin_audit', 'account_status', 'team_invites', 'team_members', 'teams', 'friendships',
                   'account_sessions', 'account_characters', 'players', 'accounts', 'request_limits')
         for table in tables:

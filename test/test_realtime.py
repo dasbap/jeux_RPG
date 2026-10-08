@@ -153,7 +153,8 @@ def test_joystick_stop_cancels_route_without_checkpoint():
     result = store.request(message('/api/commands', {'request_id':uuid.uuid4().hex, 'action':'stop_move', 'params':params}, player['token']))
     assert result['status'] == 200
     assert result['body']['session']['tutorial']['battle']['players'][identifier]['route'] == []
-    assert not store.pending
+    assert ('tutorials', (room,)) not in store.pending
+    assert any(table == 'receipts' for table, _ in store.pending)
     params['encounter'] += 100
     result = store.request(message('/api/commands', {'request_id':uuid.uuid4().hex, 'action':'stop_move', 'params':params}, player['token']))
     assert result['status'] == 409

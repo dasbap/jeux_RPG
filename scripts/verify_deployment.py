@@ -9,8 +9,11 @@ from urllib.request import Request, urlopen
 from websockets.asyncio.client import connect
 
 
-async def verify_realtime(base, catalogue):
+async def verify_realtime(base, catalogue, token):
     async with connect(base.replace('https://', 'wss://') + '/api/ws', origin=base, open_timeout=30) as socket:
+        await socket.send(json.dumps({'type': 'authenticate', 'headers': {'Authorization': 'Bearer ' + token}}))
+        if json.loads(await asyncio.wait_for(socket.recv(), 15)).get('type') != 'authenticated':
+            raise RuntimeError('Authentification WebSocket refusée')
         sequence = 0
         async def rpc(path, body=None, token=None):
             nonlocal sequence
@@ -22,13 +25,6 @@ async def verify_realtime(base, catalogue):
                 result = json.loads(await asyncio.wait_for(socket.recv(), 30))
                 if result.get('id') == identifier:
                     return result['result']
-        registered = await rpc('/api/account/signup', {'username': 'ws_' + uuid.uuid4().hex[:12], 'password': uuid.uuid4().hex + uuid.uuid4().hex})
-        if registered['status'] != 201:
-            raise RuntimeError('Inscription WebSocket refusée')
-        token = registered['body']['token']
-        character = await rpc('/api/account/character', {'action': 'create', 'name': 'WebSocket vérification', 'class_name': catalogue[0]['id']}, token)
-        if character['status'] != 200:
-            raise RuntimeError('Création du personnage WebSocket refusée')
         tutorial = await rpc('/api/commands', {'request_id': uuid.uuid4().hex, 'action': 'tutorial', 'params': {}}, token)
         if tutorial['status'] != 200:
             raise RuntimeError('Tutoriel WebSocket refusé')
@@ -94,13 +90,11 @@ def main():
             raise SystemExit("Création de personnage refusée")
     with urlopen(Request(base + "/api/state", headers={"Authorization": "Bearer " + account["token"], "Origin": base}), timeout=30) as response:
         state = json.load(response)
-        if response.headers.get("X-RPG-Legacy-Tests-Reset") != "1":
-            raise SystemExit("Remise à zéro unique des anciens tests non confirmée")
         if response.status != 200 or not state.get("player"):
             raise SystemExit("Reprise du compte en production refusée")
-    print("Comptes par mot de passe, personnage et remise à zéro unique des anciens tests vérifiés, sans afficher les identifiants secrets.")
+    print("Comptes par mot de passe et personnage vérifiés, sans afficher les identifiants secrets.")
     print("Jeu et panneau admin disponibles ; accès admin anonyme refusé.")
-    asyncio.run(verify_realtime(base, catalogue))
+    asyncio.run(verify_realtime(base, catalogue, account["token"]))
 
 
 if __name__ == "__main__":

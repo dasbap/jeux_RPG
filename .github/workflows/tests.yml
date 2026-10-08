@@ -16,6 +16,14 @@ jobs:
       - run: python -m pytest test/test_map_layout_editor.py -q
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
+    env:
+      RPG_TEST_REDIS_URL: redis://127.0.0.1:6379
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13']
@@ -40,6 +48,7 @@ jobs:
       - run: python -m pip install .
       - run: npm install --prefix .ui-test jsdom@26.1.0 playwright@1.56.1
       - run: .ui-test/node_modules/.bin/playwright install --with-deps chromium
+      - run: node scripts/verify_transport.cjs
       - run: node scripts/verify_ui_retry.cjs
       - run: node scripts/verify_ui_mira.cjs
       - run: node scripts/verify_touch_controls.cjs

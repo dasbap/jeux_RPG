@@ -1,3 +1,6 @@
+from .command_journal import RETENTION_SECONDS
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, username TEXT NOT NULL, username_key TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, suspended INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS account_sessions (token_hash TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id), player_id TEXT REFERENCES players(id), expires REAL NOT NULL);
@@ -38,6 +41,8 @@ CREATE INDEX IF NOT EXISTS team_membership ON team_members(team_id,active);
                 fingerprint TEXT NOT NULL, response TEXT NOT NULL,
                 PRIMARY KEY(player_id, request_id)
             );
+            CREATE TABLE IF NOT EXISTS receipt_expiry (player_id TEXT NOT NULL, request_id TEXT NOT NULL, expires REAL NOT NULL, PRIMARY KEY(player_id,request_id));
+            CREATE INDEX IF NOT EXISTS receipt_expiration ON receipt_expiry(expires);
             CREATE INDEX IF NOT EXISTS member_player ON members(player_id);
             CREATE INDEX IF NOT EXISTS session_events ON events(session_id, id);
             CREATE TABLE IF NOT EXISTS tutorials (
@@ -54,3 +59,4 @@ CREATE INDEX IF NOT EXISTS chat_scope ON chat(scope, session_id, id);
 
 def initialize(connection):
     connection.executescript(SCHEMA)
+    connection.execute("INSERT OR IGNORE INTO receipt_expiry SELECT player_id,request_id,strftime('%s','now')+? FROM receipts", (RETENTION_SECONDS,))
