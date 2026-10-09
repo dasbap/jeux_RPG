@@ -8,7 +8,7 @@ import re
 
 DEFAULTS = {
     'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12},
-    'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
+    'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.', 'role': 'tutorial_hunt'}],
     'achievements': [
         {'id': 'silent', 'name': 'Victoire sans alerter d’ennemi', 'condition': 'silent', 'threshold': 1, 'title': 'Ombre silencieuse'},
         {'id': 'untouched', 'name': 'Victoire sans dégâts au groupe ni aux invocations', 'condition': 'untouched', 'threshold': 1, 'title': 'Intouchable'},
@@ -104,8 +104,8 @@ def validate_content(data):
     for identifier in quests:
         check(identifier,set())
     hunts = [q for q in data['quests'] if is_hunt(q)]
-    if len(hunts) != 1 or not any(q['npc'] == 'mira' and q['kind'] == 'kill' and q['target'] == 'goblin' and q.get('zone') == 'lisiere' for q in hunts):
-        raise ValueError('La quête de chasse de Mira est nécessaire au tutoriel.')
+    if len(hunts) != 1 or hunts[0]['kind'] != 'kill':
+        raise ValueError('Une seule quête de type kill doit être désignée comme tutoriel principal.')
     for section in ('classes','skills'):
         if section in data and not isinstance(data[section],list):
             raise ValueError('Catalogue de classes/compétences invalide.')
