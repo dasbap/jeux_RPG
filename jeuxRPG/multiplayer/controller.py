@@ -395,7 +395,7 @@ class Controller(ControllerEditorsMixin):
                             raise ValueError('Le projet doit conserver une quête principale de tutoriel. Désignez d’abord une autre quête.')
                         if tutorial_main:
                             for quest in p.content['quests']:
-                                quest.pop('role', None)
+                                quest['role'] = None
                             values['role'] = 'tutorial_hunt'
                         requirements = self.edit_requirements(old.get('requirements',{}))
                         if requirements is None:
