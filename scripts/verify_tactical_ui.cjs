@@ -344,6 +344,9 @@ try {
     render(scene);
     const marker = el("world-map").querySelector(`[data-exit="${gate.position.join(",")}"]`);
     assert(marker, "Un passage doit avoir un repère visible même hors exploration et hors cadrage");
+    const exitLabel = [...el("world-map").querySelectorAll(".exit-label")].find(node => node.textContent === gate.name);
+    assert(exitLabel);
+    assert.equal(exitLabel.getAttribute("pointer-events"), "none");
     event(marker, "dblclick");
     assert(dom.window.uiTest.calls.some(call => call.action === "battle_move" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
     scene.battle.map.exits.push({...gate, position: [gate.position[0], gate.position[1] + 1], name: "Autre passage"});
