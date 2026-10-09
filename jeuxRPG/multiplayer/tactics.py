@@ -630,11 +630,18 @@ def defeated(party, mob, now, random, messages):
     rules = mob_rules.drop_rules(mob if 'loot' in mob or 'drops' in mob else {'loot':world.GOBLIN['loot']}, forge.RARE_DROPS)
     loot = {} if party.get('training') else mob_rules.roll_drops(rules, random)
     party["battle"]["corpses"].append({"id": mob["combat_id"], "name": mob["name"], "position": mob["position"][:], "loot": loot, "harvested": []})
-    if party.get("field_mode") and not party.get("training") and mob.get("mob_id", "goblin") == "goblin":
-        zone = world.zone_of(party["position"])
-        kills = party.setdefault("zone_kills", {})
-        kills[zone] = kills.get(zone, 0) + 1
-    if party["quest"] == "active" and world.zone_of(party["position"]) == "lisiere" and mob.get("mob_id", "goblin") == "goblin":
+    mob_id = mob.get("mob_id", "goblin")
+    zone = world.zone_of(party["position"])
+    if party.get("field_mode") and not party.get("training"):
+        if mob_id == "goblin":
+            kills = party.setdefault("zone_kills", {})
+            kills[zone] = kills.get(zone, 0) + 1
+        places = {zone, party.get("field_map"), party.get("position")}
+        if not content.HUNT.get("zone") or content.HUNT.get("zone") in places:
+            hunt_kills = party.setdefault("hunt_kills", {})
+            hunt_kills[mob_id] = hunt_kills.get(mob_id, 0) + 1
+    places = {zone, party.get("field_map"), party.get("position")}
+    if party["quest"] == "active" and (not content.HUNT.get("zone") or content.HUNT.get("zone") in places) and mob_id == content.HUNT["target"]:
         party["kills"] = min(content.HUNT["count"], party["kills"] + 1)
     if not party.get("training"):
         achievements.event(party, "kills", mob.get("mob_id", "goblin"))
