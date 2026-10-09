@@ -588,7 +588,7 @@ def execute(party, player_id, action, params, now, error, random):
         return [f"Léon : je séjourne {content.WORLD['merchant_stay_hours']:g} heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
     if action == "craft" and party["quest"] != "completed":
         raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
-    if action == "talk" and position != "mira" or action == "craft" and position != "forge":
+    if action == "talk" and position != params["npc"] or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":
         if party["battle"] or party["mobs"] or position not in ("clearing", "clearing_fight", "hunt", "lisiere", "training"):
