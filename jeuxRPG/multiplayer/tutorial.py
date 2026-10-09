@@ -12,6 +12,18 @@ from . import world, encounters, progression, forge, tactics, achievements, blee
 TRAVEL_ENCOUNTER_CHANCE = .25
 
 
+def tutorial_npc_name():
+    identifier = content.HUNT["npc"]
+    for definition in fields.MAPS.values():
+        site = next((item for item in definition.get("sites", []) if item["id"] == identifier), None)
+        if site:
+            return site["name"]
+    try:
+        return world.point_name(identifier)
+    except (KeyError, StopIteration, TypeError):
+        return identifier
+
+
 STEPS = {
     "clearing": ("Clairière des Éveillés", "Explorez la clairière pour rencontrer votre premier gobelin."),
     "first_fight": ("Clairière des Éveillés", "Utilisez vos compétences ou votre attaque pour battre le gobelin."),
@@ -162,7 +174,7 @@ def view(party, me, now):
     result["hunt_name"] = content.HUNT["name"]
     result["hunt_description"] = content.HUNT["description"]
     result["location"], result["objective"] = STEPS[party["step"]]
-    tutorial_npc = world.point_name(content.HUNT["npc"])
+    tutorial_npc = tutorial_npc_name()
     if party["step"] == "village":
         result["objective"] = f"Parlez à {tutorial_npc} pour accepter : {content.HUNT['name']}."
     elif party["step"] == "hunt":
@@ -320,7 +332,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         return messages, False
     if action == "talk":
         tutorial_npc = content.HUNT["npc"]
-        tutorial_npc_name = world.point_name(tutorial_npc)
+        tutorial_npc_name_value = tutorial_npc_name()
         if party["battle"] or params["npc"] != tutorial_npc:
             raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
         if party["step"] == "village":
@@ -334,7 +346,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                     prior = max(prior, party.get("zone_kills", {}).get(content.HUNT.get("zone") or "lisiere", 0))
                 party["kills"] = min(content.HUNT["count"], prior)
             messages.extend(content.quest_dialogue(party, tutorial_npc))
-            messages.append(f"{tutorial_npc_name} : {content.HUNT['description']} · {content.HUNT['count']} cible(s).")
+            messages.append(f"{tutorial_npc_name_value} : {content.HUNT['description']} · {content.HUNT['count']} cible(s).")
         elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
             party.update(step="craft", quest="completed")
             achievements.event(party, "quests", content.HUNT["id"])
@@ -344,7 +356,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 party["characters"][key] = pack(character)
             messages.append(f"{tutorial_npc_name} : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
         else:
-            raise error("quest_incomplete", f"{tutorial_npc_name} attend encore {max(0, content.HUNT['count'] - party['kills'])} cible(s) vaincue(s).", 409)
+            raise error("quest_incomplete", f"{tutorial_npc_name_value} attend encore {max(0, content.HUNT['count'] - party['kills'])} cible(s) vaincue(s).", 409)
         return messages, False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
