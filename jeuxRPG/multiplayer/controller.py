@@ -217,7 +217,7 @@ class Controller(ControllerEditorsMixin):
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
             return key[:-7]+' · croissance par niveau'
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie'}.get(key, key)
+        return {'id':'Identifiant', 'name':'Nom', 'tutorial':'Quête principale du tutoriel', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -384,9 +384,19 @@ class Controller(ControllerEditorsMixin):
                     old = {'map':'',**old}
                 choices['zone'] = ['', *p.maps] if section == 'quests' else ['', *sorted({zone_of(p.maps, identifier) for identifier in p.maps})]
                 choices['map'] = ['', *p.maps]
-                values = self.form('Quête' if section == 'quests' else 'Succès et titre', {k:v for k,v in old.items() if k not in ('role', 'previous_ids', 'requirements')}, choices)
+                public = {k:v for k,v in old.items() if k not in ('role', 'previous_ids', 'requirements')}
+                if section == 'quests':
+                    public = {'tutorial': is_hunt(old), **public}
+                values = self.form(('Quête · tutoriel principal' if section == 'quests' and is_hunt(old) else 'Quête') if section == 'quests' else 'Succès et titre', public, choices)
                 if values:
                     if section == 'quests':
+                        tutorial_main = values.pop('tutorial', False)
+                        if is_hunt(old) and not tutorial_main:
+                            raise ValueError('Le projet doit conserver une quête principale de tutoriel. Désignez d’abord une autre quête.')
+                        if tutorial_main:
+                            for quest in p.content['quests']:
+                                quest.pop('role', None)
+                            values['role'] = 'tutorial_hunt'
                         requirements = self.edit_requirements(old.get('requirements',{}))
                         if requirements is None:
                             return
