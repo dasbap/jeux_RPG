@@ -138,8 +138,14 @@ function renderSkillHud(adventure, me, mob, canAttack, selected) {
   const attackButton = attack.firstElementChild || document.createElement("button");
   attackButton.type = "button";
   attackButton.className = "skill-icon skill-attack";
-  attackButton.setAttribute("aria-label", "Attaque simple");
+  const attackCooldown = Math.max(0, Number(me.cooldown_real_seconds || 0));
+  const attackCooldownTotal = Math.max(1.2, attackCooldown);
+  attackButton.setAttribute("aria-label", attackCooldown > 0 ? `Attaque simple · disponible dans ${attackCooldown.toFixed(1)} seconde(s)` : "Attaque simple");
   if (attackButton.textContent !== "⚔") attackButton.textContent = "⚔";
+  attackButton.dataset.cooldownLabel = attackCooldown > 0 ? `${attackCooldown.toFixed(1)}s` : "";
+  for (let step = 1; step <= 12; step++) attackButton.classList.remove(`cooldown-step-${step}`);
+  attackButton.classList.toggle("cooldown-active", attackCooldown > 0);
+  if (attackCooldown > 0) attackButton.classList.add(`cooldown-step-${Math.max(1, Math.min(12, Math.ceil(attackCooldown / attackCooldownTotal * 12)))}`);
   const attackCandidates = (adventure.mobs || []).map(m => ({id:m.combat_id,name:m.name,position:m.position,hp:m.stats.hp.current,max_hp:m.stats.hp.max,enemy:true}));
   const attackAvailable = Boolean(selected?.enemy && canAttack(selected) || attackCandidates.some(canAttack));
   attackButton.disabled = busy;

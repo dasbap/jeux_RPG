@@ -149,7 +149,21 @@ button,.battle-cell,.battle-unit,.map-node{touch-action:manipulation}
 .skill-icon{width:72px;height:72px;min-width:72px;min-height:72px;border-radius:50%;padding:0;font-size:1.8rem;line-height:1;display:grid;place-items:center;border:2px solid rgba(255,255,255,.2);box-shadow:0 6px 16px rgba(0,0,0,.35);transition:transform .12s ease,filter .12s ease,opacity .12s ease}
 .skill-icon:hover:not(:disabled){transform:scale(1.06)}
 .skill-icon:disabled{opacity:.38}
-.skill-attack{width:90px;height:90px;min-width:90px;min-height:90px;font-size:2.25rem;background:#c55353;color:#fff;border-color:#f4b0b0}
+.skill-attack{width:90px;height:90px;min-width:90px;min-height:90px;font-size:2.25rem;background:#c55353;color:#fff;border-color:#f4b0b0;position:relative;overflow:hidden}
+.skill-attack.cooldown-active{background:rgba(197,83,83,.96)}
+.skill-attack.cooldown-step-1{background:conic-gradient(rgba(15,18,24,.72) 30deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-2{background:conic-gradient(rgba(15,18,24,.72) 60deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-3{background:conic-gradient(rgba(15,18,24,.72) 90deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-4{background:conic-gradient(rgba(15,18,24,.72) 120deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-5{background:conic-gradient(rgba(15,18,24,.72) 150deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-6{background:conic-gradient(rgba(15,18,24,.72) 180deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-7{background:conic-gradient(rgba(15,18,24,.72) 210deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-8{background:conic-gradient(rgba(15,18,24,.72) 240deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-9{background:conic-gradient(rgba(15,18,24,.72) 270deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-10{background:conic-gradient(rgba(15,18,24,.72) 300deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-11{background:conic-gradient(rgba(15,18,24,.72) 330deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-step-12{background:conic-gradient(rgba(15,18,24,.72) 360deg,rgba(197,83,83,.96) 0)}
+.skill-attack.cooldown-active::after{content:attr(data-cooldown-label);position:absolute;inset:auto 0 8px;text-align:center;font-size:.72rem;font-weight:800;line-height:1;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none}
 .skill-offense .skill-icon,.skill-icon.skill-offense{background:#9d3d3d;color:#fff;border-color:#d88c8c}
 .skill-buff .skill-icon,.skill-icon.skill-buff{background:#3e7fb0;color:#fff;border-color:#8ac3eb}
 .skill-debuff .skill-icon,.skill-icon.skill-debuff{background:#7353a5;color:#fff;border-color:#b7a0df}
