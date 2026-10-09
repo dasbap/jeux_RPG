@@ -6,7 +6,7 @@ function adjustFieldCamera(action) {
     if (!node) return;
     const camera = worldCameras.get(node.dataset.map);
     if (action === "in") camera.zoom = Math.min(6, camera.zoom * 1.3);
-    else if (action === "out") camera.zoom = Math.max(1, camera.zoom / 1.3);
+    else if (action === "out") camera.zoom = Math.max(.45, camera.zoom / 1.3);
     else if (action === "center") { camera.zoom = 1; camera.x = camera.width / 2; camera.y = camera.height / 2; }
     else { camera.x += action === "left" ? -camera.width / camera.zoom / 5 : action === "right" ? camera.width / camera.zoom / 5 : 0; camera.y += action === "up" ? -camera.height / camera.zoom / 5 : action === "down" ? camera.height / camera.zoom / 5 : 0; }
     installWorldCamera(node);
@@ -32,8 +32,10 @@ function installWorldCamera(node) {
   }
   const camera = worldCameras.get(key);
   const width = camera.width / camera.zoom, height = camera.height / camera.zoom;
-  camera.x = Math.max(width / 2, Math.min(camera.width - width / 2, camera.x));
-  camera.y = Math.max(height / 2, Math.min(camera.height - height / 2, camera.y));
+  if (width >= camera.width) camera.x = camera.width / 2;
+  else camera.x = Math.max(width / 2, Math.min(camera.width - width / 2, camera.x));
+  if (height >= camera.height) camera.y = camera.height / 2;
+  else camera.y = Math.max(height / 2, Math.min(camera.height - height / 2, camera.y));
   node.setAttribute("viewBox", `${camera.x - width / 2} ${camera.y - height / 2} ${width} ${height}`);
   node.onclick = () => { activeWorldMap = key; };
   node.onwheel = event => { event.preventDefault(); activeWorldMap = key; adjustFieldCamera(event.deltaY > 0 ? "out" : "in"); };
