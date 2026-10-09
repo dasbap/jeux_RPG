@@ -11,7 +11,7 @@ def catalog_rows(project, section):
     if section == 'mobs':
         return [(key, mob_rules.resolve(p.mobs, key)['name'], f"{mob_rules.resolve(p.mobs, key)['class_name']} · rang {mob_rules.resolve(p.mobs, key)['rank']} · parent {item.get('parent') or 'aucun'}") for key, item in p.mobs.items()]
     if section == 'quests':
-        return [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP") for q in p.content[section]]
+        return [(q['id'], q['name'], f"{'Tutoriel principal · ' if content.is_hunt(q) else ''}{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP") for q in p.content[section]]
     if section == 'achievements':
         return [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} · cible {a.get('target') or 'toutes'} · zone {a.get('zone') or 'toutes'} · carte {a.get('map') or 'toutes'} → {a['title']}") for a in p.content[section]]
     if section == 'npcs':
