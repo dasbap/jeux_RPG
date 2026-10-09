@@ -78,6 +78,21 @@ def test_rapid_progress_changes_are_coalesced_and_rooms_are_not_saved():
     store.close()
 
 
+def test_active_custom_quest_and_progress_trigger_persistence():
+    store = RuntimeStore(ENV)
+    _, room = adventure(store)
+    mutate(store, room, lambda party: party.setdefault('custom_quests', {}).update(side={'status': 'active', 'progress': 0}))
+    store.capture()
+    assert ('tutorials', (room,)) in store.pending
+    store.saved(store.pending_batch())
+    mutate(store, room, lambda party: party['custom_quests']['side'].update(progress=1))
+    store.capture()
+    assert ('tutorials', (room,)) in store.pending
+    saved = json.loads(store.pending[('tutorials', (room,))]['data'])
+    assert saved['custom_quests']['side'] == {'status': 'active', 'progress': 1}
+    store.close()
+
+
 def test_completed_quests_and_level_trigger_checkpoint():
     store = RuntimeStore(ENV)
     player, room = adventure(store)
