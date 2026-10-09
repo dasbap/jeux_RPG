@@ -1,5 +1,17 @@
 # Audit et optimisation du RPG — 9 octobre 2026
 
+## Mise à jour après accès Vercel et CI distante
+
+La session Vercel a été ouverte avec le propriétaire. Le projet et son ID correspondent au workflow. Le domaine public sert **d85cbd9**, branche **alpha-vercel-turso** ; le build **9a5f1ea** de `prod` est **Ready / Production / Staged**, sans promotion. Vercel Authentication est active et aucun secret de bypass d'automatisation n'existe dans Vercel ni GitHub. Les secrets Vercel/Turso existants ne doivent pas être remplacés.
+
+Tous les workflows du commit **10678839** de la [PR #28](https://github.com/dasbap/jeux_RPG/pull/28) ont réussi : Python 3.11/3.12/3.13, Redis réel, éditeur Windows, UI/Playwright/HUD, lint, installation et performance. Python 3.12 rapporte **1 563 réussis, 7 ignorés**, 86,97 s. Les exclusions locales Redis et rendu navigateur ont donc été levées par la CI, sans constituer une recette mobile réelle ni un essai Redis de production.
+
+Le workflow contrôle maintenant la présence du secret avant build et modifications Turso. Le healthcheck diagnostique les réponses non JSON et HTTP 401/403 sans afficher le corps ou un secret, et conserve le contrôle du SHA. Huit nouveaux cas couvrent ces refus. Leurs tests ciblés passent ; la CI du nouveau commit reste à contrôler.
+
+Les instantanés de la vue projet montrent 168 invocations, 168 requêtes CDN et 0 % d'erreurs sur six heures ; cela ne mesure pas la consommation mensuelle ni les quotas restants. Upstash est identifié par les variables liées dans Vercel, sans lecture de leurs valeurs. Les autres mesures et le score estimatif de 80/100 restent prudents.
+
+La [configuration précise restant à effectuer](DEPLOYMENT_SETUP.md) détaille le seul nouveau secret demandé, `VERCEL_AUTOMATION_BYPASS_SECRET`, les protections de l'environnement et le chemin PR vers `prod`. Aucun déploiement, fusion, secret ou réglage de protection n'a été modifié. Les formulations d'accès bloqué et de CI à contrôler ci-dessous décrivent l'état initial de l'audit et sont remplacées, sur ces points, par cette mise à jour.
+
 ## Résultat et périmètre
 
 Les optimisations prioritaires sont proposées dans une branche dédiée, sans migration, modification des règles de jeu ou accès en écriture aux données de production. Le résultat est **révisable, mais pas certifié en production**. Le score estimatif est **80/100**, avec confiance moyenne ; l'objectif de 90/100 n'est pas atteint avec les validations accessibles.
