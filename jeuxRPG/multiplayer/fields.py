@@ -217,11 +217,12 @@ def execute(party, player, action, params, now, error, random):
     unit = party["battle"]["players"][player]
     if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
-    if action == "talk" and site != "mira":
+    tutorial_npc = content.HUNT["npc"]
+    if action == "talk" and site != tutorial_npc:
         npc = next(item for item in nearby if item["id"] == site)
         return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
-    if action == 'talk' and site == 'mira' and (party['step'] not in ('village', 'hunt') or party['step'] == 'hunt' and party['kills'] < content.HUNT['count'] and any(q['npc'] == 'mira' and not content.is_hunt(q) for q in content.DATA['quests'])):
-        npc = next(item for item in nearby if item['id'] == site)
+    if action == "talk" and site == tutorial_npc and (party["step"] not in ("village", "hunt") or party["step"] == "hunt" and party["kills"] < content.HUNT["count"] and any(q["npc"] == site and not content.is_hunt(q) for q in content.DATA["quests"])):
+        npc = next(item for item in nearby if item["id"] == site)
         return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour !'}", *content.quest_dialogue(party, site)], False
     battle, position = party["battle"], party["position"]
     party.update(battle=None, position=site)
