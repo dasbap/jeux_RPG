@@ -1,3 +1,4 @@
+from copy import deepcopy
 import asyncio
 import json
 import os
@@ -88,7 +89,11 @@ def test_progress_signature_tracks_custom_quest_acceptance_progress_and_completi
     assert progress_signature(progressed) != progress_signature(completed)
 
 
-def test_custom_quest_survives_runtime_restart_at_every_lifecycle_stage():
+def test_custom_quest_survives_runtime_restart_at_every_lifecycle_stage(monkeypatch):
+    authored = deepcopy(content.DATA)
+    side = {'id': 'restart_side', 'name': 'Quête de redémarrage', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': '', 'count': 1, 'reward_xp': 0, 'description': 'Test de persistance', 'requirements': {}}
+    authored['quests'].append(side)
+    monkeypatch.setattr(content, 'DATA', authored)
     store = RuntimeStore(ENV)
     _, room = adventure(store)
 
@@ -103,7 +108,6 @@ def test_custom_quest_survives_runtime_restart_at_every_lifecycle_stage():
     mutate(store, room, lambda party: content.quest_dialogue(party, 'mira'))
     store.capture()
     accepted = load_party(store)
-    side = next(quest for quest in content.DATA['quests'] if not content.is_hunt(quest) and quest['npc'] == 'mira')
     assert accepted['custom_quests'][side['id']] == {'status': 'active', 'progress': 0}
     store = restart(store)
     assert load_party(store)['custom_quests'][side['id']] == {'status': 'active', 'progress': 0}
