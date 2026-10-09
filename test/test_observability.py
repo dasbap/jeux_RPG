@@ -36,3 +36,16 @@ def test_metrics_expose_core_gauges():
     assert "rpg_sessions_active 1" in payload
     assert "rpg_runtime_presence 1" in payload
     assert "rpg_tick_seconds_last 0.012500" in payload
+
+
+def test_presence_metrics_use_wall_clock(monkeypatch):
+    from jeuxRPG.multiplayer import observability
+    monkeypatch.setattr(observability.time, 'time', lambda: 1000)
+    service = Service()
+    service.runtime_presence = {'recent': {'seen': 990}, 'expired': {'seen': 900}}
+    assert 'rpg_runtime_presence 1' in metrics(service)
+
+
+def test_health_identifies_release_without_database(monkeypatch):
+    monkeypatch.setenv('RPG_RELEASE_SHA', 'a' * 40)
+    assert health() == {'status': 'ok', 'release': 'a' * 40}

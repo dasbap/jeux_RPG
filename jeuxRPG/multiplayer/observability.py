@@ -1,8 +1,12 @@
+import os
 import time
 
 
 def health():
-    return {"status": "ok"}
+    result = {"status": "ok"}
+    if os.environ.get("RPG_RELEASE_SHA"):
+        result["release"] = os.environ["RPG_RELEASE_SHA"]
+    return result
 
 
 def ready(service):
@@ -16,7 +20,7 @@ def metrics(service, tick_seconds=None):
     ).fetchone()[0]
     players = service.db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
     accounts = service.db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
-    now = time.monotonic()
+    now = time.time()
     online = sum(
         1
         for item in service.runtime_presence.values()

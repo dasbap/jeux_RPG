@@ -180,7 +180,14 @@ for (const action of ["start", "attack", "leave"]) $(action).addEventListener("c
 });
 $("new-room").addEventListener("click", () => command("create"));
 async function logout() {
-  try { await api("/api/account/logout", {}); } catch {}
+  try { await api("/api/account/logout", {}); }
+  catch (error) {
+    if (!["unauthorized", "account_suspended"].includes(error.code)) {
+      message("Déconnexion non confirmée. Vérifiez votre connexion et réessayez.", true);
+      return;
+    }
+  }
+  globalThis.rpgRealtime?.close();
   stateEpoch++;
   $("chat-panel").hidden = true;
   token = "";
@@ -218,5 +225,6 @@ if (globalThis.rpgRealtime) {
     remember();
     render(state);
   };
-} else setInterval(refresh, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
+}
+setInterval(() => { if (!globalThis.rpgRealtime?.connected) refresh(); }, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
 refresh();

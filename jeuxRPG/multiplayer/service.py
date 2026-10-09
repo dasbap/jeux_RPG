@@ -1,3 +1,4 @@
+from .command_journal import RETENTION_SECONDS, decode_receipt, encode_receipt, prune_receipts
 import hashlib
 import json
 import logging
@@ -444,18 +445,19 @@ class GameService(AccountMixin):
             player = self._authenticate(token)
             if self.db.execute('SELECT 1 FROM account_characters WHERE player_id=?', (player['id'],)).fetchone():
                 self._admit(player['id'])
+            wall = time.time()
+            prune_receipts(self.db, wall)
             old = self.db.execute("SELECT * FROM receipts WHERE player_id=? AND request_id=?", (player["id"], request_id)).fetchone()
             if old:
                 if old["fingerprint"] != fingerprint:
                     raise GameError("request_conflict", "Cet identifiant correspond à une autre commande.", 409)
-                return json.loads(old["response"])
+                return decode_receipt(old["response"])
             now = self._now()
             self._expire(now)
-            if self.db.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] >= 100000:
-                raise GameError("capacity", "Capacité du journal des commandes atteinte.", 429)
             result = self._execute(player, action, params, now, compact=True) if _compact else self._execute(player, action, params, now)
             self.dirty_sessions.add(result['session']['id'])
-            self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, json.dumps(result)))
+            self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, encode_receipt(result)))
+            self.db.execute('INSERT INTO receipt_expiry VALUES(?,?,?)', (player['id'], request_id, wall + RETENTION_SECONDS))
             return result
 
     def _bind_discord(self, guild_id, user_id, name, class_name):
@@ -501,11 +503,12 @@ class GameService(AccountMixin):
             party = json.loads(row[0])
             tactical_action = action in {"battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"}
             same_encounter = type(params.get("encounter")) is int and params["encounter"] == party.get("encounter_number") and party.get("battle")
-            world_action = action in ("move", "travel", "explore", "talk") and isinstance(params.get("world_context"), str) and params["world_context"] == world_context(party)
-            if session["revision"] != params["revision"] and not ((tactical_action and same_encounter or world_action) and params["revision"] < session["revision"]):
-                raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
+            if params["revision"] > session["revision"]:
+                raise GameError("stale_revision", "La version demandée est plus récente que l'état serveur.", 409)
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)
+            if tactical_action and params["revision"] < session["revision"] and not same_encounter:
+                raise GameError("stale_encounter", "Actualisez le combat avant de réessayer cette action.", 409)
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.record_party_locations(party)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))

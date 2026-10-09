@@ -36,13 +36,26 @@ class AccountMixin:
             characters = [dict(row) for row in self.db.execute('SELECT p.id,p.name,p.class_name FROM account_characters c JOIN players p ON p.id=c.player_id WHERE c.account_id=? ORDER BY p.class_name', (account['id'],))]
             return {'account': {'id': account['id'], 'username': account['username']}, 'characters': characters, 'selected': account['player_id']}
 
-    def account_login(self, username, password, signup=False):
+    def prepare_account_login(self, username, password, signup=False):
+        from .service import GameError
+        if not isinstance(username, str) or not re.fullmatch(r'[A-Za-z0-9_]{3,24}', username):
+            raise GameError('invalid_username', 'Nom de compte : 3 à 24 lettres, chiffres ou underscores.')
+        with self._lock:
+            row = self.db.execute('SELECT password_hash FROM accounts WHERE username_key=?', (username.casefold(),)).fetchone()
+        expected = row[0] if row else None
+        calculated = password_hash(password, expected.split('$')[1] if expected and not signup else None)
+        return expected, calculated
+
+    def account_login(self, username, password, signup=False, _prepared=None):
         from .service import GameError, digest
         if not isinstance(username, str) or not re.fullmatch(r'[A-Za-z0-9_]{3,24}', username):
             raise GameError('invalid_username', 'Nom de compte : 3 à 24 lettres, chiffres ou underscores.')
         with self._lock:
             expected = self.db.execute('SELECT password_hash FROM accounts WHERE username_key=?', (username.casefold(),)).fetchone()
-        calculated = password_hash(password, expected[0].split('$')[1] if expected and not signup else None)
+        if _prepared is not None and _prepared[0] == (expected[0] if expected else None):
+            calculated = _prepared[1]
+        else:
+            calculated = password_hash(password, expected[0].split('$')[1] if expected and not signup else None)
         with self._transaction():
             account = self.db.execute('SELECT * FROM accounts WHERE username_key=?', (username.casefold(),)).fetchone()
             if signup:
@@ -56,9 +69,10 @@ class AccountMixin:
                     raise GameError('unauthorized', 'Nom de compte ou mot de passe incorrect.', 401)
                 if account['suspended']:
                     raise GameError('account_suspended', 'Compte suspendu.', 403)
+            self.db.execute('DELETE FROM account_sessions WHERE expires<=?', (time.time(),))
             token = secrets.token_urlsafe(32)
             self.db.execute('INSERT INTO account_sessions VALUES(?,?,NULL,?)', (digest(token), account['id'], time.time() + SESSION_SECONDS))
-            self.db.execute('UPDATE account_sessions SET expires=0 WHERE account_id=? AND token_hash NOT IN (SELECT token_hash FROM account_sessions WHERE account_id=? ORDER BY expires DESC LIMIT 5)', (account['id'], account['id']))
+            self.db.execute('DELETE FROM account_sessions WHERE account_id=? AND token_hash NOT IN (SELECT token_hash FROM account_sessions WHERE account_id=? ORDER BY expires DESC LIMIT 5)', (account['id'], account['id']))
             self.persistent_social_changed = True
             return {'token': token, **self.account_view(token)}
 
