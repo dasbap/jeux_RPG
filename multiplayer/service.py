@@ -1,3 +1,4 @@
+from .command_journal import RETENTION_SECONDS, decode_receipt, encode_receipt, prune_receipts
 import hashlib
 import json
 import logging
@@ -442,18 +443,19 @@ class GameService(AccountMixin):
             player = self._authenticate(token)
             if self.db.execute('SELECT 1 FROM account_characters WHERE player_id=?', (player['id'],)).fetchone():
                 self._admit(player['id'])
+            wall = time.time()
+            prune_receipts(self.db, wall)
             old = self.db.execute("SELECT * FROM receipts WHERE player_id=? AND request_id=?", (player["id"], request_id)).fetchone()
             if old:
                 if old["fingerprint"] != fingerprint:
                     raise GameError("request_conflict", "Cet identifiant correspond à une autre commande.", 409)
-                return json.loads(old["response"])
+                return decode_receipt(old["response"])
             now = self._now()
             self._expire(now)
-            if self.db.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] >= 100000:
-                raise GameError("capacity", "Capacité du journal des commandes atteinte.", 429)
             result = self._execute(player, action, params, now, compact=True) if _compact else self._execute(player, action, params, now)
             self.dirty_sessions.add(result['session']['id'])
-            self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, json.dumps(result)))
+            self.db.execute("INSERT INTO receipts VALUES (?, ?, ?, ?)", (player["id"], request_id, fingerprint, encode_receipt(result)))
+            self.db.execute('INSERT INTO receipt_expiry VALUES(?,?,?)', (player['id'], request_id, wall + RETENTION_SECONDS))
             return result
 
     def _bind_discord(self, guild_id, user_id, name, class_name):

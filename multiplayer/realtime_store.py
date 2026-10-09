@@ -11,16 +11,16 @@ from .world import zone_of
 
 
 SOCIAL_TABLES = ('accounts', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites')
-TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'admin_audit')
+TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'receipt_expiry', 'admin_audit')
 KEYS = {'accounts': ('id',), 'account_characters': ('account_id', 'class_name'), 'account_sessions': ('token_hash',), 'friendships': ('first_id', 'second_id'), 'teams': ('id',), 'team_members': ('account_id',), 'team_invites': ('id',), 'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
         'members': ('session_id', 'player_id'), 'tutorials': ('session_id',), 'events': ('id',),
-        'receipts': ('player_id', 'request_id'), 'admin_audit': ('id',)}
+        'receipts': ('player_id', 'request_id'), 'receipt_expiry': ('player_id', 'request_id'), 'admin_audit': ('id',)}
 
 
 def progress_signature(party):
     completed = sorted(key for key, value in party.get('custom_quests', {}).items() if value.get('status') == 'completed')
     value = {'inventory': party.get('inventory'), 'equipment': party.get('equipment'),
-             'characters': {key: [value.get('level'), value.get('exp')] for key, value in party.get('characters', {}).items()},
+             'characters': {key: [value.get('name'), value.get('level'), value.get('exp')] for key, value in party.get('characters', {}).items()},
              'quests': [party.get('quest'), completed],
              'zone': zone_of(party.get('position')) or zone_of(party.get('field_map')),
              'checkpoint': party.get('autosave_checkpoint')}
@@ -58,6 +58,7 @@ class RuntimeStore:
         self.pending = {}
         self.due = None
         self.save_count = 0
+        self.schema_ready = False
         self.last_save_error = False
         self.observed_changes = self.db.total_changes
 
@@ -67,7 +68,7 @@ class RuntimeStore:
         try:
             initialize(connection)
             reset = False
-            if environment.get("RPG_RESET_TEST_PLAYERS") == "1":
+            if environment.get("RPG_RESET_TEST_PLAYERS") == "1" and not environment.get("VERCEL"):
                 from .account_rollout import reset_test_players
                 reset = reset_test_players(connection)
             results = connection.execute_many([(f'SELECT * FROM {table}', ()) for table in TABLES])
@@ -93,9 +94,14 @@ class RuntimeStore:
         now = time.monotonic() if now is None else now
         social_tables = SOCIAL_TABLES if self.service.persistent_social_changed else ()
         self.service.persistent_social_changed = False
-        for table in ('players', 'account_status', 'admin_audit', *social_tables):
+        for table in ('players', 'account_status', 'admin_audit', 'receipts', 'receipt_expiry', *social_tables):
             old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
-            for row in self.rows(table):
+            current = self.rows(table)
+            current_keys = {tuple(row[value] for value in KEYS[table]) for row in current}
+            for key in old.keys() - current_keys:
+                self.pending[(table, key)] = None
+                del old[key]
+            for row in current:
                 key = tuple(row[value] for value in KEYS[table])
                 if old.get(key) != row:
                     self.pending[(table, key)] = row
@@ -107,11 +113,10 @@ class RuntimeStore:
         for session_id, signature in signatures.items():
             if self.signatures.get(session_id) == signature:
                 continue
-            players = {row[0] for row in self.db.execute('SELECT player_id FROM members WHERE session_id=?', (session_id,))}
-            for table in ('sessions', 'members', 'tutorials', 'events', 'receipts'):
+            for table in ('sessions', 'members', 'tutorials', 'events'):
                 old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
                 for row in self.rows(table):
-                    matches = row.get('id') == session_id if table == 'sessions' else row.get('player_id') in players if table == 'receipts' else row.get('session_id') == session_id
+                    matches = row.get('id') == session_id if table == 'sessions' else row.get('session_id') == session_id
                     if matches:
                         key = tuple(row[value] for value in KEYS[table])
                         if old.get(key) != row:
@@ -128,7 +133,7 @@ class RuntimeStore:
                 self.due = now + 5
         self.observed_changes = self.db.total_changes
 
-    def request(self, message):
+    def request(self, message, prepared_login=None):
         if self.db.total_changes != self.observed_changes and not self.service.dirty_sessions and not self.service.persistent_social_changed:
             self.capture()
         raw = json.dumps(message.get('body')).encode() if message.get('body') is not None else b''
@@ -138,6 +143,7 @@ class RuntimeStore:
                        'wsgi.input': io.BytesIO(raw), 'CONTENT_TYPE': 'application/json', 'CONTENT_LENGTH': str(len(raw))}
         for key, value in message.get('headers', {}).items():
             environment['HTTP_' + key.upper().replace('-', '_')] = value
+        environment['rpg.prepared_login'] = prepared_login
         result = {}
         def start(status, headers):
             result.update(status=int(status.split()[0]), headers=dict(headers))
@@ -167,13 +173,20 @@ class RuntimeStore:
     def persist(self, fence, batch):
         connection = TursoConnection(self.environment['TURSO_DATABASE_URL'], self.environment['TURSO_AUTH_TOKEN'])
         try:
+            if not self.schema_ready:
+                initialize(connection)
+                self.schema_ready = True
             current = connection.execute_many([('BEGIN IMMEDIATE', ()), ("SELECT value FROM meta WHERE key='runtime_fence'", ())])[-1].fetchone()
             if current and int(current[0]) > fence:
                 raise RuntimeError('Moteur remplacé')
             statements = [("INSERT INTO meta VALUES('runtime_fence',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(fence),))]
             for table in TABLES:
                 for (target, key), row in batch.items():
-                    if target != table or table == 'meta' and row['key'] == 'runtime_fence':
+                    if target != table or table == 'meta' and row and row['key'] == 'runtime_fence':
+                        continue
+                    if row is None:
+                        where = ' AND '.join(f'{column}=?' for column in KEYS[table])
+                        statements.append((f'DELETE FROM {table} WHERE {where}', key))
                         continue
                     columns = list(row)
                     updates = ','.join(f'{column}=excluded.{column}' for column in columns if column not in KEYS[table])
@@ -185,7 +198,7 @@ class RuntimeStore:
 
     def saved(self, batch):
         for key, value in batch.items():
-            if self.pending.get(key) == value:
+            if key in self.pending and self.pending[key] == value:
                 del self.pending[key]
         self.due = time.monotonic() + 5 if self.pending else None
         self.save_count += 1
