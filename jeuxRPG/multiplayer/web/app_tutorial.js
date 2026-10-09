@@ -81,8 +81,9 @@ function renderTutorial(adventure, preserveBattle = false) {
   const me = adventure.players.find(player => player.id === session.me);
   const fieldInteractions = adventure.field_interactions || [];
   const fieldSites = new Set(fieldInteractions.map(site => site.id));
-  const currentPoint = adventure.world?.places?.flatMap(place => place.points || []).find(point => point.id === adventure.position);
-  const nearbyNpc = fieldInteractions.find(site => site.dialogue) || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
+  const worldPoints = adventure.world?.places?.flatMap(place => place.points || []) || [];
+  const currentPoint = worldPoints.find(point => point.id === adventure.position);
+  const nearbyNpc = fieldInteractions.map(site => ({...worldPoints.find(point => point.id === site.id), ...site})).find(site => site.dialogue || site.type === "pnj") || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
   const canTalk = Boolean(nearbyNpc) && !adventure.moving;
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
