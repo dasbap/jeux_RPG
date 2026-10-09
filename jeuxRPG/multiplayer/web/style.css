@@ -363,3 +363,17 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+.combat-active #character-menu{left:12px;right:auto;top:10px}
+.combat-active .combat-mode #combat-player-panel{left:12px;top:68px}
+.combat-active .combat-mode #combat-enemy-panel{right:12px;left:auto;top:10px}
+@media(max-width:750px){
+  .combat-active #character-menu{left:6px;right:auto;top:max(6px,env(safe-area-inset-top))}
+  .combat-active .combat-mode #combat-player-panel{left:6px;top:58px}
+  .combat-active .combat-mode #combat-enemy-panel{right:6px;left:auto;top:max(6px,env(safe-area-inset-top))}
+}
+@media(max-height:500px) and (orientation:landscape){
+  .combat-active #character-menu{left:8px;right:auto;top:8px}
+  .combat-active .combat-mode #combat-player-panel{left:8px;top:58px}
+  .combat-active .combat-mode #combat-enemy-panel{right:8px;left:auto;top:8px}
+}
