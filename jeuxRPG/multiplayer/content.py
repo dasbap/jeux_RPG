@@ -28,7 +28,7 @@ def number(value, minimum, maximum):
 
 
 def is_hunt(quest):
-    return quest.get('role') == 'tutorial_hunt' or quest.get('role') is None and quest.get('id') == 'mira_hunt'
+    return quest.get('role') == 'tutorial_hunt' or 'role' not in quest and quest.get('id') == 'mira_hunt'
 
 
 def validate_content(data):
