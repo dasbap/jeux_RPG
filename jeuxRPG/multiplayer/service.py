@@ -507,8 +507,6 @@ class GameService(AccountMixin):
                 raise GameError("stale_revision", "La version demandée est plus récente que l'état serveur.", 409)
             if "encounter" in params and not same_encounter:
                 raise GameError("stale_encounter", "Ce combat n’est plus actif.", 409)
-            if tactical_action and params["revision"] < session["revision"] and not same_encounter:
-                raise GameError("stale_encounter", "Actualisez le combat avant de réessayer cette action.", 409)
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.record_party_locations(party)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
@@ -549,8 +547,8 @@ class GameService(AccountMixin):
                 raise GameError("not_duel", "Utilisez les actions du tutoriel.", 409)
             if session["state"] == "finished":
                 raise GameError("finished", "La session est terminée.", 409)
-            if session["revision"] != params["revision"]:
-                raise GameError("stale_revision", "L'état a changé. Actualisez avant de réessayer.", 409)
+            if params["revision"] > session["revision"]:
+                raise GameError("stale_revision", "La version demandée est plus récente que l'état serveur.", 409)
             if action == "start":
                 if session["owner"] != player_id:
                     raise GameError("forbidden", "Seul le créateur peut démarrer le duel.", 403)

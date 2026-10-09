@@ -462,20 +462,18 @@ def test_delayed_movement_is_validated_in_current_encounter_without_revision_ret
     assert failure.value.code == "invalid_path"
 
 
-def test_stale_tactical_command_without_encounter_cannot_change_new_battle(game):
+def test_stale_tactical_command_without_encounter_revalidates_current_battle(game):
     token = game.register("Prudent", "Knight")["token"]
     command(game, token, "tutorial")
     state = command(game, token, "explore")
     party = json.loads(game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state['id'],)).fetchone()[0])
     party['encounter_number'] += 1
+    player_id = state["me"]
+    party["battle"]["players"][player_id]["route"] = [[1, 5], [1, 4]]
     game.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), state['id']))
     game.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (state['id'],))
-    before = game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state['id'],)).fetchone()[0]
-    with pytest.raises(GameError) as failure:
-        game.command(token, uuid.uuid4().hex, 'hide', session_id=state['id'], revision=state['revision'])
-    assert failure.value.code == 'stale_encounter'
-    assert game.db.execute("SELECT data FROM tutorials WHERE session_id=?", (state['id'],)).fetchone()[0] == before
-    assert game.command(token, uuid.uuid4().hex, 'hide', session_id=state['id'], revision=state['revision'] + 1)['session']
+    result = game.command(token, uuid.uuid4().hex, "stop_move", session_id=state["id"], revision=state["revision"])
+    assert result["session"]["tutorial"]["battle"]["players"][player_id]["route"] == []
 
 
 @pytest.mark.parametrize("draw,encounter", [(0.24, True), (0.25, False), (0.9, False)])

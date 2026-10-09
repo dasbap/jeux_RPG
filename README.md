@@ -126,7 +126,7 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 
 ## Fonctionnement et limites
 
-- SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une version d'état obsolète est refusée avec `stale_revision` ; actualiser avant une nouvelle action.
+- SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une révision cliente ancienne n'annule pas automatiquement une commande : le serveur recharge l'état courant et revalide les préconditions métier. Une révision future reste refusée avec `stale_revision`, et un identifiant explicite d'ancien combat reste refusé avec `stale_encounter`.
 - Une commande rejouée avec le même identifiant et le même contenu retourne son résultat initial. Un contenu différent avec cet identifiant est refusé. Les identifiants et reçus sont persistés.
 - L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur réconcilie les échéances toutes les 100 ms ; l'interface interroge l'état toutes les 500 ms. Ce n'est pas un système temps réel dur.
 - Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats évoluent dans la boucle autonome du serveur, avec des positions individuelles ; quitter l’onglet ne met pas un combat en pause. Le monde ouvert, les échanges, les boutiques et les quêtes génériques ne sont pas encore implémentés.

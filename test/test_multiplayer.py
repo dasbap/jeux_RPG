@@ -76,6 +76,31 @@ def test_two_players_share_health_and_cooldown(game):
     command(game, first, "attack", session_id=room["id"], revision=result["revision"])
 
 
+
+def test_old_duel_revision_is_revalidated_against_current_state(game):
+    first, second, room = duel(game)
+    stale = room["revision"]
+    first_result = command(game, first, "attack", session_id=room["id"], revision=stale)["session"]
+    second_result = command(game, second, "attack", session_id=room["id"], revision=stale)["session"]
+    assert second_result["revision"] == first_result["revision"] + 1
+
+
+def test_old_duel_revision_returns_current_business_error(game):
+    first, _, room = duel(game)
+    stale = room["revision"]
+    command(game, first, "attack", session_id=room["id"], revision=stale)
+    with pytest.raises(GameError) as failure:
+        command(game, first, "attack", session_id=room["id"], revision=stale)
+    assert failure.value.code == "cooldown"
+
+
+def test_future_duel_revision_is_rejected(game):
+    first, _, room = duel(game)
+    with pytest.raises(GameError) as failure:
+        command(game, first, "attack", session_id=room["id"], revision=room["revision"] + 1)
+    assert failure.value.code == "stale_revision"
+
+
 def test_replayed_command_is_applied_once_and_conflicting_payload_rejected(game):
     first, second, room = duel(game)
     args = {"session_id": room["id"], "revision": room["revision"]}
@@ -89,7 +114,7 @@ def test_replayed_command_is_applied_once_and_conflicting_payload_rejected(game)
     assert error.value.code == "request_conflict"
 
 
-def test_simultaneous_commands_are_serialized(game):
+def test_simultaneous_commands_are_serialized_and_revalidated(game):
     first, second, room = duel(game)
     barrier = threading.Barrier(2)
     def attack(token):
@@ -100,19 +125,20 @@ def test_simultaneous_commands_are_serialized(game):
             return error.code
     with concurrent.futures.ThreadPoolExecutor(2) as pool:
         results = list(pool.map(attack, [first, second]))
-    assert sum(isinstance(result, dict) for result in results) == 1
-    assert "stale_revision" in results
-    assert game.state(first, room["id"])["revision"] == room["revision"] + 1
+    assert all(isinstance(result, dict) for result in results)
+    assert game.state(first, room["id"])["revision"] == room["revision"] + 2
 
 
-def test_second_database_connection_cannot_lose_updates(game, tmp_path):
+def test_second_database_connection_revalidates_old_revision_without_lost_update(game, tmp_path):
     first, second, room = duel(game)
     other_service = GameService(tmp_path / "game.sqlite3", game.clock)
     try:
-        command(game, first, "attack", session_id=room["id"], revision=room["revision"])
-        with pytest.raises(GameError) as error:
-            command(other_service, second, "attack", session_id=room["id"], revision=room["revision"])
-        assert error.value.code == "stale_revision"
+        first_result = command(game, first, "attack", session_id=room["id"], revision=room["revision"])["session"]
+        second_result = command(other_service, second, "attack", session_id=room["id"], revision=room["revision"])["session"]
+        assert second_result["revision"] == first_result["revision"] + 1
+        latest = game.state(first, room["id"])
+        assert latest["revision"] == room["revision"] + 2
+        assert all(player["hp"] < player["max_hp"] for player in latest["players"])
     finally:
         other_service.close()
 
