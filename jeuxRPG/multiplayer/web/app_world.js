@@ -61,11 +61,16 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
-  const locked = busy || Boolean(adventure.battle || adventure.mob || adventure.mobs?.length);
+  const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));
+  function keepMapOpen() {
+    currentView = "map";
+    document.body.classList.add("hud-menu-open");
+    if (session?.tutorial) renderTutorial(session.tutorial);
+  }
   function choosePoint(point) {
     mapPoint = point.id;
     if (point.locked_reason) message(point.locked_reason);
-    showView("map");
+    keepMapOpen();
   }
   function visitPoint(point) {
     if (locked) return;
@@ -118,7 +123,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     group.append(svgElement("circle", {cx: p.x, cy: p.y, r: p.id === world.current ? 15 : 11, class: p.visited ? "visited-node" : "unknown-node"}));
     group.append(svgElement("text", {x: p.x, y: p.y + 29, class: "place-label"}, p.name));
     if (p.id === world.current && !world.routes.some(r => r.id === adventure.position)) group.append(svgElement("text", {x: p.x, y: p.y - 24, class: "place-label"}, "Vous êtes ici"));
-    const choose = () => { mapPlace = p.id; mapPoint = ""; showView("map"); };
+    const choose = () => { mapPlace = p.id; mapPoint = ""; keepMapOpen(); };
     group.onclick = choose;
     group.ondblclick = () => requestTravel(p.id);
     group.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); requestTravel(p.id); } };
@@ -206,11 +211,19 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     move.addEventListener("click", () => requestTravel(place.id, place.name, place.id));
     $("map-routes").append(move);
   }
+  const nearbyPoint = point && (adventure.field_interactions || []).find(site => site.id === point.id);
+  if (!locked && nearbyPoint?.dialogue) {
+    const talk = document.createElement("button");
+    talk.textContent = `Parler à ${nearbyPoint.name}`;
+    talk.disabled = busy;
+    talk.addEventListener("click", () => tutorialCommand("talk", {npc: nearbyPoint.id}));
+    $("point-actions").append(talk);
+  }
   if (!locked && point?.action) {
     const button = document.createElement("button");
-    button.textContent = point.action === "explore" ? "Explorer ce point" : "Interagir avec ce point";
+    button.textContent = point.action === "explore" ? "Explorer ce point" : point.action === "dialogue" ? "Parler" : "Ouvrir la forge";
     button.disabled = busy;
-    button.addEventListener("click", () => point.action === "explore" ? tutorialCommand("explore") : showView(point.action === "dialogue" ? "npc" : "craft"));
+    button.addEventListener("click", () => point.action === "explore" ? tutorialCommand("explore") : point.action === "dialogue" ? tutorialCommand("talk", {npc: point.id}) : showView("craft"));
     $("point-actions").append(button);
   }
   $("bestiary-details").replaceChildren();
