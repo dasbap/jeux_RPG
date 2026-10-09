@@ -10,20 +10,36 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
     let subscriptionId = null;
     let sequence = 0;
     let stateBundles = {};
+    let authorization = null;
+    let connected = false;
     const pending = new Map();
-    const transport = {onState: null, request};
+    const transport = {onState: null, request, close, get connected() { return connected; }};
+    function close() {
+      authorization = null;
+      subscription = null;
+      connected = false;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+      socket?.close();
+    }
     function open() {
-      if (socket?.readyState === WebSocket.OPEN) return Promise.resolve(socket);
       if (opening) return opening;
+      if (connected && socket?.readyState === WebSocket.OPEN) return Promise.resolve(socket);
       opening = new Promise((resolve, reject) => {
         const endpoint = new URL("/api/ws", location.href);
         endpoint.protocol = location.protocol === "https:" ? "wss:" : "ws:";
-        socket = new WebSocket(endpoint);
-        const deadline = setTimeout(() => { reject(new Error("Connexion temps réel trop lente.")); socket.close(); }, 25000);
-        socket.addEventListener("open", () => {
+        const connection = new WebSocket(endpoint);
+        socket = connection;
+        const deadline = setTimeout(() => { reject(new Error("Connexion temps réel trop lente.")); connection.close(); }, 5000);
+        connection.addEventListener("open", () => {
+          connection.send(JSON.stringify({type: "authenticate", headers: {Authorization: authorization}}));
+        });
+        function authenticated() {
+          if (socket !== connection || connected) return;
           clearTimeout(deadline);
           delay = 250;
           opening = null;
+          connected = true;
           heartbeat = setInterval(() => {
             if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({type: "ping"}));
           }, 10000);
@@ -32,10 +48,11 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
           if (subscription) request(subscription.path, subscription.options).then(async response => {
             transport.onState?.({status: response.status, body: await response.json()});
           }).catch(() => {});
-        });
-        socket.addEventListener("message", event => {
+        }
+        connection.addEventListener("message", event => {
           let message;
           try { message = JSON.parse(event.data); } catch { return; }
+          if (message.type === "authenticated") { authenticated(); return; }
           if (message.type === "state") {
             if (message.subscription !== subscriptionId) return;
             const result = message.result;
@@ -57,8 +74,10 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
             pending.delete(message.id);
           }
         });
-        socket.addEventListener("error", () => reject(new Error("Connexion temps réel indisponible.")));
-        socket.addEventListener("close", () => {
+        connection.addEventListener("error", () => reject(new Error("Connexion temps réel indisponible.")));
+        connection.addEventListener("close", () => {
+          if (socket !== connection) { clearTimeout(deadline); reject(new Error("Connexion remplacée.")); return; }
+          connected = false;
           clearTimeout(deadline);
           clearInterval(heartbeat);
           opening = null;
@@ -67,7 +86,7 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
           pending.clear();
           if (reconnectTimer === null) reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
-            open().catch(() => {});
+            if (authorization) open().catch(() => {});
           }, delay);
           delay = Math.min(10000, delay * 2);
         });
@@ -75,18 +94,38 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
       return opening;
     }
     async function request(path, options = {}) {
-      const connection = await open();
+      const credentials = options.headers?.Authorization || options.headers?.authorization;
+      if (path.startsWith("/api/account/") || path === "/api/classes" || !credentials) return fetch(path, options);
+      if (authorization && authorization !== credentials) {
+        connected = false;
+        clearInterval(heartbeat);
+        subscription = null;
+        socket?.close();
+        socket = null;
+        opening = null;
+      }
+      authorization = credentials;
+      let connection;
+      try { connection = await open(); }
+      catch { opening = null; return fetch(path, options); }
       const id = String(++sequence);
       if (path === "/api/state") {
         subscription = {path, options};
         subscriptionId = id;
         stateBundles = {};
       }
-      const result = await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error("Réponse temps réel trop lente.")); }, 30000);
+      let result;
+      try { result = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { pending.delete(id); reject(new Error("Réponse temps réel trop lente.")); }, 15000);
         pending.set(id, {resolve: value => {clearTimeout(timer); resolve(value);}, reject: error => {clearTimeout(timer); reject(error);}});
-        connection.send(JSON.stringify({id, path, method: options.method || "GET", headers: options.headers || {}, body: options.body ? JSON.parse(options.body) : null}));
-      });
+        try { connection.send(JSON.stringify({id, path, method: options.method || "GET", headers: options.headers || {}, body: options.body ? JSON.parse(options.body) : null})); }
+        catch (error) { pending.get(id).reject(error); pending.delete(id); }
+      }); }
+      catch (error) {
+        const body = options.body ? JSON.parse(options.body) : null;
+        if ((!options.method || options.method === "GET") || path === "/api/commands" && typeof body?.request_id === "string") return fetch(path, options);
+        throw error;
+      }
       return {ok: result.status >= 200 && result.status < 300, status: result.status, json: async () => result.body};
     }
     document.addEventListener("visibilitychange", () => {

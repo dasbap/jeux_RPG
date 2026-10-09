@@ -195,16 +195,9 @@ class Handler(BaseHTTPRequestHandler):
         length = int(lengths[0])
         if not 1 <= length <= 4096:
             raise GameError("too_large", "Requête trop volumineuse.", 413)
-        def pairs(items):
-            result = {}
-            for key, value in items:
-                if key in result:
-                    raise ValueError("duplicate key")
-                result[key] = value
-            return result
+        from .json_protocol import object_json
         try:
-            body = json.loads(self.rfile.read(length), object_pairs_hook=pairs,
-                              parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+            body = object_json(self.rfile.read(length))
         except (ValueError, UnicodeError, RecursionError):
             raise GameError("invalid_json", "JSON invalide.") from None
         if not isinstance(body, dict):
@@ -296,7 +289,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise GameError("invalid_command", "Paramètres de connexion invalides.")
                 if not self.server.limiter.accept(("login", self.client_address[0]), 10):
                     raise GameError("rate_limit", "Trop de tentatives. Réessayez dans une minute.", 429)
-                self._respond(201 if path.endswith("signup") else 200, self.server.service.account_login(body["username"], body["password"], signup=path.endswith("signup")))
+                self._respond(201 if path.endswith("signup") else 200, self.server.service.account_login(body["username"], body["password"], signup=path.endswith("signup"), _prepared=getattr(self, "prepared_login", None)))
             elif path == "/api/account/character":
                 if "action" not in body:
                     raise GameError("invalid_command", "Action requise.")
