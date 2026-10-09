@@ -6,13 +6,14 @@ const origin = process.env.RPG_TEST_ORIGIN || "http://127.0.0.1:8080";
 const errors = [];
 const clients = [];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function waitFor(condition, label) {
-  const deadline = Date.now() + 10000;
+async function waitFor(condition, label, timeout = 10000, diagnostics = null) {
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (await condition()) return;
     await pause(50);
   }
-  throw new Error(`Interface bloquée : ${label}`);
+  const details = diagnostics ? diagnostics() : "";
+  throw new Error(`Interface bloquée : ${label}${details ? " · " + details : ""}`);
 }
 const el = (dom, id) => dom.window.document.getElementById(id);
 async function request(dom, path, body) {
@@ -50,7 +51,12 @@ async function client(html, app, name, className) {
   el(dom, "name").value = name;
   el(dom, "class-name").value = className;
   el(dom, "register-form").dispatchEvent(new dom.window.Event("submit", {bubbles: true, cancelable: true}));
-  await waitFor(() => !el(dom, "lobby").hidden, "inscription");
+  await waitFor(
+    () => !el(dom, "lobby").hidden,
+    "inscription",
+    30000,
+    () => `${el(dom, "message").textContent || "aucun message"} / ${el(dom, "connection").textContent || "aucun état de connexion"} / busy=${dom.window.demoReady ? !dom.window.demoReady() : "inconnu"}`
+  );
   return dom;
 }
 async function closeClient(dom) {
