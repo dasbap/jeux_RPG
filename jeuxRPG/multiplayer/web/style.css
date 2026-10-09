@@ -377,3 +377,10 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
   .combat-active .combat-mode #combat-player-panel{left:8px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:8px;left:auto;top:8px}
 }
+
+@media(max-width:750px){
+  .combat-active #zone-banner{top:calc(25vh + 70px)}
+}
+@media(max-height:500px) and (orientation:landscape){
+  .combat-active #zone-banner{top:calc(34vh + 70px)}
+}
