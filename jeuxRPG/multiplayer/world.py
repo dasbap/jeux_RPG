@@ -61,10 +61,15 @@ for village, layout in VILLAGE_STREETS.items():
         points.append({"id": street["id"], "name": street["name"], "type": "rue", "description": "Les bâtiments se suivent le long de cette rue.", "x": 300, "y": y})
         for order, building in enumerate(street["buildings"]):
             point = next((point for point in points if point["id"] == building), None)
+            site = next((item for item in WORLD_MAP_DATA.get(village, {}).get("sites", []) if item["id"] == building), None)
             if point is None:
-                name = "Auberge" if building.endswith("inn") else "Boutique" if building.endswith("shop") else "Maison"
-                point = {"id": building, "name": name, "type": "bâtiment", "description": "Bâtiment du village, sans interaction disponible pour le moment."}
+                name = site["name"] if site else "Auberge" if building.endswith("inn") else "Boutique" if building.endswith("shop") else "Maison"
+                point = {"id": building, "name": name, "type": "pnj" if site and site.get("dialogue") else "atelier" if site else "bâtiment", "description": site.get("dialogue") if site else "Bâtiment du village, sans interaction disponible pour le moment."}
                 points.append(point)
+            elif site:
+                point.update(name=site["name"], type="pnj" if site.get("dialogue") else "atelier")
+                if site.get("dialogue"):
+                    point["description"] = site["dialogue"]
             point.update(x=430 + order * 130, y=y)
 
 
