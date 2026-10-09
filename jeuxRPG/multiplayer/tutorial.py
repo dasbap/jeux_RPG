@@ -162,8 +162,11 @@ def view(party, me, now):
     result["hunt_name"] = content.HUNT["name"]
     result["hunt_description"] = content.HUNT["description"]
     result["location"], result["objective"] = STEPS[party["step"]]
-    if party["step"] == "hunt":
-        result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
+    tutorial_npc = world.point_name(content.HUNT["npc"])
+    if party["step"] == "village":
+        result["objective"] = f"Parlez à {tutorial_npc} pour accepter : {content.HUNT['name']}."
+    elif party["step"] == "hunt":
+        result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} cible(s) vaincue(s)."
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
     result["moving"] = bool(transit and not party["battle"] and transit.get('paused_at') is None)
@@ -316,7 +319,9 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
         return messages, False
     if action == "talk":
-        if party["battle"] or params["npc"] != "mira":
+        tutorial_npc = content.HUNT["npc"]
+        tutorial_npc_name = world.point_name(tutorial_npc)
+        if party["battle"] or params["npc"] != tutorial_npc:
             raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
         if party["step"] == "village":
             missing = content.missing_requirements(party, content.HUNT)
@@ -324,9 +329,12 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 return [f"{content.HUNT['name']} inaccessible : {'; '.join(missing)}."], False
             party.update(step="hunt", quest="active")
             if party.get("field_mode"):
-                party["kills"] = min(content.HUNT["count"], party.get("zone_kills", {}).get("lisiere", 0))
-            messages.extend(content.quest_dialogue(party, "mira"))
-            messages.append(f"Mira : {content.HUNT['description']} · {content.HUNT['count']} gobelin(s).")
+                prior = party.get("hunt_kills", {}).get(content.HUNT["target"], 0)
+                if content.HUNT["target"] == "goblin":
+                    prior = max(prior, party.get("zone_kills", {}).get(content.HUNT.get("zone") or "lisiere", 0))
+                party["kills"] = min(content.HUNT["count"], prior)
+            messages.extend(content.quest_dialogue(party, tutorial_npc))
+            messages.append(f"{tutorial_npc_name} : {content.HUNT['description']} · {content.HUNT['count']} cible(s).")
         elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
             party.update(step="craft", quest="completed")
             achievements.event(party, "quests", content.HUNT["id"])
@@ -334,9 +342,9 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 if content.HUNT["reward_xp"]:
                     character.gain_exp(content.HUNT["reward_xp"])
                 party["characters"][key] = pack(character)
-            messages.append(f"Mira : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
+            messages.append(f"{tutorial_npc_name} : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
         else:
-            raise error("quest_incomplete", f"Mira attend {content.HUNT['count']} gobelin(s) vaincu(s).", 409)
+            raise error("quest_incomplete", f"{tutorial_npc_name} attend encore {max(0, content.HUNT['count'] - party['kills'])} cible(s) vaincue(s).", 409)
         return messages, False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
