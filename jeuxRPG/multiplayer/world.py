@@ -150,11 +150,11 @@ def view(party, me, traveller=None):
             point["local"] = key == zone_of(party.get("position", CURRENT[step])) and party.get("position") not in ROAD_POINTS
             point["can_interact"] = point["local"] and not fighting and not moving
             if point["id"] == "forge" and party["quest"] != "completed":
-                point["locked_reason"] = "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village."
-            elif point["id"] == "mira" and step == "hunt" and party["kills"] < content.HUNT["count"]:
-                point["locked_reason"] = f"Mira attend encore {content.HUNT['count'] - party['kills']} gobelin(s) vaincu(s)."
+                point["locked_reason"] = f"Forge verrouillée : terminez la quête « {content.HUNT['name']} » et rendez-la à son PNJ."
+            elif point["id"] == content.HUNT["npc"] and step == "hunt" and party["kills"] < content.HUNT["count"]:
+                point["locked_reason"] = f"Quête en cours : encore {content.HUNT['count'] - party['kills']} cible(s) à vaincre."
             if not fighting and not moving and party.get("position", CURRENT[step]) == point["id"]:
-                if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == content.HUNT["count"]):
+                if point["id"] == content.HUNT["npc"] and (step == "village" or step == "hunt" and party["kills"] == content.HUNT["count"]):
                     point["action"] = "dialogue"
                 elif point["id"] == "forge" and party["quest"] == "completed":
                     point["action"] = "forge"
