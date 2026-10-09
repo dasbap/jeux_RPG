@@ -265,7 +265,10 @@ function renderBattle(adventure, me) {
     cell.ondblclick = move;
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
-    if (exit) svg.append(element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle"}, gate?.name || "Sortie"));
+    if (exit) {
+      const label = element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle", "pointer-events": "none"}, gate?.name || "Sortie");
+      svg.append(label);
+    }
   }
   decorateMap(svg, map, element, {left, top, width, height}, explored);
   for (const site of map.sites || []) {
