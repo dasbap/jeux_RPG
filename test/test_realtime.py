@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from jeuxRPG.multiplayer.realtime import Coordinator, create_app
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore, progress_signature
-from jeuxRPG.multiplayer import realtime_store
+from jeuxRPG.multiplayer import realtime_store, content
 from jeuxRPG.multiplayer.schema import initialize
 from jeuxRPG.multiplayer.turso import TursoConnection
 from test_serverless import Transport
@@ -75,6 +75,54 @@ def test_rapid_progress_changes_are_coalesced_and_rooms_are_not_saved():
     assert json.loads(store.pending[('tutorials', (room,))]['data']) == saved
     assert saved['characters'][identifier]['exp'] == 50
     assert saved['inventory'][identifier]['wood'] == 2
+    store.close()
+
+
+def test_progress_signature_tracks_custom_quest_acceptance_progress_and_completion():
+    base = {'position': 'rosee', 'inventory': {}, 'characters': {}, 'custom_quests': {}}
+    accepted = {**base, 'custom_quests': {'side': {'status': 'active', 'progress': 0}}}
+    progressed = {**base, 'custom_quests': {'side': {'status': 'active', 'progress': 1}}}
+    completed = {**base, 'custom_quests': {'side': {'status': 'completed', 'progress': 1}}}
+    assert progress_signature(base) != progress_signature(accepted)
+    assert progress_signature(accepted) != progress_signature(progressed)
+    assert progress_signature(progressed) != progress_signature(completed)
+
+
+def test_custom_quest_survives_runtime_restart_at_every_lifecycle_stage():
+    store = RuntimeStore(ENV)
+    _, room = adventure(store)
+
+    def load_party(runtime):
+        return json.loads(runtime.db.execute('SELECT data FROM tutorials WHERE session_id=?', (room,)).fetchone()[0])
+
+    def restart(runtime):
+        snapshot = json.loads(runtime.snapshot())
+        runtime.close()
+        return RuntimeStore(ENV, snapshot)
+
+    mutate(store, room, lambda party: content.quest_dialogue(party, 'mira'))
+    store.capture()
+    accepted = load_party(store)
+    side = next(quest for quest in content.DATA['quests'] if not content.is_hunt(quest) and quest['npc'] == 'mira')
+    assert accepted['custom_quests'][side['id']] == {'status': 'active', 'progress': 0}
+    store = restart(store)
+    assert load_party(store)['custom_quests'][side['id']] == {'status': 'active', 'progress': 0}
+
+    mutate(store, room, lambda party: content.quest_event(party, side['kind'], side['target'], side.get('zone')))
+    store.capture()
+    progressed = load_party(store)['custom_quests'][side['id']]
+    assert progressed['status'] == 'active'
+    assert progressed['progress'] == 1
+    store = restart(store)
+    assert load_party(store)['custom_quests'][side['id']] == progressed
+
+    mutate(store, room, lambda party: content.quest_dialogue(party, side['npc']))
+    store.capture()
+    completed = load_party(store)['custom_quests'][side['id']]
+    assert completed['status'] == 'completed'
+    assert completed['progress'] == side['count']
+    store = restart(store)
+    assert load_party(store)['custom_quests'][side['id']] == completed
     store.close()
 
 
