@@ -21,6 +21,9 @@ jeux-rpg-map-editor = "jeuxRPG.multiplayer.map_editor:main"
 [tool.vercel]
 entrypoint = "app:app"
 
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
 [tool.setuptools.packages.find]
 include = ["jeuxRPG*"]
 

@@ -1,7 +1,9 @@
 import argparse
 import http.client
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 import json
+import math
 import multiprocessing
 from pathlib import Path
 import statistics
@@ -20,10 +22,17 @@ def serve_load(database, tokens, connection):
     server = RPGServer(("127.0.0.1", 0), service, log_directory=Path(database).parent / ".logs")
     thread = threading.Thread(target=server.serve_forever)
     thread.start()
+    cpu_started = time.process_time()
     connection.send(server.server_address[1])
     try:
         while connection.recv() != "stop":
-            connection.send({"server_alive": thread.is_alive(), "ticker_alive": server._ticker.is_alive(), "active_combats": sum(bool(service.state(token)["session"]["tutorial"]["battle"]) for token in tokens)})
+            cpu_seconds = time.process_time() - cpu_started
+            try:
+                import resource
+                peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+            except ImportError:
+                peak_rss = None
+            connection.send({"server_alive": thread.is_alive(), "ticker_alive": server._ticker.is_alive(), "active_combats": sum(bool(service.state(token)["session"]["tutorial"]["battle"]) for token in tokens), "server_cpu_seconds": round(cpu_seconds, 4), "server_peak_rss_bytes": peak_rss, "realms": service.realm_count})
     finally:
         server.shutdown()
         thread.join()
@@ -33,6 +42,8 @@ def serve_load(database, tokens, connection):
 
 
 def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None, fixed_zones=False):
+    if seconds <= 0 or poll_interval <= 0 or not 0 <= combat_users <= users or users < 1:
+        raise ValueError('Paramètres de charge invalides')
     with tempfile.TemporaryDirectory() as directory:
         service = GameService(Path(directory) / "load.sqlite3", random_source=lambda: .5)
         clients = []
@@ -144,11 +155,16 @@ def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None, fi
             if not connection.poll(15):
                 raise RuntimeError("Le serveur ne répond plus")
             health = connection.recv()
+            p99 = latencies[min(len(latencies) - 1, math.ceil(len(latencies) * .99) - 1)]
             report = {"fixed_zones": fixed_zones, "users": users, "combat_users": combat_users, "town_users": users - combat_users, "duration_seconds": round(time.monotonic() - started, 2), "state_requests": len(latencies), "successful_movement_actions": sum(result[7] for result in results), "expected_action_conflicts": [value for result in results for value in result[2]], "errors": errors, "latency_ms": {"p50": round(statistics.median(latencies), 2), "p95": round(latencies[int(len(latencies) * .95)], 2), "max": round(max(latencies), 2)}, "server_processing_ms": {"p50": round(statistics.median(server_times), 2), "p95": round(server_times[int(len(server_times) * .95)], 2), "max": round(max(server_times), 2)}, "movement_latency_ms": {"p50": round(statistics.median(action_times), 2), "p95": round(action_times[int(len(action_times) * .95)], 2), "max": round(max(action_times), 2)} if action_times else None, "latency_target_ms": max_p95, "latency_target_met": max_p95 is None or (latencies[int(len(latencies) * .95)] < max_p95 and (not action_times or action_times[int(len(action_times) * .95)] < max_p95)), "average_full_bytes": round(full), "average_delta_bytes": round(delta), "reduction_percent": round(100 * (1 - delta / full), 1), **health, "separate_server_process": True, "persistent_http_connections": True, "poll_interval_seconds": poll_interval, "fixture": f"{combat_users} independent combat sessions with real mob AI, boosted player HP to keep fighting; {users - combat_users} town sessions; {1 / poll_interval:g} state requests/second/user, movement every 4 seconds in combat; localhost"}
+            report['latency_ms'].update(mean=round(statistics.mean(latencies), 2), p99=round(p99, 2))
+            report['request_attempts'] = len(latencies) + len(errors)
+            report['error_rate'] = len(errors) / max(1, report['request_attempts'])
             return report
         finally:
             if process.is_alive():
-                connection.send("stop")
+                with suppress(OSError):
+                    connection.send("stop")
                 process.join(timeout=15)
             if process.is_alive():
                 process.terminate()

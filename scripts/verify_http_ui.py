@@ -14,6 +14,7 @@ if reference_world.is_dir():
 import jeuxRPG
 from jeuxRPG.multiplayer import server as server_module, tutorial
 from jeuxRPG.multiplayer.service import GameService, GameError
+from jeuxRPG.multiplayer.clock import GameClock
 from jeuxRPG.multiplayer.server import RPGServer
 
 
@@ -29,6 +30,8 @@ def main():
     if os.environ.get("RPG_REQUIRE_INSTALLED") == "1":
         assert "site-packages" in jeuxRPG.__file__, jeuxRPG.__file__
     root = Path(__file__).resolve().parent.parent
+    original_ratio = GameClock.ratio
+    GameClock.ratio = 60
     original_time = server_module.time
     server_module.time = SimpleNamespace(monotonic=lambda: time.monotonic() * 100)
     try:
@@ -110,6 +113,7 @@ def main():
             return result.returncode
     finally:
         server_module.time = original_time
+        GameClock.ratio = original_ratio
 
 
 if __name__ == "__main__":

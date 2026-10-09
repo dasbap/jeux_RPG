@@ -85,14 +85,21 @@ class RuntimeStore:
         finally:
             connection.close()
 
-    def rows(self, table):
+    def rows(self, table, session_id=None):
+        if session_id is not None:
+            column = 'id' if table == 'sessions' else 'session_id'
+            return [dict(row) for row in self.db.execute(f'SELECT * FROM {table} WHERE {column}=?', (session_id,))]
         return [dict(row) for row in self.db.execute(f'SELECT * FROM {table}')]
 
     def session_signatures(self, only=None):
         result = {}
-        for row in self.db.execute('SELECT s.id,s.state,t.data FROM sessions s LEFT JOIN tutorials t ON t.session_id=s.id'):
-            if only is not None and row['id'] not in only:
-                continue
+        parameters = tuple(only) if only is not None else ()
+        if only is not None and not parameters:
+            return result
+        query = 'SELECT s.id,s.state,t.data FROM sessions s LEFT JOIN tutorials t ON t.session_id=s.id'
+        if only is not None:
+            query += ' WHERE s.id IN (' + ','.join('?' for _ in parameters) + ')'
+        for row in self.db.execute(query, parameters):
             members = tuple(item[0] for item in self.db.execute('SELECT player_id FROM members WHERE session_id=? ORDER BY player_id', (row['id'],)))
             result[row['id']] = (members, bool(row['data']), progress_signature(json.loads(row['data'])) if row['data'] else None)
         return result
@@ -137,13 +144,11 @@ class RuntimeStore:
                 continue
             for table in ('sessions', 'members', 'tutorials', 'events'):
                 old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
-                for row in self.rows(table):
-                    matches = row.get('id') == session_id if table == 'sessions' else row.get('session_id') == session_id
-                    if matches:
-                        key = tuple(row[value] for value in KEYS[table])
-                        if old.get(key) != row:
-                            self.pending[(table, key)] = row
-                        old[key] = row
+                for row in self.rows(table, session_id):
+                    key = tuple(row[value] for value in KEYS[table])
+                    if old.get(key) != row:
+                        self.pending[(table, key)] = row
+                    old[key] = row
                 self.durable[table] = list(old.values())
         self.signatures = signatures
         if self.pending and (self.due is None or signatures != getattr(self, "captured_signatures", None)):

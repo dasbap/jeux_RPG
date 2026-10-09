@@ -54,6 +54,8 @@ jobs:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Verifier le transport
         run: node scripts/verify_transport.cjs
+      - name: Verifier le polling adaptatif
+        run: node scripts/verify_polling.cjs
       - name: Verifier les commandes tactiles
         run: node scripts/verify_touch_controls.cjs
         env:
