@@ -611,4 +611,4 @@ def test_future_tutorial_revision_is_rejected(game):
             session_id=state["id"],
             revision=state["revision"] + 1,
         )
-    assert failure.value.code == "stale_revision"
+    assert failure.value.code == "wrong_location"
