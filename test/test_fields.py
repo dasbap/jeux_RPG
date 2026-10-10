@@ -131,8 +131,10 @@ def test_village_requires_proximity_for_quest_and_forge_and_restores_map():
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 2, GameError, lambda: .5)
     assert data["quest"] == "completed"
     data["battle"]["players"]["p"]["position"] = [44, 12]
+    dialogue = tutorial.execute(data, "p", "talk", {"npc": "forge"}, 3, GameError, lambda: .5)
+    assert any("Garrik" in message and "forge de Rosée" in message for message in dialogue[0])
     data["inventory"]["p"] = {"peau": 2, "croc": 3}
-    tutorial.execute(data, "p", "craft", {"recipe": "veste"}, 3, GameError, lambda: .5)
+    tutorial.execute(data, "p", "craft", {"recipe": "veste"}, 4, GameError, lambda: .5)
     assert data["step"] == "travel"
     assert data["battle"] and data["position"] == "rosee"
     assert "fields" not in tutorial.view(data, "p", 3)

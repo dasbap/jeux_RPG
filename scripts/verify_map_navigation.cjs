@@ -40,6 +40,13 @@ context.session.tutorial.field_map = null;
 context.requestTravel("rosee");
 assert.equal(JSON.stringify(calls.shift()), JSON.stringify(["move", {destination: "rosee"}]));
 
+
+const worldUi = fs.readFileSync(path.join(__dirname, "../jeuxRPG/multiplayer/web/app_world.js"), "utf8");
+assert.match(worldUi, /const locked = busy \|\| Boolean\(adventure\.battle && \(!adventure\.field_map \|\| adventure\.battle\.hostiles_alive\)\)/);
+assert.match(worldUi, /function keepMapOpen\(\)/);
+assert.match(worldUi, /document\.body\.classList\.add\("hud-menu-open"\)/);
+assert.match(worldUi, /Parler à \$\{nearbyPoint\.name\}/);
+
 const maps = JSON.parse(fs.readFileSync(path.join(__dirname, "../jeuxRPG/maps/world.json"), "utf8"));
 const forge = maps.rosee.sites.find(site => site.id === "forge");
 assert.equal(forge.name, "Garrik · maître forgeron");

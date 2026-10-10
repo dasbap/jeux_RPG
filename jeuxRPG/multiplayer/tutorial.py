@@ -316,7 +316,15 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
             party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
         return messages, False
     if action == "talk":
-        if party["battle"] or params["npc"] != "mira":
+        npc_id = params["npc"]
+        if npc_id != "mira":
+            if party["battle"] or party.get("transit") or party.get("position") != npc_id:
+                raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
+            npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
+            if npc is None:
+                raise error("invalid_npc", "PNJ introuvable.", 404)
+            return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, npc_id)], False
+        if party["battle"]:
             raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
         if party["step"] == "village":
             missing = content.missing_requirements(party, content.HUNT)
@@ -580,7 +588,7 @@ def execute(party, player_id, action, params, now, error, random):
         return [f"Léon : je séjourne {content.WORLD['merchant_stay_hours']:g} heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
     if action == "craft" and party["quest"] != "completed":
         raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
-    if action == "talk" and position != "mira" or action == "craft" and position != "forge":
+    if action == "talk" and position != params["npc"] or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":
         if party["battle"] or party["mobs"] or position not in ("clearing", "clearing_fight", "hunt", "lisiere", "training"):
