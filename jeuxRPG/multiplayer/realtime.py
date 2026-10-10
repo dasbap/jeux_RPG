@@ -403,6 +403,13 @@ def create_app(environment=None, coordinator=None):
                 'host': incoming.get('host', ''), 'peer': connection.client.host if connection.client else 'unknown',
                 'scheme': 'https' if environment.get('VERCEL') else 'http'}
 
+    @app.get('/health')
+    async def healthcheck():
+        result = {'status': 'ok'}
+        if environment.get('RPG_RELEASE_SHA'):
+            result['release'] = environment['RPG_RELEASE_SHA']
+        return JSONResponse(result)
+
     @app.websocket('/api/ws')
     async def socket(websocket: WebSocket):
         host = websocket.headers.get('host', '')
