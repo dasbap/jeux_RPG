@@ -384,3 +384,17 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 @media(max-height:500px) and (orientation:landscape){
   .combat-active #zone-banner{top:calc(34vh + 70px)}
 }
+
+.combat-active #hud-navigation{position:fixed;left:12px;bottom:64px;z-index:54;width:190px;padding:6px 8px;background:rgba(17,20,27,.78);border:1px solid rgba(90,101,120,.65);border-radius:12px;backdrop-filter:blur(8px);pointer-events:none}
+#hud-minimap{display:block;width:100%;height:112px}
+#hud-objective{margin:3px 0 0;font-size:.72rem;line-height:1.25;color:#f3f5f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-mini-route{stroke:#66758b;stroke-width:2}
+.hud-mini-point{fill:#8794a7}
+.hud-mini-player{fill:#6ee7a8;stroke:#fff;stroke-width:2}
+.hud-mini-objective{fill:#ffd55d;stroke:#fff;stroke-width:2}
+.hud-mini-target-label{fill:#ffd55d;font-size:9px;text-anchor:middle}
+@media(max-width:750px),(pointer:coarse){
+  .combat-active #hud-navigation{left:8px;bottom:64px;width:136px;padding:4px 6px}
+  #hud-minimap{height:82px}
+  #hud-objective{font-size:.62rem}
+}
