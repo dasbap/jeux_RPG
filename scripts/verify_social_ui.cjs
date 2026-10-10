@@ -15,7 +15,7 @@ async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method
  const app=require('./client_source.cjs')();
  for(let index=0;index<4;index++){
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
-  const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console});clients.push(dom);
+  const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console,pretendToBeVisual:true});clients.push(dom);
   dom.window.fetch=(url,opts)=>fetch(new URL(url,origin),opts);dom.window.crypto.randomUUID=randomUUID;dom.window.AbortController=AbortController;dom.window.AbortSignal=AbortSignal;
   dom.window.setInterval=()=>0;
   dom.window.eval(app+';window.socialTest={refresh,ready:()=>!busy&&!polling,snapshot:()=>session};');

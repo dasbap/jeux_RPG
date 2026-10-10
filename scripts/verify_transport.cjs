@@ -4,13 +4,15 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../jeuxRPG/multiplayer/web/realtime.js'), 'utf8');
 function setup(WebSocket) {
   const calls = [];
+  let now = 0;
   const context = {WebSocket, location: new URL('https://game.vercel.app/'), URL, document: {hidden:false, addEventListener(){}},
+    Date: class extends Date {static now() {return now;}},
     fetch: async (path, options) => { calls.push({path, options}); return {ok:true, status:200, json:async()=>({ok:true})}; },
     setTimeout: () => 1, clearTimeout(){}, setInterval: () => 1, clearInterval(){}, structuredClone};
   vm.createContext(context); vm.runInContext(source, context);
-  return {transport:context.rpgRealtime, calls};
+  return {transport:context.rpgRealtime, calls, advance: delta => {now += delta;}};
 }
-class Blocked { static OPEN = 1; constructor() {throw new Error('Blocked');} }
+class Blocked { static OPEN = 1; static attempts = 0; constructor() {Blocked.attempts++; throw new Error('Blocked');} }
 class Socket {
   static OPEN = 1;
   constructor() {this.readyState=0;this.events={};Socket.last=this;queueMicrotask(()=>{this.readyState=1;this.emit('open');});}
@@ -28,6 +30,12 @@ class Socket {
   await blocked.transport.request('/api/state', {headers:{Authorization:'Bearer token'}});
   assert.equal(blocked.calls.length,1);
   assert.equal(blocked.transport.connected,false);
+  for (let i = 0; i < 20; i++) await blocked.transport.request('/api/state', {headers:{Authorization:'Bearer token'}});
+  assert.equal(Blocked.attempts, 1);
+  assert.equal(blocked.calls.length, 21);
+  blocked.advance(1000);
+  await blocked.transport.request('/api/state', {headers:{Authorization:'Bearer token'}});
+  assert.equal(Blocked.attempts, 2);
   const active = setup(Socket);
   await active.transport.request('/api/account/login', {method:'POST',body:'{}'});
   assert.equal(active.calls.length,1);
@@ -44,6 +52,7 @@ class Socket {
   assert.equal(active.calls.length,2);
   assert.equal(active.calls[1].options.body,options.body);
   assert.equal(active.transport.connected,false);
+  active.advance(1000);
   await active.transport.request('/api/state', {headers:{Authorization:'Bearer changed'}});
   Socket.last.drop=true;
   await assert.rejects(active.transport.request('/api/social', {method:'POST',headers:{Authorization:'Bearer changed'},body:'{}'}));

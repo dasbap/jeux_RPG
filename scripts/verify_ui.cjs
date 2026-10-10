@@ -27,7 +27,9 @@ async function command(dom, action, params = {}) {
   for (let retry = 0; retry < 15; retry++) {
     const state = await request(dom, "/api/state");
     try {
-      return await request(dom, "/api/commands", {request_id: randomUUID(), action, params: {...(action === "tutorial" || action === "create" || action === "join" ? {} : {session_id: state.session.id, revision: state.session.revision}), ...params}});
+      const result = await request(dom, "/api/commands", {request_id: randomUUID(), action, params: {...(action === "tutorial" || action === "create" || action === "join" ? {} : {session_id: state.session.id, revision: state.session.revision}), ...params}});
+      await dom.window.demoRefresh();
+      return result;
     } catch (error) { if (error.code !== "stale_revision") throw error; }
   }
   throw new Error("Révisions instables");
@@ -35,7 +37,7 @@ async function command(dom, action, params = {}) {
 async function client(html, app, name, className) {
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", error => errors.push(error.message));
-  const dom = new JSDOM(html, {url: origin, runScripts: "outside-only", virtualConsole});
+  const dom = new JSDOM(html, {url: origin, runScripts: "outside-only", virtualConsole, pretendToBeVisual: true});
   clients.push(dom);
   dom.pollTimers = [];
   const startInterval = dom.window.setInterval.bind(dom.window);
@@ -45,7 +47,7 @@ async function client(html, app, name, className) {
   dom.window.AbortController = AbortController;
   dom.window.crypto.randomUUID = randomUUID;
   dom.window.confirm = () => true;
-  dom.window.eval(app + ";window.demoSnapshot = () => session; window.demoReady = () => !busy; window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
+  dom.window.eval(app + ";window.demoSnapshot = () => session; window.demoReady = () => !busy; window.demoRefresh = () => refresh(true); window.testFns = {battleAllowed, gridPath, requestTravel, flags: () => ({busy, polling, revision: session?.revision})};");
   el(dom, "account-name").value = "test_" + randomUUID().slice(0, 8);
   el(dom, "account-password").value = randomUUID();
   el(dom, "name").value = name;

@@ -1,0 +1,44 @@
+{
+  "fixed_zones": false,
+  "users": 20,
+  "combat_users": 10,
+  "town_users": 10,
+  "duration_seconds": 5.05,
+  "state_requests": 100,
+  "successful_movement_actions": 20,
+  "expected_action_conflicts": [],
+  "errors": [],
+  "latency_ms": {
+    "p50": 24.46,
+    "p95": 65.06,
+    "max": 82.5,
+    "mean": 28.64,
+    "p99": 74.92
+  },
+  "server_processing_ms": {
+    "p50": 21.77,
+    "p95": 51.31,
+    "max": 67.0
+  },
+  "movement_latency_ms": {
+    "p50": 23.93,
+    "p95": 47.71,
+    "max": 47.71
+  },
+  "latency_target_ms": null,
+  "latency_target_met": true,
+  "average_full_bytes": 15568,
+  "average_delta_bytes": 4958,
+  "reduction_percent": 68.2,
+  "server_alive": true,
+  "ticker_alive": true,
+  "active_combats": 10,
+  "server_cpu_seconds": 1.5623,
+  "server_peak_rss_bytes": 41639936,
+  "separate_server_process": true,
+  "persistent_http_connections": true,
+  "poll_interval_seconds": 1,
+  "fixture": "10 independent combat sessions with real mob AI, boosted player HP to keep fighting; 10 town sessions; 1 state requests/second/user, movement every 4 seconds in combat; localhost",
+  "request_attempts": 100,
+  "error_rate": 0.0
+}

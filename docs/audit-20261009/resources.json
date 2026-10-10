@@ -1,0 +1,23 @@
+{
+  "baseline_commit": "f27dabee1b4b886ea117debf18d9cb6322c03356",
+  "sessions": 40,
+  "scope": "local SQLite and counted presence operations; no remote services",
+  "before": {
+    "presence_admissions": 100,
+    "presence_values_reads": 300,
+    "presence_renewals": 100,
+    "idle_signature_sql_queries": 1,
+    "one_session_signature_median_ms": 0.04863,
+    "uncached_paths_cpu_median_seconds": 0.58763
+  },
+  "after": {
+    "presence_admissions": 100,
+    "presence_values_reads": 100,
+    "presence_renewals": 1,
+    "idle_signature_sql_queries": 0,
+    "one_session_signature_median_ms": 0.01828,
+    "uncached_paths_cpu_median_seconds": 0.20219
+  },
+  "path_cases": 45,
+  "identical_paths": true
+}

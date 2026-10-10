@@ -1,5 +1,6 @@
 "use strict";
 async function refresh(force = false) {
+  if (globalThis.navigator?.onLine === false) return;
   if (!$("characters").hidden) return;
   if (!token) {
     $("connection").textContent = "Prêt · connectez-vous à votre compte";
@@ -30,7 +31,7 @@ async function refresh(force = false) {
     render(state);
   } catch (error) {
     refreshFailures++;
-    nextRefreshAt = Date.now() + Math.min(10000, 1000 * 2 ** Math.min(4, refreshFailures - 1));
+    nextRefreshAt = Date.now() + Math.round(Math.min(30000, 1000 * 2 ** Math.min(5, refreshFailures - 1)) * (.9 + Math.random() * .2));
     $("connection").textContent = "Reconnexion automatique · " + (error.code === "timeout" ? "tunnel lent" : "serveur indisponible");
     if (error.code === "unauthorized") {
       token = "";
@@ -48,7 +49,7 @@ async function refresh(force = false) {
       session = null;
       remember();
     }
-  } finally { polling = false; }
+  } finally { polling = false; scheduleRefresh(); }
 }
 async function command(action, params = {}) {
   if (busy) return;
@@ -113,6 +114,7 @@ async function command(action, params = {}) {
       if (actor.hp > 0 && !actor.stunned && !actor.casting && (!pending.controlledIds || JSON.stringify(pending.controlledIds) === JSON.stringify(controlledUnits(session.tutorial, session.me).map(([id]) => id).sort()))) await moveControlled(session.tutorial, actor, pending.destination);
     }
     if (!globalThis.rpgRealtime) await refresh(true);
+    scheduleRefresh();
   }
 }
 $("register-form").addEventListener("submit", async event => {
@@ -209,10 +211,33 @@ const incomingInvite = location.hash.match(/^#invite=([A-Za-z0-9_-]{16,64})$/)?.
 if (incomingInvite) { $("invite-input").value = incomingInvite; history.replaceState(null, "", location.pathname + location.search); }
 const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invite-link").value = invitationLink(invite); $("invitation").hidden = false; }
-window.addEventListener("online", () => refresh(true));
-window.addEventListener("pageshow", () => refresh(true));
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
+let refreshTimer = null;
+function refreshInterval() {
+  if (!token || !$("characters").hidden || globalThis.navigator?.onLine === false) return 30000;
+  if (document.hidden || globalThis.rpgRealtime?.connected) return 20000;
+  const tutorial = session?.tutorial;
+  const activeBattle = tutorial?.battle && (!tutorial.field_map || tutorial.mobs?.some(mob => mob.alerted && mob.stats?.hp?.current > 0) || [...Object.values(tutorial.battle.players || {}), ...Object.values(tutorial.battle.summons || {})].some(unit => unit.route?.length || unit.casting));
+  if (activeBattle || tutorial?.transit) return location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000;
+  if (!session?.tutorial) return 5000;
+  return currentView === "map" ? 3600 : 15000;
+}
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  const delay = Math.max(Math.round(refreshInterval() * (.9 + Math.random() * .2)), nextRefreshAt - Date.now());
+  refreshTimer = setTimeout(async () => {
+    try { if (!globalThis.rpgRealtime?.connected) await refresh(); }
+    finally { scheduleRefresh(); }
+  }, delay);
+}
+async function resumeRefresh() {
+  try { await refresh(true); }
+  finally { scheduleRefresh(); }
+}
+window.addEventListener("online", resumeRefresh);
+window.addEventListener("pageshow", resumeRefresh);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) return resumeRefresh(); scheduleRefresh(); });
 if (globalThis.rpgRealtime) {
+  globalThis.rpgRealtime.onConnection = scheduleRefresh;
   globalThis.rpgRealtime.onState = result => {
     if (!token || result.status !== 200 || !$("characters").hidden) return;
     const state = result.body;
@@ -226,5 +251,4 @@ if (globalThis.rpgRealtime) {
     render(state);
   };
 }
-setInterval(() => { if (!globalThis.rpgRealtime?.connected) refresh(); }, location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000);
-refresh();
+resumeRefresh();
