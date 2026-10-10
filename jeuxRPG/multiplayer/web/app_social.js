@@ -51,9 +51,11 @@ async function socialAction(action, params = {}) {
 }
 function renderSocial() {
   if (!$("social-view") || currentView !== "social") return;
-  const data = socialState || {friends: [], requests: [], invitations: [], team: null, rallies: []};
+  const data = socialState || {friends: [], requests: [], invitations: [], team: null, rallies: [], guild: null, guild_invitations: []};
   const presence = presenceState;
-  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/40 joueurs · équipe ${data.team?.members.length || 1}/4 · PvP désactivé` : "Choisissez votre personnage pour retrouver les autres joueurs.";
+  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/40 joueurs · équipe ${data.team?.members.length || 1}/4 · guilde ${data.guild ? data.guild.members.length + "/" + data.guild.capacity : "aucune"} · PvP désactivé` : "Choisissez votre personnage pour retrouver les autres joueurs.";
+  $("guild-create").hidden = Boolean(data.guild);
+  $("social-guild-invite").hidden = !data.guild || data.guild.role !== "owner";
   const root = $("social-content");
   const retained = new Set();
   function row(key, text, actions) {
@@ -75,6 +77,11 @@ function renderSocial() {
   for (const friend of data.friends) row(`friend-${friend.id}`, `Ami · ${friend.username}`, [["Inviter", "team_invite", {username: friend.username}], ["Retirer", "friend_remove", {account_id: friend.id}]]);
   for (const friend of data.requests) row(`request-${friend.id}`, `${friend.incoming ? "Demande reçue" : "Demande envoyée"} · ${friend.username}`, [...(friend.incoming ? [["Accepter", "friend_accept", {account_id: friend.id}]] : []), ["Refuser / annuler", "friend_remove", {account_id: friend.id}]]);
   for (const invite of data.invitations) row(`invite-${invite.id}`, `Invitation dans l’équipe de ${invite.username}`, [["Accepter", "team_accept", {invite_id: invite.id}], ["Refuser", "team_decline", {invite_id: invite.id}]]);
+  for (const invite of data.guild_invitations || []) row(`guild-invite-${invite.id}`, `Invitation guilde · ${invite.name} · par ${invite.username}`, [["Accepter", "guild_accept", {invite_id: invite.id}], ["Refuser", "guild_decline", {invite_id: invite.id}]]);
+  for (const member of data.guild?.members || []) {
+    const actions = data.guild.role === "owner" && member.id !== accountState?.account?.id ? [["Exclure", "guild_kick", {account_id: member.id}]] : [];
+    row(`guild-member-${member.id}`, `Guilde ${data.guild.name} · ${member.username} · ${member.role === "owner" ? "chef" : "membre"} · ${member.online ? "en ligne" : "hors ligne"}`, actions);
+  }
   for (const member of data.team?.members || []) {
     const position = member.position ? ` · ${member.position.map(Math.round).join(", ")}` : "";
     const mode = {travel: "en route", combat: "en combat", exploration: "en exploration", outing: member.waiting ? "attend sur la route" : "vue sortie", lobby: "au salon"}[member.mode] || "";
@@ -84,6 +91,7 @@ function renderSocial() {
   for (const rally of data.rallies) row(`rally-${rally.id}`, `${rally.username} appelle les alliés vers ${session?.tutorial?.world.places.find(place => place.id === rally.destination)?.name || rally.destination}`, [["M’y diriger", "rally_accept", {rally_id: rally.id}]]);
   for (const player of presence?.nearby || []) row(`nearby-${player.id}`, `${player.ally ? "Allié" : "Joueur dans la zone"} · ${player.name} · ${player.location}`, []);
   if (data.team) row("team-leave", "Les alliés voyagent librement. Quitter l’équipe conserve votre progression.", [["Quitter l’équipe", "team_leave", {}]]);
+  if (data.guild) row("guild-leave", `Guilde · ${data.guild.name}. Le chef est transféré au membre le plus ancien s’il quitte.`, [["Quitter la guilde", "guild_leave", {}]]);
   for (const child of [...root.children]) if (!retained.has(child.dataset.socialRow)) child.remove();
   if (!root.children.length) row("empty", "Ajoutez un joueur par son nom de compte ou invitez-le dans votre équipe.", []);
   const travel = $("social-travel");
@@ -107,3 +115,5 @@ $("character-create").addEventListener("submit", event => {event.preventDefault(
 $("character-cancel").addEventListener("click", () => {$("characters").hidden = true; sectionSignatures.clear(); refresh(true);});
 $("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});
 $("social-invite").addEventListener("click", () => socialAction("team_invite", {username: $("social-name").value.trim()}));
+$("social-guild-invite").addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));
+$("guild-create").addEventListener("submit", event => { event.preventDefault(); socialAction("guild_create", {name: $("guild-name").value.trim()}); });
