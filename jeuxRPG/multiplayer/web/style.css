@@ -394,7 +394,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .hud-mini-objective{fill:#ffd55d;stroke:#fff;stroke-width:2}
 .hud-mini-target-label{fill:#ffd55d;font-size:9px;text-anchor:middle}
 @media(max-width:750px),(pointer:coarse){
-  .combat-active #hud-navigation{left:8px;bottom:64px;width:136px;padding:4px 6px}
-  #hud-minimap{height:82px}
-  #hud-objective{font-size:.62rem}
+  .combat-active #hud-navigation{left:50%;right:auto;top:58px;bottom:auto;transform:translateX(-50%);width:112px;padding:4px 6px}
+  #hud-minimap{height:68px}
+  #hud-objective{font-size:.58rem}
 }
