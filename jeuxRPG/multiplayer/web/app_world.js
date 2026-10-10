@@ -52,6 +52,54 @@ function mountWorldMap(source, container = $("world-map")) {
   installWorldCamera(retained);
   return retained;
 }
+function hudQuestTarget(adventure) {
+  const hunt = adventure.hunt_objective || {};
+  if (adventure.step === "complete") return {zone: adventure.world.current, point: null, label: "Tutoriel terminé"};
+  if (adventure.quest === "unaccepted") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: `Parler à ${hunt.npc || "Mira"}`};
+  if (adventure.quest === "active" && adventure.kills < (adventure.hunt_goal || hunt.count || 1)) return {zone: hunt.zone || adventure.world.current, point: hunt.map || null, label: `${adventure.hunt_name || "Quête"} · ${adventure.kills}/${adventure.hunt_goal || hunt.count || 1}`};
+  if (adventure.quest === "active") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: "Rendre la quête"};
+  if (adventure.quest === "completed" && adventure.step === "craft") return {zone: "rosee", point: "forge", label: "Rejoindre la forge"};
+  if (adventure.step === "travel") return {zone: "brume", point: null, label: "Rejoindre Brume"};
+  const active = (adventure.quest_journal || []).find(quest => quest.status === "active");
+  return active ? {zone: active.zone || adventure.world.current, point: active.map || active.npc || null, label: `${active.name} · ${active.progress}/${active.count}`} : {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
+}
+function renderHudNavigation(adventure) {
+  const svg = $("hud-minimap");
+  if (!svg) return;
+  const ns = "http://www.w3.org/2000/svg", world = adventure.world, target = hudQuestTarget(adventure);
+  $("hud-objective").textContent = target.label;
+  svg.replaceChildren();
+  const place = world.places.find(item => item.id === world.current);
+  if (!place) return;
+  const points = [{id: place.id, name: "Entrée", x: 20, y: 55}, ...(place.points || []).map((point, index) => ({...point, x: point.x ?? 55 + (index % 3) * 45, y: point.y ?? 25 + Math.floor(index / 3) * 38}))];
+  const scale = (values, min, max) => {
+    const low = Math.min(...values), high = Math.max(...values), span = Math.max(1, high - low);
+    return value => min + (value - low) / span * (max - min);
+  };
+  const sx = scale(points.map(point => point.x), 18, 162), sy = scale(points.map(point => point.y), 18, 92);
+  const byId = new Map(points.map(point => [point.id, point]));
+  for (const source of points) for (const destination of world.graph?.[source.id] || []) {
+    const end = byId.get(destination);
+    if (!end || source.id > end.id) continue;
+    const line = document.createElementNS(ns, "line");
+    for (const [key,value] of Object.entries({x1:sx(source.x),y1:sy(source.y),x2:sx(end.x),y2:sy(end.y),class:"hud-mini-route"})) line.setAttribute(key, value);
+    svg.append(line);
+  }
+  for (const point of points) {
+    const circle = document.createElementNS(ns, "circle");
+    const current = point.id === adventure.position || point.id === adventure.field_map;
+    const objective = target.zone === world.current && target.point === point.id;
+    for (const [key,value] of Object.entries({cx:sx(point.x),cy:sy(point.y),r:current ? 6 : objective ? 5 : 3,class:current ? "hud-mini-player" : objective ? "hud-mini-objective" : "hud-mini-point"})) circle.setAttribute(key, value);
+    circle.dataset.miniPoint = point.id;
+    svg.append(circle);
+  }
+  if (target.zone !== world.current) {
+    const edge = document.createElementNS(ns, "text");
+    edge.setAttribute("x","90"); edge.setAttribute("y","104"); edge.setAttribute("class","hud-mini-target-label");
+    edge.textContent = `→ ${world.places.find(item => item.id === target.zone)?.name || target.zone}`;
+    svg.append(edge);
+  }
+}
 function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
