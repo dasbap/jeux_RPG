@@ -71,6 +71,36 @@ def battle_party():
     return party
 
 
+def test_boss_phase_restores_hp_scales_damage_and_defers_rewards():
+    party = battle_party()
+    mob = party['mobs'][0]
+    mob.update(name='Chef', base_name='Chef', attack_damage=10, phase_base_damage=10,
+               phase_base_hp=100, phase_index=0,
+               phases=[{'name':'Furie','hp_multiplier':1.5,'damage_multiplier':2.0}])
+    mob['stats']['hp'].update(max=100,current=0)
+    before_exp = party['characters']['p']['exp']
+    before_corpses = len(party['battle']['corpses'])
+    messages = []
+    assert tactics.advance_boss_phase(mob,messages)
+    assert mob['phase_index'] == 1
+    assert mob['stats']['hp'] == {'max':150,'current':150}
+    assert mob['attack_damage'] == 20
+    assert mob['phase_name'] == 'Furie'
+    assert party['characters']['p']['exp'] == before_exp
+    assert len(party['battle']['corpses']) == before_corpses
+    mob['stats']['hp']['current'] = 0
+    assert not tactics.advance_boss_phase(mob,messages)
+
+
+def test_boss_phase_catalog_validation():
+    mobs = deepcopy(map_building.MOBS)
+    mobs['orc']['phases'] = [{'name':'Furie','hp_multiplier':1.2,'damage_multiplier':1.5}]
+    assert mob_rules.validate_mobs(mobs)['orc']['phases'][0]['name'] == 'Furie'
+    mobs['orc']['phases'][0]['hp_multiplier'] = 0
+    with pytest.raises(ValueError, match='Phase de boss'):
+        mob_rules.validate_mobs(mobs)
+
+
 def test_killer_level_drives_shared_reward_and_new_drops_are_used():
     party = battle_party()
     mob = party['mobs'].pop()
