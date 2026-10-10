@@ -81,8 +81,10 @@ function renderTutorial(adventure, preserveBattle = false) {
   const me = adventure.players.find(player => player.id === session.me);
   const fieldInteractions = adventure.field_interactions || [];
   const fieldSites = new Set(fieldInteractions.map(site => site.id));
-  const nearbyNpc = fieldInteractions.find(site => site.dialogue) || null;
-  const canTalk = (adventure.position === "mira" && !fighting || fieldSites.has("mira") || Boolean(nearbyNpc)) && !adventure.moving;
+  const worldPoints = adventure.world?.places?.flatMap(place => place.points || []) || [];
+  const currentPoint = worldPoints.find(point => point.id === adventure.position);
+  const nearbyNpc = fieldInteractions.map(site => ({...worldPoints.find(point => point.id === site.id), ...site})).find(site => site.dialogue || site.type === "pnj") || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
+  const canTalk = Boolean(nearbyNpc) && !adventure.moving;
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const hasQuest = adventure.quest !== "unaccepted";
@@ -119,6 +121,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("zone-level").textContent = `Niv. ${currentZone?.level ?? me.level}`;
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
+  renderHudNavigation(adventure);
   $("quest-progress").textContent = !hasQuest ? (adventure.quest_journal?.length ? "Quêtes des PNJ" : "Aucune quête acceptée.") : `${adventure.hunt_name || "Quête de Mira"} : ${{unaccepted: "à accepter", active: `${adventure.kills}/${adventure.hunt_goal || 3} gobelins vaincus`, completed: "accomplie"}[adventure.quest]}`;
   const vest = me.gear.find(piece => piece.slot === "torso");
   $("quest-description").textContent = vest && adventure.quest === "completed" ? adventure.step === "craft" ? "Veste fabriquée et équipée : votre objectif de forge est accompli. Attendez que votre compagnon fabrique sa veste." : adventure.step === "complete" ? "Veste fabriquée et équipée. Vous avez rejoint Brume : tutoriel terminé." : "Veste fabriquée et équipée : objectif accompli. Prochaine étape : rejoindre le village de Brume." : !hasQuest ? "Explorez les lieux et leurs points stratégiques pour rencontrer des PNJ qui proposent des quêtes." : adventure.quest === "completed" ? "Mira vous a remis votre récompense. Utilisez les matériaux de votre sac pour fabriquer et équiper votre veste à la forge." : `${adventure.hunt_description || "Battez les gobelins de la lisière puis revenez parler à Mira."} · Objectif : ${adventure.hunt_goal || 3} gobelin(s).`;
@@ -169,10 +172,10 @@ function renderTutorial(adventure, preserveBattle = false) {
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
-  const talkingToMira = !nearbyNpc || nearbyNpc.id === "mira";
-  $("npc-title").textContent = nearbyNpc ? `Parler à ${nearbyNpc.name}` : "Parler à Mira";
-  $("npc-dialogue").textContent = nearbyNpc && nearbyNpc.id !== "mira" ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || "Bonjour, voyageur."}` : adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
-  if (canTalk && nearbyNpc && nearbyNpc.id !== "mira") action("npc-actions", "Parler", "talk", {npc: nearbyNpc.id});
+  const talkingToMira = nearbyNpc?.id === "mira";
+  $("npc-title").textContent = nearbyNpc ? `Parler à ${nearbyNpc.name}` : "Dialogue";
+  $("npc-dialogue").textContent = nearbyNpc && !talkingToMira ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
+  if (canTalk && nearbyNpc && !talkingToMira) action("npc-actions", "Parler", "talk", {npc: nearbyNpc.id});
   else if (canTalk && talkingToMira && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";

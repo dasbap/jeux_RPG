@@ -27,7 +27,9 @@ def distance(a, b):
 
 def walkable(preset, position):
     return (isinstance(position, (list, tuple)) and len(position) == 2 and all(type(v) is int for v in position)
-            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"] and list(position) not in preset["cover"] and list(position) not in preset.get("blocked", []))
+            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"]
+            and (tuple(position) not in preset["cover"] if isinstance(preset["cover"], frozenset) else list(position) not in preset["cover"])
+            and list(position) not in preset.get("blocked", []))
 
 
 def valid_step(preset, source, destination):
@@ -52,7 +54,7 @@ def path(preset, source, destination):
 
 @lru_cache(maxsize=4096)
 def cached_path(width, height, cover, source, destination):
-    preset = {"width": width, "height": height, "cover": [list(point) for point in cover]}
+    preset = {"width": width, "height": height, "cover": frozenset(cover)}
     queue = [(0, tuple(source), [])]
     costs = {tuple(source): 0}
     while queue:
@@ -261,11 +263,12 @@ def advance_summons(party, characters, now, random, messages):
                 damaged(party, target, summon_id, now)
                 messages.append(f"{invocation.name} utilise {skill.name}.")
                 if not enemy.is_alive():
-                    party["mobs"].remove(target)
-                    party["characters"] = {key: pack(c) for key, c in characters.items()}
-                    defeated(party, target, now, random, messages)
-                    for key, data in party["characters"].items():
-                        characters[key] = unpack(data)
+                    if not advance_boss_phase(target, messages):
+                        party["mobs"].remove(target)
+                        party["characters"] = {key: pack(c) for key, c in characters.items()}
+                        defeated(party, target, now, random, messages)
+                        for key, data in party["characters"].items():
+                            characters[key] = unpack(data)
                     sync_mobs(party)
             continue
         if unit.get("controlled"):
@@ -297,17 +300,41 @@ def advance_summons(party, characters, now, random, messages):
             unit["next_attack"] = now + 3 * progression.RATIO
             messages.append(f"{invocation.name} termine son attaque contre {target['name']} : {max(0, before_hp - enemy.hp.current_value)} dégâts.")
             if not enemy.is_alive():
-                party["mobs"].remove(target)
-                party["characters"] = {key: pack(c) for key, c in characters.items()}
-                defeated(party, target, now, random, messages)
-                for key, data in party["characters"].items():
-                    characters[key] = unpack(data)
+                if not advance_boss_phase(target, messages):
+                    party["mobs"].remove(target)
+                    party["characters"] = {key: pack(c) for key, c in characters.items()}
+                    defeated(party, target, now, random, messages)
+                    for key, data in party["characters"].items():
+                        characters[key] = unpack(data)
                 sync_mobs(party)
         elif unit["next_move"] <= now:
             route = path(preset, unit["position"], target["position"])
             if route:
                 unit["next_move"] = now + step_time(unit["position"], route[0])
                 unit["position"] = route[0]
+
+
+def advance_boss_phase(mob, messages):
+    phases = mob.get("phases", [])
+    index = mob.get("phase_index", 0)
+    if index >= len(phases):
+        return False
+    phase = phases[index]
+    mob["phase_index"] = index + 1
+    maximum = max(1, round(mob.get("phase_base_hp", mob["stats"]["hp"]["max"]) * phase["hp_multiplier"]))
+    mob["stats"]["hp"].update(max=maximum, current=maximum)
+    mob["attack_damage"] = max(0, round(mob.get("phase_base_damage", mob.get("attack_damage", 0)) * phase["damage_multiplier"]))
+    mob["name"] = f"{mob.get('base_name', mob['name'])} · {phase['name']}"
+    mob["phase_name"] = phase["name"]
+    mob["effects"] = []
+    mob["bleeding"] = []
+    mob["stunned_until"] = 0
+    mob["calling_until"] = None
+    mob["windup_until"] = None
+    mob.pop("ability_cast", None)
+    mob["intent"] = f"Phase {index + 2} · {phase['name']}"
+    messages.append(f"{mob['name']} entre dans une nouvelle phase.")
+    return True
 
 
 def release_control(unit):

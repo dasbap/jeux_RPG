@@ -21594,7 +21594,16 @@
         "name": "Salle 2"
       }
     ],
-    "spawns": [],
+    "spawns": [
+      [
+        10,
+        6
+      ],
+      [
+        10,
+        9
+      ]
+    ],
     "sites": [],
     "water": [],
     "bridges": [],
@@ -21603,7 +21612,32 @@
     "paths": [],
     "decorations": [],
     "zone_id": "rosee",
-    "spawners": [],
+    "spawners": [
+      {
+        "position": [
+          10,
+          6
+        ],
+        "mob_id": "goblin",
+        "count": 1,
+        "name": "Garde du donjon"
+      },
+      {
+        "position": [
+          10,
+          9
+        ],
+        "mob_id": "goblin",
+        "count": 1,
+        "name": "Garde du donjon"
+      }
+    ],
+    "dungeon": {
+      "id": "grotte_gobeline",
+      "room": 1,
+      "final": false,
+      "lock_until_clear": true
+    },
     "level": 1,
     "world_origin": [
       150,
@@ -21632,7 +21666,12 @@
         "name": "Salle 1"
       }
     ],
-    "spawns": [],
+    "spawns": [
+      [
+        30,
+        7
+      ]
+    ],
     "sites": [],
     "water": [],
     "bridges": [],
@@ -21641,7 +21680,23 @@
     "paths": [],
     "decorations": [],
     "zone_id": "rosee",
-    "spawners": [],
+    "spawners": [
+      {
+        "position": [
+          30,
+          7
+        ],
+        "mob_id": "gobelin_boss",
+        "count": 1,
+        "name": "Chef de la grotte"
+      }
+    ],
+    "dungeon": {
+      "id": "grotte_gobeline",
+      "room": 2,
+      "final": true,
+      "lock_until_clear": true
+    },
     "level": 1,
     "world_origin": [
       179,

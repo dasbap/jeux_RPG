@@ -59,6 +59,7 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
 end
 return 0
 """
+HIDDEN_REFRESH_SECONDS = 20
 
 
 class Coordinator:
@@ -449,17 +450,19 @@ def create_app(environment=None, coordinator=None):
         send_lock = asyncio.Lock()
         subscription = None
         paused = False
+        hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
 
         async def send(value):
             async with send_lock:
                 await websocket.send_json(value)
 
         async def push():
+            nonlocal hidden_refresh_at
             while True:
                 fast = coordinator.owner() and len(coordinator.store.service.runtime_presence) <= 16
                 small = fast and len(coordinator.store.service.runtime_presence) <= 4
                 await asyncio.sleep(.15 if small else .5 if fast else 1)
-                if subscription is not None and not paused:
+                if subscription is not None and (not paused or time.monotonic() >= hidden_refresh_at):
                     try:
                         result = await coordinator.rpc(subscription)
                     except (TimeoutError, RuntimeError, OSError):
@@ -470,6 +473,7 @@ def create_app(environment=None, coordinator=None):
                         await websocket.close(code=1008)
                         return
                     if paused:
+                        hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
                         continue
                     await send({'type': 'state', 'subscription': subscription['subscription'], 'result': result})
                     if result['body'].get('bundle_protocol') == 1:
@@ -493,6 +497,7 @@ def create_app(environment=None, coordinator=None):
                 item = object_json(raw)
                 if item.get('type') == 'visibility' and type(item.get('active')) is bool:
                     paused = not item['active']
+                    hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
                     await send({'type': 'visibility', 'active': not paused})
                     continue
                 if item.get('type') == 'ping':

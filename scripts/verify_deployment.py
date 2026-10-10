@@ -63,13 +63,28 @@ def deployment_base(url):
     return url.rstrip('/')
 
 
+def verify_release(base, expected_release):
+    try:
+        with urlopen(deployment_request(base + '/health'), timeout=30) as response:
+            if response.headers.get_content_type() != 'application/json':
+                raise SystemExit('Healthcheck non JSON : vérifier Deployment Protection et le secret GitHub VERCEL_AUTOMATION_BYPASS_SECRET.')
+            try:
+                payload = json.load(response)
+            except (ValueError, UnicodeError):
+                raise SystemExit('Healthcheck JSON invalide ; promotion refusée.') from None
+    except HTTPError as error:
+        if error.code in (401, 403):
+            raise SystemExit(f'Healthcheck HTTP {error.code} : vérifier Deployment Protection et le secret GitHub VERCEL_AUTOMATION_BYPASS_SECRET.') from None
+        raise SystemExit(f'Healthcheck HTTP {error.code} ; promotion refusée.') from None
+    if not isinstance(payload, dict) or payload.get('release') != expected_release:
+        raise SystemExit('Le déploiement ne correspond pas au commit attendu')
+
+
 def main():
     base = deployment_base(Path("deployment-url.txt").read_text().strip().splitlines()[-1])
     expected_release = os.environ.get('RPG_EXPECTED_RELEASE')
     if expected_release:
-        with urlopen(deployment_request(base + '/health'), timeout=30) as response:
-            if json.load(response).get('release') != expected_release:
-                raise SystemExit('Le déploiement ne correspond pas au commit attendu')
+        verify_release(base, expected_release)
     for route, expected in (("/", 200), ("/app_core.js", 200), ("/app_world.js", 200), ("/app_skills.js", 200), ("/app_tutorial.js", 200), ("/app_battle.js", 200), ("/app_camera.js", 200), ("/app_social.js", 200), ("/app.js", 200), ("/app_bootstrap.js", 200), ("/app_session.js", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
         status = None
         for attempt in range(3):

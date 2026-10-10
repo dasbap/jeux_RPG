@@ -16,7 +16,7 @@ RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
 from .mob_rules import validate_mobs, resolve, CLASS_XP, drop_rules, STATS
 
 
-DECIMAL_FIELDS = {'chance','threshold','xp_multiplier','damage_growth','power','growth','cooldown','cast','range','duration','repop_seconds','xp_base','xp_exponent','merchant_stay_hours'}
+DECIMAL_FIELDS = {'chance','threshold','xp_multiplier','damage_growth','power','growth','cooldown','cast','range','duration','repop_seconds','xp_base','xp_exponent','merchant_stay_hours','hp_multiplier','damage_multiplier'}
 
 
 def parse_field(key, value, initial):

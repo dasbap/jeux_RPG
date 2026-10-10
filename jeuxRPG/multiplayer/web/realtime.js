@@ -4,6 +4,7 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
     let socket = null;
     let opening = null;
     let delay = 250;
+    let retryAt = 0;
     let reconnectTimer = null;
     let heartbeat = null;
     let subscription = null;
@@ -13,18 +14,23 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
     let authorization = null;
     let connected = false;
     const pending = new Map();
-    const transport = {onState: null, request, close, get connected() { return connected; }};
+    const transport = {onState: null, onConnection: null, request, close, get connected() { return connected; }};
     function close() {
       authorization = null;
       subscription = null;
       connected = false;
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+      clearInterval(heartbeat);
+      heartbeat = null;
+      for (const item of pending.values()) item.reject(new Error("Connexion fermée."));
+      pending.clear();
       socket?.close();
     }
     function open() {
       if (opening) return opening;
       if (connected && socket?.readyState === WebSocket.OPEN) return Promise.resolve(socket);
+      if (Date.now() < retryAt) return Promise.reject(new Error("Reconnexion temporisée."));
       opening = new Promise((resolve, reject) => {
         const endpoint = new URL("/api/ws", location.href);
         endpoint.protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -38,8 +44,10 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
           if (socket !== connection || connected) return;
           clearTimeout(deadline);
           delay = 250;
+          retryAt = 0;
           opening = null;
           connected = true;
+          transport.onConnection?.();
           heartbeat = setInterval(() => {
             if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({type: "ping"}));
           }, 10000);
@@ -50,6 +58,7 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
           }).catch(() => {});
         }
         connection.addEventListener("message", event => {
+          if (socket !== connection) return;
           let message;
           try { message = JSON.parse(event.data); } catch { return; }
           if (message.type === "authenticated") { authenticated(); return; }
@@ -78,17 +87,22 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
         connection.addEventListener("close", () => {
           if (socket !== connection) { clearTimeout(deadline); reject(new Error("Connexion remplacée.")); return; }
           connected = false;
+          transport.onConnection?.();
           clearTimeout(deadline);
           clearInterval(heartbeat);
           opening = null;
           reject(new Error("Connexion temps réel interrompue."));
           for (const item of pending.values()) item.reject(new Error("Connexion interrompue. Reconnexion automatique."));
           pending.clear();
-          if (reconnectTimer === null) reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            if (authorization) open().catch(() => {});
-          }, delay);
-          delay = Math.min(10000, delay * 2);
+          if (authorization && reconnectTimer === null) {
+            const wait = Math.round(delay * (.8 + Math.random() * .4));
+            retryAt = Date.now() + wait;
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null;
+              if (authorization) open().catch(() => {});
+            }, wait);
+            delay = Math.min(30000, delay * 2);
+          }
         });
       });
       return opening;
@@ -107,7 +121,14 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
       authorization = credentials;
       let connection;
       try { connection = await open(); }
-      catch { opening = null; return fetch(path, options); }
+      catch {
+        opening = null;
+        if (Date.now() >= retryAt) {
+          retryAt = Date.now() + Math.round(delay * (.8 + Math.random() * .4));
+          delay = Math.min(30000, delay * 2);
+        }
+        return fetch(path, options);
+      }
       const id = String(++sequence);
       if (path === "/api/state") {
         subscription = {path, options};

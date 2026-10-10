@@ -60,6 +60,24 @@ def test_water_separating_exit_is_rejected():
         map_assets.validate(data)
 
 
+def test_dungeon_metadata_and_unique_rooms_are_validated():
+    data = maps()
+    data['cave_1']['dungeon'] = {'id':'grotte_test','room':1,'final':False,'lock_until_clear':True}
+    data['cave_2']['dungeon'] = {'id':'grotte_test','room':2,'final':False,'lock_until_clear':True}
+    data['cave_3']['dungeon'] = {'id':'grotte_test','room':3,'final':True,'lock_until_clear':True}
+    assert map_assets.validate(data)['cave_3']['dungeon']['final']
+    data['cave_2']['dungeon']['room'] = 1
+    with pytest.raises(ValueError, match='dupliquée'):
+        map_assets.validate(data)
+
+
+def test_invalid_dungeon_metadata_is_rejected():
+    data = maps()
+    data['cave_1']['dungeon'] = {'id':'BAD ID','room':0,'final':'oui','lock_until_clear':True}
+    with pytest.raises(ValueError, match='donjon'):
+        map_assets.validate(data)
+
+
 def test_custom_map_and_teleport_are_validated():
     data = maps()
     data["custom"] = fields.terrain("custom", "Jardin", 10, 10, [], [fields.gate(0, 5, "rosee", [1, 20], "Rosée")])

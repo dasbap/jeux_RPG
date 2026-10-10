@@ -1,9 +1,13 @@
 name: Tests du moteur et du POC
 on:
   push:
+    branches: [master, prod]
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   builder:
     runs-on: windows-latest
@@ -33,7 +37,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -c constraints.txt '.[test]'
-      - run: python -m pytest -q
+      - if: matrix.python-version == '3.12'
+        run: python -m pip install pytest-cov==7.1.0
+      - if: matrix.python-version == '3.12'
+        run: python -m pytest -q --cov=jeuxRPG --cov-branch --cov-report=json:coverage.json --cov-report=xml:coverage.xml
+      - if: matrix.python-version != '3.12'
+        run: python -m pytest -q
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && matrix.python-version == '3.12'
+        with:
+          name: coverage-python312
+          path: |
+            coverage.json
+            coverage.xml
+          if-no-files-found: ignore
       - run: python -m pip wheel --no-deps . --wheel-dir dist
   ui:
     runs-on: ubuntu-latest
@@ -49,6 +66,7 @@ jobs:
       - run: npm install --prefix .ui-test jsdom@26.1.0 playwright@1.56.1
       - run: .ui-test/node_modules/.bin/playwright install --with-deps chromium
       - run: node scripts/verify_transport.cjs
+      - run: node scripts/verify_polling.cjs
       - run: node scripts/verify_ui_retry.cjs
       - run: node scripts/verify_ui_mira.cjs
       - run: node scripts/verify_touch_controls.cjs

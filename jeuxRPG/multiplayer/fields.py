@@ -161,6 +161,10 @@ def transition(party, gate, player, now):
     battle = party["battle"]
     definition = MAPS[party["field_map"]]
     unit = battle["players"][player]
+    current_dungeon = definition.get("dungeon")
+    target_dungeon = MAPS.get(gate.get("destination"), {}).get("dungeon") if gate.get("destination") else None
+    if current_dungeon and target_dungeon and current_dungeon["id"] == target_dungeon["id"] and target_dungeon["room"] > current_dungeon["room"] and current_dungeon["lock_until_clear"] and party["mobs"]:
+        return [f"Le passage vers la salle {target_dungeon['room']} est verrouillé : éliminez les ennemis de cette salle."]
     pursuers = [mob for mob in party["mobs"] if mob.get("alerted") and not mob.get("stunned_until", 0) > now and tactics.sees(definition, mob, unit) and tactics.path(definition, mob["position"], unit["position"]) is not None] if gate["destination"] and not gate.get("travel_minutes", 0) else []
     remaining = [mob for mob in party["mobs"] if mob not in pursuers]
     party["fields"][party["field_map"]] = snapshot(party, now, remaining)

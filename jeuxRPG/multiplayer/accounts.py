@@ -220,13 +220,15 @@ class AccountMixin:
         now = time.time()
         self.runtime_presence.prune(now - 60)
         existing = self.runtime_presence.get(player_id)
-        counts = [sum(value['realm'] == index for value in self.runtime_presence.values()) for index in range(1, self.realm_count + 1)]
+        presence = self.runtime_presence.values()
+        counts = [sum(value['realm'] == index for value in presence) for index in range(1, self.realm_count + 1)]
         selected = realm or (existing or {}).get('realm')
         if selected is None:
             selected = next((index for index, count in enumerate(counts, 1) if count < 40), None)
         if type(selected) is not int or not 1 <= selected <= self.realm_count or counts[selected - 1] >= 40 and (not existing or existing['realm'] != selected):
             raise GameError('server_full', 'Ce serveur est complet (40 joueurs). Réessayez ou choisissez un autre serveur.', 429)
-        self.runtime_presence[player_id] = {'realm': selected, 'seen': now}
+        if not existing or existing['realm'] != selected or now - existing['seen'] >= 10:
+            self.runtime_presence[player_id] = {'realm': selected, 'seen': now}
         return selected
 
     def world_presence(self, player):
@@ -431,6 +433,6 @@ class AccountMixin:
         result = []
         for row in self.db.execute('SELECT c.player_id FROM account_characters c JOIN team_members m ON m.account_id=c.account_id WHERE m.team_id=? AND m.active=1', (team['id'],)):
             presence = self.runtime_presence.get(row[0])
-            if presence and time.monotonic() - presence['seen'] < 60:
+            if presence and time.time() - presence['seen'] < 60:
                 result.append({'player_id': row[0], 'online': True, 'realm': presence['realm'], **self._character_location(row[0])})
         return result
