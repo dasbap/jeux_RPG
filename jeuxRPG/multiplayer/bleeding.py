@@ -40,7 +40,7 @@ def advance(party, now, random):
             if enemy.is_alive():
                 party["battle"]["enemy_alerted"] = True
             messages.append(f"{mob['name']} subit {before - enemy.hp.current_value} dégâts de saignement.")
-        if not enemy.is_alive():
+        if not enemy.is_alive() and not tactics.advance_boss_phase(mob, messages):
             defeated.append(mob)
     for mob in defeated:
         party["mobs"].remove(mob)
