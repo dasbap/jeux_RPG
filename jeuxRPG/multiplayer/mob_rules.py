@@ -64,6 +64,12 @@ def validate_mobs(mobs,classes=None):
         for drop in drops:
             if not isinstance(drop, dict) or not isinstance(drop.get('item'), str) or not re.fullmatch(r'[a-z0-9_]{1,64}', drop['item']) or not finite(drop.get('chance'),0,1) or type(drop.get('attempts')) is not int or not 1 <= drop['attempts'] <= 100 or type(drop.get('min')) is not int or type(drop.get('max')) is not int or not 1 <= drop['min'] <= drop['max'] <= 10000 or type(drop.get('rare', False)) is not bool:
                 raise ValueError('Drop : probabilité 0–1, 1–100 tirages, quantités 1–10000 et rareté requis.')
+        phases = item.get('phases', [])
+        if not isinstance(phases, list) or len(phases) > 10:
+            raise ValueError('10 phases de boss maximum.')
+        for phase in phases:
+            if not isinstance(phase, dict) or set(phase) != {'name','hp_multiplier','damage_multiplier'} or not isinstance(phase.get('name'), str) or not 1 <= len(phase['name']) <= 100 or not finite(phase.get('hp_multiplier'), .1, 20) or not finite(phase.get('damage_multiplier'), 0, 20):
+                raise ValueError('Phase de boss : nom et multiplicateurs PV/dégâts requis.')
         abilities = item.get('abilities', [])
         if not isinstance(abilities, list) or len(abilities) > 16:
             raise ValueError('16 capacités maximum.')
