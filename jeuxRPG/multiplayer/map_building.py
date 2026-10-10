@@ -75,6 +75,9 @@ def create_mob(maps, identifier, config, index, first=False):
     return {**tutorial.pack(actor), "mob_id": config["mob_id"], "rank": definition["rank"], "attack_damage": round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
             "loot": deepcopy(definition.get("loot", {})), 'drops':drop_rules(definition, tutorial.forge.RARE_DROPS),
             'abilities':[deepcopy(ability) for ability in abilities if ability['level'] <= level],
+            'phases':deepcopy(definition.get('phases', [])), 'phase_index':0, 'phase_base_hp':actor.hp.value,
+            'phase_base_damage':round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
+            'base_name':actor.name,
             'xp_multiplier':definition.get('xp_multiplier',1), **({'xp_class':definition['xp_class']} if 'xp_class' in definition else {})}
 
 

@@ -304,7 +304,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                     bleeding.apply(data, player_id, actor.force.current_value, now)
                     messages.append(f"{enemy.name} saigne : {len(data['bleeding'])} cumul(s).")
                 tactics.damaged(party, data, player_id, now)
-            if enemy.is_alive():
+            if enemy.is_alive() or tactics.advance_boss_phase(data, messages):
                 survivors.append(data)
             else:
                 defeated.append(data)

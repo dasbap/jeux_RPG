@@ -491,9 +491,9 @@ class MapEditor:
         for row, (key, value) in enumerate(values.items()):
             if key in ("position", "link_id"):
                 continue
-            labels = {"remove_reverse": "Supprimer aussi le sens inverse", "link_mode": "Type : passage immédiat / trajet à pied / rapide sur carte générale", "route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
+            labels = {"remove_reverse": "Supprimer aussi le sens inverse", "link_mode": "Type : passage immédiat / trajet à pied / rapide sur carte générale", "route_id": "Identifiant du chemin", "from_zone": "Zone de départ", "to_zone": "Zone d’arrivée", "distance_km": "Distance (km)", "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)", "street_id": "Identifiant de rue", "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)", "square": "Identifiant de la place", "cell_metres": "Distance par case (mètres)", "pick_points": "Choisir les arrivées et le retour sur les cartes", "object_choice": "Objet", "anchor": "Carte de référence", "gap": "Espacement en cases (0 = collé, négatif = chevauchement)", "source_map": "Carte à absorber", "position_text": "Case du passage sur la sélection x,y", "map_id": "Identifiant du nouveau secteur", "direction": "Direction du raccord", "overlap": "Chevauchement (cases)", "name": "Nom affiché", "width": "Largeur (cases)", "height": "Hauteur (cases)", "biome": "Ambiance", "destination": "Carte destination (vide = sortie complète)", "entry": "Case d’arrivée x,y", "fast_destination": "Provenance du chemin rapide", "bidirectional": "Créer aussi le passage de retour", "id": "Identifiant PNJ", "dialogue": "Dialogue", "owner": "Joueur lié (leader ou ID, vide = fixe)", "zone_id": "Zone de rattachement (ID)", "zone_level": "Niveau de zone (carte racine, 1–100)", "level": "Niveau local (vide = héritage)", "dungeon_id": "Donjon (ID, vide = aucun)", "dungeon_room": "Numéro de salle", "dungeon_final": "Salle finale", "dungeon_lock": "Verrouiller la salle suivante tant que des ennemis vivent", "mob_id": "Espèce", "count": "Nombre de créatures (1–5)"}
             ttk.Label(window, text=labels.get(key, key)).grid(row=row, column=0, padx=8, pady=5)
-            if key in ("bidirectional", "pick_points", "remove_reverse"):
+            if key in ("bidirectional", "pick_points", "remove_reverse", "dungeon_final", "dungeon_lock"):
                 variable = tk.BooleanVar(value=bool(value))
                 ttk.Checkbutton(window, variable=variable).grid(row=row, column=1, sticky="w", padx=8)
                 entries[key] = variable
@@ -613,7 +613,9 @@ class MapEditor:
     def properties(self):
         data = self.maps[self.selected.get()]
         values = {key: data.get(key, "forest") for key in ("name", "width", "height", "biome")}
-        values.update(zone_id=data.get("zone_id", data.get("world_zone", self.selected.get())), zone_level=data.get("zone_level", 1), level=data.get("level", ""))
+        dungeon = data.get("dungeon") or {}
+        values.update(zone_id=data.get("zone_id", data.get("world_zone", self.selected.get())), zone_level=data.get("zone_level", 1), level=data.get("level", ""),
+                      dungeon_id=dungeon.get("id", ""), dungeon_room=dungeon.get("room", 1), dungeon_final=dungeon.get("final", False), dungeon_lock=dungeon.get("lock_until_clear", True))
         result = self.form("Carte", values)
         if result:
             try:
@@ -625,14 +627,23 @@ class MapEditor:
                 result["zone_id"] = result.get("zone_id") or self.selected.get()
                 result["zone_level"] = int(result.get("zone_level", 1))
                 result["level"] = int(result["level"]) if result.get("level") else None
+                dungeon_id = result.pop("dungeon_id", "").strip()
+                dungeon_room = int(result.pop("dungeon_room", 1))
+                dungeon_final = bool(result.pop("dungeon_final", False))
+                dungeon_lock = bool(result.pop("dungeon_lock", True))
+                result["dungeon"] = {"id": dungeon_id, "room": dungeon_room, "final": dungeon_final, "lock_until_clear": dungeon_lock} if dungeon_id else None
                 candidate = deepcopy(self.maps)
                 candidate[self.selected.get()].update(result)
+                if result["dungeon"] is None:
+                    candidate[self.selected.get()].pop("dungeon", None)
                 zone_of(candidate, self.selected.get())
                 if not 1 <= result["zone_level"] <= 100 or result["level"] is not None and not 1 <= result["level"] <= 100:
                     raise ValueError()
                 self.remember()
                 result["name"] = result["name"].strip()
                 data.update(result)
+                if data.get("dungeon") is None:
+                    data.pop("dungeon", None)
                 self.refresh_choice()
                 self.draw()
             except ValueError:

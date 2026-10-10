@@ -210,3 +210,12 @@ Les modèles d’invocations conservent des paliers tels que `BL`, les classes h
 Une modification d’une compétence moteur est partagée par toutes ses références. Les capacités de mobs reçoivent la définition du projet, y compris une compétence nouvellement créée. L’IA des mobs ne gère toujours pas les invocations et résurrections : ces compétences sont réservées aux modèles liés à un joueur.
 
 Les limites et le périmètre contrôlés sont détaillés dans [CONTROLLER_AUDIT.md](CONTROLLER_AUDIT.md).
+
+
+## Donjons et phases de boss
+
+Dans **Cartes / builder → Propriétés carte**, renseignez **Donjon (ID)** pour regrouper plusieurs cartes en salles d’un même donjon. **Numéro de salle** détermine l’ordre, **Salle finale** identifie la fin et **Verrouiller la salle suivante tant que des ennemis vivent** empêche d’avancer vers une salle de numéro supérieur avant d’avoir nettoyé la salle courante. Les retours vers une salle précédente restent possibles.
+
+Dans **Mobs**, l’éditeur **Phases de boss** permet d’ajouter jusqu’à dix phases. Chaque phase possède un nom, un multiplicateur de PV et un multiplicateur de dégâts. Lorsqu’un boss atteint 0 PV et qu’une phase reste disponible, il ne donne encore ni XP ni butin : sa barre de vie est restaurée selon la phase, ses dégâts sont recalculés et le combat continue. Les récompenses sont accordées uniquement après la dernière phase.
+
+Le catalogue livré fournit un exemple : `cave_1` et `cave_2` forment le donjon `grotte_gobeline`, et `gobelin_boss` possède une phase `Furie`. Tous ces paramètres restent modifiables dans le Controller.

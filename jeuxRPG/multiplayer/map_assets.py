@@ -24,6 +24,10 @@ def validate(maps):
             raise ValueError("Identifiant de carte invalide.")
         from .map_layout_editor import validate_layout
         validate_layout(definition.get("world_view", {}))
+        dungeon = definition.get("dungeon")
+        if dungeon is not None:
+            if not isinstance(dungeon, dict) or set(dungeon) != {"id", "room", "final", "lock_until_clear"} or not isinstance(dungeon.get("id"), str) or not re.fullmatch(r"[a-z0-9_]{1,64}", dungeon["id"]) or type(dungeon.get("room")) is not int or not 1 <= dungeon["room"] <= 100 or type(dungeon.get("final")) is not bool or type(dungeon.get("lock_until_clear")) is not bool:
+                raise ValueError(f"{key} : métadonnées de donjon invalides.")
         for field in ("world_zone", "fast_travel_origin"):
             if field in definition and (not isinstance(definition[field], str) or definition[field] not in maps):
                 raise ValueError(f"{key} : référence {field} invalide.")
@@ -110,6 +114,22 @@ def validate(maps):
                 raise ValueError(f"{key} : joueur lié invalide.")
             if not isinstance(site.get("dialogue", ""), str) or len(site.get("dialogue", "")) > 2000:
                 raise ValueError(f"{key} : dialogue invalide.")
+    dungeon_rooms = {}
+    for key, definition in maps.items():
+        dungeon = definition.get("dungeon")
+        if not dungeon:
+            continue
+        room_key = (dungeon["id"], dungeon["room"])
+        if room_key in dungeon_rooms:
+            raise ValueError(f"{key} : salle {dungeon['room']} du donjon {dungeon['id']} dupliquée.")
+        dungeon_rooms[room_key] = key
+    finals = {}
+    for key, definition in maps.items():
+        dungeon = definition.get("dungeon")
+        if dungeon and dungeon["final"]:
+            if dungeon["id"] in finals:
+                raise ValueError(f"{key} : plusieurs salles finales pour le donjon {dungeon['id']}.")
+            finals[dungeon["id"]] = key
     from . import tactics
     from .map_building import MOBS, zone_of
     for key, definition in maps.items():

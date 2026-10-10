@@ -106,6 +106,22 @@ def test_stunned_or_blinded_by_cover_enemy_does_not_follow():
     assert identifiers.isdisjoint({enemy["combat_id"] for enemy in data["mobs"]})
 
 
+def test_dungeon_forward_room_is_locked_until_current_room_is_clear():
+    data = party()
+    fields.MAPS['cave_1']['dungeon'] = {'id':'grotte_test','room':1,'final':False,'lock_until_clear':True}
+    fields.MAPS['cave_2']['dungeon'] = {'id':'grotte_test','room':2,'final':False,'lock_until_clear':True}
+    fields.enter(data,'cave_1',[20,7],0)
+    gate = next(item for item in fields.MAPS['cave_1']['exits'] if item['destination'] == 'cave_2')
+    if not data['mobs']:
+        data['mobs'] = [{'combat_id':'guard'}]
+    messages = fields.transition(data,gate,'p',1)
+    assert data['field_map'] == 'cave_1'
+    assert 'verrouillé' in messages[0]
+    data['mobs'] = []
+    fields.transition(data,gate,'p',2)
+    assert data['field_map'] == 'cave_2'
+
+
 def test_gate_transition_runs_from_authoritative_movement_and_old_paths_are_rejected():
     data = party()
     fields.enter(data, "cave_1", [20, 7], 0)
