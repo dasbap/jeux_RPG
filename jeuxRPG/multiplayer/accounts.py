@@ -186,6 +186,9 @@ class AccountMixin:
     def _team(self, account_id):
         return self.db.execute('SELECT t.* FROM teams t JOIN team_members m ON m.team_id=t.id WHERE m.account_id=? AND m.active=1', (account_id,)).fetchone()
 
+    def _guild(self, account_id):
+        return self.db.execute('SELECT g.*,m.role,m.joined FROM guilds g JOIN guild_members m ON m.guild_id=g.id WHERE m.account_id=?', (account_id,)).fetchone()
+
     def _character_location(self, player_id):
         from .world import zone_of, point_name
         cached = self.location_cache.get(player_id)
@@ -253,7 +256,8 @@ class AccountMixin:
         with self._transaction():
             account = self.account_identity(token)
             team = self._team(account['id'])
-            result = {'friends': [], 'requests': [], 'invitations': [], 'team': None, 'rallies': []}
+            guild = self._guild(account['id'])
+            result = {'friends': [], 'requests': [], 'invitations': [], 'team': None, 'rallies': [], 'guild': None, 'guild_invitations': []}
             for row in self.db.execute("SELECT * FROM friendships WHERE (first_id=? OR second_id=?) AND status IN ('pending','accepted')", (account['id'], account['id'])):
                 identifier = row['second_id'] if row['first_id'] == account['id'] else row['first_id']
                 other = self.db.execute('SELECT id,username FROM accounts WHERE id=? AND suspended=0', (identifier,)).fetchone()
@@ -268,12 +272,22 @@ class AccountMixin:
                     members.append({**dict(row), 'online': player is not None, 'player_id': player['id'] if player else None, 'name': player['name'] if player else row['username'], 'realm': self.runtime_presence[player['id']]['realm'] if player else None, **(self._character_location(player['id']) if player else {})})
                 result['team'] = {'id': team['id'], 'owner': team['owner'], 'members': members, 'capacity': 4}
                 result['rallies'] = [item for item in self.rallies.values() if item['team_id'] == team['id'] and item['expires'] > time.time() and item['sender'] != account['id']]
+            result['guild_invitations'] = [dict(row) for row in self.db.execute("SELECT i.id,i.guild_id,g.name,a.username FROM guild_invites i JOIN guilds g ON g.id=i.guild_id JOIN accounts a ON a.id=i.sender WHERE i.recipient=? AND i.status='pending' AND i.expires>?", (account['id'], time.time()))]
+            if guild:
+                members = []
+                for row in self.db.execute('SELECT a.id,a.username,m.role,m.joined FROM guild_members m JOIN accounts a ON a.id=m.account_id WHERE m.guild_id=? ORDER BY CASE m.role WHEN \'owner\' THEN 0 ELSE 1 END,m.joined', (guild['id'],)):
+                    online = any(player['id'] in self.runtime_presence and time.time() - self.runtime_presence[player['id']]['seen'] < 60 for player in self.db.execute('SELECT p.id FROM players p JOIN account_characters c ON c.player_id=p.id WHERE c.account_id=?', (row['id'],)))
+                    members.append({**dict(row), 'online': online})
+                from .content import WORLD
+                result['guild'] = {'id': guild['id'], 'name': guild['name'], 'owner': guild['owner'], 'role': guild['role'], 'members': members, 'capacity': WORLD['guild_max_members']}
             return result
 
     def social_action(self, token, action, params):
         from .service import GameError
         allowed = {'friend_add': {'username'}, 'friend_accept': {'account_id'}, 'friend_remove': {'account_id'},
                    'team_invite': {'username'}, 'team_accept': {'invite_id'}, 'team_decline': {'invite_id'}, 'team_leave': set(),
+                   'guild_create': {'name'}, 'guild_invite': {'username'}, 'guild_accept': {'invite_id'}, 'guild_decline': {'invite_id'},
+                   'guild_leave': set(), 'guild_kick': {'account_id'},
                    'realm': {'realm'}, 'rally': {'destination'}, 'rally_accept': {'rally_id'}, 'join_ally': {'player_id'},
                    'wait': set(), 'resume': set()}
         if action not in allowed or not isinstance(params, dict) or set(params) != allowed[action]:
@@ -281,8 +295,9 @@ class AccountMixin:
         with self._transaction():
             account = self.account_identity(token)
             team = self._team(account['id'])
+            guild = self._guild(account['id'])
             now = time.time()
-            if action in ('friend_add', 'team_invite'):
+            if action in ('friend_add', 'team_invite', 'guild_invite'):
                 if not isinstance(params['username'], str):
                     raise GameError('invalid_username', 'Nom de compte invalide.')
                 other = self.db.execute('SELECT id FROM accounts WHERE username_key=? AND suspended=0', (params['username'].casefold(),)).fetchone()
@@ -339,6 +354,65 @@ class AccountMixin:
                     replacement = self.db.execute('SELECT account_id FROM team_members WHERE team_id=? AND active=1 ORDER BY joined LIMIT 1', (team['id'],)).fetchone()
                     if team['owner'] == account['id'] and replacement:
                         self.db.execute('UPDATE teams SET owner=? WHERE id=?', (replacement[0], team['id']))
+            elif action == 'guild_create':
+                name = params['name'].strip() if isinstance(params['name'], str) else ''
+                if guild:
+                    raise GameError('already_in_guild', 'Quittez votre guilde avant d’en créer une autre.', 409)
+                if not 3 <= len(name) <= 32 or not re.fullmatch(r"[\w À-ÿ'’-]{3,32}", name):
+                    raise GameError('invalid_guild_name', 'Nom de guilde : 3 à 32 caractères simples.')
+                identifier = secrets.token_hex(16)
+                try:
+                    self.db.execute('INSERT INTO guilds VALUES(?,?,?,?,?)', (identifier, name, name.casefold(), account['id'], now))
+                except Exception as exc:
+                    if 'UNIQUE' in str(exc).upper():
+                        raise GameError('guild_exists', 'Ce nom de guilde est déjà utilisé.', 409) from None
+                    raise
+                self.db.execute("INSERT INTO guild_members VALUES(?,?,'owner',?)", (account['id'], identifier, now))
+            elif action == 'guild_invite':
+                from .content import WORLD
+                if not guild or guild['owner'] != account['id']:
+                    raise GameError('guild_owner_required', 'Seul le chef de guilde peut inviter.', 403)
+                if self._guild(target):
+                    raise GameError('already_in_guild', 'Ce joueur appartient déjà à une guilde.', 409)
+                if self.db.execute('SELECT COUNT(*) FROM guild_members WHERE guild_id=?', (guild['id'],)).fetchone()[0] >= WORLD['guild_max_members']:
+                    raise GameError('guild_full', 'La guilde est complète.', 409)
+                self.db.execute("UPDATE guild_invites SET status='replaced' WHERE guild_id=? AND recipient=? AND status='pending'", (guild['id'], target))
+                self.db.execute("INSERT INTO guild_invites VALUES(?,?,?,?,'pending',?)", (secrets.token_hex(16), guild['id'], account['id'], target, now + 86400))
+            elif action in ('guild_accept', 'guild_decline'):
+                invite = self.db.execute("SELECT * FROM guild_invites WHERE id=? AND recipient=? AND status='pending' AND expires>?", (params['invite_id'], account['id'], now)).fetchone()
+                if not invite:
+                    raise GameError('not_found', 'Invitation de guilde expirée.', 404)
+                if action == 'guild_accept':
+                    from .content import WORLD
+                    if guild:
+                        raise GameError('already_in_guild', 'Quittez votre guilde avant d’en rejoindre une autre.', 409)
+                    if not self.db.execute('SELECT 1 FROM guilds WHERE id=?', (invite['guild_id'],)).fetchone():
+                        raise GameError('not_found', 'Cette guilde n’existe plus.', 404)
+                    if self.db.execute('SELECT COUNT(*) FROM guild_members WHERE guild_id=?', (invite['guild_id'],)).fetchone()[0] >= WORLD['guild_max_members']:
+                        raise GameError('guild_full', 'La guilde est complète.', 409)
+                    self.db.execute("INSERT INTO guild_members VALUES(?,?,'member',?)", (account['id'], invite['guild_id'], now))
+                self.db.execute('UPDATE guild_invites SET status=? WHERE id=?', ('accepted' if action == 'guild_accept' else 'declined', invite['id']))
+            elif action == 'guild_kick':
+                if not guild or guild['owner'] != account['id']:
+                    raise GameError('guild_owner_required', 'Seul le chef de guilde peut exclure un membre.', 403)
+                target = params['account_id']
+                if target == account['id'] or not isinstance(target, str):
+                    raise GameError('invalid_player', 'Membre invalide.')
+                if not self.db.execute('SELECT 1 FROM guild_members WHERE guild_id=? AND account_id=?', (guild['id'], target)).fetchone():
+                    raise GameError('not_found', 'Membre introuvable.', 404)
+                self.db.execute('DELETE FROM guild_members WHERE account_id=?', (target,))
+                self.db.execute("UPDATE guild_invites SET status='cancelled' WHERE recipient=? AND status='pending'", (target,))
+            elif action == 'guild_leave':
+                if guild:
+                    self.db.execute('DELETE FROM guild_members WHERE account_id=?', (account['id'],))
+                    replacement = self.db.execute('SELECT account_id FROM guild_members WHERE guild_id=? ORDER BY joined LIMIT 1', (guild['id'],)).fetchone()
+                    if guild['owner'] == account['id'] and replacement:
+                        self.db.execute("UPDATE guild_members SET role='member' WHERE guild_id=?", (guild['id'],))
+                        self.db.execute("UPDATE guild_members SET role='owner' WHERE account_id=?", (replacement[0],))
+                        self.db.execute('UPDATE guilds SET owner=? WHERE id=?', (replacement[0], guild['id']))
+                    elif not replacement:
+                        self.db.execute("UPDATE guild_invites SET status='cancelled' WHERE guild_id=? AND status='pending'", (guild['id'],))
+                        self.db.execute('DELETE FROM guilds WHERE id=?', (guild['id'],))
             elif action == 'realm':
                 if type(params['realm']) is not int:
                     raise GameError('invalid_server', 'Serveur invalide.')
@@ -346,7 +420,7 @@ class AccountMixin:
                 self._admit(player['id'], params['realm'])
             else:
                 self._social_travel(account, team, action, params)
-            if action.startswith(('friend_', 'team_')):
+            if action.startswith(('friend_', 'team_', 'guild_')):
                 self.persistent_social_changed = True
             return self.social_view(token)
 
