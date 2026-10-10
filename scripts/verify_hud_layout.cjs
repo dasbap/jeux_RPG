@@ -39,7 +39,12 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
    const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
    assert(!overlaps(zone,menu)&&!overlaps(zone,vitals),'Zone lisible sans chevauchement');
-   assert(!overlaps(mini,actions)&&!overlaps(mini,enemies),'Minicarte sans collision avec actions ou ennemis');
+   if(mobile){
+    assert(mini.y+mini.height<=actions.y+2,'Minicarte au-dessus des actions : '+JSON.stringify({width,height,mini,actions}));
+    assert(mini.x+mini.width<=enemies.x+2||mini.y+mini.height<=enemies.y+2||mini.y>=enemies.y+enemies.height-2,'Minicarte hors du panneau ennemi : '+JSON.stringify({width,height,mini,enemies}));
+   }else{
+    assert(mini.x<width/3&&mini.y>height/2,'Minicarte dans le quart bas-gauche : '+JSON.stringify({width,height,mini}));
+   }
    assert.equal(await page.locator('#field-left,#field-up,#field-down,#field-right').count(),0,'Flèches de caméra retirées');
    await page.locator('#mob-list-toggle').click();
    assert(!(await page.locator('#combat-enemy-panel').isVisible()),'Liste entièrement repliable');
