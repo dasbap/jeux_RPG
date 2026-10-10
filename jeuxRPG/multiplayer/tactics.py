@@ -27,7 +27,9 @@ def distance(a, b):
 
 def walkable(preset, position):
     return (isinstance(position, (list, tuple)) and len(position) == 2 and all(type(v) is int for v in position)
-            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"] and list(position) not in preset["cover"] and list(position) not in preset.get("blocked", []))
+            and 0 <= position[0] < preset["width"] and 0 <= position[1] < preset["height"]
+            and (tuple(position) not in preset["cover"] if isinstance(preset["cover"], frozenset) else list(position) not in preset["cover"])
+            and list(position) not in preset.get("blocked", []))
 
 
 def valid_step(preset, source, destination):
@@ -52,7 +54,7 @@ def path(preset, source, destination):
 
 @lru_cache(maxsize=4096)
 def cached_path(width, height, cover, source, destination):
-    preset = {"width": width, "height": height, "cover": [list(point) for point in cover]}
+    preset = {"width": width, "height": height, "cover": frozenset(cover)}
     queue = [(0, tuple(source), [])]
     costs = {tuple(source): 0}
     while queue:

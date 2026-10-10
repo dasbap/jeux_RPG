@@ -1,6 +1,6 @@
 # Révision de qualité
 
-Date : 8 octobre 2026. Intégration des PR #16 et #17 sur `master`, version `0.11.0a25`. Branche de publication : `deploy/production`.
+Date : 8 octobre 2026. Intégration des PR #16 et #17 sur `master`, version `0.11.0a25`. Mise à jour du 9 octobre : le workflow de publication cible `prod` ; `master` est la branche principale. Le commit servi par le domaine public reste à vérifier dans Vercel.
 
 Cette révision corrige le logiciel existant. Elle conserve les cartes, les cinq classes jouables, les quêtes, les recettes et les règles de combat. Elle ne crée aucune fonctionnalité de jeu.
 
@@ -16,7 +16,7 @@ Cette révision corrige le logiciel existant. Elle conserve les cartes, les cinq
 7. Deux calculs scrypt au maximum peuvent être préparés simultanément, hors du verrou du moteur. Le service valide encore le compte et le hash attendu dans sa transaction avant de créer la session.
 8. JSON invalide, clés dupliquées, constantes non standard et tableaux au premier niveau sont refusés avant d'accéder au moteur ASGI.
 9. Les fichiers JS/CSS sont versionnés par contenu dans les pages et peuvent être conservés en cache. Les autres URLs se revalident avec ETag. Les données de compte et de jeu restent sans cache public.
-10. Le workflow se lance manuellement uniquement depuis `deploy/production`. Les actions du workflow de production sont épinglées, les secrets sont limités aux étapes qui en ont besoin, et la version est testée avant promotion.
+10. Le workflow se lance sur les pushes de `prod` ou manuellement depuis cette branche. Les actions du workflow de production sont épinglées, les secrets sont limités aux étapes qui en ont besoin, et la version est testée avant promotion.
 
 ## Vérifications
 
