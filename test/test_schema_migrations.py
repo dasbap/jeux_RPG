@@ -6,8 +6,8 @@ from jeuxRPG.multiplayer.schema import MIGRATIONS, current_version, initialize, 
 def test_initialize_schema_is_versioned_and_idempotent():
     connection = sqlite3.connect(":memory:")
     try:
-        assert initialize(connection) == 2
-        assert current_version(connection) == 2
+        assert initialize(connection) == 3
+        assert current_version(connection) == 3
         assert validate_schema(connection) is True
         assert initialize(connection) == 2
         assert current_version(connection) == 2
