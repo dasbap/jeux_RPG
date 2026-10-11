@@ -32,7 +32,7 @@ En combat, choisir d'abord une cible : seules l'attaque simple et les compétenc
 
 Le monde possède un marchand itinérant entre Rosée et Brume. Son passage est déterminé par l'horloge interne au ratio 1:3, sans afficher le ratio ni le temps écoulé dans l'interface. Mira reste disponible pour éviter de bloquer le tutoriel. Léon reste huit heures de jeu dans chaque village (160 minutes réelles), puis marche jusqu’au suivant. Pendant sa traversée, il n’est présent dans aucun village. Il est pour l’instant un PNJ de passage, sans boutique.
 
-L'identité est conservée dans l'onglet pendant sa session. Pour retrouver un personnage après fermeture de l'onglet, conserver sa **clé de reconnexion** en privé et la saisir dans « Retrouver mon personnage ». Se déconnecter conserve la progression du tutoriel. En revenant avec sa clé, le joueur retrouve son groupe et ses compétences, son inventaire et son équipement.
+Les comptes utilisent un nom d’utilisateur et un mot de passe de 12 à 128 caractères, dérivé avec scrypt. La connexion permet de sélectionner et reprendre ses personnages sauvegardés. Le jeton de session reste privé dans l’onglet. Les anciennes clés personnelles de reconnexion restent compatibles avec les routes historiques ; ce sont des secrets d’accès. Se déconnecter conserve la progression.
 
 Les données sont conservées dans `.data/multiplayer.sqlite3`. Redémarrer avec le même fichier restaure personnages, sessions, dégâts et commandes déjà exécutées. Le temps hors ligne est pris en compte pour les passages des PNJ. Le tutoriel n'expire pas et aucun dégât automatique n'est infligé pendant l'arrêt. Les anciens salons et duels conservent leurs échéances.
 
@@ -128,9 +128,9 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 
 - SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une révision cliente ancienne n'annule pas automatiquement une commande : le serveur recharge l'état courant et revalide les préconditions métier. Une révision future reste refusée avec `stale_revision`, et un identifiant explicite d'ancien combat reste refusé avec `stale_encounter`.
 - Une commande rejouée avec le même identifiant et le même contenu retourne son résultat initial. Un contenu différent avec cet identifiant est refusé. Les identifiants et reçus sont persistés.
-- L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur réconcilie les échéances toutes les 100 ms ; l'interface interroge l'état toutes les 500 ms. Ce n'est pas un système temps réel dur.
-- Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats évoluent dans la boucle autonome du serveur, avec des positions individuelles ; quitter l’onglet ne met pas un combat en pause. Le monde ouvert, les échanges, les boutiques et les quêtes génériques ne sont pas encore implémentés.
-- La clé personnelle est un secret d'accès, pas une authentification par mot de passe ou OAuth. Aucune récupération par email ni révocation de compte n'est fournie. Le POC est destiné à un environnement de démonstration contrôlé.
+- L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur local réconcilie les échéances toutes les 100 ms. L’interface privilégie WebSocket et ne lance aucun polling périodique HTTP tant que cette connexion fonctionne. Le secours HTTP s’adapte : combat/déplacement 1 s en production, exploration 3,6 s, salon 5 s, menu 15 s et onglet caché 20 s, avec jitter et recul réseau. Ce n’est pas un système temps réel dur.
+- Un personnage ne peut participer qu'à une session active à la fois. Le tutoriel suit un parcours partagé et guidé, avec des sacs et équipements individuels. Les combats évoluent dans la boucle du serveur, avec des positions individuelles. En mode serverless, un monde actif dépend du propriétaire Redis, de son bail et des connexions : une suspension complète du navigateur ou la fermeture du dernier socket ne garantit pas une simulation continue. Le contenu inclut les cartes du monde, des quêtes et des donjons ; le rapport d’audit distingue les parcours testés de la recette complète encore nécessaire.
+- Les comptes disposent de sessions révocables, d’une déconnexion globale et d’un changement de mot de passe qui révoque les anciennes sessions. OAuth et récupération par email ne sont pas fournis. Le POC reste destiné à un environnement contrôlé.
 - La nouvelle table des tutoriels est créée automatiquement sans modifier les données des anciens duels. Sauvegarder la base après arrêt du serveur avant une mise à jour. Un nouveau tutoriel recommence au niveau 1 ; la progression reste attachée à son aventure sauvegardée.
 
 ## Organisation
@@ -409,3 +409,9 @@ Les textures des ponts restent attachées au SVG pendant les actualisations. Les
 Le builder refuse les cartes dont une arrivée de TP, l'apparition initiale, un PNJ, un atelier, un spawner ou une sortie est inaccessible. Le contrôleur affiche ces problèmes dans son diagnostic. Voir le [guide du builder](docs/BUILDER_GUIDE.md).
 
 Le [parcours client sur les données actuelles](docs/DEMO_UI.md) utilise des clics de l'interface et une base temporaire, sans injection d'état de jeu. Il complète les tests sur le monde de référence. Le workflow **Parcours UI du monde actuel** permet aussi de le lancer manuellement dans GitHub Actions.
+
+## Audit et restauration
+
+L’état des 29 demandes, les preuves, les mesures et les réserves sont dans [le rapport du 11 octobre 2026](docs/audit-20261011/FINAL_REPORT.md). La sécurisation de `prod` et la publication des dernières corrections sont reportées à la demande du propriétaire.
+
+Pour contrôler une sauvegarde SQLite exportée et stable, arrêter le serveur qui écrit ce fichier puis lancer `python scripts/verify_backup.py chemin/monde.sqlite3`. Le contrôle ouvre la source en lecture seule, restaure une copie temporaire, compare ses tables et vérifie la réouverture du moteur. Il ne crée pas une sauvegarde durable et ne certifie pas les sauvegardes distantes Turso ou Redis.

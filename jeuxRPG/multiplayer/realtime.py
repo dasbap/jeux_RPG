@@ -581,7 +581,9 @@ def create_app(environment=None, coordinator=None):
         if result['status'] == 200:
             web = Path(__file__).parent / 'web'
             if path in ('', 'admin'):
-                for asset in ('app.js', 'realtime.js', 'mobile_controls.js', 'map_artwork.js', 'style.css', 'admin.js', 'admin.css'):
+                assets = {value[0] for value in CLIENT_STATIC.values() if value[0].endswith(('.js', '.css'))}
+                assets.update({'admin.js', 'admin.css'})
+                for asset in sorted(assets):
                     digest = hashlib.sha256((web / asset).read_bytes()).hexdigest()[:16]
                     content = content.replace(('"/' + asset + '"').encode(), ('"/' + asset + '?v=' + digest + '"').encode())
                 result['headers']['Content-Length'] = str(len(content))

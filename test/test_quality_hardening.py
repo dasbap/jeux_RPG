@@ -132,6 +132,17 @@ def test_static_assets_cache_and_security_headers():
         cached = client.get('/app.js?v=' + digest)
         assert 'immutable' in cached.headers['cache-control']
         assert client.get('/app.js', headers={'if-none-match': asset.headers['etag']}).status_code == 304
+        from jeuxRPG.multiplayer.server import CLIENT_STATIC
+        for name, _ in CLIENT_STATIC.values():
+            if not name.endswith(('.js', '.css')):
+                continue
+            resource = client.get('/' + name)
+            version = hashlib.sha256(resource.content).hexdigest()[:16]
+            assert '"/' + name + '?v=' + version + '"' in home.text
+            versioned = client.get('/' + name + '?v=' + version)
+            assert versioned.content == resource.content
+            assert 'immutable' in versioned.headers['cache-control']
+            assert 'immutable' not in client.get('/' + name + '?v=obsolete').headers['cache-control']
         classes = client.get('/api/classes')
         assert classes.headers['cache-control'] == 'no-store'
         assert classes.headers['x-content-type-options'] == 'nosniff'

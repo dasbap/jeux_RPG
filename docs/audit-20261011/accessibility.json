@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-11",
+  "commit": "f0447bc5d7ab8528f4ebdfe5bbb5d4d5d52f1905",
+  "workflow_run": 38097908024,
+  "ui_job": 114347615667,
+  "axe_core": "4.10.3",
+  "rule_tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21aa"
+  ],
+  "results": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "violations": [],
+      "incomplete": [
+        "aria-prohibited-attr",
+        "color-contrast"
+      ]
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "violations": [],
+      "incomplete": [
+        "aria-prohibited-attr",
+        "color-contrast"
+      ]
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "violations": [],
+      "incomplete": [
+        "aria-prohibited-attr",
+        "color-contrast"
+      ]
+    }
+  ],
+  "manual_review_required": true
+}
