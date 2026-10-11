@@ -666,6 +666,7 @@ def defeated(party, mob, now, random, messages):
     if not party.get("training"):
         achievements.event(party, "kills", mob.get("mob_id", "goblin"))
         content.quest_event(party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"]))
+        content.endgame_event(party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"]))
     achievements.victory(party, now)
     messages.append(f"{mob['name']} vaincu : {reward} XP. Approchez-vous pour le dépecer.")
     if not party["mobs"] and party["combat_step"] == "first_fight":
