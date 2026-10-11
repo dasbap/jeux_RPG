@@ -80,7 +80,7 @@ jobs:
         run: |
           umask 077
           trap 'rm -f "$RUNNER_TEMP/production-before.sqlite3"' EXIT
-          python scripts/export_turso_backup.py "$RUNNER_TEMP/production-before.sqlite3" > backup-check.json
+          python -m scripts.export_turso_backup "$RUNNER_TEMP/production-before.sqlite3" > backup-check.json
           age -r "$RPG_BACKUP_RECIPIENT" -o production-before.sqlite3.age "$RUNNER_TEMP/production-before.sqlite3"
           sha256sum production-before.sqlite3.age > backup-checksum.txt
       - name: Conserver uniquement la sauvegarde chiffree hors production
