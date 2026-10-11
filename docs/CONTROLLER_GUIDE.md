@@ -219,3 +219,12 @@ Dans **Cartes / builder → Propriétés carte**, renseignez **Donjon (ID)** pou
 Dans **Mobs**, l’éditeur **Phases de boss** permet d’ajouter jusqu’à dix phases. Chaque phase possède un nom, un multiplicateur de PV et un multiplicateur de dégâts. Lorsqu’un boss atteint 0 PV et qu’une phase reste disponible, il ne donne encore ni XP ni butin : sa barre de vie est restaurée selon la phase, ses dégâts sont recalculés et le combat continue. Les récompenses sont accordées uniquement après la dernière phase.
 
 Le catalogue livré fournit un exemple : `cave_1` et `cave_2` forment le donjon `grotte_gobeline`, et `gobelin_boss` possède une phase `Furie`. Tous ces paramètres restent modifiables dans le Controller.
+
+
+## PvP optionnel
+
+Le réglage **Monde → Activer le PvP optionnel** contrôle entièrement les duels entre comptes. Il est désactivé par défaut.
+
+Lorsque le PvP est désactivé, les comptes ne peuvent ni rejoindre ni démarrer un duel et l’interface masque le bouton de duel. Lorsque le réglage est activé, le système de duel reste volontaire : un joueur crée un salon, l’autre le rejoint avec l’invitation, puis le propriétaire choisit explicitement **Duel optionnel**. Le mode aventure, les rencontres PvE et la présence dans le même monde ne déclenchent jamais automatiquement un combat entre joueurs.
+
+Les personnages locaux historiques conservent les tests de compatibilité du moteur de duel, mais la disponibilité visible des comptes dépend toujours du réglage du Controller.
