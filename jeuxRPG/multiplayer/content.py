@@ -7,8 +7,16 @@ import re
 
 
 DEFAULTS = {
-    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12},
+    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'starting_gold': 100, 'trade_max_quantity': 999, 'trade_max_gold': 100000},
     'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
+    'economy': [
+        {'id': 'peau', 'name': 'Peau', 'buy': 8, 'sell': 4},
+        {'id': 'croc', 'name': 'Croc', 'buy': 10, 'sell': 5},
+        {'id': 'peau_gobelin', 'name': 'Peau de gobelin', 'buy': 8, 'sell': 4},
+        {'id': 'croc_gobelin', 'name': 'Croc de gobelin', 'buy': 10, 'sell': 5},
+        {'id': 'cristal_gobelin', 'name': 'Cristal gobelin', 'buy': 80, 'sell': 40},
+        {'id': 'noyau_gobelin', 'name': 'Noyau gobelin', 'buy': 200, 'sell': 100},
+    ],
     'achievements': [
         {'id': 'silent', 'name': 'Victoire sans alerter d’ennemi', 'condition': 'silent', 'threshold': 1, 'title': 'Ombre silencieuse'},
         {'id': 'untouched', 'name': 'Victoire sans dégâts au groupe ni aux invocations', 'condition': 'untouched', 'threshold': 1, 'title': 'Intouchable'},
@@ -34,15 +42,26 @@ def is_hunt(quest):
 def validate_content(data):
     if not isinstance(data, dict) or set(data)-{'classes','skills','templates'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
-    limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64)}
+    limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64), 'starting_gold': (0, 1000000000), 'trade_max_quantity': (1, 1000000), 'trade_max_gold': (0, 1000000000)}
     if not isinstance(data['world'], dict) or set(data['world']) != set(limits):
         raise ValueError('Paramètres du monde invalides.')
     for key, (low, high) in limits.items():
         if not number(data['world'][key], low, high):
             raise ValueError(f'{key} : valeur entre {low} et {high}.')
-    for key in ('player_vision', 'mob_xp'):
+    for key in ('player_vision', 'mob_xp', 'starting_gold', 'trade_max_quantity', 'trade_max_gold'):
         if type(data['world'][key]) is not int:
             raise ValueError(f'{key} : nombre entier requis.')
+    values = data['economy']
+    if not isinstance(values, list) or len(values) > 500:
+        raise ValueError('500 matériaux économiques maximum.')
+    economy_ids = set()
+    for item in values:
+        if not isinstance(item, dict) or set(item) != {'id','name','buy','sell'} or not isinstance(item.get('id'), str) or not re.fullmatch(r'[a-zA-Z0-9_:-]{1,80}', item['id']) or item['id'] in economy_ids:
+            raise ValueError('Matériau économique invalide ou dupliqué.')
+        economy_ids.add(item['id'])
+        if not isinstance(item.get('name'), str) or not 1 <= len(item['name']) <= 100 or type(item.get('buy')) is not int or type(item.get('sell')) is not int or not 0 <= item['sell'] <= item['buy'] <= 1000000000:
+            raise ValueError('Prix économique invalide : vente joueur <= achat joueur, entiers positifs.')
+
     for section in ('quests', 'achievements'):
         values = data[section]
         if not isinstance(values, list) or len(values) > 200:
@@ -137,6 +156,10 @@ def load_content(path=None):
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)
+    result.setdefault('economy', deepcopy(DEFAULTS['economy']))
+    result.setdefault('world', {})
+    for key, value in DEFAULTS['world'].items():
+        result['world'].setdefault(key, value)
     from jeuxRPG._class.res.character.class_models import load as load_templates
     result['templates'] = load_templates(None if os.environ.get('RPG_CLASSES_FILE') else path.parent)
     return validate_content(result)
