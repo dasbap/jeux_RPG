@@ -9,7 +9,7 @@ def reset_test_players(connection):
             connection.execute('COMMIT')
             return False
         tables = ('chat_streams', 'presence', 'chat', 'receipt_expiry', 'receipts', 'events', 'tutorials', 'members', 'sessions',
-                  'admin_audit', 'account_status', 'team_invites', 'team_members', 'teams', 'friendships',
+                  'admin_audit', 'account_status', 'guild_invites', 'guild_members', 'guilds', 'team_invites', 'team_members', 'teams', 'friendships',
                   'account_sessions', 'account_characters', 'players', 'accounts', 'request_limits')
         for table in tables:
             connection.execute(f'DELETE FROM {table}')

@@ -20,6 +20,14 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    await page.evaluate(adventure=>{
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderTutorial(session.tutorial);`);
    },fixture);
+   await page.locator('#zone-banner').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished));});
+   await page.addScriptTag({content:require('axe-core').source});
+   const accessibility=await page.evaluate(async()=>{
+    const result=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});
+    return {violations:result.violations.map(item=>({id:item.id,impact:item.impact,targets:item.nodes.map(node=>node.target)})),incomplete:result.incomplete.map(item=>item.id)};
+   });
+   console.log(JSON.stringify({accessibility,viewport:{width,height}}));
+   assert.equal(accessibility.violations.filter(item=>['critical','serious'].includes(item.impact)).length,0,'Accessibilité WCAG : aucune violation grave automatisée');
    const rect=async id=>page.locator('#'+id).boundingBox();
    const menu=await rect('character-menu'),vitals=await rect('combat-player-panel'),enemies=await rect('combat-enemy-panel'),zone=await rect('zone-banner'),actions=await rect('skill-hud'),map=await rect('world-map'),mini=await rect('hud-navigation');
    assert(menu&&vitals&&enemies&&zone&&actions&&map&&mini,'HUD visible');
@@ -144,6 +152,25 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert(await page.locator('#inventory-view').isVisible(),'Inventaire consultable en combat');
    await page.locator('#back-view').click();
    assert(!(await page.locator('#inventory-view').isVisible()),'Retour au jeu');
+   // Allocation/listener regression on an isolated fixture, after warmup and forced GC.
+   const cdp = await page.context().newCDPSession(page);
+   const renderMany = count => page.evaluate(count => {
+    window.eval(`for(let i=0;i<${count};i++){session.tutorial.players[0].cooldown_real_seconds=i%2?0.7:0;renderTutorial(session.tutorial);}`);
+   }, count);
+   await renderMany(100);
+   await cdp.send('HeapProfiler.collectGarbage');
+   const before = {dom: await cdp.send('Memory.getDOMCounters'), heap: await cdp.send('Runtime.getHeapUsage')};
+   await renderMany(500);
+   await cdp.send('HeapProfiler.collectGarbage');
+   const after = {dom: await cdp.send('Memory.getDOMCounters'), heap: await cdp.send('Runtime.getHeapUsage')};
+   const memoryReport = {scope:'Chromium fixture, 100 warmup + 500 updates, forced GC; not physical mobile INP', viewport:{width,height}, before, after};
+   assert(after.dom.nodes <= before.dom.nodes + 20, 'No accumulated DOM nodes on repeated updates');
+   assert(after.dom.jsEventListeners <= before.dom.jsEventListeners + 8, 'No accumulated listeners on repeated updates');
+   assert(after.heap.usedSize <= before.heap.usedSize * 1.5 + 1024 * 1024, 'Retained JS heap budget after updates');
+   fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
+   fs.writeFileSync(path.join(root,`hud-captures/memory-${width}x${height}.json`),JSON.stringify(memoryReport,null,2));
+   console.log(JSON.stringify(memoryReport));
+   await cdp.detach();
    assert.deepEqual(errors,[]);
    fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
    await page.screenshot({path:path.join(root,`hud-captures/${width}x${height}.png`)});

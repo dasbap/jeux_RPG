@@ -1,0 +1,317 @@
+{
+  "fixed_zones": false,
+  "users": 40,
+  "combat_users": 40,
+  "town_users": 0,
+  "duration_seconds": 1801.05,
+  "state_requests": 72000,
+  "successful_movement_actions": 18000,
+  "expected_action_conflicts": [],
+  "errors": [],
+  "latency_ms": {
+    "p50": 13.74,
+    "p95": 61.82,
+    "max": 414.39,
+    "mean": 20.59,
+    "p99": 97.31
+  },
+  "server_processing_ms": {
+    "p50": 11.62,
+    "p95": 59.16,
+    "max": 410.89
+  },
+  "movement_latency_ms": {
+    "p50": 18.58,
+    "p95": 69.84,
+    "max": 308.22
+  },
+  "latency_target_ms": 500.0,
+  "latency_target_met": true,
+  "average_full_bytes": 19958,
+  "average_delta_bytes": 14879,
+  "reduction_percent": 25.5,
+  "server_alive": true,
+  "ticker_alive": true,
+  "active_combats": 40,
+  "server_cpu_seconds": 1054.0817,
+  "server_peak_rss_bytes": 61583360,
+  "realms": 1,
+  "separate_server_process": true,
+  "persistent_http_connections": true,
+  "poll_interval_seconds": 1.0,
+  "fixture": "40 independent combat sessions with real mob AI, boosted player HP to keep fighting; 0 town sessions; 1 state requests/second/user, movement every 4 seconds in combat; localhost",
+  "health_samples": [
+    {
+      "elapsed_seconds": 60.32,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 34.2785,
+      "server_peak_rss_bytes": 57257984,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 120.4,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 69.9406,
+      "server_peak_rss_bytes": 58830848,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 180.56,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 104.7764,
+      "server_peak_rss_bytes": 59879424,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 240.68,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 140.298,
+      "server_peak_rss_bytes": 60010496,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 300.84,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 174.9752,
+      "server_peak_rss_bytes": 60141568,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 360.97,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 209.6659,
+      "server_peak_rss_bytes": 60141568,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 421.07,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 244.663,
+      "server_peak_rss_bytes": 60272640,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 481.37,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 279.7115,
+      "server_peak_rss_bytes": 60272640,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 541.49,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 314.9657,
+      "server_peak_rss_bytes": 60272640,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 601.67,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 350.0045,
+      "server_peak_rss_bytes": 60272640,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 661.77,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 384.9437,
+      "server_peak_rss_bytes": 60272640,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 721.95,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 419.727,
+      "server_peak_rss_bytes": 60403712,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 782.15,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 454.8698,
+      "server_peak_rss_bytes": 60534784,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 842.4,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 490.4931,
+      "server_peak_rss_bytes": 60534784,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 902.59,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 525.821,
+      "server_peak_rss_bytes": 60534784,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 962.83,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 560.5495,
+      "server_peak_rss_bytes": 60665856,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1023.07,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 595.6333,
+      "server_peak_rss_bytes": 60928000,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1083.16,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 631.6877,
+      "server_peak_rss_bytes": 60928000,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1143.33,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 666.9465,
+      "server_peak_rss_bytes": 60928000,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1203.63,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 701.7532,
+      "server_peak_rss_bytes": 60928000,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1263.76,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 737.0403,
+      "server_peak_rss_bytes": 60928000,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1323.85,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 772.6346,
+      "server_peak_rss_bytes": 61059072,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1384.0,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 807.4599,
+      "server_peak_rss_bytes": 61059072,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1444.16,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 842.7606,
+      "server_peak_rss_bytes": 61059072,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1504.3,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 878.9287,
+      "server_peak_rss_bytes": 61190144,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1564.67,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 914.1068,
+      "server_peak_rss_bytes": 61190144,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1624.83,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 949.6968,
+      "server_peak_rss_bytes": 61190144,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1685.04,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 985.1247,
+      "server_peak_rss_bytes": 61321216,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1745.14,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 1020.7232,
+      "server_peak_rss_bytes": 61452288,
+      "realms": 1
+    },
+    {
+      "elapsed_seconds": 1800.87,
+      "server_alive": true,
+      "ticker_alive": true,
+      "active_combats": 40,
+      "server_cpu_seconds": 1053.8836,
+      "server_peak_rss_bytes": 61583360,
+      "realms": 1
+    }
+  ],
+  "request_attempts": 72000,
+  "error_rate": 0.0
+}

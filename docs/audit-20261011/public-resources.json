@@ -1,0 +1,251 @@
+{
+  "date": "2026-10-11",
+  "scope": "single sequential public GET per document/asset; no mutations, no browser Web Vitals, not a cold-start certification",
+  "health": {
+    "status": "ok",
+    "release": "82a7461613ec748014d3cf5a97bdade88f1d1ee3"
+  },
+  "resources": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 15180,
+      "elapsed_ms": 6881.83,
+      "headers": {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/style.css?v=be5db2b4c6025d6b",
+      "status": 200,
+      "bytes": 55485,
+      "elapsed_ms": 4284.16,
+      "headers": {
+        "Content-Type": "text/css; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/map_artwork.js?v=af216102ca161ebd",
+      "status": 200,
+      "bytes": 5650,
+      "elapsed_ms": 4166.17,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/realtime.js?v=ced47420b0dcb37c",
+      "status": 200,
+      "bytes": 7322,
+      "elapsed_ms": 3836.68,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/mobile_controls.js?v=8368d641eb7d91e6",
+      "status": 200,
+      "bytes": 5354,
+      "elapsed_ms": 4679.44,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_core.js",
+      "status": 200,
+      "bytes": 5762,
+      "elapsed_ms": 4224.54,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_world.js",
+      "status": 200,
+      "bytes": 23462,
+      "elapsed_ms": 5392.26,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_skills.js",
+      "status": 200,
+      "bytes": 12229,
+      "elapsed_ms": 3755.65,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_tutorial.js",
+      "status": 200,
+      "bytes": 27001,
+      "elapsed_ms": 4917.69,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_battle.js",
+      "status": 200,
+      "bytes": 32983,
+      "elapsed_ms": 3878.98,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_camera.js",
+      "status": 200,
+      "bytes": 5537,
+      "elapsed_ms": 4809.0,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_social.js",
+      "status": 200,
+      "bytes": 8522,
+      "elapsed_ms": 4356.93,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app.js?v=3a010618c5a4d588",
+      "status": 200,
+      "bytes": 6847,
+      "elapsed_ms": 5611.52,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_bootstrap.js",
+      "status": 200,
+      "bytes": 2848,
+      "elapsed_ms": 3689.49,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/app_session.js",
+      "status": 200,
+      "bytes": 13437,
+      "elapsed_ms": 3826.17,
+      "headers": {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    },
+    {
+      "path": "/health",
+      "status": 200,
+      "bytes": 68,
+      "elapsed_ms": 3685.35,
+      "headers": {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Referrer-Policy": "no-referrer",
+        "Strict-Transport-Security": "max-age=31536000",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+      }
+    }
+  ],
+  "total_document_and_asset_bytes": 227619
+}

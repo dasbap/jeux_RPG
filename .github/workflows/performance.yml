@@ -2,23 +2,33 @@ name: Performance du moteur
 on:
   pull_request:
   push:
+    branches: [master, prod]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   benchmark:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
-      - run: python -m pip install '.[test]'
+      - run: python -m pip install -c constraints.txt '.[test]'
       - run: python -m pytest -m performance --junitxml=performance.xml -o junit_family=legacy
-      - run: python scripts/verify_load.py --seconds 5 --users 10 --combat-users 5 --poll-interval 1 --output test/load/ci_smoke.json
-      - uses: actions/upload-artifact@v4
+      - run: python scripts/verify_path_equivalence.py --baseline 0e4f42e57e80b4097da631d66f9c30756e28212f --output path-comparison.json
+      - run: python scripts/verify_load.py --seconds 5 --users 10 --combat-users 5 --poll-interval 1 --max-p95 500 --output test/load/ci_smoke.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: performance
-          path: performance.xml
+          path: |
+            performance.xml
+            path-comparison.json
+            test/load/ci_smoke.json

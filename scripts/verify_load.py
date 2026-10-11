@@ -1,6 +1,6 @@
 import argparse
 import http.client
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from contextlib import suppress
 import json
 import math
@@ -143,21 +143,28 @@ def run(seconds=30, users=30, combat_users=15, poll_interval=1, max_p95=None, fi
 
         started = time.monotonic()
         try:
+            health_samples = []
             with ThreadPoolExecutor(max_workers=users) as executor:
-                results = list(executor.map(client, clients))
+                futures = [executor.submit(client, item) for item in clients]
+                unfinished = set(futures)
+                while unfinished:
+                    _, unfinished = wait(unfinished, timeout=60)
+                    connection.send("inspect")
+                    if not connection.poll(15):
+                        raise RuntimeError("Le serveur ne répond plus pendant l'endurance")
+                    health_samples.append({"elapsed_seconds": round(time.monotonic() - started, 2), **connection.recv()})
+                results = [future.result() for future in futures]
             latencies = sorted(value for result in results for value in result[0])
             errors = [value for result in results for value in result[1]]
             server_times = sorted(value for result in results for value in result[8])
             action_times = sorted(value for result in results for value in result[9])
             full = sum(result[3] for result in results) / max(1, sum(result[5] for result in results))
             delta = sum(result[4] for result in results) / max(1, sum(result[6] for result in results))
-            connection.send("inspect")
-            if not connection.poll(15):
-                raise RuntimeError("Le serveur ne répond plus")
-            health = connection.recv()
+            health = {key: value for key, value in health_samples[-1].items() if key != "elapsed_seconds"}
             p99 = latencies[min(len(latencies) - 1, math.ceil(len(latencies) * .99) - 1)]
             report = {"fixed_zones": fixed_zones, "users": users, "combat_users": combat_users, "town_users": users - combat_users, "duration_seconds": round(time.monotonic() - started, 2), "state_requests": len(latencies), "successful_movement_actions": sum(result[7] for result in results), "expected_action_conflicts": [value for result in results for value in result[2]], "errors": errors, "latency_ms": {"p50": round(statistics.median(latencies), 2), "p95": round(latencies[int(len(latencies) * .95)], 2), "max": round(max(latencies), 2)}, "server_processing_ms": {"p50": round(statistics.median(server_times), 2), "p95": round(server_times[int(len(server_times) * .95)], 2), "max": round(max(server_times), 2)}, "movement_latency_ms": {"p50": round(statistics.median(action_times), 2), "p95": round(action_times[int(len(action_times) * .95)], 2), "max": round(max(action_times), 2)} if action_times else None, "latency_target_ms": max_p95, "latency_target_met": max_p95 is None or (latencies[int(len(latencies) * .95)] < max_p95 and (not action_times or action_times[int(len(action_times) * .95)] < max_p95)), "average_full_bytes": round(full), "average_delta_bytes": round(delta), "reduction_percent": round(100 * (1 - delta / full), 1), **health, "separate_server_process": True, "persistent_http_connections": True, "poll_interval_seconds": poll_interval, "fixture": f"{combat_users} independent combat sessions with real mob AI, boosted player HP to keep fighting; {users - combat_users} town sessions; {1 / poll_interval:g} state requests/second/user, movement every 4 seconds in combat; localhost"}
             report['latency_ms'].update(mean=round(statistics.mean(latencies), 2), p99=round(p99, 2))
+            report['health_samples'] = health_samples
             report['request_attempts'] = len(latencies) + len(errors)
             report['error_rate'] = len(errors) / max(1, report['request_attempts'])
             return report

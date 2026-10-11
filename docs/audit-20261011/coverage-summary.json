@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-11",
+  "scope": "local full suite after four runtime failure/admission tests and backup test, before the static-asset cache extension; exit code 0; local Redis unavailable",
+  "totals": {
+    "covered_lines": 11546,
+    "num_statements": 14848,
+    "percent_covered": 75.76985413290113,
+    "percent_covered_display": "76",
+    "missing_lines": 3302,
+    "excluded_lines": 35,
+    "percent_statements_covered": 77.76131465517241,
+    "percent_statements_covered_display": "78",
+    "num_branches": 6130,
+    "num_partial_branches": 923,
+    "covered_branches": 4349,
+    "missing_branches": 1781,
+    "percent_branches_covered": 70.94616639477977,
+    "percent_branches_covered_display": "71"
+  }
+}

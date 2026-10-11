@@ -8,7 +8,8 @@
       "xp_base": 500,
       "xp_exponent": 1.8,
       "merchant_stay_hours": 8,
-      "player_vision": 12
+      "player_vision": 12,
+      "guild_max_members": 50
     },
     "quests": [
       {
