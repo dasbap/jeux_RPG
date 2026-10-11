@@ -54,7 +54,7 @@ class Controller(ControllerEditorsMixin):
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')]:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('endgame', 'Endgame'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')]:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
             search = ttk.Frame(page)
@@ -217,7 +217,7 @@ class Controller(ControllerEditorsMixin):
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
             return key[:-7]+' · croissance par niveau'
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie'}.get(key, key)
+        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'min_level':'Niveau minimum', 'repeatable':'Répétable', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -377,6 +377,21 @@ class Controller(ControllerEditorsMixin):
                     values.pop('parent')
                 history = p.mobs.get(identifier,{}).get('previous_ids',[]) if not new else []
                 p.mobs[identifier] = {**({'previous_ids':history} if history else {}), **values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities, 'phases':phases}
+            elif section == 'endgame':
+                default = {'id':'', 'name':'Nouveau contrat', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':10, 'min_level':5, 'reward_xp':500, 'repeatable':True}
+                old = default if new else next(item for item in p.content['endgame'] if item['id'] == key)
+                from .forge import RECIPES
+                choices = {'kind':['kill','craft'], 'target':list(p.mobs), 'zone':['', *p.maps]}
+                values = self.form('Contrat endgame', old, choices)
+                if values:
+                    targets = list(p.mobs) if values['kind'] == 'kill' else list(RECIPES)
+                    if values['target'] not in targets:
+                        raise ValueError('Cible endgame incompatible avec le type.')
+                    if not new and values['id'] != key:
+                        raise ValueError('Utilisez Renommer identifiant pour changer la référence.')
+                    if new and any(item['id'] == values['id'] for item in p.content['endgame']):
+                        raise ValueError('Identifiant déjà utilisé.')
+                    p.content['endgame'] = [item for item in p.content['endgame'] if item['id'] != values['id']] + [values]
             elif section in ('quests', 'achievements'):
                 default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'map':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre', 'target':'', 'zone':'', 'map':''}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
