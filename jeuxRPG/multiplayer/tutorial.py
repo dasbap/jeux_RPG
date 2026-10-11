@@ -173,6 +173,10 @@ def view(party, me, now):
     result.pop("fields", None)
     fields.reveal(party)
     result["field_interactions"] = fields.interactions(party, me)
+    merchant = next((site for site in result["field_interactions"] if site.get("merchant")), None)
+    if merchant is None:
+        merchant = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site.get("merchant") and site["id"] == party.get("position")), None)
+    result["merchant"] = {"id": merchant["id"], "name": merchant["name"]} if merchant else None
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
