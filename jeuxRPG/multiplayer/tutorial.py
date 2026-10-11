@@ -7,7 +7,7 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content
+from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content, economy
 
 TRAVEL_ENCOUNTER_CHANCE = .25
 
@@ -109,7 +109,7 @@ def recover(character):
 def new_party(players):
     return {"step": "clearing", "kills": 0, "quest": "unaccepted", "mob": None,
             "characters": {p["id"]: pack(create_character(p)) for p in players},
-            "inventory": {p["id"]: {} for p in players}, "equipment": {},
+            "inventory": {p["id"]: {} for p in players}, "gold": {p["id"]: content.WORLD.get("starting_gold", 0) for p in players}, "equipment": {},
             "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": [], "position": "clearing", "journey": [], "mobs": [], "combat_step": "clearing", "transit": None}
 
 
@@ -173,6 +173,10 @@ def view(party, me, now):
     result.pop("fields", None)
     fields.reveal(party)
     result["field_interactions"] = fields.interactions(party, me)
+    merchant = next((site for site in result["field_interactions"] if site.get("merchant")), None)
+    if merchant is None:
+        merchant = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site.get("merchant") and site["id"] == party.get("position")), None)
+    result["merchant"] = {"id": merchant["id"], "name": merchant["name"]} if merchant else None
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
@@ -198,7 +202,7 @@ def view(party, me, now):
                                   "effects": status_view(party, player_id, data["effects"], now), "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
                                   "can_attack": actionable and not party["battle"]["players"][player_id].get("casting") if party["battle"] else False,
                                   "casting": tactics.cast_view(party, player_id, now),
-                                  "energies": data["energies"], "inventory": party["inventory"][player_id],
+                                  "energies": data["energies"], "inventory": party["inventory"][player_id], "gold": party["gold"][player_id], "market": economy.catalogue(),
                                   "equipment": " · ".join(f"{v['name']} +{v['level']}" for v in party["equipment"].get(player_id, {}).values()) or None,
                                   "gear": list(party["equipment"].get(player_id, {}).values()),
                                   "forge": forge.catalogue(party, player_id),
@@ -365,6 +369,7 @@ def migrate(party, now):
     party.setdefault("skill_ready", {})
     party.setdefault("effect_at", {})
     forge.migrate(party)
+    economy.migrate(party)
     if "mobs" not in party or party["mob"] and not party["mobs"]:
         party["mobs"] = [{**party["mob"], "combat_id": "mob", "next_attack": now + 40}] if party["mob"] else []
     if party.get("rules_version", 0) < 8:
@@ -544,7 +549,7 @@ def execute(party, player_id, action, params, now, error, random):
         party["field_mode"] = True
         party.setdefault("fields", {})
         return fields.enter(party, identifier, party["field_return_entry"] if party.get("field_return_from") == identifier and party.get("field_return_entry") else fields.arrival_point(identifier), now), False
-    if party.get("field_map") and action in ("talk", "craft", "upgrade"):
+    if party.get("field_map") and action in ("talk", "craft", "upgrade", "buy", "sell"):
         return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):
         if party["battle"] or party["mobs"] or party["mob"]:
@@ -581,6 +586,11 @@ def execute(party, player_id, action, params, now, error, random):
     position = party["position"]
     if party["transit"] and not party["battle"]:
         raise error("moving", "Attendez votre arrivée pour interagir.", 409)
+    if action in ("buy", "sell"):
+        if party["battle"] or party.get("transit") or party["position"] != params["npc"]:
+            raise error("wrong_location", "Rejoignez le marchand avant d’échanger.", 409)
+        merchant = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == params["npc"]), None)
+        return economy.execute(party, player_id, merchant, action, params["item"], params["quantity"], error), False
     if action == "talk" and params["npc"] == "leon":
         merchant = npc(now)
         if party["battle"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
