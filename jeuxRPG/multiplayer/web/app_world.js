@@ -54,7 +54,10 @@ function mountWorldMap(source, container = $("world-map")) {
 }
 function hudQuestTarget(adventure) {
   const hunt = adventure.hunt_objective || {};
-  if (adventure.step === "complete") return {zone: adventure.world.current, point: null, label: "Tutoriel terminé"};
+  if (adventure.step === "complete") {
+    const contract = (adventure.endgame || []).find(item => item.status === "claimable") || (adventure.endgame || []).find(item => item.status === "active");
+    return contract ? {zone: contract.zone || adventure.world.current, point: null, label: `${contract.name} · ${contract.progress}/${contract.count}`} : {zone: adventure.world.current, point: null, label: "Endgame · aucun contrat actif"};
+  }
   if (adventure.quest === "unaccepted") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: `Parler à ${hunt.npc || "Mira"}`};
   if (adventure.quest === "active" && adventure.kills < (adventure.hunt_goal || hunt.count || 1)) return {zone: hunt.zone || adventure.world.current, point: hunt.map || null, label: `${adventure.hunt_name || "Quête"} · ${adventure.kills}/${adventure.hunt_goal || hunt.count || 1}`};
   if (adventure.quest === "active") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: "Rendre la quête"};
