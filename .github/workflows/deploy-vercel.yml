@@ -122,10 +122,19 @@ jobs:
           for key, value in values.items():
               subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive'], input=value, text=True, check=True)
           PY
+      - name: Recuperer la configuration de build du projet exact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: .deploy-tools/node_modules/.bin/vercel pull --yes --environment=production --scope team_qde9V6kikwwSvLtNrjAsAkRY
+      - name: Construire l'artefact de production en CI
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RPG_RELEASE_SHA: ${{ github.sha }}
+        run: .deploy-tools/node_modules/.bin/vercel build --prod
       - name: Preparer la version de production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: .deploy-tools/node_modules/.bin/vercel deploy --prod --skip-domain --yes --env RPG_RELEASE_SHA="$GITHUB_SHA" > deployment-url.txt
+        run: .deploy-tools/node_modules/.bin/vercel deploy --prebuilt --prod --skip-domain --yes --env RPG_RELEASE_SHA="$GITHUB_SHA" > deployment-url.txt
       - name: Verifier les routes et la connexion admin en ligne
         run: python scripts/verify_deployment.py
         env:

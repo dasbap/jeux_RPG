@@ -189,3 +189,27 @@ def test_owner_loss_reports_pending_mutations_before_closing(caplog):
         assert coordinator.owner_pending_drops == count
         assert 'mutations locales en attente' in caplog.text
     asyncio.run(run())
+
+
+def test_simultaneous_owner_loss_does_not_close_store_twice():
+    async def run():
+        class LostLease:
+            calls = 0
+            both_returned = asyncio.Event()
+            async def eval(self, *args):
+                self.calls += 1
+                if self.calls == 2:
+                    self.both_returned.set()
+                return 0
+        store = RuntimeStore(ENV)
+        store.request(message('/api/register', {'name': 'ConcurrentLoss', 'class_name': 'Knight'}))
+        count = len(store.pending)
+        redis = LostLease()
+        coordinator = owner(store, redis)
+        async with coordinator.lock:
+            tasks = [asyncio.create_task(coordinator.elect()) for _ in range(2)]
+            await asyncio.wait_for(redis.both_returned.wait(), 1)
+        await asyncio.gather(*tasks)
+        assert coordinator.store is None
+        assert coordinator.owner_pending_drops == count
+    asyncio.run(run())

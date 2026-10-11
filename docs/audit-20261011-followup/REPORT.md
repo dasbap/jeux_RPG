@@ -7,10 +7,10 @@ Ce rapport répond au fichier fourni `audit_jeux_RPG(2).md`. Il remplace les ét
 | Demande | Résultat et preuve | Limite restante |
 |---|---|---|
 | Protéger master/prod, checks obligatoires | Ruleset GitHub `protected` actif, sans bypass, PR et huit checks Actions requis, branche à jour, suppression/force-push bloqués ; prod ciblée exactement | Paramétrage distant, distinct du code ; zéro approbation humaine exigée dans le ruleset du propriétaire |
-| Protéger le workflow à secrets | Environnement `production`, autorisation de branche prod uniquement, bypass administrateur désactivé | Secrets conservés dans GitHub ; aucune valeur extraite ; administration Turso du workflow limitée aux lectures, migration réservée à la publication sauvegardée |
+| Protéger le workflow à secrets | Environnement `production`, autorisation de branche prod uniquement, bypass administrateur désactivé | Secrets conservés dans GitHub ; aucune valeur extraite ; administration Turso du workflow limitée aux lectures, migration réservée à la publication sauvegardée ; ancien workflow de stockage limité à prod/production, provisionnement automatique retiré et token seulement via environnement |
 | Réconcilier branches/migrations | Référence master actualisée, migration 0003 revue, version 3 et compatibility testées ; publication via PR | La production publique reste sur l’ancien SHA tant que le garde-fou de sauvegarde n’est pas levé |
-| SHA exact, staging puis promotion | Workflow teste son SHA, `--prod --skip-domain`, health exige ce SHA, parcours admin/runtime puis promotion de la même URL | Nouvelle publication non certifiée avant exécution réussie du workflow |
-| Correctifs Redis, fermeture/concurrence | Correctifs antérieurs conservés ; nouveaux tests de checkpoint refusé, Redis puis Turso indisponibles, mutation pendant persist et perte de propriété | Les tests injectés ne certifient pas la disponibilité des fournisseurs réels |
+| SHA exact, staging puis promotion | Workflow teste son SHA, récupère la configuration du projet exact, construit en CI puis publie `--prebuilt --prod --skip-domain`, health exige ce SHA, parcours admin/runtime puis promotion de la même URL | Nouvelle publication non certifiée avant exécution réussie du workflow |
+| Correctifs Redis, fermeture/concurrence | Correctifs antérieurs conservés ; nouveaux tests de checkpoint refusé, Redis puis Turso indisponibles, mutation pendant persist et perte de propriété ; double perte de propriété simultanée reproduite (AttributeError), puis corrigée par revérification du store sous verrou | Les tests injectés ne certifient pas la disponibilité des fournisseurs réels |
 | Pertes silencieuses / compteurs | Refus de checkpoint journalisé, batch non acquitté ; compteurs erreurs, refus, reprises et mutations locales abandonnées lors de perte de propriété | Compteurs par processus, remis à zéro au redémarrage ; premier chargement compte aussi comme reprise |
 | Export Turso et restauration isolée | Nouveau export transactionnel en lecture, fichier privé 0600, rollback source, integrity/FK, comparaison des tables et ouverture du moteur sur copie ; séquences AUTOINCREMENT préservées, y compris après suppression du plus grand ID | Testé avec le protocole Turso simulé, y compris échec d’export et préservation des séquences ; export réel et rétention restent conditionnés à une clé publique du propriétaire |
 | Conserver hors production | Workflow chiffre avec age, publie uniquement `.age`, checksum et rapport sans données, rétention GitHub 30 jours, avant toute migration | Variable publique `RPG_BACKUP_RECIPIENT` absente au contrôle ; aucune archive de comptes en clair publiée |
@@ -26,13 +26,13 @@ Ce rapport répond au fichier fourni `audit_jeux_RPG(2).md`. Il remplace les ét
 | Écritures état inchangé | Capture/pending batch et signatures existants conservés, tests de sauvegarde et mutation concurrente passent | Pas de faux compteur de commandes fournisseur déduit des appels Python |
 | Mesurer Turso/Redis réels | Vérificateur de publication exige runtime mémoire et `trips=0` sur les états, sauvegarde pending à zéro ; consommation Vercel réellement relue | Tableau Vercel Upstash « No data available yet » ; compteurs et latences par opération Turso/Redis distants non certifiés |
 | Frontend hash/cache | URL statiques versionnées, caches conditionnels existants conservés et couverts par tests | Revalidation du nouveau déploiement public attend sa publication |
-| Panneaux/DOM/listeners | Signatures de panneaux conservées ; parcours HUD démontre nœuds et focus stables sur 40 actualisations ; 500 reconnexions avec 1 listener document, 0 timer après fermeture | Socks/horloge simulés ; nouveau contrôle Chromium sur 100 rendus de chauffe + 500 mises à jour, DOM/listeners/heap après GC, à valider dans CI ; aucun remaniement DOM sans preuve de gain |
-| Couverture progressive | 1 604 tests locaux réussis, 8 ignorés, puis quatre tests d’export/rollback réussis ; 77,96 % lignes / 71,08 % branches ; planchers CI 77/70, sans exclusion ajoutée | Objectifs 85/80 pas atteints ; modules transport et autorisations branches prioritaires |
+| Panneaux/DOM/listeners | Signatures de panneaux conservées ; parcours HUD démontre nœuds et focus stables sur 40 actualisations ; 500 reconnexions avec 1 listener document, 0 timer après fermeture | Socks/horloge simulés ; contrôle Chromium vert sur 100 rendus de chauffe + 500 mises à jour, DOM/listeners/heap après GC ; aucun remaniement DOM sans preuve de gain |
+| Couverture progressive | 1 606 tests locaux réussis, 8 ignorés ; 78,22 % lignes / 71,22 % branches ; planchers CI 77/70, sans exclusion ajoutée | Objectifs 85/80 pas atteints ; modules transport et autorisations branches prioritaires |
 | Scénarios sauvegarde/permissions | Tests antérieurs conservés plus nouveaux tests panne, sauvegarde, export et concurrence ; préparations de login revalidées après rotation/suspension et invitations non transférables à un tiers ; CI Redis réel sur trois versions Python | Les scénarios de panne injectés ne sont pas un chaos test de services de production |
 | Tests ignorés | Inventaire explicite ci-dessous ; Redis réel activé dans Actions et éditeur Tk testé sur Windows | Deux modules de carte mis en pause et bot externe toujours indisponibles dans ce dépôt |
-| Dépendances et actions | Actions épinglées à SHA conservées ; versions Ruff/age de distribution officielle ; contraintes existantes conservées | Scan de dépendances ≠ pentest ; aucune certification de sécurité totale |
+| Dépendances et actions | Actions épinglées à SHA conservées ; versions Ruff/age de distribution officielle ; contraintes existantes conservées ; nouveaux scans Python et npm : zéro vulnérabilité connue, relancés par la CI à chaque PR/push protégé | Scan de dépendances ≠ pentest ; aucune certification de sécurité totale |
 | INP/LCP/mémoire téléphone | Parcours automatisés maintenus, aucun chiffre physique inventé | Téléphones réels et lecteur d’écran humain indisponibles ici ; recette manuelle nécessaire |
-| Endurance non productive | 40 combats, 300 s : 12 000 états, 3 000 déplacements, zéro erreur, p95 100,48 ms, RSS max 57,86 Mio | Endurance prolongée de 30 minutes en cours à la préparation de cette PR ; aucune validation 24 h |
+| Endurance non productive | 40 combats, 300 s : 12 000 états, 3 000 déplacements, zéro erreur, p95 100,48 ms, RSS max 57,86 Mio | Endurance 30 min validée : 72 000 états, 18 000 déplacements, 40 combats encore actifs, zéro erreur, p95 61,82 ms, RSS max 58,73 Mio ; aucune validation 24 h |
 | Documentation | README pointe ce rapport ; anciens rapports marqués historiques, preuves retenues | Historique volontairement conservé, pas de suppression de rapports |
 | CI redondante/budgets | Concurrence CI existante conservée ; lint, matrice Python, builder Windows, wheel installé et navigateur ont des objets distincts ; budgets complexité, duplication exacte, dette lint, couverture, chemins et p95 ajoutés ; trois builds de wheel redondants retirés, wheel/sdist/install conservés dans package | Tests de publication conservés pour vérifier le SHA exact ; ils ne sont pas supprimés comme simple doublon |
 
@@ -63,7 +63,7 @@ age-keygen -y rpg-backup.key
 
 Conserver `rpg-backup.key` privé, avec une copie sûre hors de GitHub. Configurer seulement la sortie **publique** `age1…` dans la variable GitHub Actions `RPG_BACKUP_RECIPIENT` (environnement production ou dépôt). Ne pas mettre la clé privée dans les secrets GitHub et ne pas l’envoyer en conversation. Documentation de référence : [age](https://github.com/FiloSottile/age).
 
-Le workflow vérifie la présence de cette variable avant toute écriture de production. Après configuration, lancer `Publication Vercel jeux-rpg` sur prod : tests exacts → export Turso en lecture → restauration isolée → chiffrement → upload réussi → migration additive → staging → health/parcours → promotion. Toute étape échouée empêche la promotion. Une variable non vide mais mal formée échoue au chiffrement avant migration. La sauvegarde ne modifie pas la source ; la copie est supprimée du runner, l’archive chiffrée reste 30 jours dans Actions. La rétention n’est pas un archivage éternel : télécharger les archives nécessaires avant expiration.
+Le workflow vérifie la présence de cette variable avant toute écriture de production. Après configuration, lancer `Publication Vercel jeux-rpg` sur prod : tests exacts → export Turso en lecture → restauration isolée → chiffrement → upload réussi → migration additive → build CI du projet exact → staging préconstruit → health/parcours → promotion. Toute étape échouée empêche la promotion. Une variable non vide mais mal formée échoue au chiffrement avant migration. La sauvegarde ne modifie pas la source ; la copie est supprimée du runner, l’archive chiffrée reste 30 jours dans Actions. La rétention n’est pas un archivage éternel : télécharger les archives nécessaires avant expiration.
 
 Pour vérifier une archive téléchargée :
 
@@ -72,6 +72,8 @@ sha256sum -c backup-checksum.txt
 age -d -i rpg-backup.key -o restored.sqlite3 production-before.sqlite3.age
 python scripts/verify_backup.py restored.sqlite3
 ```
+
+Les comptes et tokens de production ne sont jamais utilisés dans les fixtures d’endurance.
 
 Les fixtures CI testent la chaîne de chiffrement/déchiffrement ; elles n’ont pas accès à la clé privée du propriétaire. Le déchiffrement d’une archive réelle par cette identité doit donc être confirmé par le propriétaire. Ne pas remplacer la base de production pour faire ce contrôle.
 
@@ -93,3 +95,9 @@ Le score 76/100 fourni et l’objectif 85–90 restent des appréciations du doc
 ## Validation GitHub intermédiaire
 
 PR #39, tête `f4180702740e303e06c07f159ae6f89e9840ac32` : huit checks verts, runs 38144492651 (lint), 38144492619 (package), 38144492625 (performance), 38144492620 (matrice Python, Windows, UI). La fixture age chiffre/déchiffre avec succès ; couverture CI 3.12 : 78,33 % lignes / 71,48 % branches. Ces résultats ne remplacent pas les checks de la tête finale.
+
+## Deuxième validation GitHub
+
+Tête `426019f1f23d4b27e689d5b852df4147b8d7f097` : huit checks verts (runs 38145285922, 38145285920, 38145285903, 38145286094). Python 3.12 : 1 606 réussis, 7 ignorés, couverture 78,36 % lignes / 71,55 % branches. Redis réel couvre le scénario localement ignoré. Les trois viewports Chromium passent les budgets mémoire : listeners inchangés, 18 nœuds de moins après GC, heap retenu +2,44 à +2,64 %. Il ne s’agit pas d’INP sur un téléphone physique.
+
+L’endurance de 30 minutes est isolée sur SQLite/HTTP local, à 40 lectures par seconde au total et déplacements toutes les quatre secondes. Les 30 échantillons confirment 40 combats actifs et serveur/ticker vivants. Le RSS maximal croît de 54,61 à 58,73 Mio ; cette croissance observée ne démontre pas l’absence de fuite sur 24 heures. Aucun trafic de charge n’a été envoyé à la production.

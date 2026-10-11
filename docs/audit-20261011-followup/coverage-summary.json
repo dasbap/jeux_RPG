@@ -1,18 +1,18 @@
 {
   "totals": {
-    "covered_lines": 11669,
-    "num_statements": 14968,
-    "percent_covered": 75.94799054373523,
+    "covered_lines": 11709,
+    "num_statements": 14970,
+    "percent_covered": 76.16999149097097,
     "percent_covered_display": "76",
-    "missing_lines": 3299,
+    "missing_lines": 3261,
     "excluded_lines": 35,
-    "percent_statements_covered": 77.95964724746125,
+    "percent_statements_covered": 78.21643286573146,
     "percent_statements_covered_display": "78",
-    "num_branches": 6182,
-    "num_partial_branches": 934,
-    "covered_branches": 4394,
-    "missing_branches": 1788,
-    "percent_branches_covered": 71.0773212552572,
+    "num_branches": 6184,
+    "num_partial_branches": 926,
+    "covered_branches": 4404,
+    "missing_branches": 1780,
+    "percent_branches_covered": 71.21604139715394,
     "percent_branches_covered_display": "71"
   },
   "critical": {
@@ -33,20 +33,20 @@
       "percent_branches_covered_display": "76"
     },
     "jeuxRPG/multiplayer/realtime.py": {
-      "covered_lines": 399,
-      "num_statements": 537,
-      "percent_covered": 70.83906464924347,
-      "percent_covered_display": "71",
-      "missing_lines": 138,
+      "covered_lines": 439,
+      "num_statements": 539,
+      "percent_covered": 77.29138166894664,
+      "percent_covered_display": "77",
+      "missing_lines": 100,
       "excluded_lines": 0,
-      "percent_statements_covered": 74.30167597765363,
-      "percent_statements_covered_display": "74",
-      "num_branches": 190,
-      "num_partial_branches": 40,
-      "covered_branches": 116,
-      "missing_branches": 74,
-      "percent_branches_covered": 61.05263157894737,
-      "percent_branches_covered_display": "61"
+      "percent_statements_covered": 81.44712430426716,
+      "percent_statements_covered_display": "81",
+      "num_branches": 192,
+      "num_partial_branches": 32,
+      "covered_branches": 126,
+      "missing_branches": 66,
+      "percent_branches_covered": 65.625,
+      "percent_branches_covered_display": "66"
     },
     "jeuxRPG/multiplayer/realtime_store.py": {
       "covered_lines": 188,
@@ -98,10 +98,9 @@
     }
   },
   "tests": {
-    "passed": 1604,
+    "passed": 1606,
     "skipped": 8,
     "python": "3.12.14",
-    "additional_check": "4 backup tests passed after adding rollback-failure regression",
     "redis_environment": "not configured locally; enabled in GitHub CI"
   }
 }

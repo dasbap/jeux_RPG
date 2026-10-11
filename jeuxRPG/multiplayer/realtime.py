@@ -147,6 +147,8 @@ class Coordinator:
             self.deadline = 0
             if self.store is not None:
                 async with self.lock:
+                    if self.store is None:
+                        return
                     count = len(self.store.pending)
                     if count:
                         self.owner_pending_drops += count
