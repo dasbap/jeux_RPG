@@ -38,6 +38,8 @@ async function client(html, app, name, className) {
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", error => errors.push(error.message));
   const dom = new JSDOM(html, {url: origin, runScripts: "outside-only", virtualConsole, pretendToBeVisual: true});
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+  dom.window.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
   clients.push(dom);
   dom.pollTimers = [];
   const startInterval = dom.window.setInterval.bind(dom.window);
@@ -314,11 +316,12 @@ async function main() {
     const forgeMove = [...el(first, "point-actions").querySelectorAll("button")].find(button => button.textContent === "Se déplacer à ce point");
     assert(forgeMove, "Accès rapide à Garrik depuis la carte détaillée");
     forgeMove.click();
-    await waitFor(() => !el(first, "craft-view").hidden && !el(first, "npc-view").hidden, "arrivée rapide à la forge");
+    await waitFor(() => !el(first, "npc-view").hidden, "arrivée rapide à la forge");
     assert.match(el(first, "npc-title").textContent, /Garrik/);
     assert.match(el(first, "npc-actions").textContent, /Parler/);
     el(first, "npc-actions").querySelector("button").click();
     await waitFor(() => /forge de Rosée/.test(el(first, "message").textContent), "dialogue Garrik");
+    assert.equal(el(first, "craft-view").open, true);
     assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
     assert([...el(first, "forge-catalogue").querySelectorAll("button")].every(b => b.disabled));
     await move(first, "hunt");
@@ -329,7 +332,7 @@ async function main() {
     await move(first, "mira");
     await command(first, "talk", {npc: "mira"});
     await move(first, "forge");
-    await waitFor(() => !el(first, "craft-view").hidden && !el(second, "craft-view").hidden, "forge partagée");
+    await waitFor(() => !el(first, "npc-view").hidden && !el(second, "npc-view").hidden, "forge partagée");
     assert.equal(el(first, "forge-catalogue").children.length, 6);
     assert(el(first, "forge-catalogue").textContent.includes("+2 intelligence"));
     assert(el(first, "forge-catalogue").textContent.includes("+2 force"));

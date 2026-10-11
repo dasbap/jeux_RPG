@@ -93,8 +93,8 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("quest-view").hidden = currentView !== "quest";
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
-  $("craft-view").hidden = !atForge;
-  for (const id of ["npc-view", "craft-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
+  if (!atForge && $("craft-view").open) $("craft-view").close();
+  for (const id of ["npc-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
   const questParent = document.querySelector(".quest-box");
   if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
@@ -175,7 +175,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   const talkingToMira = nearbyNpc?.id === "mira";
   $("npc-title").textContent = nearbyNpc ? `Parler à ${nearbyNpc.name}` : "Dialogue";
   $("npc-dialogue").textContent = nearbyNpc && !talkingToMira ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
-  if (canTalk && nearbyNpc && !talkingToMira) action("npc-actions", "Parler", "talk", {npc: nearbyNpc.id});
+  if (canTalk && nearbyNpc && !talkingToMira) action("npc-actions", nearbyNpc.id === "forge" ? "Parler à Garrik · ouvrir la forge" : "Parler", "talk", {npc: nearbyNpc.id});
   else if (canTalk && talkingToMira && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
   button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : "Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +10.";
@@ -186,8 +186,10 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("forge-catalogue").replaceChildren();
   if (atForge) for (const recipe of me.forge) {
     const card = document.createElement("article"); card.className = "codex-card"; card.dataset.recipe = recipe.recipe;
+    if (adventure.step === "craft" && recipe.slot === "torso") { card.classList.add("quest-recipe"); const goal = document.createElement("p"); goal.textContent = "Objectif de Mira"; card.append(goal); }
     const title = document.createElement("h4"); title.textContent = recipe.equipped ? `${recipe.equipped.name} +${recipe.equipped.level}` : recipe.name; card.append(title);
     const info = document.createElement("p"); info.textContent = recipe.cost ? `Coût : ${Object.entries(recipe.cost).map(([k,v]) => `${v} ${k}`).join(", ")}` : "Amélioration maximale +10 atteinte."; card.append(info);
+    if (recipe.cost && !recipe.affordable) { const missing = document.createElement("p"); missing.textContent = `Il manque : ${Object.entries(recipe.cost).filter(([item, quantity]) => (me.inventory[item] || 0) < quantity).map(([item, quantity]) => `${quantity - (me.inventory[item] || 0)} ${item}`).join(", ")}.`; card.append(missing); }
     const bonus = document.createElement("p"); bonus.textContent = `Bonus : ${equipmentBonuses(recipe.equipped || recipe)}.`; card.append(bonus);
     const adjective = document.createElement("p"); adjective.textContent = `À +10 : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
     if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = recipe.equipped ? "upgrade" : "craft"; craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
