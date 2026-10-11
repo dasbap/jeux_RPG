@@ -316,7 +316,7 @@ async function main() {
     const forgeMove = [...el(first, "point-actions").querySelectorAll("button")].find(button => button.textContent === "Se déplacer à ce point");
     assert(forgeMove, "Accès rapide à Garrik depuis la carte détaillée");
     forgeMove.click();
-    await waitFor(() => !el(first, "npc-view").hidden, "arrivée rapide à la forge");
+    await waitFor(() => !el(first, "npc-view").hidden && /Garrik/.test(el(first, "npc-title").textContent), "arrivée rapide à la forge");
     assert.match(el(first, "npc-title").textContent, /Garrik/);
     assert.match(el(first, "npc-actions").textContent, /Parler/);
     el(first, "npc-actions").querySelector("button").click();
@@ -332,7 +332,7 @@ async function main() {
     await move(first, "mira");
     await command(first, "talk", {npc: "mira"});
     await move(first, "forge");
-    await waitFor(() => !el(first, "npc-view").hidden && !el(second, "npc-view").hidden, "forge partagée");
+    await waitFor(() => /Garrik/.test(el(first, "npc-title").textContent) && /Garrik/.test(el(second, "npc-title").textContent), "forge partagée");
     assert.equal(el(first, "forge-catalogue").children.length, 6);
     assert(el(first, "forge-catalogue").textContent.includes("+2 intelligence"));
     assert(el(first, "forge-catalogue").textContent.includes("+2 force"));
