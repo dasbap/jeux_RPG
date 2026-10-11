@@ -106,3 +106,86 @@ def test_command_waits_for_release_and_refuses_closed_owner():
         assert (await command)['status'] == 503
         assert coordinator.store is None
     asyncio.run(run())
+
+
+def test_checkpoint_rejection_never_acknowledges_or_persists(monkeypatch):
+    async def run():
+        store = RuntimeStore(ENV)
+        store.request(message('/api/register', {'name': 'Pending', 'class_name': 'Knight'}))
+        class RejectedRedis:
+            async def eval(self, *args):
+                return 0
+        coordinator = owner(store, RejectedRedis())
+        def forbidden(*args):
+            raise AssertionError('Rejected lease must not persist')
+        monkeypatch.setattr(store, 'persist', forbidden)
+        batch = store.pending_batch()
+        await coordinator.save(store, batch, store.snapshot(), 1)
+        assert store.pending == batch and store.last_save_error
+        assert coordinator.checkpoint_rejections == 1
+        assert store.due is not None and store.save_count == 0
+        store.close()
+    asyncio.run(run())
+
+
+def test_combined_redis_turso_failures_then_retry_preserves_mutations(monkeypatch):
+    async def run():
+        store = RuntimeStore(ENV)
+        store.request(message('/api/register', {'name': 'Recovery', 'class_name': 'Knight'}))
+        class FlakyRedis:
+            failures = 1
+            async def eval(self, *args):
+                if self.failures:
+                    self.failures -= 1
+                    raise TimeoutError('isolated Redis outage')
+                return 1
+        coordinator = owner(store, FlakyRedis())
+        calls = []
+        def persist(fence, batch):
+            calls.append(batch)
+            if len(calls) == 1:
+                raise OSError('isolated Turso outage')
+        monkeypatch.setattr(store, 'persist', persist)
+        original = store.pending_batch()
+        for _ in range(2):
+            await coordinator.save(store, original, store.snapshot(), 1)
+            assert store.pending == original and store.last_save_error
+        await coordinator.save(store, original, store.snapshot(), 1)
+        assert not store.pending and store.save_count == 1
+        assert coordinator.save_failures == 2 and calls[1] == original
+        store.close()
+    asyncio.run(run())
+
+
+def test_save_does_not_remove_mutation_that_arrives_during_persistence(monkeypatch):
+    async def run():
+        store = RuntimeStore(ENV)
+        store.request(message('/api/register', {'name': 'Concurrent', 'class_name': 'Knight'}))
+        coordinator = Coordinator(ENV, store=store)
+        original = store.pending_batch()
+        key = next(key for key in original if key[0] == 'players')
+        def persist(fence, batch):
+            store.pending[key] = {**batch[key], 'name': 'Later'}
+        monkeypatch.setattr(store, 'persist', persist)
+        await coordinator.save(store, original, store.snapshot(), 1)
+        assert store.pending[key]['name'] == 'Later'
+        assert store.save_count == 1
+        store.close()
+    asyncio.run(run())
+
+
+def test_owner_loss_reports_pending_mutations_before_closing(caplog):
+    async def run():
+        class LostLease:
+            async def eval(self, *args):
+                return 0
+        store = RuntimeStore(ENV)
+        store.request(message('/api/register', {'name': 'LostOwner', 'class_name': 'Knight'}))
+        count = len(store.pending)
+        assert count > 0
+        coordinator = owner(store, LostLease())
+        await coordinator.elect()
+        assert coordinator.store is None and not coordinator.owner()
+        assert coordinator.owner_pending_drops == count
+        assert 'mutations locales en attente' in caplog.text
+    asyncio.run(run())

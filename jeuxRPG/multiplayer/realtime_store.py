@@ -5,33 +5,101 @@ import time
 from copy import deepcopy
 
 from .schema import initialize
+from .protocol_types import RuntimeMessage, RuntimeResponse, PendingBatch
 from .serverless import Application, RemoteGameService
 from .turso import TursoConnection
 from .world import zone_of
 
 
-SOCIAL_TABLES = ('accounts', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'guilds', 'guild_members', 'guild_invites')
-TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'guilds', 'guild_members', 'guild_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'receipt_expiry', 'admin_audit')
-KEYS = {'accounts': ('id',), 'account_characters': ('account_id', 'class_name'), 'account_sessions': ('token_hash',), 'friendships': ('first_id', 'second_id'), 'teams': ('id',), 'team_members': ('account_id',), 'team_invites': ('id',), 'guilds': ('id',), 'guild_members': ('account_id',), 'guild_invites': ('id',), 'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
-        'members': ('session_id', 'player_id'), 'tutorials': ('session_id',), 'events': ('id',),
-        'receipts': ('player_id', 'request_id'), 'receipt_expiry': ('player_id', 'request_id'), 'admin_audit': ('id',)}
+SOCIAL_TABLES = (
+    "accounts",
+    "account_characters",
+    "account_sessions",
+    "friendships",
+    "teams",
+    "team_members",
+    "team_invites",
+    "guilds",
+    "guild_members",
+    "guild_invites",
+)
+TABLES = (
+    "meta",
+    "accounts",
+    "players",
+    "account_characters",
+    "account_sessions",
+    "friendships",
+    "teams",
+    "team_members",
+    "team_invites",
+    "guilds",
+    "guild_members",
+    "guild_invites",
+    "account_status",
+    "sessions",
+    "members",
+    "tutorials",
+    "events",
+    "receipts",
+    "receipt_expiry",
+    "admin_audit",
+)
+KEYS = {
+    "accounts": ("id",),
+    "account_characters": ("account_id", "class_name"),
+    "account_sessions": ("token_hash",),
+    "friendships": ("first_id", "second_id"),
+    "teams": ("id",),
+    "team_members": ("account_id",),
+    "team_invites": ("id",),
+    "guilds": ("id",),
+    "guild_members": ("account_id",),
+    "guild_invites": ("id",),
+    "meta": ("key",),
+    "players": ("id",),
+    "account_status": ("player_id",),
+    "sessions": ("id",),
+    "members": ("session_id", "player_id"),
+    "tutorials": ("session_id",),
+    "events": ("id",),
+    "receipts": ("player_id", "request_id"),
+    "receipt_expiry": ("player_id", "request_id"),
+    "admin_audit": ("id",),
+}
 
 
 def progress_signature(party):
-    quests = {key: {'status': value.get('status'), 'progress': value.get('progress', 0)}
-              for key, value in sorted(party.get('custom_quests', {}).items())}
-    value = {'inventory': party.get('inventory'), 'equipment': party.get('equipment'),
-             'characters': {key: [value.get('name'), value.get('level'), value.get('exp')] for key, value in party.get('characters', {}).items()},
-             'quests': [party.get('quest'), quests],
-             'zone': zone_of(party.get('position')) or zone_of(party.get('field_map')),
-             'checkpoint': party.get('autosave_checkpoint')}
-    return json.dumps(value, sort_keys=True, separators=(',', ':'))
+    quests = {
+        key: {"status": value.get("status"), "progress": value.get("progress", 0)}
+        for key, value in sorted(party.get("custom_quests", {}).items())
+    }
+    value = {
+        "inventory": party.get("inventory"),
+        "equipment": party.get("equipment"),
+        "characters": {
+            key: [value.get("name"), value.get("level"), value.get("exp")]
+            for key, value in party.get("characters", {}).items()
+        },
+        "quests": [party.get("quest"), quests],
+        "zone": zone_of(party.get("position")) or zone_of(party.get("field_map")),
+        "checkpoint": party.get("autosave_checkpoint"),
+    }
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 class MemoryService(RemoteGameService):
     def tick(self, session_id=None):
         if session_id is None:
-            players = None if self.legacy_auth else {key for key, value in self.runtime_presence.items() if time.time() - value['seen'] < 60}
+            players = (
+                None
+                if self.legacy_auth
+                else {
+                    key
+                    for key, value in self.runtime_presence.items()
+                    if time.time() - value["seen"] < 60
+                }
+            )
             super().tick(prepare_views=False, active_players=players)
 
     def close(self):
@@ -41,27 +109,46 @@ class MemoryService(RemoteGameService):
 class RuntimeStore:
     def __init__(self, environment, durable=None, clock=None):
         self.environment = environment
-        self.db = sqlite3.connect(':memory:', check_same_thread=False, isolation_level=None)
+        self.db = sqlite3.connect(
+            ":memory:", check_same_thread=False, isolation_level=None
+        )
         self.db.row_factory = sqlite3.Row
         initialize(self.db)
-        self.db.execute('PRAGMA foreign_keys=ON')
+        self.db.execute("PRAGMA foreign_keys=ON")
         if durable:
             for table in TABLES:
                 for row in durable.get(table, []):
                     columns = list(row)
-                    self.db.execute(f'INSERT INTO {table} ({",".join(columns)}) VALUES ({",".join("?" for _ in columns)})', tuple(row.values()))
-        self.db.execute("INSERT OR IGNORE INTO receipt_expiry SELECT player_id,request_id,strftime('%s','now')+900 FROM receipts")
-        self.service = MemoryService(connection=self.db, log_directory='-', clock=clock)
-        self.service.legacy_auth = not bool(environment.get('VERCEL'))
-        self.service.realm_count = max(1, min(3, int(environment.get('RPG_RUNTIME_REALMS', '1'))))
+                    self.db.execute(
+                        f"INSERT INTO {table} ({','.join(columns)}) VALUES ({','.join('?' for _ in columns)})",
+                        tuple(row.values()),
+                    )
+        self.db.execute(
+            "INSERT OR IGNORE INTO receipt_expiry SELECT player_id,request_id,strftime('%s','now')+900 FROM receipts"
+        )
+        self.service = MemoryService(connection=self.db, log_directory="-", clock=clock)
+        self.service.legacy_auth = not bool(environment.get("VERCEL"))
+        self.service.realm_count = max(
+            1, min(3, int(environment.get("RPG_RUNTIME_REALMS", "1")))
+        )
         self.app = Application(lambda: self.service, environment)
         self.durable = {table: self.rows(table) for table in TABLES}
-        self.journal_rows = {table: {(row['player_id'], row['request_id']): row for row in self.durable[table]} for table in ('receipts', 'receipt_expiry')}
-        self.db.execute('CREATE TEMP TABLE journal_changes(table_name TEXT, player_id TEXT, request_id TEXT, PRIMARY KEY(table_name,player_id,request_id))')
+        self.journal_rows = {
+            table: {
+                (row["player_id"], row["request_id"]): row
+                for row in self.durable[table]
+            }
+            for table in ("receipts", "receipt_expiry")
+        }
+        self.db.execute(
+            "CREATE TEMP TABLE journal_changes(table_name TEXT, player_id TEXT, request_id TEXT, PRIMARY KEY(table_name,player_id,request_id))"
+        )
         for table in self.journal_rows:
-            for operation in ('INSERT', 'UPDATE', 'DELETE'):
-                source = 'OLD' if operation == 'DELETE' else 'NEW'
-                self.db.execute(f"CREATE TEMP TRIGGER track_{table}_{operation} AFTER {operation} ON main.{table} BEGIN INSERT OR IGNORE INTO journal_changes VALUES ('{table}', {source}.player_id, {source}.request_id); END")
+            for operation in ("INSERT", "UPDATE", "DELETE"):
+                source = "OLD" if operation == "DELETE" else "NEW"
+                self.db.execute(
+                    f"CREATE TEMP TRIGGER track_{table}_{operation} AFTER {operation} ON main.{table} BEGIN INSERT OR IGNORE INTO journal_changes VALUES ('{table}', {source}.player_id, {source}.request_id); END"
+                )
         self.signatures = self.session_signatures()
         self.pending = {}
         self.due = None
@@ -72,15 +159,28 @@ class RuntimeStore:
 
     @classmethod
     def load(cls, environment):
-        connection = TursoConnection(environment['TURSO_DATABASE_URL'], environment['TURSO_AUTH_TOKEN'])
+        connection = TursoConnection(
+            environment["TURSO_DATABASE_URL"], environment["TURSO_AUTH_TOKEN"]
+        )
         try:
             initialize(connection)
             reset = False
-            if environment.get("RPG_RESET_TEST_PLAYERS") == "1" and not environment.get("VERCEL"):
+            if environment.get("RPG_RESET_TEST_PLAYERS") == "1" and not environment.get(
+                "VERCEL"
+            ):
                 from .account_rollout import reset_test_players
+
                 reset = reset_test_players(connection)
-            results = connection.execute_many([(f'SELECT * FROM {table}', ()) for table in TABLES])
-            store = cls(environment, {table: [dict(row) for row in rows] for table, rows in zip(TABLES, results)})
+            results = connection.execute_many(
+                [(f"SELECT * FROM {table}", ()) for table in TABLES]
+            )
+            store = cls(
+                environment,
+                {
+                    table: [dict(row) for row in rows]
+                    for table, rows in zip(TABLES, results, strict=True)
+                },
+            )
             store.reset_performed = reset
             return store
         finally:
@@ -88,21 +188,36 @@ class RuntimeStore:
 
     def rows(self, table, session_id=None):
         if session_id is not None:
-            column = 'id' if table == 'sessions' else 'session_id'
-            return [dict(row) for row in self.db.execute(f'SELECT * FROM {table} WHERE {column}=?', (session_id,))]
-        return [dict(row) for row in self.db.execute(f'SELECT * FROM {table}')]
+            column = "id" if table == "sessions" else "session_id"
+            return [
+                dict(row)
+                for row in self.db.execute(
+                    f"SELECT * FROM {table} WHERE {column}=?", (session_id,)
+                )
+            ]
+        return [dict(row) for row in self.db.execute(f"SELECT * FROM {table}")]
 
     def session_signatures(self, only=None):
         result = {}
         parameters = tuple(only) if only is not None else ()
         if only is not None and not parameters:
             return result
-        query = 'SELECT s.id,s.state,t.data FROM sessions s LEFT JOIN tutorials t ON t.session_id=s.id'
+        query = "SELECT s.id,s.state,t.data FROM sessions s LEFT JOIN tutorials t ON t.session_id=s.id"
         if only is not None:
-            query += ' WHERE s.id IN (' + ','.join('?' for _ in parameters) + ')'
+            query += " WHERE s.id IN (" + ",".join("?" for _ in parameters) + ")"
         for row in self.db.execute(query, parameters):
-            members = tuple(item[0] for item in self.db.execute('SELECT player_id FROM members WHERE session_id=? ORDER BY player_id', (row['id'],)))
-            result[row['id']] = (members, bool(row['data']), progress_signature(json.loads(row['data'])) if row['data'] else None)
+            members = tuple(
+                item[0]
+                for item in self.db.execute(
+                    "SELECT player_id FROM members WHERE session_id=? ORDER BY player_id",
+                    (row["id"],),
+                )
+            )
+            result[row["id"]] = (
+                members,
+                bool(row["data"]),
+                progress_signature(json.loads(row["data"])) if row["data"] else None,
+            )
         return result
 
     def capture(self, now=None, dirty_only=False):
@@ -110,9 +225,13 @@ class RuntimeStore:
         social_tables = SOCIAL_TABLES if self.service.persistent_social_changed else ()
         self.service.persistent_social_changed = False
         changed_journals = set()
-        for table, player_id, request_id in self.db.execute('SELECT * FROM journal_changes').fetchall():
+        for table, player_id, request_id in self.db.execute(
+            "SELECT * FROM journal_changes"
+        ).fetchall():
             key = (player_id, request_id)
-            row = self.db.execute(f'SELECT * FROM {table} WHERE player_id=? AND request_id=?', key).fetchone()
+            row = self.db.execute(
+                f"SELECT * FROM {table} WHERE player_id=? AND request_id=?", key
+            ).fetchone()
             current = dict(row) if row is not None else None
             if self.journal_rows[table].get(key) != current:
                 self.pending[(table, key)] = current
@@ -121,13 +240,18 @@ class RuntimeStore:
                 else:
                     self.journal_rows[table][key] = current
                 changed_journals.add(table)
-        self.db.execute('DELETE FROM journal_changes')
+        self.db.execute("DELETE FROM journal_changes")
         for table in changed_journals:
             self.durable[table] = list(self.journal_rows[table].values())
-        for table in ('players', 'account_status', 'admin_audit', *social_tables):
-            old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
+        for table in ("players", "account_status", "admin_audit", *social_tables):
+            old = {
+                tuple(row[key] for key in KEYS[table]): row
+                for row in self.durable[table]
+            }
             current = self.rows(table)
-            current_keys = {tuple(row[value] for value in KEYS[table]) for row in current}
+            current_keys = {
+                tuple(row[value] for value in KEYS[table]) for row in current
+            }
             for key in old.keys() - current_keys:
                 self.pending[(table, key)] = None
                 del old[key]
@@ -137,14 +261,19 @@ class RuntimeStore:
                     self.pending[(table, key)] = row
                     old[key] = row
             self.durable[table] = list(old.values())
-        updates = self.session_signatures(self.service.dirty_sessions if dirty_only else None)
+        updates = self.session_signatures(
+            self.service.dirty_sessions if dirty_only else None
+        )
         self.service.dirty_sessions.clear()
         signatures = {**self.signatures, **updates} if dirty_only else updates
         for session_id, signature in signatures.items():
             if self.signatures.get(session_id) == signature:
                 continue
-            for table in ('sessions', 'members', 'tutorials', 'events'):
-                old = {tuple(row[key] for key in KEYS[table]): row for row in self.durable[table]}
+            for table in ("sessions", "members", "tutorials", "events"):
+                old = {
+                    tuple(row[key] for key in KEYS[table]): row
+                    for row in self.durable[table]
+                }
                 for row in self.rows(table, session_id):
                     key = tuple(row[value] for value in KEYS[table])
                     if old.get(key) != row:
@@ -152,79 +281,138 @@ class RuntimeStore:
                     old[key] = row
                 self.durable[table] = list(old.values())
         self.signatures = signatures
-        if self.pending and (self.due is None or signatures != getattr(self, "captured_signatures", None)):
+        if self.pending and (
+            self.due is None or signatures != getattr(self, "captured_signatures", None)
+        ):
             self.captured_signatures = dict(signatures)
-            self.durable['meta'] = self.rows('meta')
-            for row in self.durable['meta']:
-                self.pending[('meta', (row['key'],))] = row
+            self.durable["meta"] = self.rows("meta")
+            for row in self.durable["meta"]:
+                self.pending[("meta", (row["key"],))] = row
             if self.due is None:
                 self.due = now + 5
         self.observed_changes = self.db.total_changes
 
-    def request(self, message, prepared_login=None):
-        if self.db.total_changes != self.observed_changes and not self.service.dirty_sessions and not self.service.persistent_social_changed:
+    def request(self, message: RuntimeMessage, prepared_login=None) -> RuntimeResponse:
+        if (
+            self.db.total_changes != self.observed_changes
+            and not self.service.dirty_sessions
+            and not self.service.persistent_social_changed
+        ):
             self.capture()
-        raw = json.dumps(message.get('body')).encode() if message.get('body') is not None else b''
-        path, _, query = message['path'].partition('?')
-        environment = {'PATH_INFO': path, 'QUERY_STRING': query, 'REQUEST_METHOD': message.get('method', 'GET'),
-                       'HTTP_HOST': message['host'], 'REMOTE_ADDR': message['peer'], 'wsgi.url_scheme': message.get('scheme', 'https'),
-                       'wsgi.input': io.BytesIO(raw), 'CONTENT_TYPE': 'application/json', 'CONTENT_LENGTH': str(len(raw))}
-        for key, value in message.get('headers', {}).items():
-            environment['HTTP_' + key.upper().replace('-', '_')] = value
-        environment['rpg.prepared_login'] = prepared_login
+        raw = (
+            json.dumps(message.get("body")).encode()
+            if message.get("body") is not None
+            else b""
+        )
+        path, _, query = message["path"].partition("?")
+        environment = {
+            "PATH_INFO": path,
+            "QUERY_STRING": query,
+            "REQUEST_METHOD": message.get("method", "GET"),
+            "HTTP_HOST": message["host"],
+            "REMOTE_ADDR": message["peer"],
+            "wsgi.url_scheme": message.get("scheme", "https"),
+            "wsgi.input": io.BytesIO(raw),
+            "CONTENT_TYPE": "application/json",
+            "CONTENT_LENGTH": str(len(raw)),
+        }
+        for key, value in message.get("headers", {}).items():
+            environment["HTTP_" + key.upper().replace("-", "_")] = value
+        environment["rpg.prepared_login"] = prepared_login
         result = {}
+
         def start(status, headers):
             result.update(status=int(status.split()[0]), headers=dict(headers))
-        body = b''.join(self.app(environment, start))
-        result['body'] = json.loads(body) if result['headers']['Content-Type'].startswith('application/json') else body.decode()
-        result['headers']['X-RPG-Runtime'] = 'memory'
-        if self.environment.get('RPG_RESET_TEST_PLAYERS') == '1' and self.db.execute("SELECT 1 FROM meta WHERE key='test_players_reset_accounts_v1' AND value='done'").fetchone():
-            result['headers']['X-RPG-Legacy-Tests-Reset'] = '1'
+
+        body = b"".join(self.app(environment, start))
+        result["body"] = (
+            json.loads(body)
+            if result["headers"]["Content-Type"].startswith("application/json")
+            else body.decode()
+        )
+        result["headers"]["X-RPG-Runtime"] = "memory"
+        if (
+            self.environment.get("RPG_RESET_TEST_PLAYERS") == "1"
+            and self.db.execute(
+                "SELECT 1 FROM meta WHERE key='test_players_reset_accounts_v1' AND value='done'"
+            ).fetchone()
+        ):
+            result["headers"]["X-RPG-Legacy-Tests-Reset"] = "1"
         self.capture(dirty_only=True)
-        if path == '/api/state' and result['status'] == 200:
-            result['headers']['X-RPG-Save-Pending'] = '1' if self.pending else '0'
-            result['headers']['X-RPG-Save-Count'] = str(self.save_count)
+        if path == "/api/state" and result["status"] == 200:
+            result["headers"]["X-RPG-Save-Pending"] = "1" if self.pending else "0"
+            result["headers"]["X-RPG-Save-Count"] = str(self.save_count)
         return result
 
     def tick(self):
-        if self.db.total_changes != self.observed_changes and not self.service.dirty_sessions and not self.service.persistent_social_changed:
+        if (
+            self.db.total_changes != self.observed_changes
+            and not self.service.dirty_sessions
+            and not self.service.persistent_social_changed
+        ):
             self.capture()
         self.service.tick()
         self.capture(dirty_only=True)
 
     def snapshot(self):
-        return json.dumps(self.durable, separators=(',', ':'))
+        return json.dumps(self.durable, separators=(",", ":"))
 
-    def pending_batch(self):
+    def pending_batch(self) -> PendingBatch:
         return deepcopy(self.pending)
 
-    def persist(self, fence, batch):
-        connection = TursoConnection(self.environment['TURSO_DATABASE_URL'], self.environment['TURSO_AUTH_TOKEN'])
+    def persist(self, fence: int, batch: PendingBatch) -> None:
+        connection = TursoConnection(
+            self.environment["TURSO_DATABASE_URL"], self.environment["TURSO_AUTH_TOKEN"]
+        )
         try:
             if not self.schema_ready:
                 initialize(connection)
                 self.schema_ready = True
-            current = connection.execute_many([('BEGIN IMMEDIATE', ()), ("SELECT value FROM meta WHERE key='runtime_fence'", ())])[-1].fetchone()
+            current = connection.execute_many(
+                [
+                    ("BEGIN IMMEDIATE", ()),
+                    ("SELECT value FROM meta WHERE key='runtime_fence'", ()),
+                ]
+            )[-1].fetchone()
             if current and int(current[0]) > fence:
-                raise RuntimeError('Moteur remplacé')
-            statements = [("INSERT INTO meta VALUES('runtime_fence',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(fence),))]
+                raise RuntimeError("Moteur remplacé")
+            statements = [
+                (
+                    "INSERT INTO meta VALUES('runtime_fence',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (str(fence),),
+                )
+            ]
             for table in TABLES:
                 for (target, key), row in batch.items():
-                    if target != table or table == 'meta' and row and row['key'] == 'runtime_fence':
+                    if (
+                        target != table
+                        or table == "meta"
+                        and row
+                        and row["key"] == "runtime_fence"
+                    ):
                         continue
                     if row is None:
-                        where = ' AND '.join(f'{column}=?' for column in KEYS[table])
-                        statements.append((f'DELETE FROM {table} WHERE {where}', key))
+                        where = " AND ".join(f"{column}=?" for column in KEYS[table])
+                        statements.append((f"DELETE FROM {table} WHERE {where}", key))
                         continue
                     columns = list(row)
-                    updates = ','.join(f'{column}=excluded.{column}' for column in columns if column not in KEYS[table])
-                    statements.append((f'INSERT INTO {table} ({",".join(columns)}) VALUES ({",".join("?" for _ in columns)}) ON CONFLICT({",".join(KEYS[table])}) DO UPDATE SET {updates}', tuple(row.values())))
-            statements.append(('COMMIT', ()))
+                    updates = ",".join(
+                        f"{column}=excluded.{column}"
+                        for column in columns
+                        if column not in KEYS[table]
+                    )
+                    statements.append(
+                        (
+                            f"INSERT INTO {table} ({','.join(columns)}) VALUES ({','.join('?' for _ in columns)}) ON CONFLICT({','.join(KEYS[table])}) DO UPDATE SET {updates}",
+                            tuple(row.values()),
+                        )
+                    )
+            statements.append(("COMMIT", ()))
             connection.execute_many(statements)
         finally:
             connection.close()
 
-    def saved(self, batch):
+    def saved(self, batch: PendingBatch) -> None:
         for key, value in batch.items():
             if key in self.pending and self.pending[key] == value:
                 del self.pending[key]

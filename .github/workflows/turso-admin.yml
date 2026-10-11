@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   administration:
-    if: github.ref == 'refs/heads/deploy/production'
+    if: github.ref == 'refs/heads/prod'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 5

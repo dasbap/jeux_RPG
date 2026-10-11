@@ -1,0 +1,642 @@
+{
+  "before": [
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`__init__` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`owner` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`start` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`elect` is too complex (10 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`leases` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`listen` is too complex (11 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`pump` is too complex (13 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`relay` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`memory_call` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`execute` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`rpc` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`save` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`write_checkpoint` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`ticker` is too complex (6 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`close` is too complex (9 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`flush` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`release` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`create_app` is too complex (53 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`lifespan` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`response_security` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`trusted` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`healthcheck` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`socket` is too complex (29 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`send` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`push` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`http` is too complex (15 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`start` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`__init__` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`accept` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`__init__` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_tick` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`server_close` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`process_request` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`process_request_thread` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`setup` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`log_message` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`log_error` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_respond` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_guard` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_token` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_body` is too complex (6 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`do_GET` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`do_POST` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_dispatch` is too complex (53 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`main` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`distance` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`walkable` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`valid_step` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`step_time` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`path` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`cached_path` is too complex (6 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sight` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sees` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`begin` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`free_position` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`patrol_route` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`cast_view` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`complete_casts` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sync_summons` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`follow_owner` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_companions` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_summons` is too complex (24 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_boss_phase` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`release_control` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`charge_control` is too complex (9 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`control` is too complex (35 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`visible` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`unalerted_allies` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`exit_cell` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`leave_field` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`view` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`allowed` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`can_hide` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`ready` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`execute` is too complex (22 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`damaged` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`defeated` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance` is too complex (48 > 0)"
+    }
+  ],
+  "after": [
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`__init__` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`owner` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`start` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`elect` is too complex (10 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`leases` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`listen` is too complex (11 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`pump` is too complex (13 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`relay` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`memory_call` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`execute` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`rpc` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`save` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`write_checkpoint` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`ticker` is too complex (6 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`close` is too complex (9 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`flush` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`release` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`_register_socket` is too complex (30 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`socket` is too complex (29 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`send` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`push` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`create_app` is too complex (24 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`lifespan` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`response_security` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`trusted` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`healthcheck` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`http` is too complex (15 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/realtime.py",
+      "message": "`start` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`__init__` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`accept` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`__init__` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_tick` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`server_close` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`process_request` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`process_request_thread` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`setup` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`log_message` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`log_error` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_respond` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_guard` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_token` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_body` is too complex (6 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`do_GET` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`do_POST` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_dispatch_get` is too complex (11 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`_dispatch` is too complex (43 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/server.py",
+      "message": "`main` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`distance` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`walkable` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`valid_step` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`step_time` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`path` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`cached_path` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sight` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sees` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`begin` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`free_position` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`patrol_route` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`cast_view` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`complete_casts` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`sync_summons` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`follow_owner` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_companions` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_summons` is too complex (24 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance_boss_phase` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`release_control` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`charge_control` is too complex (9 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`control` is too complex (35 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`visible` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`unalerted_allies` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`exit_cell` is too complex (1 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`leave_field` is too complex (2 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`view` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`allowed` is too complex (3 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`can_hide` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`ready` is too complex (4 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`execute` is too complex (22 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`damaged` is too complex (5 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`defeated` is too complex (7 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`_advance_mob` is too complex (30 > 0)"
+    },
+    {
+      "file": "jeuxRPG/multiplayer/tactics.py",
+      "message": "`advance` is too complex (19 > 0)"
+    }
+  ]
+}
