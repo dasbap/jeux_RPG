@@ -20,6 +20,7 @@ function renderCombatFeedback(adventure) {
   if (followLatest) log.scrollTop = log.scrollHeight;
 }
 function renderTutorial(adventure, preserveBattle = false) {
+  if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
   if (fighting) {

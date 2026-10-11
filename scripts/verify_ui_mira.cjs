@@ -106,6 +106,7 @@ async function waitFor(check) {
   current = states.forge_near;
   w.mount(current);
   assert.equal(get('craft-view').open, false);
+  assert.equal(get('craft-view').parentElement.id, 'battle');
   const forge = get('world-map').querySelector('[data-site="forge"]');
   assert.equal(forge.getAttribute('role'), 'button');
   forge.dispatchEvent(new w.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
