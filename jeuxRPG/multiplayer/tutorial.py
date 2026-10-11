@@ -156,6 +156,7 @@ def view(party, me, now):
     result = json.loads(json.dumps({key: value for key, value in party.items() if key not in ("characters", "ready", "battle", "mobs", "mob")}, ensure_ascii=False, separators=(",", ":")))
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party)
+    result["endgame"] = content.endgame_view(party)
     result["hunt_objective"] = {key: content.HUNT.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
     result["repop_seconds"] = content.WORLD["repop_seconds"]
     result["hunt_goal"] = content.HUNT["count"]
@@ -315,6 +316,8 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         if not resolved:
             party["ready"][player_id] = now + progression.ACTION_SECONDS * progression.RATIO
         return messages, False
+    if action == "endgame_claim":
+        return [content.claim_endgame(party, params["challenge"], error)], False
     if action == "talk":
         npc_id = params["npc"]
         if npc_id != "mira":
