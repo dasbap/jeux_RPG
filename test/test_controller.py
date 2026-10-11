@@ -123,6 +123,16 @@ def test_success_definition_controls_speed_threshold_and_title(monkeypatch):
     assert 'Éclair de la lisière' not in achievements.view(party)['unlocked_titles']
 
 
+def test_world_pvp_switch_is_boolean_and_disabled_by_default(tmp_path):
+    p = project(tmp_path)
+    assert p.content['world']['pvp_enabled'] is False
+    p.content['world']['pvp_enabled'] = True
+    p.validate()
+    p.content['world']['pvp_enabled'] = 1
+    with pytest.raises(ValueError):
+        p.validate()
+
+
 def test_world_xp_curve_and_merchant_schedule_are_used(monkeypatch):
     settings = {**content.WORLD, 'xp_base':1000, 'xp_exponent':2, 'merchant_stay_hours':1}
     monkeypatch.setattr(progression, 'WORLD', settings)
