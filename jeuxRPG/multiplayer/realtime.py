@@ -2,6 +2,7 @@ import asyncio
 import json
 import hashlib
 from pathlib import Path
+from urllib.parse import urlsplit
 import logging
 import os
 import time
@@ -756,6 +757,23 @@ def _register_socket(app, coordinator, environment, trusted):
                 await websocket.close(code=1012)
 
 
+def relay_request_origin(environment, host, headers):
+    if not environment.get("VERCEL"):
+        return host, headers
+    public = environment.get("RPG_PUBLIC_ORIGIN", "")
+    canonical = (
+        urlsplit(public).netloc
+        if public
+        else environment.get("VERCEL_PROJECT_PRODUCTION_URL")
+    )
+    if not canonical:
+        return host, headers
+    return canonical, {
+        **headers,
+        **({"origin": "https://" + canonical} if "origin" in headers else {}),
+    }
+
+
 def create_app(environment=None, coordinator=None):
     environment = dict(os.environ if environment is None else environment)
     coordinator = coordinator or Coordinator(environment)
@@ -801,18 +819,9 @@ def create_app(environment=None, coordinator=None):
         for key in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"):
             if key in incoming:
                 forwarded[key] = incoming[key]
-        host = incoming.get("host", "")
-        if environment.get("VERCEL"):
-            canonical = environment.get("VERCEL_PROJECT_PRODUCTION_URL")
-            public = environment.get("RPG_PUBLIC_ORIGIN", "")
-            if public:
-                from urllib.parse import urlsplit
-
-                canonical = urlsplit(public).netloc
-            if canonical:
-                host = canonical
-                if "origin" in forwarded:
-                    forwarded["origin"] = "https://" + host
+        host, forwarded = relay_request_origin(
+            environment, incoming.get("host", ""), forwarded
+        )
         return {
             "path": path,
             "method": method,
@@ -842,7 +851,10 @@ def create_app(environment=None, coordinator=None):
             try:
                 validate_request_origin(
                     environment,
-                    {"HTTP_" + key.upper().replace("-", "_"): value for key, value in request.headers.items()},
+                    {
+                        "HTTP_" + key.upper().replace("-", "_"): value
+                        for key, value in request.headers.items()
+                    },
                     "/" + path,
                     request.method,
                 )
