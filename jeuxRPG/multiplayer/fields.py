@@ -213,14 +213,17 @@ def interactions(party, player):
 
 
 def execute(party, player, action, params, now, error, random):
-    from . import tutorial, forge
+    from . import tutorial, forge, economy
     nearby = interactions(party, player)
-    site = params.get("npc") if action == "talk" else "forge"
+    site = params.get("npc") if action in ("talk", "buy", "sell") else "forge"
     if site not in {item["id"] for item in nearby}:
         raise error("wrong_location", "Approchez-vous du lieu pour interagir.", 409)
     unit = party["battle"]["players"][player]
     if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
+    if action in ("buy", "sell"):
+        merchant = next(item for item in nearby if item["id"] == site)
+        return economy.execute(party, player, merchant, action, params["item"], params["quantity"], error), False
     if action == "talk" and site != "mira":
         npc = next(item for item in nearby if item["id"] == site)
         return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
