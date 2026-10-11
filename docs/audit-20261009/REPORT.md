@@ -1,5 +1,7 @@
 # Audit et optimisation du RPG — 9 octobre 2026
 
+> Rapport historique. L’état courant, les corrections et les réserves figurent dans [la clôture du 11 octobre](../audit-20261011/FINAL_REPORT.md). Les anciens blocages d’accès et de publication ci-dessous décrivent leur date d’observation.
+
 ## Mise à jour après accès Vercel et CI distante
 
 La session Vercel a été ouverte avec le propriétaire. Le projet et son ID correspondent au workflow. Le domaine public sert **d85cbd9**, branche **alpha-vercel-turso** ; le build **9a5f1ea** de `prod` est **Ready / Production / Staged**, sans promotion. Vercel Authentication est active et aucun secret de bypass d'automatisation n'existe dans Vercel ni GitHub. Les secrets Vercel/Turso existants ne doivent pas être remplacés.

@@ -12,8 +12,10 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from .json_protocol import object_json
+from .distributed import build_rate_limiter
 from .realtime_store import RuntimeStore
 from .server import CLIENT_STATIC
 from .serverless import Application
@@ -89,6 +91,7 @@ class Coordinator:
         self.connections = 0
         self.handshakes = 0
         self.auth_slots = asyncio.Semaphore(2)
+        self.password_limiter = build_rate_limiter(environment)
 
     def owner(self):
         return self.local or self.store is not None and time.monotonic() < self.deadline
@@ -247,14 +250,14 @@ class Coordinator:
         login = message.get('method') == 'POST' and message.get('path') in ('/api/account/login', '/api/account/signup')
         if login and isinstance(body, dict) and set(body) == {'username', 'password'}:
             from .service import GameError
-            from .serverless import DatabaseLimiter
             async with self.auth_slots:
                 async with self.lock:
                     if self.owner():
                         store = self.store
-                        if not DatabaseLimiter(store.service).accept(('password_work', message.get('peer', 'unknown')), 10):
-                            return {'status': 429, 'headers': {}, 'body': {'error': 'rate_limit', 'message': 'Trop de connexions. Réessayez dans une minute.'}}
                 if store is not None:
+                    accepted = await self.memory_call(self.password_limiter.accept, ('password_work', message.get('peer', 'unknown')), 10)
+                    if not accepted:
+                        return {'status': 429, 'headers': {}, 'body': {'error': 'rate_limit', 'message': 'Trop de connexions. Réessayez dans une minute.'}}
                     try:
                         prepared = await self.memory_call(store.service.prepare_account_login, body['username'], body['password'], message['path'].endswith('signup'))
                     except GameError as error:
@@ -339,6 +342,8 @@ class Coordinator:
             await self.pubsub.aclose()
         if self.redis:
             await self.redis.aclose()
+        if hasattr(self.password_limiter, 'close'):
+            await asyncio.to_thread(self.password_limiter.close)
         async with self.lock:
             if self.store:
                 self.store.close()
@@ -357,10 +362,14 @@ class Coordinator:
         if self.local or not self.owner() or self.connections:
             return
         await self.flush()
-        if self.connections:
-            return
-        await self.redis.eval(RELEASE, 1, self.prefix + 'lease', self.uid + ':' + str(self.fence))
         async with self.lock:
+            if not self.owner() or self.connections or self.store.pending:
+                return
+            try:
+                await self.redis.eval(RELEASE, 1, self.prefix + 'lease', self.uid + ':' + str(self.fence))
+            except RedisError:
+                logging.getLogger(__name__).warning('Libération Redis différée ; moteur conservé jusqu’à expiration du bail')
+                return
             self.deadline = 0
             self.next_election = 0
             self.store.close()
@@ -572,7 +581,9 @@ def create_app(environment=None, coordinator=None):
         if result['status'] == 200:
             web = Path(__file__).parent / 'web'
             if path in ('', 'admin'):
-                for asset in ('app.js', 'realtime.js', 'mobile_controls.js', 'map_artwork.js', 'style.css', 'admin.js', 'admin.css'):
+                assets = {value[0] for value in CLIENT_STATIC.values() if value[0].endswith(('.js', '.css'))}
+                assets.update({'admin.js', 'admin.css'})
+                for asset in sorted(assets):
                     digest = hashlib.sha256((web / asset).read_bytes()).hexdigest()[:16]
                     content = content.replace(('"/' + asset + '"').encode(), ('"/' + asset + '?v=' + digest + '"').encode())
                 result['headers']['Content-Length'] = str(len(content))

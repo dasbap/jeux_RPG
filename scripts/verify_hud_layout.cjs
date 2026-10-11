@@ -20,6 +20,14 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    await page.evaluate(adventure=>{
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderTutorial(session.tutorial);`);
    },fixture);
+   await page.locator('#zone-banner').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished));});
+   await page.addScriptTag({content:require('axe-core').source});
+   const accessibility=await page.evaluate(async()=>{
+    const result=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});
+    return {violations:result.violations.map(item=>({id:item.id,impact:item.impact,targets:item.nodes.map(node=>node.target)})),incomplete:result.incomplete.map(item=>item.id)};
+   });
+   console.log(JSON.stringify({accessibility,viewport:{width,height}}));
+   assert.equal(accessibility.violations.filter(item=>['critical','serious'].includes(item.impact)).length,0,'Accessibilité WCAG : aucune violation grave automatisée');
    const rect=async id=>page.locator('#'+id).boundingBox();
    const menu=await rect('character-menu'),vitals=await rect('combat-player-panel'),enemies=await rect('combat-enemy-panel'),zone=await rect('zone-banner'),actions=await rect('skill-hud'),map=await rect('world-map'),mini=await rect('hud-navigation');
    assert(menu&&vitals&&enemies&&zone&&actions&&map&&mini,'HUD visible');

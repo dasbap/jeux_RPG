@@ -1,0 +1,239 @@
+{
+  "date": "2026-10-11",
+  "scope": "AST size and syntactic decision-point inventory; not a full cyclomatic-complexity or semantic duplication tool",
+  "module_count": 154,
+  "largest_modules": [
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "lines": 842,
+      "functions": 33
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_editor.py",
+      "lines": 707,
+      "functions": 38
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "lines": 638,
+      "functions": 20
+    },
+    {
+      "path": "jeuxRPG/multiplayer/controller.py",
+      "lines": 602,
+      "functions": 27
+    },
+    {
+      "path": "jeuxRPG/multiplayer/realtime.py",
+      "lines": 598,
+      "functions": 27
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "lines": 585,
+      "functions": 27
+    },
+    {
+      "path": "jeuxRPG/_balance/simulator.py",
+      "lines": 493,
+      "functions": 24
+    },
+    {
+      "path": "jeuxRPG/multiplayer/accounts.py",
+      "lines": 438,
+      "functions": 20
+    },
+    {
+      "path": "jeuxRPG/adventure/catalog.py",
+      "lines": 417,
+      "functions": 10
+    },
+    {
+      "path": "jeuxRPG/_class/res/team/team.py",
+      "lines": 408,
+      "functions": 27
+    },
+    {
+      "path": "jeuxRPG/adventure/frontier.py",
+      "lines": 403,
+      "functions": 32
+    },
+    {
+      "path": "jeuxRPG/adventure/session.py",
+      "lines": 398,
+      "functions": 16
+    }
+  ],
+  "largest_functions": [
+    {
+      "path": "jeuxRPG/multiplayer/realtime.py",
+      "name": "create_app",
+      "line": 379,
+      "lines": 220,
+      "decision_points": 83
+    },
+    {
+      "path": "jeuxRPG/_balance/run_simulation.py",
+      "name": "main",
+      "line": 25,
+      "lines": 179,
+      "decision_points": 36
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "validate",
+      "line": 10,
+      "lines": 170,
+      "decision_points": 143
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "advance",
+      "line": 675,
+      "lines": 168,
+      "decision_points": 85
+    },
+    {
+      "path": "jeuxRPG/multiplayer/server.py",
+      "name": "_dispatch",
+      "line": 213,
+      "lines": 155,
+      "decision_points": 83
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_editor.py",
+      "name": "click",
+      "line": 294,
+      "lines": 145,
+      "decision_points": 61
+    },
+    {
+      "path": "jeuxRPG/multiplayer/controller_project.py",
+      "name": "rename",
+      "line": 156,
+      "lines": 140,
+      "decision_points": 87
+    },
+    {
+      "path": "jeuxRPG/multiplayer/controller.py",
+      "name": "edit",
+      "line": 287,
+      "lines": 140,
+      "decision_points": 74
+    },
+    {
+      "path": "jeuxRPG/multiplayer/realtime.py",
+      "name": "socket",
+      "line": 423,
+      "lines": 124,
+      "decision_points": 53
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "execute_one",
+      "line": 231,
+      "lines": 123,
+      "decision_points": 50
+    },
+    {
+      "path": "jeuxRPG/_class/res/character/class_models.py",
+      "name": "validate",
+      "line": 42,
+      "lines": 123,
+      "decision_points": 165
+    },
+    {
+      "path": "jeuxRPG/multiplayer/serverless.py",
+      "name": "__call__",
+      "line": 146,
+      "lines": 116,
+      "decision_points": 54
+    }
+  ],
+  "most_decision_points": [
+    {
+      "path": "jeuxRPG/_class/res/character/class_models.py",
+      "name": "validate",
+      "line": 42,
+      "lines": 123,
+      "decision_points": 165
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "validate",
+      "line": 10,
+      "lines": 170,
+      "decision_points": 143
+    },
+    {
+      "path": "jeuxRPG/multiplayer/controller_project.py",
+      "name": "rename",
+      "line": 156,
+      "lines": 140,
+      "decision_points": 87
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "advance",
+      "line": 675,
+      "lines": 168,
+      "decision_points": 85
+    },
+    {
+      "path": "jeuxRPG/multiplayer/mob_rules.py",
+      "name": "validate_mobs",
+      "line": 32,
+      "lines": 61,
+      "decision_points": 84
+    },
+    {
+      "path": "jeuxRPG/multiplayer/server.py",
+      "name": "_dispatch",
+      "line": 213,
+      "lines": 155,
+      "decision_points": 83
+    },
+    {
+      "path": "jeuxRPG/multiplayer/realtime.py",
+      "name": "create_app",
+      "line": 379,
+      "lines": 220,
+      "decision_points": 83
+    },
+    {
+      "path": "jeuxRPG/multiplayer/content.py",
+      "name": "validate_content",
+      "line": 34,
+      "lines": 82,
+      "decision_points": 79
+    },
+    {
+      "path": "jeuxRPG/multiplayer/controller.py",
+      "name": "edit",
+      "line": 287,
+      "lines": 140,
+      "decision_points": 74
+    },
+    {
+      "path": "jeuxRPG/multiplayer/world.py",
+      "name": "view",
+      "line": 123,
+      "lines": 101,
+      "decision_points": 68
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "control",
+      "line": 371,
+      "lines": 99,
+      "decision_points": 65
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_editor.py",
+      "name": "click",
+      "line": 294,
+      "lines": 145,
+      "decision_points": 61
+    }
+  ]
+}

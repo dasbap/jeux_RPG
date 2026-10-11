@@ -223,6 +223,7 @@ async function main() {
     await waitFor(() => el(second, "chat-group").textContent.includes("Bonjour <script>"), "chat partagé du groupe");
     assert.equal(el(second, "chat-group").querySelector("script"), null);
     await waitFor(() => !el(first, "send-chat").disabled, "envoi du groupe terminé");
+    await pause(1100);
     el(first, "chat-channel").value = "global";
     el(first, "chat-message").value = "Message avant connexion";
     el(first, "chat-form").dispatchEvent(new first.window.Event("submit", {bubbles:true,cancelable:true}));
@@ -231,6 +232,7 @@ async function main() {
     await pause(300);
     assert(!el(late, "chat-global").textContent.includes("Message avant connexion"));
     await waitFor(() => !el(first, "send-chat").disabled, "premier envoi général terminé");
+    await pause(1100);
     el(first, "chat-message").value = "Message après connexion";
     el(first, "chat-form").dispatchEvent(new first.window.Event("submit", {bubbles:true,cancelable:true}));
     await waitFor(() => el(late, "chat-global").textContent.includes("Message après connexion"), "nouveau connecté reçoit les messages suivants");
