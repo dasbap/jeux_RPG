@@ -7,7 +7,7 @@ import re
 
 
 DEFAULTS = {
-    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50},
+    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50, 'pvp_enabled': False},
     'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
     'achievements': [
         {'id': 'silent', 'name': 'Victoire sans alerter d’ennemi', 'condition': 'silent', 'threshold': 1, 'title': 'Ombre silencieuse'},
@@ -35,7 +35,7 @@ def validate_content(data):
     if not isinstance(data, dict) or set(data)-{'classes','skills','templates'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
     limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64), 'guild_max_members': (2, 500)}
-    if not isinstance(data['world'], dict) or set(data['world']) != set(limits):
+    if not isinstance(data['world'], dict) or set(data['world']) != set(limits) | {'pvp_enabled'} or type(data['world'].get('pvp_enabled')) is not bool:
         raise ValueError('Paramètres du monde invalides.')
     for key, (low, high) in limits.items():
         if not number(data['world'][key], low, high):
@@ -137,6 +137,8 @@ def load_content(path=None):
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)
+    result.setdefault('world', {})
+    result['world'].setdefault('pvp_enabled', False)
     from jeuxRPG._class.res.character.class_models import load as load_templates
     result['templates'] = load_templates(None if os.environ.get('RPG_CLASSES_FILE') else path.parent)
     return validate_content(result)
