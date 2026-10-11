@@ -8,7 +8,10 @@
       "xp_base": 500,
       "xp_exponent": 1.8,
       "merchant_stay_hours": 8,
-      "player_vision": 12
+      "player_vision": 12,
+      "starting_gold": 100,
+      "trade_max_quantity": 999,
+      "trade_max_gold": 100000
     },
     "quests": [
       {
@@ -129,6 +132,44 @@
         "condition": "kills",
         "threshold": 100,
         "title": "Gardien des chemins"
+      }
+    ],
+    "economy": [
+      {
+        "id": "peau",
+        "name": "Peau",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc",
+        "name": "Croc",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "peau_gobelin",
+        "name": "Peau de gobelin",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc_gobelin",
+        "name": "Croc de gobelin",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "cristal_gobelin",
+        "name": "Cristal gobelin",
+        "buy": 80,
+        "sell": 40
+      },
+      {
+        "id": "noyau_gobelin",
+        "name": "Noyau gobelin",
+        "buy": 200,
+        "sell": 100
       }
     ]
   }
