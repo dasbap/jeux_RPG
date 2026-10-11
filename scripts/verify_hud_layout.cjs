@@ -20,6 +20,7 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    await page.evaluate(adventure=>{
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderTutorial(session.tutorial);`);
    },fixture);
+   await page.locator('#zone-banner').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished));});
    await page.addScriptTag({content:require('axe-core').source});
    const accessibility=await page.evaluate(async()=>{
     const result=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}});
