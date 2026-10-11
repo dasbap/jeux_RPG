@@ -474,10 +474,13 @@ class GameService(AccountMixin):
 
     def _execute(self, player, action, params, now, compact=False):
         player_id = player["id"]
-        if action in ("start", "attack") and (not self.legacy_auth or self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone()):
-            raise GameError("pvp_disabled", "Le PvP est désactivé.", 403)
-        if action == "join" and not self.legacy_auth:
-            raise GameError("social_required", "Rejoignez une équipe depuis Social ; chacun conserve son aventure.", 410)
+        from .content import WORLD
+        account_character = self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone()
+        pvp_enabled = bool(WORLD.get("pvp_enabled", False))
+        if action in ("start", "attack") and account_character and not pvp_enabled:
+            raise GameError("pvp_disabled", "Le PvP optionnel est désactivé dans le Controller.", 403)
+        if action == "join" and not self.legacy_auth and not pvp_enabled:
+            raise GameError("social_required", "Rejoignez une équipe depuis Social ; le PvP optionnel est désactivé.", 410)
         if action == "tutorial":
             session = self._active(player_id)
             if session is None:
