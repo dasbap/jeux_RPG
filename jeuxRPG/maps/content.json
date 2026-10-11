@@ -131,6 +131,19 @@
         "threshold": 100,
         "title": "Gardien des chemins"
       }
+    ],
+    "endgame": [
+      {
+        "id": "veteran_hunt",
+        "name": "Chasse vétéran",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "",
+        "count": 10,
+        "min_level": 5,
+        "reward_xp": 500,
+        "repeatable": true
+      }
     ]
   }
 }
