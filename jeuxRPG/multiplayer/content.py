@@ -155,6 +155,7 @@ def load_content(path=None):
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)
+    result.setdefault('endgame', deepcopy(DEFAULTS['endgame']))
     from jeuxRPG._class.res.character.class_models import load as load_templates
     result['templates'] = load_templates(None if os.environ.get('RPG_CLASSES_FILE') else path.parent)
     return validate_content(result)
