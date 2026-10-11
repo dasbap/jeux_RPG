@@ -2,6 +2,7 @@ import asyncio
 import json
 import hashlib
 from pathlib import Path
+from urllib.parse import urlsplit
 import logging
 import os
 import time
@@ -19,7 +20,8 @@ from .distributed import build_rate_limiter
 from .realtime_store import RuntimeStore
 from .protocol_types import RuntimeMessage, RuntimeResponse, PendingBatch
 from .server import CLIENT_STATIC
-from .serverless import Application
+from .serverless import Application, validate_request_origin
+from .service import GameError
 
 
 LEASE = """
@@ -755,6 +757,29 @@ def _register_socket(app, coordinator, environment, trusted):
                 await websocket.close(code=1012)
 
 
+def relay_request_origin(environment, host, headers):
+    if not environment.get("VERCEL"):
+        return host, headers
+    public = environment.get("RPG_PUBLIC_ORIGIN", "")
+    canonical = (
+        urlsplit(public).netloc
+        if public
+        else environment.get("VERCEL_PROJECT_PRODUCTION_URL")
+    )
+    if not canonical:
+        return host, headers
+    return canonical, {
+        **headers,
+        **({"origin": "https://" + canonical} if "origin" in headers else {}),
+    }
+
+
+async def request_origin_error(request, error):
+    return JSONResponse(
+        {"error": error.code, "message": str(error)}, status_code=error.status
+    )
+
+
 def create_app(environment=None, coordinator=None):
     environment = dict(os.environ if environment is None else environment)
     coordinator = coordinator or Coordinator(environment)
@@ -767,6 +792,7 @@ def create_app(environment=None, coordinator=None):
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.coordinator = coordinator
+    app.add_exception_handler(GameError, request_origin_error)
 
     @app.middleware("http")
     async def response_security(request, call_next):
@@ -800,12 +826,15 @@ def create_app(environment=None, coordinator=None):
         for key in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"):
             if key in incoming:
                 forwarded[key] = incoming[key]
+        host, forwarded = relay_request_origin(
+            environment, incoming.get("host", ""), forwarded
+        )
         return {
             "path": path,
             "method": method,
             "body": body,
             "headers": forwarded,
-            "host": incoming.get("host", ""),
+            "host": host,
             "peer": connection.client.host if connection.client else "unknown",
             "scheme": "https" if environment.get("VERCEL") else "http",
         }
@@ -826,6 +855,15 @@ def create_app(environment=None, coordinator=None):
 
             return JSONResponse(catalogue())
         if path.startswith("api/"):
+            validate_request_origin(
+                environment,
+                {
+                    "HTTP_" + key.upper().replace("-", "_"): value
+                    for key, value in request.headers.items()
+                },
+                "/" + path,
+                request.method,
+            )
             try:
                 raw = await request.body()
                 if len(raw) > 65536:
