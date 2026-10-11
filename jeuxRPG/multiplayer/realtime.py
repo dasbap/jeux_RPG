@@ -19,7 +19,8 @@ from .distributed import build_rate_limiter
 from .realtime_store import RuntimeStore
 from .protocol_types import RuntimeMessage, RuntimeResponse, PendingBatch
 from .server import CLIENT_STATIC
-from .serverless import Application
+from .serverless import Application, validate_request_origin
+from .service import GameError
 
 
 LEASE = """
@@ -800,12 +801,24 @@ def create_app(environment=None, coordinator=None):
         for key in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"):
             if key in incoming:
                 forwarded[key] = incoming[key]
+        host = incoming.get("host", "")
+        if environment.get("VERCEL"):
+            canonical = environment.get("VERCEL_PROJECT_PRODUCTION_URL")
+            public = environment.get("RPG_PUBLIC_ORIGIN", "")
+            if public:
+                from urllib.parse import urlsplit
+
+                canonical = urlsplit(public).netloc
+            if canonical:
+                host = canonical
+                if "origin" in forwarded:
+                    forwarded["origin"] = "https://" + host
         return {
             "path": path,
             "method": method,
             "body": body,
             "headers": forwarded,
-            "host": incoming.get("host", ""),
+            "host": host,
             "peer": connection.client.host if connection.client else "unknown",
             "scheme": "https" if environment.get("VERCEL") else "http",
         }
@@ -827,6 +840,12 @@ def create_app(environment=None, coordinator=None):
             return JSONResponse(catalogue())
         if path.startswith("api/"):
             try:
+                validate_request_origin(
+                    environment,
+                    {"HTTP_" + key.upper().replace("-", "_"): value for key, value in request.headers.items()},
+                    "/" + path,
+                    request.method,
+                )
                 raw = await request.body()
                 if len(raw) > 65536:
                     return JSONResponse(
@@ -856,6 +875,11 @@ def create_app(environment=None, coordinator=None):
                 }
                 return JSONResponse(
                     result["body"], status_code=result["status"], headers=headers
+                )
+            except GameError as error:
+                return JSONResponse(
+                    {"error": error.code, "message": str(error)},
+                    status_code=error.status,
                 )
             except (ValueError, UnicodeError, RecursionError):
                 return JSONResponse(
