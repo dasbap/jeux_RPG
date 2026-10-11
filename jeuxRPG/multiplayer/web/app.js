@@ -85,7 +85,7 @@ function render(state) {
     $("fighters").append(article);
   }
   const me = session.players.find(player => player.id === session.me);
-  $("start").hidden = session.state !== "lobby" || session.owner !== session.me;
+  $("start").hidden = !presenceState?.pvp || session.state !== "lobby" || session.owner !== session.me;
   $("start").disabled = busy || session.players.length < 2;
   $("party-tutorial").hidden = session.state !== "lobby" || session.owner !== session.me;
   $("party-tutorial").disabled = busy || session.players.length < 2;
