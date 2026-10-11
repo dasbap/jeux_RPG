@@ -53,6 +53,65 @@ def team(game, members):
         game.social_action(target['token'], 'team_accept', {'invite_id': identifier})
 
 
+def guild_invite(game, owner, target):
+    game.social_action(owner['token'], 'guild_invite', {'username': target['account']['username']})
+    return game.social_view(target['token'])['guild_invitations'][-1]['id']
+
+
+def test_guild_create_invite_permissions_kick_and_unique_name(game):
+    alice,bob,eve = [account(game,name) for name in ('AliceGuild','BobGuild','EveGuild')]
+    created = game.social_action(alice['token'],'guild_create',{'name':'Gardiens de Rosée'})
+    assert created['guild']['name'] == 'Gardiens de Rosée'
+    assert created['guild']['role'] == 'owner'
+    with pytest.raises(GameError) as failure:
+        game.social_action(eve['token'],'guild_create',{'name':'gardiens de rosée'})
+    assert failure.value.code == 'guild_exists'
+    identifier = guild_invite(game,alice,bob)
+    game.social_action(bob['token'],'guild_accept',{'invite_id':identifier})
+    assert len(game.social_view(alice['token'])['guild']['members']) == 2
+    with pytest.raises(GameError) as failure:
+        game.social_action(bob['token'],'guild_invite',{'username':eve['account']['username']})
+    assert failure.value.code == 'guild_owner_required'
+    game.social_action(alice['token'],'guild_kick',{'account_id':bob['account']['id']})
+    assert game.social_view(bob['token'])['guild'] is None
+
+
+def test_guild_owner_transfer_and_capacity_are_authoritative(game, monkeypatch):
+    from jeuxRPG.multiplayer import content
+    settings = {**content.WORLD, 'guild_max_members': 3}
+    monkeypatch.setattr(content,'WORLD',settings)
+    alice,bob,carol,dave = [account(game,name) for name in ('GuildA','GuildB','GuildC','GuildD')]
+    game.social_action(alice['token'],'guild_create',{'name':'Compagnie'})
+    for target in (bob,carol):
+        identifier = guild_invite(game,alice,target)
+        game.social_action(target['token'],'guild_accept',{'invite_id':identifier})
+    with pytest.raises(GameError) as failure:
+        game.social_action(alice['token'],'guild_invite',{'username':dave['account']['username']})
+    assert failure.value.code == 'guild_full'
+    game.social_action(alice['token'],'guild_leave',{})
+    guild = game.social_view(bob['token'])['guild']
+    assert guild['owner'] == bob['account']['id']
+    assert guild['role'] == 'owner'
+    assert len(guild['members']) == 2
+
+
+def test_guild_persists_across_runtime_restart():
+    store = RuntimeStore({})
+    alice,bob = [account(store.service,name) for name in ('PersistGuildA','PersistGuildB')]
+    store.service.social_action(alice['token'],'guild_create',{'name':'Persistants'})
+    identifier = guild_invite(store.service,alice,bob)
+    store.service.social_action(bob['token'],'guild_accept',{'invite_id':identifier})
+    store.capture()
+    restored = RuntimeStore({},json.loads(store.snapshot()))
+    try:
+        view = restored.service.social_view(bob['token'])
+        assert view['guild']['name'] == 'Persistants'
+        assert len(view['guild']['members']) == 2
+    finally:
+        restored.close()
+        store.close()
+
+
 def test_accounts_password_sessions_and_character_ownership(game):
     alice = account(game, 'Alice')
     stored = game.db.execute('SELECT password_hash FROM accounts').fetchone()[0]

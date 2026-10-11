@@ -10,9 +10,9 @@ from .turso import TursoConnection
 from .world import zone_of
 
 
-SOCIAL_TABLES = ('accounts', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites')
-TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'receipt_expiry', 'admin_audit')
-KEYS = {'accounts': ('id',), 'account_characters': ('account_id', 'class_name'), 'account_sessions': ('token_hash',), 'friendships': ('first_id', 'second_id'), 'teams': ('id',), 'team_members': ('account_id',), 'team_invites': ('id',), 'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
+SOCIAL_TABLES = ('accounts', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'guilds', 'guild_members', 'guild_invites')
+TABLES = ('meta', 'accounts', 'players', 'account_characters', 'account_sessions', 'friendships', 'teams', 'team_members', 'team_invites', 'guilds', 'guild_members', 'guild_invites', 'account_status', 'sessions', 'members', 'tutorials', 'events', 'receipts', 'receipt_expiry', 'admin_audit')
+KEYS = {'accounts': ('id',), 'account_characters': ('account_id', 'class_name'), 'account_sessions': ('token_hash',), 'friendships': ('first_id', 'second_id'), 'teams': ('id',), 'team_members': ('account_id',), 'team_invites': ('id',), 'guilds': ('id',), 'guild_members': ('account_id',), 'guild_invites': ('id',), 'meta': ('key',), 'players': ('id',), 'account_status': ('player_id',), 'sessions': ('id',),
         'members': ('session_id', 'player_id'), 'tutorials': ('session_id',), 'events': ('id',),
         'receipts': ('player_id', 'request_id'), 'receipt_expiry': ('player_id', 'request_id'), 'admin_audit': ('id',)}
 
