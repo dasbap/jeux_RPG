@@ -9,7 +9,8 @@
       "xp_exponent": 1.8,
       "merchant_stay_hours": 8,
       "player_vision": 12,
-      "guild_max_members": 50
+      "guild_max_members": 50,
+      "pvp_enabled": false
     },
     "quests": [
       {
