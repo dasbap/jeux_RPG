@@ -107,6 +107,20 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
+  $("gold-balance").textContent = `Or : ${me.gold ?? 0}`;
+  $("market-panel").hidden = !adventure.merchant;
+  $("market-details").replaceChildren();
+  if (adventure.merchant) {
+    $("market-title").textContent = `Commerce · ${adventure.merchant.name}`;
+    for (const price of me.market || []) {
+      const row = document.createElement("article"); row.className = "codex-card";
+      const title = document.createElement("strong"); title.textContent = price.name; row.append(title);
+      const info = document.createElement("span"); info.textContent = ` · achat ${price.buy} or · vente ${price.sell} or`; row.append(info);
+      const buy = document.createElement("button"); buy.textContent = "Acheter 1"; buy.disabled = busy || (me.gold ?? 0) < price.buy; buy.onclick = () => tutorialCommand("buy", {npc: adventure.merchant.id, item: price.id, quantity: 1}); row.append(buy);
+      const sell = document.createElement("button"); sell.textContent = "Vendre 1"; sell.disabled = busy || (me.inventory[price.id] || 0) < 1; sell.onclick = () => tutorialCommand("sell", {npc: adventure.merchant.id, item: price.id, quantity: 1}); row.append(sell);
+      $("market-details").append(row);
+    }
+  }
   const world = adventure.world;
   const places = world.places;
   const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));
