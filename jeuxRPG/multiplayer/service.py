@@ -158,7 +158,7 @@ class GameService(AccountMixin):
                 if json.dumps(party, sort_keys=True) != before:
                     self.dirty_sessions.add(row['session_id'])
                     self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), row["session_id"]))
-                    self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", row["session_id"]))
+                    self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("running", row["session_id"]))
                     for message in messages:
                         self._event(row["session_id"], now, message)
                 self.record_party_locations(party)
@@ -418,6 +418,7 @@ class GameService(AccountMixin):
                    "talk": {"session_id", "revision", "npc", "world_context"},
                    "craft": {"session_id", "revision", "recipe"},
                    "upgrade": {"session_id", "revision", "recipe"},
+                   "endgame_claim": {"session_id", "revision", "challenge"},
                    "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
                    "stop_move": {"session_id", "revision", "encounter"},
                    "hide": {"session_id", "revision"},
@@ -493,7 +494,7 @@ class GameService(AccountMixin):
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
-        if action in ("enter_zone", "explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
+        if action in ("enter_zone", "explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "endgame_claim", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)
@@ -510,7 +511,7 @@ class GameService(AccountMixin):
             messages, finished = tutorial.execute(party, player_id, action, params, now, GameError, self.random)
             self.record_party_locations(party)
             self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(party), session["id"]))
-            self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("finished" if party["step"] == "complete" and not party.get("battle") and not party.get("transit") else "running", session["id"]))
+            self.db.execute("UPDATE sessions SET revision=revision+1, state=? WHERE id=?", ("running", session["id"]))
             for message in messages:
                 self._event(session["id"], now, message)
             return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
