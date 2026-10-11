@@ -115,5 +115,5 @@ $("character-create").addEventListener("submit", event => {event.preventDefault(
 $("character-cancel").addEventListener("click", () => {$("characters").hidden = true; sectionSignatures.clear(); refresh(true);});
 $("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});
 $("social-invite").addEventListener("click", () => socialAction("team_invite", {username: $("social-name").value.trim()}));
-$("social-guild-invite").addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));
+$("social-guild-invite")?.addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));
 $("guild-create").addEventListener("submit", event => { event.preventDefault(); socialAction("guild_create", {name: $("guild-name").value.trim()}); });
