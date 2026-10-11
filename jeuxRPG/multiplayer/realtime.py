@@ -774,6 +774,12 @@ def relay_request_origin(environment, host, headers):
     }
 
 
+async def request_origin_error(request, error):
+    return JSONResponse(
+        {"error": error.code, "message": str(error)}, status_code=error.status
+    )
+
+
 def create_app(environment=None, coordinator=None):
     environment = dict(os.environ if environment is None else environment)
     coordinator = coordinator or Coordinator(environment)
@@ -786,6 +792,7 @@ def create_app(environment=None, coordinator=None):
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.coordinator = coordinator
+    app.add_exception_handler(GameError, request_origin_error)
 
     @app.middleware("http")
     async def response_security(request, call_next):
@@ -848,16 +855,16 @@ def create_app(environment=None, coordinator=None):
 
             return JSONResponse(catalogue())
         if path.startswith("api/"):
+            validate_request_origin(
+                environment,
+                {
+                    "HTTP_" + key.upper().replace("-", "_"): value
+                    for key, value in request.headers.items()
+                },
+                "/" + path,
+                request.method,
+            )
             try:
-                validate_request_origin(
-                    environment,
-                    {
-                        "HTTP_" + key.upper().replace("-", "_"): value
-                        for key, value in request.headers.items()
-                    },
-                    "/" + path,
-                    request.method,
-                )
                 raw = await request.body()
                 if len(raw) > 65536:
                     return JSONResponse(
@@ -887,11 +894,6 @@ def create_app(environment=None, coordinator=None):
                 }
                 return JSONResponse(
                     result["body"], status_code=result["status"], headers=headers
-                )
-            except GameError as error:
-                return JSONResponse(
-                    {"error": error.code, "message": str(error)},
-                    status_code=error.status,
                 )
             except (ValueError, UnicodeError, RecursionError):
                 return JSONResponse(
