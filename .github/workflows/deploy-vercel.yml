@@ -27,11 +27,16 @@ jobs:
       - name: Verifier l'acces de deploiement
         env:
           RPG_BACKUP_RECIPIENT: ${{ vars.RPG_BACKUP_RECIPIENT }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           if [ -z "$RPG_BACKUP_RECIPIENT" ]; then
             echo "Variable publique RPG_BACKUP_RECIPIENT absente : configurer la cle age du proprietaire avant toute mutation de production."
+            exit 1
+          fi
+          if [ "${#RPG_ADMIN_TOKEN}" -lt 32 ]; then
+            echo "Secret GitHub production RPG_ADMIN_TOKEN absent ou trop court : requis pour le controle du build prebuilt ; ne pas afficher sa valeur."
             exit 1
           fi
           if [ -z "$VERCEL_TOKEN" ]; then
@@ -132,6 +137,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RPG_RELEASE_SHA: ${{ github.sha }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
         run: .deploy-tools/node_modules/.bin/vercel build --prod
       - name: Preparer la version de production
         env:
