@@ -207,9 +207,6 @@ def interactions(party, player):
     if not party.get("field_map") or not party.get("battle"):
         return []
     definition = MAPS[party["field_map"]]
-    if action in ("buy", "sell"):
-        merchant = next(item for item in nearby if item["id"] == site)
-        return economy.execute(party, player, merchant, action, params["item"], params["quantity"], error), False
     unit = party["battle"]["players"][player]
     sites = [site for site in definition["sites"] if not site.get("owner")] + list(party["battle"].get("companions", {}).values())
     return [site for site in sites if tactics.distance(unit["position"], site["position"]) <= 1.5]
@@ -224,6 +221,9 @@ def execute(party, player, action, params, now, error, random):
     unit = party["battle"]["players"][player]
     if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
+    if action in ("buy", "sell"):
+        merchant = next(item for item in nearby if item["id"] == site)
+        return economy.execute(party, player, merchant, action, params["item"], params["quantity"], error), False
     if action == "talk" and site != "mira":
         npc = next(item for item in nearby if item["id"] == site)
         return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
