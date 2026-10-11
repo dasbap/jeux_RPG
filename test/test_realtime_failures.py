@@ -5,6 +5,7 @@ from redis.exceptions import TimeoutError
 
 from jeuxRPG.multiplayer.realtime import Coordinator, RELEASE
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
+from jeuxRPG.multiplayer.service import GameError
 from test_realtime import ENV, message
 
 
@@ -45,6 +46,26 @@ def test_release_keeps_unsaved_changes_when_flush_fails():
             assert redis.calls == 0
         finally:
             store.close()
+    asyncio.run(run())
+
+
+def test_password_work_limit_survives_memory_store_replacement(monkeypatch):
+    async def run():
+        coordinator = Coordinator(ENV, store=RuntimeStore(ENV))
+        calls = []
+        def refused(*args):
+            calls.append(1)
+            raise GameError('unauthorized', 'Compte absent', 401)
+        try:
+            for attempt in range(11):
+                coordinator.store.close()
+                coordinator.store = RuntimeStore(ENV)
+                monkeypatch.setattr(coordinator.store.service, 'prepare_account_login', refused)
+                result = await coordinator.execute(message('/api/account/login', {'username': 'alice', 'password': 'passwordpassword'}))
+                assert result['status'] == (401 if attempt < 10 else 429)
+            assert len(calls) == 10
+        finally:
+            await coordinator.close()
     asyncio.run(run())
 
 

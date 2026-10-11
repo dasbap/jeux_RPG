@@ -15,6 +15,7 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from .json_protocol import object_json
+from .distributed import build_rate_limiter
 from .realtime_store import RuntimeStore
 from .server import CLIENT_STATIC
 from .serverless import Application
@@ -90,6 +91,7 @@ class Coordinator:
         self.connections = 0
         self.handshakes = 0
         self.auth_slots = asyncio.Semaphore(2)
+        self.password_limiter = build_rate_limiter(environment)
 
     def owner(self):
         return self.local or self.store is not None and time.monotonic() < self.deadline
@@ -248,14 +250,14 @@ class Coordinator:
         login = message.get('method') == 'POST' and message.get('path') in ('/api/account/login', '/api/account/signup')
         if login and isinstance(body, dict) and set(body) == {'username', 'password'}:
             from .service import GameError
-            from .serverless import DatabaseLimiter
             async with self.auth_slots:
                 async with self.lock:
                     if self.owner():
                         store = self.store
-                        if not DatabaseLimiter(store.service).accept(('password_work', message.get('peer', 'unknown')), 10):
-                            return {'status': 429, 'headers': {}, 'body': {'error': 'rate_limit', 'message': 'Trop de connexions. Réessayez dans une minute.'}}
                 if store is not None:
+                    accepted = await self.memory_call(self.password_limiter.accept, ('password_work', message.get('peer', 'unknown')), 10)
+                    if not accepted:
+                        return {'status': 429, 'headers': {}, 'body': {'error': 'rate_limit', 'message': 'Trop de connexions. Réessayez dans une minute.'}}
                     try:
                         prepared = await self.memory_call(store.service.prepare_account_login, body['username'], body['password'], message['path'].endswith('signup'))
                     except GameError as error:
@@ -340,6 +342,8 @@ class Coordinator:
             await self.pubsub.aclose()
         if self.redis:
             await self.redis.aclose()
+        if hasattr(self.password_limiter, 'close'):
+            await asyncio.to_thread(self.password_limiter.close)
         async with self.lock:
             if self.store:
                 self.store.close()
