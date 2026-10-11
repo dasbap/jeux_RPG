@@ -56,8 +56,8 @@ def test_merchant_buy_sell_is_conservative(monkeypatch):
 
 
 def test_merchant_rejects_invalid_or_unaffordable_transactions(monkeypatch):
-    party = tutorial.new_party([{"id":"p","name":"Marchandage","class_name":"Knight"}])
     monkeypatch.setattr(content, "WORLD", {**content.WORLD, "starting_gold":3, "trade_max_quantity":2})
+    party = tutorial.new_party([{"id":"p","name":"Marchandage","class_name":"Knight"}])
     monkeypatch.setattr(content, "DATA", {**content.DATA, "economy":[{"id":"peau","name":"Peau","buy":8,"sell":4}]})
     economy.migrate(party)
     merchant = {"id":"shop","name":"Marchand","merchant":True}
