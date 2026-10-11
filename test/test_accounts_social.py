@@ -183,8 +183,9 @@ def test_optional_pvp_allows_invited_account_duel_when_enabled(game, monkeypatch
     from jeuxRPG.multiplayer import content
     monkeypatch.setattr(content, 'WORLD', {**content.WORLD, 'pvp_enabled': True})
     alice, bob = [account(game, name) for name in ('PvpAlice', 'PvpBob')]
-    room = game.command(alice['token'], uuid.uuid4().hex, 'create')['session']
-    joined = game.command(bob['token'], uuid.uuid4().hex, 'join', invite=room['invite'])['session']
+    created = game.command(alice['token'], uuid.uuid4().hex, 'create')
+    room = created['session']
+    joined = game.command(bob['token'], uuid.uuid4().hex, 'join', invite=created['invite'])['session']
     assert joined['id'] == room['id']
     state = game.command(alice['token'], uuid.uuid4().hex, 'start', session_id=room['id'], revision=joined['revision'])['session']
     assert state['state'] == 'running'
