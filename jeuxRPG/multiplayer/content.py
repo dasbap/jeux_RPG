@@ -9,6 +9,9 @@ import re
 DEFAULTS = {
     'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50},
     'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
+    'endgame': [
+        {'id':'veteran_hunt','name':'Chasse vétéran','kind':'kill','target':'goblin','zone':'','count':10,'min_level':5,'reward_xp':500,'repeatable':True},
+    ],
     'achievements': [
         {'id': 'silent', 'name': 'Victoire sans alerter d’ennemi', 'condition': 'silent', 'threshold': 1, 'title': 'Ombre silencieuse'},
         {'id': 'untouched', 'name': 'Victoire sans dégâts au groupe ni aux invocations', 'condition': 'untouched', 'threshold': 1, 'title': 'Intouchable'},
@@ -43,6 +46,21 @@ def validate_content(data):
     for key in ('player_vision', 'mob_xp', 'guild_max_members'):
         if type(data['world'][key]) is not int:
             raise ValueError(f'{key} : nombre entier requis.')
+    contracts = data['endgame']
+    if not isinstance(contracts, list) or len(contracts) > 200:
+        raise ValueError('200 contrats endgame maximum.')
+    endgame_ids = set()
+    for item in contracts:
+        if not isinstance(item, dict) or set(item) != {'id','name','kind','target','zone','count','min_level','reward_xp','repeatable'}:
+            raise ValueError('Contrat endgame invalide.')
+        if not isinstance(item['id'], str) or not re.fullmatch(r'[a-z0-9_]{1,64}', item['id']) or item['id'] in endgame_ids:
+            raise ValueError('Identifiant endgame invalide ou dupliqué.')
+        endgame_ids.add(item['id'])
+        if not isinstance(item['name'], str) or not 1 <= len(item['name']) <= 100 or item['kind'] not in ('kill','craft') or not isinstance(item['target'], str) or not 1 <= len(item['target']) <= 80 or not isinstance(item['zone'], str):
+            raise ValueError('Cible ou type de contrat endgame invalide.')
+        if type(item['count']) is not int or not 1 <= item['count'] <= 100000 or type(item['min_level']) is not int or not 1 <= item['min_level'] <= 100 or type(item['reward_xp']) is not int or not 0 <= item['reward_xp'] <= 10000000 or type(item['repeatable']) is not bool:
+            raise ValueError('Progression ou récompense endgame invalide.')
+
     for section in ('quests', 'achievements'):
         values = data[section]
         if not isinstance(values, list) or len(values) > 200:
@@ -230,10 +248,74 @@ def quest_journal(party):
     return [{**deepcopy(quest), **party.get('custom_quests', {}).get(quest['id'], {'status': 'available', 'progress': 0})} for quest in DATA['quests'] if not is_hunt(quest) and quest['id'] in party.get('custom_quests', {})]
 
 
+def endgame_states(party):
+    states = party.setdefault('endgame', {})
+    for contract in DATA.get('endgame', []):
+        states.setdefault(contract['id'], {'progress': 0, 'completions': 0, 'claimed': False})
+    return states
+
+
+def endgame_event(party, kind, target, zone=None):
+    if party.get('step') != 'complete':
+        return
+    states = endgame_states(party)
+    minimum = min((character.get('level', 1) for character in party.get('characters', {}).values()), default=1)
+    for contract in DATA.get('endgame', []):
+        state = states[contract['id']]
+        if state.get('claimed') and not contract['repeatable'] or minimum < contract['min_level']:
+            continue
+        if contract['kind'] == kind and contract['target'] == target and (not contract['zone'] or contract['zone'] in (zone, party.get('field_map'), party.get('position'))):
+            state['progress'] = min(contract['count'], state.get('progress', 0) + 1)
+
+
+def endgame_view(party):
+    states = endgame_states(party)
+    minimum = min((character.get('level', 1) for character in party.get('characters', {}).values()), default=1)
+    return [{**deepcopy(contract), **deepcopy(states[contract['id']]),
+             'status': 'locked' if minimum < contract['min_level'] else 'completed' if states[contract['id']].get('claimed') and not contract['repeatable'] else 'claimable' if states[contract['id']].get('progress', 0) >= contract['count'] else 'active'}
+            for contract in DATA.get('endgame', [])]
+
+
+def claim_endgame(party, identifier, error):
+    contract = next((item for item in DATA.get('endgame', []) if item['id'] == identifier), None)
+    if contract is None:
+        raise error('unknown_endgame', 'Contrat endgame inconnu.', 404)
+    if party.get('step') != 'complete':
+        raise error('endgame_locked', 'Terminez le tutoriel avant les contrats endgame.', 409)
+    state = endgame_states(party)[identifier]
+    minimum = min((character.get('level', 1) for character in party.get('characters', {}).values()), default=1)
+    if minimum < contract['min_level']:
+        raise error('endgame_level', f"Niveau {contract['min_level']} requis.", 409)
+    if state.get('claimed') and not contract['repeatable']:
+        raise error('endgame_claimed', 'Ce contrat a déjà été validé.', 409)
+    if state.get('progress', 0) < contract['count']:
+        raise error('endgame_incomplete', 'Objectif endgame incomplet.', 409)
+    from .tutorial import unpack, pack
+    for key, data in party['characters'].items():
+        actor = unpack(data)
+        if contract['reward_xp']:
+            actor.gain_exp(contract['reward_xp'])
+        party['characters'][key] = pack(actor)
+    state['completions'] = state.get('completions', 0) + 1
+    if contract['repeatable']:
+        state['progress'] = 0
+    else:
+        state['claimed'] = True
+    return f"Contrat terminé : {contract['name']} · {contract['reward_xp']} XP par joueur."
+
+
 def validate_references(data, mobs, maps):
     from .forge import RECIPES
     from .map_building import zone_of
     zones = {zone_of(maps, identifier) for identifier in maps}
+    from .forge import RECIPES
+    for contract in data['endgame']:
+        if contract['kind'] == 'kill' and contract['target'] not in mobs:
+            raise ValueError(contract['name'] + ' : espèce endgame inconnue.')
+        if contract['kind'] == 'craft' and contract['target'] not in RECIPES:
+            raise ValueError(contract['name'] + ' : recette endgame inconnue.')
+        if contract.get('zone') and contract['zone'] not in maps:
+            raise ValueError(contract['name'] + ' : zone endgame inconnue.')
     for definition in [*data['quests'], *data['achievements']]:
         if definition.get('zone') and definition['zone'] not in (maps if 'kind' in definition else zones):
             raise ValueError(definition['name'] + ' : zone de rattachement introuvable.')
