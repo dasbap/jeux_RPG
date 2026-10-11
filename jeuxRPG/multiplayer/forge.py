@@ -102,6 +102,7 @@ def execute(party, player, action, recipe, error):
         from . import achievements
         achievements.event(party, "craft", recipe)
         content.quest_event(party, "craft", recipe, world.zone_of(party["position"]))
+        content.endgame_event(party, "craft", recipe, world.zone_of(party["position"]))
     previous_step = party["step"]
     if party["step"] == "craft" and all("torso" in party["equipment"].get(key, {}) for key in party["characters"]):
         party["step"] = "travel"
