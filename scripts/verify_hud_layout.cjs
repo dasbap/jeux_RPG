@@ -152,6 +152,25 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert(await page.locator('#inventory-view').isVisible(),'Inventaire consultable en combat');
    await page.locator('#back-view').click();
    assert(!(await page.locator('#inventory-view').isVisible()),'Retour au jeu');
+   // Allocation/listener regression on an isolated fixture, after warmup and forced GC.
+   const cdp = await page.context().newCDPSession(page);
+   const renderMany = count => page.evaluate(count => {
+    window.eval(`for(let i=0;i<${count};i++){session.tutorial.players[0].cooldown_real_seconds=i%2?0.7:0;renderTutorial(session.tutorial);}`);
+   }, count);
+   await renderMany(100);
+   await cdp.send('HeapProfiler.collectGarbage');
+   const before = {dom: await cdp.send('Memory.getDOMCounters'), heap: await cdp.send('Runtime.getHeapUsage')};
+   await renderMany(500);
+   await cdp.send('HeapProfiler.collectGarbage');
+   const after = {dom: await cdp.send('Memory.getDOMCounters'), heap: await cdp.send('Runtime.getHeapUsage')};
+   const memoryReport = {scope:'Chromium fixture, 100 warmup + 500 updates, forced GC; not physical mobile INP', viewport:{width,height}, before, after};
+   assert(after.dom.nodes <= before.dom.nodes + 20, 'No accumulated DOM nodes on repeated updates');
+   assert(after.dom.jsEventListeners <= before.dom.jsEventListeners + 8, 'No accumulated listeners on repeated updates');
+   assert(after.heap.usedSize <= before.heap.usedSize * 1.5 + 1024 * 1024, 'Retained JS heap budget after updates');
+   fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
+   fs.writeFileSync(path.join(root,`hud-captures/memory-${width}x${height}.json`),JSON.stringify(memoryReport,null,2));
+   console.log(JSON.stringify(memoryReport));
+   await cdp.detach();
    assert.deepEqual(errors,[]);
    fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
    await page.screenshot({path:path.join(root,`hud-captures/${width}x${height}.png`)});

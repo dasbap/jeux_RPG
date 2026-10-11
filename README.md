@@ -412,6 +412,6 @@ Le [parcours client sur les données actuelles](docs/DEMO_UI.md) utilise des cli
 
 ## Audit et restauration
 
-L’état des 29 demandes, les preuves, les mesures et les réserves sont dans [le rapport du 11 octobre 2026](docs/audit-20261011/FINAL_REPORT.md). La sécurisation de `prod` et la publication des dernières corrections sont reportées à la demande du propriétaire.
+L’exécution de l’audit complémentaire, les preuves et les réserves sont dans [le rapport courant](docs/audit-20261011-followup/REPORT.md). Les protections master/prod sont actives. La publication exige désormais une sauvegarde Turso exportée, restaurée et conservée chiffrée ; configurer la variable publique `RPG_BACKUP_RECIPIENT` avant de lancer le workflow. [Le rapport précédent](docs/audit-20261011/FINAL_REPORT.md) conserve les preuves historiques.
 
 Pour contrôler une sauvegarde SQLite exportée et stable, arrêter le serveur qui écrit ce fichier puis lancer `python scripts/verify_backup.py chemin/monde.sqlite3`. Le contrôle ouvre la source en lecture seule, restaure une copie temporaire, compare ses tables et vérifie la réouverture du moteur. Il ne crée pas une sauvegarde durable et ne certifie pas les sauvegardes distantes Turso ou Redis.

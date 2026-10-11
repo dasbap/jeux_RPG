@@ -1,0 +1,4196 @@
+[
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "Import from `collections.abc` instead: `Mapping`"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 12
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 25,
+      "row": 12
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 63,
+      "row": 25
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 31,
+      "row": 36
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 54,
+      "row": 36
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 73,
+      "row": 44
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 46
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 73,
+      "row": 57
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/loader.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 75
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/run_simulation.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 3
+    },
+    "message": "`os` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_balance/run_simulation.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 96
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_balance/run_simulation.py",
+    "code": "E741",
+    "location": {
+      "column": 17,
+      "row": 155
+    },
+    "message": "Ambiguous variable name: `l`"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "F401",
+    "location": {
+      "column": 24,
+      "row": 5
+    },
+    "message": "`contextlib.contextmanager` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "Import from `collections.abc` instead: `Iterable`"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "F401",
+    "location": {
+      "column": 37,
+      "row": 8
+    },
+    "message": "`typing.Tuple` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 24
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 18,
+      "row": 25
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 37
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 27,
+      "row": 66
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 28,
+      "row": 67
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 38,
+      "row": 67
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 27,
+      "row": 68
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 37,
+      "row": 68
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 28,
+      "row": 69
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 70
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 6,
+      "row": 207
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 34,
+      "row": 248
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 113,
+      "row": 248
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 250
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 280
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 30,
+      "row": 303
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 49,
+      "row": 303
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 12,
+      "row": 305
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 324
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 6,
+      "row": 395
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 400
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 87,
+      "row": 488
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_balance/simulator.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 490
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 20,
+      "row": 21
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 21
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 31,
+      "row": 21
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 20,
+      "row": 22
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 22
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 31,
+      "row": 22
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP045",
+    "location": {
+      "column": 23,
+      "row": 29
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 25,
+      "row": 32
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 23,
+      "row": 41
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 29,
+      "row": 41
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 34,
+      "row": 41
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 42
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 15,
+      "row": 42
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 41,
+      "row": 65
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 41,
+      "row": 69
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP007",
+    "location": {
+      "column": 22,
+      "row": 75
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "E701",
+    "location": {
+      "column": 27,
+      "row": 99
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 38,
+      "row": 102
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 104
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 37,
+      "row": 114
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP006",
+    "location": {
+      "column": 46,
+      "row": 124
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "SIM102",
+    "location": {
+      "column": 25,
+      "row": 204
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "E701",
+    "location": {
+      "column": 20,
+      "row": 222
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/fight.py",
+    "code": "UP045",
+    "location": {
+      "column": 29,
+      "row": 262
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "F401",
+    "location": {
+      "column": 38,
+      "row": 7
+    },
+    "message": "`jeuxRPG._class.character.Character` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP006",
+    "location": {
+      "column": 38,
+      "row": 13
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 22
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP037",
+    "location": {
+      "column": 26,
+      "row": 22
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 29
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP037",
+    "location": {
+      "column": 27,
+      "row": 29
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP006",
+    "location": {
+      "column": 25,
+      "row": 30
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP037",
+    "location": {
+      "column": 30,
+      "row": 30
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 35
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "UP037",
+    "location": {
+      "column": 29,
+      "row": 35
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "C416",
+    "location": {
+      "column": 21,
+      "row": 86
+    },
+    "message": "Unnecessary set comprehension (rewrite using `set()`)"
+  },
+  {
+    "filename": "jeuxRPG/_class/_event/confrontation/encounter/team_battle.py",
+    "code": "SIM110",
+    "location": {
+      "column": 9,
+      "row": 89
+    },
+    "message": "Use `return all(team1 not in a2_allies for team1 in a1.get_allies())` instead of `for` loop"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 21
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 21
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 21
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP015",
+    "location": {
+      "column": 22,
+      "row": 45
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 56
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 25,
+      "row": 56
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 120
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 34,
+      "row": 120
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP045",
+    "location": {
+      "column": 17,
+      "row": 153
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 153
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 154
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP045",
+    "location": {
+      "column": 17,
+      "row": 188
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 188
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 189
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 222
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "SIM118",
+    "location": {
+      "column": 13,
+      "row": 223
+    },
+    "message": "Use `key in dict` instead of `key in dict.keys()`"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 31,
+      "row": 232
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "E722",
+    "location": {
+      "column": 9,
+      "row": 233
+    },
+    "message": "Do not use bare `except`"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "SIM105",
+    "location": {
+      "column": 9,
+      "row": 247
+    },
+    "message": "Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP007",
+    "location": {
+      "column": 43,
+      "row": 330
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 20,
+      "row": 343
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP007",
+    "location": {
+      "column": 30,
+      "row": 343
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/character.py",
+    "code": "UP006",
+    "location": {
+      "column": 33,
+      "row": 355
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 34
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 64
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP045",
+    "location": {
+      "column": 27,
+      "row": 64
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "F541",
+    "location": {
+      "column": 27,
+      "row": 77
+    },
+    "message": "f-string without any placeholders"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 41,
+      "row": 115
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 140
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 143
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 170
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 173
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 43,
+      "row": 225
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 48,
+      "row": 225
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 46,
+      "row": 240
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 51,
+      "row": 240
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 247
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 28,
+      "row": 254
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 33,
+      "row": 254
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/alteration_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 266
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/combat_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/combat_mixin.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 29
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/combat_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 30
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/combat_mixin.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 64
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/combat_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 65
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "F401",
+    "location": {
+      "column": 35,
+      "row": 7
+    },
+    "message": "`typing.List` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 71,
+      "row": 42
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 68,
+      "row": 60
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 56,
+      "row": 98
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/energy_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 54,
+      "row": 115
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/health_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/health_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/health_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 46,
+      "row": 31
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/health_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 56,
+      "row": 31
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 66,
+      "row": 111
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 45,
+      "row": 123
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 66,
+      "row": 132
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 57,
+      "row": 144
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/navigation_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 68,
+      "row": 170
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/progression_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/progression_mixin.py",
+    "code": "SIM118",
+    "location": {
+      "column": 13,
+      "row": 119
+    },
+    "message": "Use `key in dict` instead of `key in dict.keys()`"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/progression_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 123
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/progression_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 29,
+      "row": 123
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/skill_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/skill_mixin.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/skill_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 47
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/mixins/skill_mixin.py",
+    "code": "UP006",
+    "location": {
+      "column": 52,
+      "row": 101
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/biome.py",
+    "code": "F401",
+    "location": {
+      "column": 24,
+      "row": 7
+    },
+    "message": "`enum.auto` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/biome.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/biome.py",
+    "code": "F401",
+    "location": {
+      "column": 26,
+      "row": 8
+    },
+    "message": "`typing.Any` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/biome.py",
+    "code": "UP006",
+    "location": {
+      "column": 16,
+      "row": 79
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/building.py",
+    "code": "F401",
+    "location": {
+      "column": 20,
+      "row": 1
+    },
+    "message": "`typing.Literal` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/jobs/npc_loader.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 6
+    },
+    "message": "`os` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/jobs/npc_loader.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 8
+    },
+    "message": "Import from `collections.abc` instead: `Callable`"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/jobs/npc_loader.py",
+    "code": "F401",
+    "location": {
+      "column": 47,
+      "row": 15
+    },
+    "message": "`jeuxRPG._class.place.building.Building` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/jobs/npc_loader.py",
+    "code": "UP015",
+    "location": {
+      "column": 25,
+      "row": 38
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "F401",
+    "location": {
+      "column": 21,
+      "row": 8
+    },
+    "message": "`pathlib.Path` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 9
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP045",
+    "location": {
+      "column": 58,
+      "row": 14
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 19
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 32,
+      "row": 25
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 57,
+      "row": 37
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 67,
+      "row": 37
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 40,
+      "row": 60
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/map_hierarchy.py",
+    "code": "UP006",
+    "location": {
+      "column": 50,
+      "row": 60
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/place/navigation.py",
+    "code": "F401",
+    "location": {
+      "column": 35,
+      "row": 2
+    },
+    "message": "`typing.Literal` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "UP039",
+    "location": {
+      "column": 16,
+      "row": 6
+    },
+    "message": "Unnecessary parentheses after class definition"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "UP007",
+    "location": {
+      "column": 31,
+      "row": 26
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "E701",
+    "location": {
+      "column": 39,
+      "row": 39
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "E701",
+    "location": {
+      "column": 39,
+      "row": 43
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "E701",
+    "location": {
+      "column": 37,
+      "row": 47
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "E701",
+    "location": {
+      "column": 42,
+      "row": 51
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/advantage.py",
+    "code": "E701",
+    "location": {
+      "column": 33,
+      "row": 69
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/build/infrastructures.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/build/infrastructures.py",
+    "code": "UP006",
+    "location": {
+      "column": 29,
+      "row": 7
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "F401",
+    "location": {
+      "column": 22,
+      "row": 2
+    },
+    "message": "`platform.node` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "UP039",
+    "location": {
+      "column": 17,
+      "row": 18
+    },
+    "message": "Unnecessary parentheses after class definition"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E701",
+    "location": {
+      "column": 22,
+      "row": 20
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "SIM102",
+    "location": {
+      "column": 9,
+      "row": 21
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E713",
+    "location": {
+      "column": 20,
+      "row": 22
+    },
+    "message": "Test for membership should be `not in`"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E701",
+    "location": {
+      "column": 21,
+      "row": 24
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E711",
+    "location": {
+      "column": 22,
+      "row": 25
+    },
+    "message": "Comparison to `None` should be `cond is None`"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E701",
+    "location": {
+      "column": 26,
+      "row": 25
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/alteration/alteration.py",
+    "code": "E701",
+    "location": {
+      "column": 30,
+      "row": 54
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "E701",
+    "location": {
+      "column": 48,
+      "row": 16
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "E713",
+    "location": {
+      "column": 16,
+      "row": 21
+    },
+    "message": "Test for membership should be `not in`"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "E701",
+    "location": {
+      "column": 46,
+      "row": 21
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "E701",
+    "location": {
+      "column": 72,
+      "row": 25
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/invocation/invocation_pocket.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 50
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/basic_stat.py",
+    "code": "E701",
+    "location": {
+      "column": 46,
+      "row": 39
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/basic_stat.py",
+    "code": "E701",
+    "location": {
+      "column": 48,
+      "row": 63
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/basic_stat.py",
+    "code": "E701",
+    "location": {
+      "column": 52,
+      "row": 76
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/stat.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/stat.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 33
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/stat.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 34
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/character/stats/stat.py",
+    "code": "E701",
+    "location": {
+      "column": 23,
+      "row": 249
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 2
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 2
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 16
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 16
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP007",
+    "location": {
+      "column": 34,
+      "row": 16
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 40,
+      "row": 16
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 11,
+      "row": 20
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 30
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 30
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 10,
+      "row": 31
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 20,
+      "row": 31
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 25,
+      "row": 31
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 16,
+      "row": 33
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 14,
+      "row": 37
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/dictType.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 38
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP006",
+    "location": {
+      "column": 49,
+      "row": 14
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP007",
+    "location": {
+      "column": 54,
+      "row": 14
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 17
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 18
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 19
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP045",
+    "location": {
+      "column": 22,
+      "row": 20
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP007",
+    "location": {
+      "column": 34,
+      "row": 26
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/alliance.py",
+    "code": "UP007",
+    "location": {
+      "column": 37,
+      "row": 38
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 2
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP039",
+    "location": {
+      "column": 11,
+      "row": 8
+    },
+    "message": "Unnecessary parentheses after class definition"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 16,
+      "row": 16
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP007",
+    "location": {
+      "column": 54,
+      "row": 19
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "B006",
+    "location": {
+      "column": 90,
+      "row": 19
+    },
+    "message": "Do not use mutable data structures for argument defaults"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 32
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 33
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 34
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 29,
+      "row": 311
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 30,
+      "row": 315
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "UP006",
+    "location": {
+      "column": 31,
+      "row": 319
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "SIM110",
+    "location": {
+      "column": 9,
+      "row": 358
+    },
+    "message": "Use `return any(fighter.is_alive() for fighter in self.get_fighters())` instead of `for` loop"
+  },
+  {
+    "filename": "jeuxRPG/_class/res/team/team.py",
+    "code": "E701",
+    "location": {
+      "column": 35,
+      "row": 359
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 2
+    },
+    "message": "`logging` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "Import from `collections.abc` instead: `Callable`"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 3
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "F401",
+    "location": {
+      "column": 51,
+      "row": 3
+    },
+    "message": "`typing.Tuple` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 18,
+      "row": 18
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP045",
+    "location": {
+      "column": 22,
+      "row": 22
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP045",
+    "location": {
+      "column": 24,
+      "row": 24
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 63,
+      "row": 24
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "E701",
+    "location": {
+      "column": 37,
+      "row": 86
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 52,
+      "row": 89
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "E701",
+    "location": {
+      "column": 55,
+      "row": 111
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 49,
+      "row": 122
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 68,
+      "row": 125
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 73,
+      "row": 150
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 92,
+      "row": 150
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP034",
+    "location": {
+      "column": 52,
+      "row": 157
+    },
+    "message": "Avoid extraneous parentheses"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 71,
+      "row": 205
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 90,
+      "row": 205
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 76,
+      "row": 213
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 95,
+      "row": 213
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 77,
+      "row": 224
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 96,
+      "row": 224
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 78,
+      "row": 244
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP006",
+    "location": {
+      "column": 97,
+      "row": 244
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "UP007",
+    "location": {
+      "column": 42,
+      "row": 252
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skill.py",
+    "code": "E701",
+    "location": {
+      "column": 28,
+      "row": 282
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "SIM102",
+    "location": {
+      "column": 9,
+      "row": 13
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "E701",
+    "location": {
+      "column": 25,
+      "row": 20
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "E701",
+    "location": {
+      "column": 32,
+      "row": 21
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "E701",
+    "location": {
+      "column": 138,
+      "row": 22
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "SIM102",
+    "location": {
+      "column": 13,
+      "row": 23
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "SIM102",
+    "location": {
+      "column": 9,
+      "row": 27
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/_class/skills/skillEffect.py",
+    "code": "E701",
+    "location": {
+      "column": 31,
+      "row": 32
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "F401",
+    "location": {
+      "column": 56,
+      "row": 9
+    },
+    "message": "`jeuxRPG._class.res.classType.DamageType` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 12
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 16,
+      "row": 13
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP007",
+    "location": {
+      "column": 21,
+      "row": 13
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 68,
+      "row": 13
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 11,
+      "row": 16
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 13,
+      "row": 17
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 18
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 11,
+      "row": 20
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 12,
+      "row": 24
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 22,
+      "row": 24
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP007",
+    "location": {
+      "column": 31,
+      "row": 24
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_class/stats/status_dict_type.py",
+    "code": "UP006",
+    "location": {
+      "column": 50,
+      "row": 24
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/factory/Character_factory.py",
+    "code": "E701",
+    "location": {
+      "column": 19,
+      "row": 11
+    },
+    "message": "Multiple statements on one line (colon)"
+  },
+  {
+    "filename": "jeuxRPG/_core/factory/Character_factory.py",
+    "code": "B006",
+    "location": {
+      "column": 56,
+      "row": 25
+    },
+    "message": "Do not use mutable data structures for argument defaults"
+  },
+  {
+    "filename": "jeuxRPG/_core/game_controller.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 54
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 11
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 11
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 11
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 12,
+      "row": 46
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 49
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 20,
+      "row": 49
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 13,
+      "row": 52
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 18,
+      "row": 55
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 55
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 62
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP017",
+    "location": {
+      "column": 43,
+      "row": 65
+    },
+    "message": "Use `datetime.UTC` alias"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 24,
+      "row": 71
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 39,
+      "row": 71
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 29,
+      "row": 79
+    },
+    "message": "Use `type` instead of `Type` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP045",
+    "location": {
+      "column": 14,
+      "row": 139
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP045",
+    "location": {
+      "column": 18,
+      "row": 140
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 16,
+      "row": 148
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 148
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 20,
+      "row": 152
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 153
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP037",
+    "location": {
+      "column": 103,
+      "row": 156
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 181
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 26,
+      "row": 181
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 21,
+      "row": 184
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP037",
+    "location": {
+      "column": 68,
+      "row": 192
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 212
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 18,
+      "row": 216
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP006",
+    "location": {
+      "column": 23,
+      "row": 220
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP045",
+    "location": {
+      "column": 21,
+      "row": 224
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/entity_save.py",
+    "code": "UP037",
+    "location": {
+      "column": 91,
+      "row": 228
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 10
+    },
+    "message": "`os` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 14
+    },
+    "message": "`typing.Dict` is deprecated, use `dict` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 14
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 14
+    },
+    "message": "`typing.Type` is deprecated, use `type` instead"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "F401",
+    "location": {
+      "column": 47,
+      "row": 14
+    },
+    "message": "`typing.Type` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "F401",
+    "location": {
+      "column": 25,
+      "row": 15
+    },
+    "message": "`dataclasses.asdict` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP045",
+    "location": {
+      "column": 16,
+      "row": 52
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP037",
+    "location": {
+      "column": 25,
+      "row": 52
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP007",
+    "location": {
+      "column": 35,
+      "row": 54
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP007",
+    "location": {
+      "column": 38,
+      "row": 59
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP037",
+    "location": {
+      "column": 75,
+      "row": 59
+    },
+    "message": "Remove quotes from type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP007",
+    "location": {
+      "column": 35,
+      "row": 74
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 15,
+      "row": 129
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP045",
+    "location": {
+      "column": 19,
+      "row": 131
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 28,
+      "row": 131
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP045",
+    "location": {
+      "column": 10,
+      "row": 168
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 168
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 185
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP045",
+    "location": {
+      "column": 10,
+      "row": 196
+    },
+    "message": "Use `X | None` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 19,
+      "row": 196
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 204
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 51,
+      "row": 229
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "C414",
+    "location": {
+      "column": 16,
+      "row": 244
+    },
+    "message": "Unnecessary `list()` call within `sorted()`"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 51,
+      "row": 246
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP006",
+    "location": {
+      "column": 61,
+      "row": 246
+    },
+    "message": "Use `dict` instead of `Dict` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 271
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP007",
+    "location": {
+      "column": 22,
+      "row": 309
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_core/save/save_manager.py",
+    "code": "UP015",
+    "location": {
+      "column": 33,
+      "row": 331
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import from `collections.abc` instead: `Callable`"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "UP007",
+    "location": {
+      "column": 63,
+      "row": 4
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "UP007",
+    "location": {
+      "column": 61,
+      "row": 19
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "UP007",
+    "location": {
+      "column": 23,
+      "row": 34
+    },
+    "message": "Use `X | Y` for type annotations"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "E712",
+    "location": {
+      "column": 16,
+      "row": 44
+    },
+    "message": "Avoid equality comparisons to `False`; use `not result_of[\"success\"]:` for false checks"
+  },
+  {
+    "filename": "jeuxRPG/_function/skill/custom.py",
+    "code": "F841",
+    "location": {
+      "column": 17,
+      "row": 45
+    },
+    "message": "Local variable `success` is assigned to but never used"
+  },
+  {
+    "filename": "jeuxRPG/adventure/equipment.py",
+    "code": "UP042",
+    "location": {
+      "column": 7,
+      "row": 8
+    },
+    "message": "Class Family inherits from both `str` and `enum.Enum`"
+  },
+  {
+    "filename": "jeuxRPG/adventure/equipment.py",
+    "code": "UP042",
+    "location": {
+      "column": 7,
+      "row": 17
+    },
+    "message": "Class Slot inherits from both `str` and `enum.Enum`"
+  },
+  {
+    "filename": "jeuxRPG/adventure/equipment.py",
+    "code": "B007",
+    "location": {
+      "column": 13,
+      "row": 133
+    },
+    "message": "Loop control variable `key` not used within loop body"
+  },
+  {
+    "filename": "jeuxRPG/adventure/frontier.py",
+    "code": "C401",
+    "location": {
+      "column": 106,
+      "row": 110
+    },
+    "message": "Unnecessary generator (rewrite as a set comprehension)"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "`typing.List` is deprecated, use `list` instead"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 4
+    },
+    "message": "`typing.Set` is deprecated, use `set` instead"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP006",
+    "location": {
+      "column": 34,
+      "row": 11
+    },
+    "message": "Use `set` instead of `Set` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP006",
+    "location": {
+      "column": 50,
+      "row": 14
+    },
+    "message": "Use `set` instead of `Set` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP006",
+    "location": {
+      "column": 46,
+      "row": 62
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/engine.py",
+    "code": "UP006",
+    "location": {
+      "column": 34,
+      "row": 77
+    },
+    "message": "Use `list` instead of `List` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/tower.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 2
+    },
+    "message": "Import from `collections.abc` instead: `Callable`, `Iterable`"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/tower.py",
+    "code": "UP035",
+    "location": {
+      "column": 1,
+      "row": 2
+    },
+    "message": "`typing.Tuple` is deprecated, use `tuple` instead"
+  },
+  {
+    "filename": "jeuxRPG/game_engine/tower.py",
+    "code": "UP006",
+    "location": {
+      "column": 36,
+      "row": 149
+    },
+    "message": "Use `tuple` instead of `Tuple` for type annotation"
+  },
+  {
+    "filename": "jeuxRPG/i18n/__init__.py",
+    "code": "UP015",
+    "location": {
+      "column": 34,
+      "row": 49
+    },
+    "message": "Unnecessary mode argument"
+  },
+  {
+    "filename": "jeuxRPG/i18n/__init__.py",
+    "code": "SIM105",
+    "location": {
+      "column": 9,
+      "row": 85
+    },
+    "message": "Use `contextlib.suppress(KeyError)` instead of `try`-`except`-`pass`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/accounts.py",
+    "code": "F401",
+    "location": {
+      "column": 41,
+      "row": 149
+    },
+    "message": "`.service.digest` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/accounts.py",
+    "code": "F401",
+    "location": {
+      "column": 28,
+      "row": 193
+    },
+    "message": "`.world.zone_of` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/accounts.py",
+    "code": "F401",
+    "location": {
+      "column": 37,
+      "row": 193
+    },
+    "message": "`.world.point_name` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/command_queue.py",
+    "code": "B905",
+    "location": {
+      "column": 33,
+      "row": 53
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 4
+    },
+    "message": "`os` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 21,
+      "row": 5
+    },
+    "message": "`pathlib.Path` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 6
+    },
+    "message": "`shutil` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 22,
+      "row": 8
+    },
+    "message": "`.content.load_content` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 36,
+      "row": 8
+    },
+    "message": "`.content.validate_content` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 66,
+      "row": 8
+    },
+    "message": "`.content.is_hunt` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 25,
+      "row": 9
+    },
+    "message": "`.map_assets.load` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 31,
+      "row": 9
+    },
+    "message": "`.map_assets.validate` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 16
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 24,
+      "row": 16
+    },
+    "message": "`.mob_rules.validate_mobs` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "F401",
+    "location": {
+      "column": 70,
+      "row": 16
+    },
+    "message": "`.mob_rules.STATS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 32
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 33
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 583
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 1
+    },
+    "message": "`argparse` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 3
+    },
+    "message": "`json` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 4
+    },
+    "message": "`os` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 21,
+      "row": 5
+    },
+    "message": "`pathlib.Path` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 6
+    },
+    "message": "`shutil` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 22,
+      "row": 8
+    },
+    "message": "`.content.load_content` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 36,
+      "row": 8
+    },
+    "message": "`.content.validate_content` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 54,
+      "row": 8
+    },
+    "message": "`.content.CONDITIONS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 66,
+      "row": 8
+    },
+    "message": "`.content.is_hunt` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 25,
+      "row": 9
+    },
+    "message": "`.map_assets.load` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 31,
+      "row": 9
+    },
+    "message": "`.map_assets.validate` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 27,
+      "row": 10
+    },
+    "message": "`.map_building.zone_of` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 16
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 24,
+      "row": 16
+    },
+    "message": "`.mob_rules.validate_mobs` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 39,
+      "row": 16
+    },
+    "message": "`.mob_rules.resolve` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 48,
+      "row": 16
+    },
+    "message": "`.mob_rules.CLASS_XP` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 58,
+      "row": 16
+    },
+    "message": "`.mob_rules.drop_rules` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "F401",
+    "location": {
+      "column": 63,
+      "row": 78
+    },
+    "message": "`jeuxRPG._class.res.character.class_models.MODELS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_editors.py",
+    "code": "C420",
+    "location": {
+      "column": 32,
+      "row": 155
+    },
+    "message": "Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 8,
+      "row": 1
+    },
+    "message": "`argparse` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 54,
+      "row": 8
+    },
+    "message": "`.content.CONDITIONS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 27,
+      "row": 10
+    },
+    "message": "`.map_building.zone_of` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 16
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 39,
+      "row": 16
+    },
+    "message": "`.mob_rules.resolve` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 48,
+      "row": 16
+    },
+    "message": "`.mob_rules.CLASS_XP` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 58,
+      "row": 16
+    },
+    "message": "`.mob_rules.drop_rules` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "F401",
+    "location": {
+      "column": 70,
+      "row": 16
+    },
+    "message": "`.mob_rules.STATS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "B023",
+    "location": {
+      "column": 127,
+      "row": 110
+    },
+    "message": "Function definition does not bind loop variable `width`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "B023",
+    "location": {
+      "column": 153,
+      "row": 110
+    },
+    "message": "Function definition does not bind loop variable `height`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_project.py",
+    "code": "B905",
+    "location": {
+      "column": 156,
+      "row": 119
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_tools.py",
+    "code": "SIM102",
+    "location": {
+      "column": 9,
+      "row": 51
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/controller_tools.py",
+    "code": "B007",
+    "location": {
+      "column": 21,
+      "row": 131
+    },
+    "message": "Loop control variable `species` not used within loop body"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/editor_ui.py",
+    "code": "B007",
+    "location": {
+      "column": 20,
+      "row": 17
+    },
+    "message": "Loop control variable `options` not used within loop body"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 49,
+      "row": 5
+    },
+    "message": "`.map_building.map_level` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 29
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 37,
+      "row": 29
+    },
+    "message": "`.map_assets.read_catalog` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 68
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 42,
+      "row": 82
+    },
+    "message": "`jeuxRPG._class.character.Character` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "B905",
+    "location": {
+      "column": 28,
+      "row": 115
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 19,
+      "row": 160
+    },
+    "message": "`.tutorial` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 19,
+      "row": 302
+    },
+    "message": "`.tutorial` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/fields.py",
+    "code": "F401",
+    "location": {
+      "column": 42,
+      "row": 303
+    },
+    "message": "`jeuxRPG._class.character.Character` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_assembly.py",
+    "code": "F401",
+    "location": {
+      "column": 34,
+      "row": 114
+    },
+    "message": "`tkinter.messagebox` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_assets.py",
+    "code": "SIM102",
+    "location": {
+      "column": 9,
+      "row": 28
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_assets.py",
+    "code": "B023",
+    "location": {
+      "column": 128,
+      "row": 45
+    },
+    "message": "Function definition does not bind loop variable `width`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_assets.py",
+    "code": "B023",
+    "location": {
+      "column": 157,
+      "row": 45
+    },
+    "message": "Function definition does not bind loop variable `height`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_assets.py",
+    "code": "B023",
+    "location": {
+      "column": 37,
+      "row": 46
+    },
+    "message": "Function definition does not bind loop variable `key`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_editor.py",
+    "code": "B904",
+    "location": {
+      "column": 17,
+      "row": 454
+    },
+    "message": "Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_layout_editor.py",
+    "code": "F841",
+    "location": {
+      "column": 9,
+      "row": 99
+    },
+    "message": "Local variable `selected` is assigned to but never used"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_layout_editor.py",
+    "code": "B905",
+    "location": {
+      "column": 61,
+      "row": 147
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_playability.py",
+    "code": "B023",
+    "location": {
+      "column": 36,
+      "row": 15
+    },
+    "message": "Function definition does not bind loop variable `definition`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_playability.py",
+    "code": "B023",
+    "location": {
+      "column": 76,
+      "row": 15
+    },
+    "message": "Function definition does not bind loop variable `definition`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_playability.py",
+    "code": "B023",
+    "location": {
+      "column": 114,
+      "row": 15
+    },
+    "message": "Function definition does not bind loop variable `blocked`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/map_world_editor.py",
+    "code": "F401",
+    "location": {
+      "column": 34,
+      "row": 45
+    },
+    "message": "`tkinter.messagebox` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/mob_abilities.py",
+    "code": "SIM102",
+    "location": {
+      "column": 13,
+      "row": 81
+    },
+    "message": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/mob_rules.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 7
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/realtime_store.py",
+    "code": "B905",
+    "location": {
+      "column": 93,
+      "row": 83
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/serverless.py",
+    "code": "SIM105",
+    "location": {
+      "column": 17,
+      "row": 74
+    },
+    "message": "Use `contextlib.suppress(sqlite3.Error)` instead of `try`-`except`-`pass`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/serverless.py",
+    "code": "SIM105",
+    "location": {
+      "column": 17,
+      "row": 244
+    },
+    "message": "Use `contextlib.suppress(sqlite3.Error)` instead of `try`-`except`-`pass`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/service.py",
+    "code": "UP017",
+    "location": {
+      "column": 61,
+      "row": 341
+    },
+    "message": "Use `datetime.UTC` alias"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/service.py",
+    "code": "F841",
+    "location": {
+      "column": 13,
+      "row": 504
+    },
+    "message": "Local variable `tactical_action` is assigned to but never used"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/skill_catalog.py",
+    "code": "F401",
+    "location": {
+      "column": 24,
+      "row": 11
+    },
+    "message": "`.mob_rules.STATS` imported but unused"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/skill_catalog.py",
+    "code": "B008",
+    "location": {
+      "column": 48,
+      "row": 150
+    },
+    "message": "Do not perform function call `deepcopy` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/skill_catalog.py",
+    "code": "B008",
+    "location": {
+      "column": 57,
+      "row": 150
+    },
+    "message": "Do not perform function call `definition.get` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/tactics.py",
+    "code": "F841",
+    "location": {
+      "column": 5,
+      "row": 383
+    },
+    "message": "Local variable `actor` is assigned to but never used"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/tactics.py",
+    "code": "B905",
+    "location": {
+      "column": 26,
+      "row": 436
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/tactics.py",
+    "code": "B905",
+    "location": {
+      "column": 22,
+      "row": 460
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/turso_admin.py",
+    "code": "SIM105",
+    "location": {
+      "column": 13,
+      "row": 50
+    },
+    "message": "Use `contextlib.suppress(sqlite3.Error)` instead of `try`-`except`-`pass`"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/world.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 37
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/world.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 38
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/world.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 39
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/world.py",
+    "code": "E402",
+    "location": {
+      "column": 1,
+      "row": 40
+    },
+    "message": "Module level import not at top of file"
+  },
+  {
+    "filename": "jeuxRPG/multiplayer/world.py",
+    "code": "B905",
+    "location": {
+      "column": 40,
+      "row": 266
+    },
+    "message": "`zip()` without an explicit `strict=` parameter"
+  }
+]

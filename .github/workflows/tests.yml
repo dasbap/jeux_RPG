@@ -38,9 +38,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -c constraints.txt '.[test]'
       - if: matrix.python-version == '3.12'
-        run: python -m pip install pytest-cov==7.1.0
+        run: python -m pip install pytest-cov==7.1.0 ruff==0.16.10
       - if: matrix.python-version == '3.12'
         run: python -m pytest -q --cov=jeuxRPG --cov-branch --cov-report=json:coverage.json --cov-report=xml:coverage.xml
+      - name: Verifier le chiffrement de sauvegarde sur une fixture
+        if: matrix.python-version == '3.12'
+        run: |
+          sudo apt-get update && sudo apt-get install --yes age
+          umask 077
+          age-keygen -o "$RUNNER_TEMP/fixture.key" 2>/dev/null
+          age-keygen -y "$RUNNER_TEMP/fixture.key" > "$RUNNER_TEMP/fixture.recipient"
+          printf 'fixture de restauration' > "$RUNNER_TEMP/fixture.txt"
+          age -R "$RUNNER_TEMP/fixture.recipient" -o "$RUNNER_TEMP/fixture.age" "$RUNNER_TEMP/fixture.txt"
+          age -d -i "$RUNNER_TEMP/fixture.key" -o "$RUNNER_TEMP/fixture-restored.txt" "$RUNNER_TEMP/fixture.age"
+          cmp "$RUNNER_TEMP/fixture.txt" "$RUNNER_TEMP/fixture-restored.txt"
+      - if: matrix.python-version == '3.12'
+        run: python scripts/quality_budget.py --coverage coverage.json
       - if: matrix.python-version != '3.12'
         run: python -m pytest -q
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -51,7 +64,6 @@ jobs:
             coverage.json
             coverage.xml
           if-no-files-found: ignore
-      - run: python -m pip wheel --no-deps . --wheel-dir dist
   ui:
     runs-on: ubuntu-latest
     steps:
@@ -64,8 +76,10 @@ jobs:
           node-version: '22'
       - run: python -m pip install -c constraints.txt .
       - run: npm install --prefix .ui-test jsdom@26.1.0 playwright@1.56.1 axe-core@4.10.3
+      - run: npm audit --prefix .ui-test --audit-level=high
       - run: .ui-test/node_modules/.bin/playwright install --with-deps chromium
       - run: node scripts/verify_transport.cjs
+      - run: node scripts/verify_reconnect_endurance.cjs
       - run: node scripts/verify_polling.cjs
       - run: node scripts/verify_ui_retry.cjs
       - run: node scripts/verify_ui_mira.cjs
