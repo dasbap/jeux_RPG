@@ -317,6 +317,12 @@ async function main() {
     await waitFor(() => !el(first, "craft-view").hidden && !el(first, "npc-view").hidden, "arrivée rapide à la forge");
     assert.match(el(first, "npc-title").textContent, /Garrik/);
     assert.match(el(first, "npc-actions").textContent, /Parler/);
+    el(first, "show-inventory").click();
+    assert(!el(first, "inventory-view").hidden);
+    assert.match(el(first, "gold-balance").textContent, /Or : \d+/);
+    assert.equal(el(first, "market-panel").hidden, false);
+    assert(el(first, "market-details").querySelector("button"), "Catalogue marchand disponible");
+    el(first, "back-view").click();
     el(first, "npc-actions").querySelector("button").click();
     await waitFor(() => /forge de Rosée/.test(el(first, "message").textContent), "dialogue Garrik");
     assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
