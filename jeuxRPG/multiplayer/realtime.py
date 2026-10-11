@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from .json_protocol import object_json
 from .realtime_store import RuntimeStore
@@ -357,10 +358,14 @@ class Coordinator:
         if self.local or not self.owner() or self.connections:
             return
         await self.flush()
-        if self.connections:
-            return
-        await self.redis.eval(RELEASE, 1, self.prefix + 'lease', self.uid + ':' + str(self.fence))
         async with self.lock:
+            if not self.owner() or self.connections or self.store.pending:
+                return
+            try:
+                await self.redis.eval(RELEASE, 1, self.prefix + 'lease', self.uid + ':' + str(self.fence))
+            except RedisError:
+                logging.getLogger(__name__).warning('Libération Redis différée ; moteur conservé jusqu’à expiration du bail')
+                return
             self.deadline = 0
             self.next_election = 0
             self.store.close()
