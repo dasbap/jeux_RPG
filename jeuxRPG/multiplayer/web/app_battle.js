@@ -273,7 +273,7 @@ function renderBattle(adventure, me) {
   decorateMap(svg, map, element, {left, top, width, height}, explored);
   for (const site of map.sites || []) {
     if (!inView(site.position) || explored && !explored.has(site.position.join(","))) continue;
-    const node = element("g", {class: "battle-unit field-site", "data-site": site.id});
+    const node = element("g", {class: "battle-unit field-site", "data-site": site.id, role: "button", tabindex: "0", "aria-label": site.id === "forge" ? "Parler à Garrik · ouvrir la forge" : site.name});
     node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
     node.onclick = () => {
@@ -285,6 +285,7 @@ function renderBattle(adventure, me) {
       else if (!nearby && site.dialogue) message(`Approchez-vous de ${site.name} : double-cliquez sur sa position pour marcher jusqu’à lui parler.`);
       else message(site.name);
     };
+    node.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); node.onclick(); } };
     node.ondblclick = () => moveControlled(adventure, me, site.position);
     svg.append(node);
   }
