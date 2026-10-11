@@ -78,7 +78,7 @@ async function api(path, body, authenticated = true) {
   }
   if (body) headers["Content-Type"] = "application/json";
   if (location.hostname.endsWith(".devtunnels.ms")) headers["X-Tunnel-Skip-AntiPhishing-Page"] = "true";
-  const compactCommand = !globalThis.rpgRealtime && path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "craft", "upgrade", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
+  const compactCommand = !globalThis.rpgRealtime && path === "/api/commands" && ["explore", "strike", "skill", "rest", "travel", "move", "craft", "upgrade", "buy", "sell", "trade", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"].includes(body?.action);
   if (compactCommand) headers["X-RPG-Command-Ack"] = "1";
   const bundled = path === "/api/state" || path === "/api/commands" && !compactCommand;
   if (bundled) {
