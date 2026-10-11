@@ -153,6 +153,11 @@ def main():
             actual = measures.get(name)
             if actual is None or actual > budget:
                 issues.append(f"{path}:{name}: {actual}, budget {budget}")
+    duplicates = duplicate_windows()
+    if duplicates["groups"] > 43 or duplicates["extra_occurrences"] > 48:
+        issues.append(
+            "Duplication exacte supérieure au budget courant (43 groupes / 48 occurrences supplémentaires)."
+        )
     if args.coverage:
         data = json.loads(Path(args.coverage).read_text())["totals"]
         lines = data["covered_lines"] / data["num_statements"] * 100

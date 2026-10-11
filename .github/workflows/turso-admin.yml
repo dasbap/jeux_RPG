@@ -7,7 +7,7 @@ on:
         required: true
         default: connexion
         type: choice
-        options: [connexion, schema, integrite, initialiser]
+        options: [connexion, schema, integrite]
 permissions:
   contents: read
 concurrency:
@@ -33,6 +33,10 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           TURSO_OPERATION: ${{ inputs.operation }}
         run: |
+          case "$TURSO_OPERATION" in
+            connexion|schema|integrite) ;;
+            *) echo "Les migrations passent uniquement par la publication avec sauvegarde."; exit 1 ;;
+          esac
           python -m jeuxRPG.multiplayer.turso_admin connexion
           python -m jeuxRPG.multiplayer.turso_admin "$TURSO_OPERATION"
           python -m jeuxRPG.multiplayer.turso_admin integrite

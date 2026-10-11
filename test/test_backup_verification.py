@@ -67,3 +67,19 @@ def test_export_failure_removes_partial_copy_and_rolls_back(tmp_path):
     with pytest.raises(OSError):
         export_backup(source, destination)
     assert not source.in_transaction and not destination.exists()
+
+
+def test_export_removes_private_partial_file_even_if_rollback_fails(tmp_path):
+    import pytest
+    from scripts.export_turso_backup import export_backup
+    class DisconnectedSource:
+        in_transaction = False
+        def execute(self, sql):
+            if sql == 'BEGIN':
+                self.in_transaction = True
+                return []
+            raise OSError('isolated disconnected source')
+    destination = tmp_path / 'private-partial.sqlite3'
+    with pytest.raises(OSError):
+        export_backup(DisconnectedSource(), destination)
+    assert not destination.exists()

@@ -55,9 +55,11 @@ def export_backup(source, destination):
                     )
         source.execute("ROLLBACK")
     except BaseException:
-        if source.in_transaction:
-            source.execute("ROLLBACK")
-        destination.unlink(missing_ok=True)
+        try:
+            if source.in_transaction:
+                source.execute("ROLLBACK")
+        finally:
+            destination.unlink(missing_ok=True)
         raise
     report = verify_backup(destination)
     report["private_export"] = True

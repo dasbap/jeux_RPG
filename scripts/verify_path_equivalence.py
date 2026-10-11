@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import tracemalloc
 
 from jeuxRPG.multiplayer import tactics
 
@@ -40,7 +41,7 @@ def measure(baseline):
                 cases.append(
                     (preset["width"], preset["height"], cover, points[0], point)
                 )
-    timings, expected = [], None
+    timings, peaks, expected = [], [], None
     for function in functions:
         samples = []
         for _ in range(3):
@@ -52,11 +53,23 @@ def measure(baseline):
                 expected = results
             assert results == expected, "A route or tie-breaking decision changed"
         timings.append(min(samples))
+        function.cache_clear()
+        tracemalloc.start()
+        try:
+            assert [function(*case) for case in cases] == expected
+            peaks.append(tracemalloc.get_traced_memory()[1])
+        finally:
+            tracemalloc.stop()
     return {
         "baseline": baseline,
         "cases": len(cases),
         "identical": True,
         "cold_cpu_seconds": timings,
+        "traced_peak_bytes": peaks,
+        "cpu_budget_ratio": 1.25,
+        "cpu_budget_met": timings[1] <= timings[0] * 1.25,
+        "memory_budget_bytes": 1024 * 1024,
+        "memory_budget_met": peaks[1] <= 1024 * 1024,
         "cpu_change_percent": round(100 * (timings[1] / timings[0] - 1), 2),
     }
 
@@ -67,5 +80,13 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     report = measure(args.baseline)
+    if not report["memory_budget_met"]:
+        raise SystemExit(
+            "Path allocation peak exceeds 1 MiB on the differential workload"
+        )
+    if not report["cpu_budget_met"]:
+        raise SystemExit(
+            "Cold CPU regression greater than 25% on the differential workload"
+        )
     Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))
