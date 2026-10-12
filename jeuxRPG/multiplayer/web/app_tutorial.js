@@ -19,7 +19,7 @@ function renderCombatFeedback(adventure) {
   for (const row of [...log.children]) if (!retained.has(row)) row.remove();
   if (followLatest) log.scrollTop = log.scrollHeight;
 }
-function renderTutorial(adventure, preserveBattle = false) {
+function renderGame(adventure, preserveBattle = false) {
   if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
@@ -43,7 +43,7 @@ function renderTutorial(adventure, preserveBattle = false) {
     $("field-camera").append(touchMove);
   }
   let autoTarget = $("combat-auto-target");
-  if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; focusedEnemy=""; combatTarget=""; renderTutorial(session.tutorial);}; $("field-camera").append(autoTarget);}
+  if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; focusedEnemy=""; combatTarget=""; renderGame(session.tutorial);}; $("field-camera").append(autoTarget);}
   autoTarget.hidden = true;
   touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
@@ -178,7 +178,7 @@ function renderTutorial(adventure, preserveBattle = false) {
   $("npc-dialogue").textContent = nearbyNpc && !talkingToMira ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : adventure.step === "village" ? `Mira : ${adventure.hunt_description || "Des gobelins menacent la lisière."} · ${adventure.hunt_goal || 3} gobelin(s).` : adventure.quest === "completed" ? "Mira : merci pour votre aide ! La forge est désormais accessible." : adventure.kills < (adventure.hunt_goal || 3) ? `Mira : il reste ${(adventure.hunt_goal || 3) - adventure.kills} gobelin(s) à battre dans la lisière.` : `Mira : vous avez vaincu les ${adventure.hunt_goal || 3} gobelins ! Votre récompense vous attend. Ensuite, faites fabriquer votre veste à la forge.`;
   if (canTalk && nearbyNpc && !talkingToMira) action("npc-actions", nearbyNpc.id === "forge" ? "Parler à Garrik · ouvrir la forge" : "Parler", "talk", {npc: nearbyNpc.id});
   else if (canTalk && talkingToMira && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3))) action("npc-actions", adventure.step === "village" ? "Accepter la quête" : "Rendre la quête", "talk", {npc: "mira"});
-  button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderTutorial(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
+  button("quest-actions", "Localiser le lieu de la quête", () => { mapMarker = {zone: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "lisiere" : "rosee", point: hasQuest && adventure.kills < (adventure.hunt_goal || 3) ? "hunt" : "mira"}; renderGame(session.tutorial); message("Le lieu de la quête est entouré sur la carte générale."); });
   const materialName = item => adventure.material_names?.[item] || item;
   $("forge-keeper").textContent = nearbyNpc?.id === "forge" ? nearbyNpc.name : adventure.world?.places?.flatMap(place => place.points || []).find(point => point.id === "forge")?.name || "Forgeron";
   const forgeMaximum = me.forge?.[0]?.max_level ?? 10;
