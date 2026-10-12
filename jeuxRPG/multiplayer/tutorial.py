@@ -312,34 +312,24 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         return messages, False
     if action == "talk":
         npc_id = params["npc"]
-        if npc_id != "mira":
-            if party["battle"] or party.get("transit") or party.get("position") != npc_id:
-                raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
-            npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
-            if npc is None:
-                raise error("invalid_npc", "PNJ introuvable.", 404)
-            return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, npc_id)], False
-        if party["battle"]:
-            raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
-        if party["step"] == "village":
-            missing = content.missing_requirements(party, content.HUNT)
-            if missing:
-                return [f"{content.HUNT['name']} inaccessible : {'; '.join(missing)}."], False
-            party.update(step="hunt", quest="active")
-            if party.get("field_mode"):
-                party["kills"] = min(content.HUNT["count"], party.get("zone_kills", {}).get("lisiere", 0))
-            messages.extend(content.quest_dialogue(party, "mira"))
-            messages.append(f"Mira : {content.HUNT['description']} · {content.HUNT['count']} gobelin(s).")
-        elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
-            party.update(step="craft", quest="completed")
-            achievements.event(party, "quests", content.HUNT["id"])
-            for key, character in characters.items():
-                if content.HUNT["reward_xp"]:
-                    character.gain_exp(content.HUNT["reward_xp"])
-                party["characters"][key] = pack(character)
-            messages.append(f"Mira : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
-        else:
-            raise error("quest_incomplete", f"Mira attend {content.HUNT['count']} gobelin(s) vaincu(s).", 409)
+        if party["battle"] or party.get("transit") or (party.get("position") != npc_id and npc_id != "mira"):
+            raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
+        npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
+        if npc is None and npc_id != "mira":
+            raise error("invalid_npc", "PNJ introuvable.", 404)
+        states = content.quest_states(party)
+        before = {key: value.get("status") for key, value in states.items()}
+        messages.extend(content.quest_dialogue(party, npc_id))
+        tutorial_quests = [quest for quest in content.DATA["quests"] if quest.get("category") == "tutorial" and quest["npc"] == npc_id]
+        for quest in tutorial_quests:
+            previous = before.get(quest["id"])
+            current = states.get(quest["id"], {}).get("status")
+            if current == "active" and previous != "active" and party["step"] == "village":
+                party.update(step="hunt", quest="active")
+            elif current == "completed" and previous != "completed" and party["step"] == "hunt":
+                party.update(step="craft", quest="completed")
+        if not messages:
+            messages.append(f"{npc['name'] if npc else 'Mira'} : {npc.get('dialogue') if npc else 'Bonjour, voyageur.'}")
         return messages, False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
