@@ -127,7 +127,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   function keepMapOpen() {
     currentView = "map";
     document.body.classList.add("hud-menu-open");
-    if (session?.tutorial) renderTutorial(session.tutorial);
+    if (session?.tutorial) renderGame(session.tutorial);
   }
   function choosePoint(point) {
     mapPoint = point.id;
@@ -329,16 +329,16 @@ function toggleGameMenu(open = $("game-menu-items").hidden) {
 }
 function openForge() {
   if (!session?.tutorial) return;
-  renderTutorial(session.tutorial);
+  renderGame(session.tutorial);
   $("forge-feedback").textContent = "";
   if (!$("craft-view").open) $("craft-view").showModal();
 }
 function showView(view) {
   if (view === "craft") return tutorialCommand("talk", {npc: "forge"});
   toggleGameMenu(false);
-  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderTutorial(session.tutorial);return;}
+  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderGame(session.tutorial);return;}
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
-  if (session && session.tutorial) renderTutorial(session.tutorial);
+  if (session && session.tutorial) renderGame(session.tutorial);
 }
