@@ -93,7 +93,7 @@ async function waitFor(check) {
   assert.equal(calls.length, 1);
   assert.match(get('quest-description').textContent, /Battez les gobelins/);
   assert.match(get('npc-dialogue').textContent, /Mira/);
-  assert.match(get('message').textContent, /Mira/);
+  assert.match(get('message').textContent, /Quête acceptée/);
   w.mount(states.ready);
   assert.equal(get('npc-actions').textContent, 'Parler');
   assert.match(get('npc-dialogue').textContent, /Mira/);
