@@ -156,6 +156,9 @@ def load_content(path=None):
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)
+    for quest in result.get('quests', []):
+        if quest.pop('role', None) == 'tutorial_hunt':
+            quest['category'] = 'tutorial'
     result.setdefault('economy', deepcopy(DEFAULTS['economy']))
     result.setdefault('world', {})
     for key, value in DEFAULTS['world'].items():
