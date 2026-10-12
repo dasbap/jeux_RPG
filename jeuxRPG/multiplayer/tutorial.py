@@ -146,15 +146,16 @@ def view(party, me, now):
     result = json.loads(json.dumps({key: value for key, value in party.items() if key not in ("characters", "ready", "battle", "mobs", "mob")}, ensure_ascii=False, separators=(",", ":")))
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party)
-    result["hunt_objective"] = {key: content.HUNT.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
+    hunt = content.HUNT or {"id": None, "npc": None, "target": None, "zone": None, "map": None, "count": 0, "name": "", "description": ""}
+    result["hunt_objective"] = {key: hunt.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
     result["repop_seconds"] = content.WORLD["repop_seconds"]
-    result["hunt_goal"] = content.HUNT["count"]
-    result["hunt_name"] = content.HUNT["name"]
-    result["hunt_description"] = content.HUNT["description"]
+    result["hunt_goal"] = hunt["count"]
+    result["hunt_name"] = hunt["name"]
+    result["hunt_description"] = hunt["description"]
     result["material_names"] = {key: item['name'] for key, item in content.gameplay()['materials'].items()}
     result["location"], result["objective"] = STEPS[party["step"]]
     if party["step"] == "hunt":
-        result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
+        result["objective"] = f"{hunt['description']} · {party['kills']}/{hunt['count']} gobelin(s)."
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
     result["moving"] = bool(transit and not party["battle"] and transit.get('paused_at') is None)
