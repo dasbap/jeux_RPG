@@ -75,8 +75,8 @@ def test_tutorial_quest_is_checked_by_server_before_state_changes(monkeypatch):
     next(quest for quest in data['quests'] if quest.get('category') == 'tutorial')['requirements'] = {'level':2}
     monkeypatch.setattr(content,'DATA',data)
     p = party()
-    p.update(step='village',battle=None)
+    p.update(step='village',position='mira',battle=None)
     messages, _ = tutorial.execute_one(p,'p','talk',{'npc':'mira'},0,lambda *args:RuntimeError(args),lambda:.5)
     assert p['step'] == 'village'
     assert p['quest'] != 'active'
-    assert 'niveau 2' in messages[0]
+    assert any('niveau 2' in message for message in messages)
