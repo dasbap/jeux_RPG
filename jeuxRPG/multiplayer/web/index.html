@@ -39,7 +39,7 @@
     </nav>
     <section id="registration" class="panel">
       <h2>Votre compte</h2>
-      <p>Un compte, un personnage par classe. Les équipes accueillent jusqu’à quatre joueurs.</p>
+      <p>Un compte, un personnage par classe. Rejoignez vos compagnons grâce au menu Social.</p>
       <form id="register-form"><label for="account-name">Nom de compte</label><input id="account-name" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><label for="account-password">Mot de passe</label><input id="account-password" type="password" required minlength="12" maxlength="128" autocomplete="new-password" aria-describedby="password-help"><small id="password-help">12 à 128 caractères. Conservez ce mot de passe : la récupération automatique n’est pas disponible.</small>
         <label for="name">Nom du personnage</label><input id="name" maxlength="32" required autocomplete="off" placeholder="Votre nom">
         <label for="class-name">Classe</label><select id="class-name">{{CLASS_OPTIONS}}</select>
@@ -75,7 +75,7 @@
           <section class="dashboard-box zone-actions"><h2>Actions du lieu actuel</h2><p id="position-label"></p>        <section id="standby-view"><h3 id="standby-title">Exploration</h3><p id="standby-description"></p><div id="tutorial-actions" class="actions"></div></section>
         <section id="npc-view" hidden><h3 id="npc-title">Dialogue</h3><p id="npc-dialogue"></p><div id="npc-actions" class="actions"></div></section>
 
-        <section id="craft-view" hidden><h3>Forge de Rosée</h3><p>Fabriquez six pièces indépendantes et améliorez-les jusqu’à +10. Les coûts et les matériaux rares requis figurent dans le catalogue.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="forge-catalogue"></div><div id="craft-actions" class="actions"></div></section>
+        <dialog id="craft-view" aria-labelledby="forge-title"><header class="forge-header"><div><p id="forge-keeper">Garrik · maître forgeron</p><h2 id="forge-title">Forge de Rosée</h2></div><button id="forge-close" type="button" aria-label="Fermer la forge" autofocus>Fermer</button></header><p id="forge-description">Fabriquez vos équipements et améliorez-les. Les coûts et les matériaux rares requis figurent dans le catalogue.</p><p id="forge-status" role="status"></p><p id="craft-materials"></p><div id="forge-catalogue"></div><p id="forge-feedback" role="status" aria-live="polite"></p><div id="craft-actions" class="actions"></div></dialog>
         <section id="combat-view" hidden>
           <section id="combat-allies"><div id="combat-resources"></div><h3>Invocations · PV et Mana</h3><div id="combat-stats-details"></div><div id="selected-unit-stats"></div></section><section id="unit-controls" hidden><h3>Alliés contrôlables</h3><p id="control-status"></p><div id="unit-control-list"></div><div id="unit-control-actions" class="actions"></div></section><section id="combat-enemies"><h3>Entités de la sélection</h3><p id="cell-selection-status"></p><div id="cell-entities" class="actions"></div><h3 id="mob-name"></h3><p id="mob-hp"></p><div id="mob-cards" class="actions"></div><h3>Intentions ennemies</h3><div id="enemy-intents"></div></section><p id="combat-status" role="status"></p>
           <div id="self-skills" class="actions" aria-label="Invocations personnelles"></div>

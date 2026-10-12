@@ -592,9 +592,9 @@ class GameService(AccountMixin):
             if session is None:
                 raise GameError("invalid_invite", "Invitation invalide ou expirée.", 404)
             count = self.db.execute("SELECT COUNT(*) FROM members WHERE session_id=?", (session["id"],)).fetchone()[0]
-            limit = 4 if self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone() else 2
+            limit = tutorial.content.DATA["gameplay"]["rules"]["social"]["team_capacity"] if self.db.execute("SELECT 1 FROM account_characters WHERE player_id=?", (player_id,)).fetchone() else 2
             if count >= limit:
-                raise GameError("full", "Le salon contient déjà deux joueurs.", 409)
+                raise GameError("full", f"Le salon contient déjà {limit} joueurs.", 409)
             self.db.execute("INSERT INTO members VALUES (?, ?, ?, 0)", (session["id"], player_id, player["hp"]))
             self.db.execute("UPDATE sessions SET revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, f"{player['name']} a rejoint le salon.")

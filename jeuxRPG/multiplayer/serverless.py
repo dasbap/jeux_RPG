@@ -22,6 +22,28 @@ from .observability import health, ready, metrics
 from .turso import TursoConnection
 
 
+def validate_request_origin(environment, environ, path, method):
+    host = environ.get("HTTP_HOST", "")
+    allowed = set(filter(None, (environment.get("VERCEL_URL"), environment.get("VERCEL_PROJECT_PRODUCTION_URL"), environment.get("VERCEL_BRANCH_URL"))))
+    public = environment.get("RPG_PUBLIC_ORIGIN", "")
+    if public:
+        parsed = urlsplit(public)
+        if parsed.scheme != "https" or parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.username or parsed.password:
+            raise ValueError("Origine publique invalide")
+        allowed.add(parsed.netloc)
+    if not environment.get("VERCEL"):
+        allowed.update(("localhost", "127.0.0.1", "localhost:8080", "127.0.0.1:8080"))
+    if host not in allowed:
+        raise GameError("invalid_host", "Hôte non autorisé.", 403)
+    origin = environ.get("HTTP_ORIGIN")
+    if origin and origin != ("https://" if environment.get("VERCEL") else environ.get("wsgi.url_scheme", "http") + "://") + host:
+        raise GameError("invalid_origin", "Origine non autorisée.", 403)
+    navigation = method == "GET" and environ.get("HTTP_SEC_FETCH_MODE") == "navigate" and environ.get("HTTP_SEC_FETCH_DEST") == "document" and path in ("/", "/admin")
+    if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site" and not navigation:
+        raise GameError("invalid_origin", "Origine non autorisée.", 403)
+    return host
+
+
 class DatabaseLimiter:
     def __init__(self, service):
         self.service = service
@@ -154,24 +176,7 @@ class Application:
             method = environ.get("REQUEST_METHOD", "GET")
             if method not in ("GET", "POST"):
                 raise GameError("method_not_allowed", "Méthode non autorisée.", 405)
-            host = environ.get("HTTP_HOST", "")
-            allowed = set(filter(None, (self.environment.get("VERCEL_URL"), self.environment.get("VERCEL_PROJECT_PRODUCTION_URL"), self.environment.get("VERCEL_BRANCH_URL"))))
-            public = self.environment.get("RPG_PUBLIC_ORIGIN", "")
-            if public:
-                parsed = urlsplit(public)
-                if parsed.scheme != "https" or parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.username or parsed.password:
-                    raise ValueError("Origine publique invalide")
-                allowed.add(parsed.netloc)
-            if not self.environment.get("VERCEL"):
-                allowed.update(("localhost", "127.0.0.1", "localhost:8080", "127.0.0.1:8080"))
-            if host not in allowed:
-                raise GameError("invalid_host", "Hôte non autorisé.", 403)
-            origin = environ.get("HTTP_ORIGIN")
-            if origin and origin != ("https://" if self.environment.get("VERCEL") else environ.get("wsgi.url_scheme", "http") + "://") + host:
-                raise GameError("invalid_origin", "Origine non autorisée.", 403)
-            navigation = method == "GET" and environ.get("HTTP_SEC_FETCH_MODE") == "navigate" and environ.get("HTTP_SEC_FETCH_DEST") == "document" and path in ("/", "/admin")
-            if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site" and not navigation:
-                raise GameError("invalid_origin", "Origine non autorisée.", 403)
+            host = validate_request_origin(self.environment, environ, path, method)
             if self.environment.get("VERCEL"):
                 environ = {**environ, "wsgi.url_scheme": "https"}
             static = {**CLIENT_STATIC, "/admin": ("admin.html", "text/html; charset=utf-8"), "/admin.js": ("admin.js", "text/javascript; charset=utf-8"), "/admin.css": ("admin.css", "text/css; charset=utf-8")}

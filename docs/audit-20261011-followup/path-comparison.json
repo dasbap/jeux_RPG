@@ -1,0 +1,10 @@
+{
+  "baseline": "0e4f42e",
+  "cases": 298,
+  "identical": true,
+  "cold_cpu_seconds": [
+    0.7847843139999999,
+    0.7374188739999998
+  ],
+  "cpu_change_percent": -6.04
+}

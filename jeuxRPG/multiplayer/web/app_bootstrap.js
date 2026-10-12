@@ -56,3 +56,5 @@ $("mob-list-toggle").addEventListener("click", () => {
   $("mob-list-toggle").setAttribute("aria-expanded", String(!collapsed));
   $("mob-list-toggle").setAttribute("aria-label", collapsed ? "Afficher la liste des monstres" : "Réduire la liste des monstres");
 });
+
+$("forge-close").addEventListener("click", () => $("craft-view").close());

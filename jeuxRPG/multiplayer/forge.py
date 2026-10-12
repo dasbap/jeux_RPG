@@ -1,33 +1,36 @@
 from copy import deepcopy
 
 
-RECIPES = {
-    "casque": {"slot": "head", "name": "Casque de la lisière", "adjective": "raffiné", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1, "intelligence": 2, "sagesse": 1},
-    "veste": {"slot": "torso", "name": "Veste de la lisière", "adjective": "solide", "cost": {"peau": 2, "croc": 3}, "hp": 10, "endurance": 3},
-    "gants": {"slot": "hands", "name": "Gants de la lisière", "adjective": "précis", "cost": {"peau": 2, "croc": 2}, "hp": 2, "endurance": 1, "force": 2},
-    "jambieres": {"slot": "legs", "name": "Jambières de la lisière", "adjective": "robustes", "cost": {"peau": 3, "croc": 2}, "hp": 5, "endurance": 2, "force": 1},
-    "bottes": {"slot": "feet", "name": "Bottes de la lisière", "adjective": "agiles", "cost": {"peau": 2, "croc": 1}, "hp": 3, "endurance": 1, "sagesse": 1},
-    "ceinture": {"slot": "waist", "name": "Ceinture de la lisière", "adjective": "renforcée", "cost": {"peau": 1, "croc": 2}, "hp": 2, "endurance": 1, "intelligence": 1, "sagesse": 2},
-}
+from .content import DATA
+from .gameplay_catalog import rare_drops
+
+
+GAMEPLAY = DATA['gameplay']
+RECIPES = GAMEPLAY['recipes']
 BONUS_STATS = ("hp", "endurance", "force", "intelligence", "sagesse")
-RARE_DROPS = {"cristal_gobelin": .08, "noyau_gobelin": .02}
+RARE_DROPS = rare_drops(GAMEPLAY)
+RULES = GAMEPLAY['rules']['forge']
 
 
-def upgrade_cost(recipe, level):
-    definition = RECIPES[recipe]
-    cost = {item: quantity * (level + 1) + level * level for item, quantity in definition["cost"].items()}
-    if level >= 4:
-        cost["cristal_gobelin"] = (level - 2) // 2
-    if level >= 8:
-        cost["noyau_gobelin"] = level - 7
+def recipe_settings(recipe, gameplay):
+    selected = gameplay or GAMEPLAY
+    return selected['recipes'][recipe], selected['rules']['forge'], selected
+
+
+def upgrade_cost(recipe, level, gameplay=None):
+    definition, rules, gameplay = recipe_settings(recipe, gameplay)
+    cost = {item: quantity * (1 + level * rules['cost_linear']) + level * level * rules['cost_quadratic'] for item, quantity in definition["cost"].items()}
+    for extra in gameplay['rare_costs']:
+        if level >= extra['start_level']:
+            cost[extra['item']] = cost.get(extra['item'], 0) + (level - extra['offset']) // extra['divisor']
     return cost
 
 
-def piece(recipe, level=0):
-    definition = RECIPES[recipe]
+def piece(recipe, level=0, gameplay=None):
+    definition, rules, _ = recipe_settings(recipe, gameplay)
     return {"recipe": recipe, "slot": definition["slot"], "level": level,
-            "name": definition["name"] + (" " + definition["adjective"] if level == 10 else ""),
-            **{stat: definition.get(stat, 0) + (level * 2 if stat == "hp" else level // 2 if definition.get(stat, 0) else 0) for stat in BONUS_STATS}}
+            "name": definition["name"] + (" " + definition["adjective"] if level >= rules["max_level"] else ""),
+            **{stat: definition.get(stat, 0) + (level * rules["hp_per_level"] if stat == "hp" else level // rules["stat_every_levels"] if definition.get(stat, 0) else 0) for stat in BONUS_STATS}}
 
 
 def migrate(party):
@@ -39,14 +42,17 @@ def migrate(party):
         if not isinstance(equipment, dict):
             continue
         for slot, old in list(equipment.items()):
-            if all(stat in old for stat in BONUS_STATS):
+            if old.get("recipe") not in RECIPES:
                 continue
             new = piece(old["recipe"], old["level"])
+            new["slot"] = slot
+            if new == old:
+                continue
             for stat in BONUS_STATS:
                 delta = new[stat] - old.get(stat, 0)
                 values = party["characters"][key]["stats"][stat]
                 values["max"] += delta
-                values["current"] = min(values["max"], values["current"] + delta) if stat == "hp" else values["current"] + delta
+                values["current"] = max(0, min(values["max"], values["current"] + delta)) if stat == "hp" else values["current"] + delta
             equipment[slot] = new
 
 
@@ -56,9 +62,9 @@ def catalogue(party, player):
     inventory = party["inventory"][player]
     result = []
     for recipe, definition in RECIPES.items():
-        equipped = gear.get(definition["slot"])
-        cost = upgrade_cost(recipe, equipped["level"] + 1) if equipped and equipped["level"] < 10 else None if equipped else definition["cost"]
-        result.append({**deepcopy(definition), "recipe": recipe, "equipped": deepcopy(equipped), "cost": cost,
+        equipped = next((item for item in gear.values() if item["recipe"] == recipe), None)
+        cost = upgrade_cost(recipe, equipped["level"] + 1) if equipped and equipped["level"] < RULES["max_level"] else None if equipped else definition["cost"]
+        result.append({**deepcopy(definition), "recipe": recipe, "max_level": RULES["max_level"], "equipped": deepcopy(equipped), "cost": cost,
                        "affordable": bool(cost is not None and all(inventory.get(k, 0) >= v for k, v in cost.items()))})
     return result
 
@@ -74,27 +80,31 @@ def execute(party, player, action, recipe, error):
     migrate(party)
     gear = party["equipment"].setdefault(player, {})
     slot = RECIPES[recipe]["slot"]
+    existing = next(((place, item) for place, item in gear.items() if item["recipe"] == recipe), None)
+    if action == "upgrade" and existing:
+        slot = existing[0]
     old = gear.get(slot)
-    if action == "craft" and old:
+    if action == "craft" and existing:
         raise error("already_crafted", "Cette pièce est déjà équipée.", 409)
     if action == "upgrade" and (not old or old["recipe"] != recipe):
         raise error("missing_equipment", "Fabriquez cette pièce avant de l'améliorer.", 409)
-    if old and old["level"] >= 10:
-        raise error("max_upgrade", "Cette pièce a atteint +10.", 409)
-    level = old["level"] + 1 if old else 0
-    cost = upgrade_cost(recipe, level) if old else RECIPES[recipe]["cost"]
+    if action == "upgrade" and old and old["level"] >= RULES["max_level"]:
+        raise error("max_upgrade", f"Cette pièce a atteint +{RULES['max_level']}.", 409)
+    level = old["level"] + 1 if action == "upgrade" else 0
+    cost = upgrade_cost(recipe, level) if action == "upgrade" else RECIPES[recipe]["cost"]
     inventory = party["inventory"][player]
     if any(inventory.get(item, 0) < quantity for item, quantity in cost.items()):
         raise error("missing_materials", "Matériaux insuffisants pour cette amélioration.", 409)
     for item, quantity in cost.items():
         inventory[item] -= quantity
     new = piece(recipe, level)
+    new["slot"] = slot
     actor = unpack(party["characters"][player])
     for name in BONUS_STATS:
         delta = new[name] - (old.get(name, 0) if old else 0)
         stat = getattr(actor, name)
         stat.value += delta
-        stat.current_value = min(stat.value, stat.current_value + delta) if name == "hp" else stat.current_value + delta
+        stat.current_value = max(0, min(stat.value, stat.current_value + delta)) if name == "hp" else stat.current_value + delta
     gear[slot] = new
     party["characters"][player] = pack(actor)
     from . import content, world
@@ -105,7 +115,7 @@ def execute(party, player, action, recipe, error):
     previous_step = party["step"]
     if party["step"] == "craft" and all("torso" in party["equipment"].get(key, {}) for key in party["characters"]):
         party["step"] = "travel"
-    messages = [f"{actor.name} {'améliore' if old else 'fabrique et équipe'} {new['name']} +{level}."]
+    messages = [f"{actor.name} {'améliore' if action == 'upgrade' else 'fabrique et équipe'} {new['name']} +{level}."]
     if previous_step == "craft" and party["step"] == "travel":
         messages.append("Objectif accompli : veste fabriquée et équipée. Prochaine étape : rejoindre le village de Brume.")
     elif previous_step == "craft" and slot == "torso":

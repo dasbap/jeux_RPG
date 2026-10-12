@@ -25,7 +25,13 @@ ready = snapshot(4)
 messages, _ = tutorial.execute(p, 'p', 'talk', {'npc':'mira'}, 0, GameError, lambda:.5)
 completed = snapshot(5)
 completed['events'] = [{'id':2, 'game_time':0, 'message':messages[-1]}]
-print(json.dumps({'far':far, 'near':near, 'active':active, 'ready':ready, 'completed':completed}))
+p['battle']['players']['p']['position'] = next(site['position'] for site in fields.MAPS['rosee']['sites'] if site['id'] == 'forge')
+p['inventory']['p'] = {'peau':9, 'croc':9}
+forge_near = snapshot(6)
+messages, _ = tutorial.execute(p, 'p', 'craft', {'recipe':'veste'}, 0, GameError, lambda:.5)
+crafted = snapshot(7)
+crafted['events'] = [{'id':3, 'game_time':0, 'message':messages[-1]}]
+print(json.dumps({'forge_near':forge_near, 'crafted':crafted, 'far':far, 'near':near, 'active':active, 'ready':ready, 'completed':completed}))
 `], {cwd: root, encoding:'utf8'});
 assert.equal(fixture.status, 0, fixture.stderr);
 const states = JSON.parse(fixture.stdout);
@@ -35,6 +41,8 @@ const get = id => w.document.getElementById(id);
 const calls = [];
 let current = states.near;
 w.structuredClone = structuredClone;
+w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+w.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
 w.setInterval = () => 0;
 w.fetch = async (url, options) => {
   let data = {};
@@ -42,11 +50,16 @@ w.fetch = async (url, options) => {
   if (url === '/api/commands') {
     const body = JSON.parse(options.body);
     calls.push(body);
-    assert.equal(body.action, 'talk');
-    assert.equal(body.params.npc, 'mira');
-    assert.equal(body.params.world_context, current.tutorial.world_context);
-    assert.equal(options.headers['X-RPG-Command-Ack'], undefined);
-    current = current.tutorial.quest === 'unaccepted' ? states.active : states.completed;
+    if (body.action === 'craft') {
+      assert.equal(body.params.recipe, 'veste');
+      current = states.crafted;
+    } else {
+      assert.equal(body.action, 'talk');
+      assert.equal(body.params.npc, current === states.forge_near ? 'forge' : 'mira');
+    }
+    if (body.action === 'talk') assert.equal(body.params.world_context, current.tutorial.world_context);
+    if (body.action === 'talk') assert.equal(options.headers['X-RPG-Command-Ack'], undefined);
+    if (body.params.npc === 'mira') current = current.tutorial.quest === 'unaccepted' ? states.active : states.completed;
     data = {session:current};
   }
   if (url === '/api/state') data = {session:current};
@@ -90,6 +103,37 @@ async function waitFor(check) {
   assert.match(get('forge-status').textContent, /Forge débloquée/);
   assert.match(get('message').textContent, /750 XP/);
   assert.equal(w.document.querySelectorAll('[style]').length, 0);
+  current = states.forge_near;
+  w.mount(current);
+  assert.equal(get('craft-view').open, false);
+  assert.equal(get('craft-view').parentElement.id, 'battle');
+  const forge = get('world-map').querySelector('[data-site="forge"]');
+  assert.equal(forge.getAttribute('role'), 'button');
+  forge.dispatchEvent(new w.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+  await waitFor(() => w.ready() && get('craft-view').open);
+  assert.equal(calls.at(-1).params.npc, 'forge');
+  const vest = get('forge-catalogue').querySelector('[data-recipe="veste"]');
+  assert(vest.classList.contains('quest-recipe'));
+  vest.querySelector('button').click();
+  await waitFor(() => w.ready() && /Veste équipée/.test(get('forge-status').textContent));
+  assert.equal(get('craft-view').open, true);
+  assert.equal(calls.at(-1).action, 'craft');
+  assert.equal(get('craft-materials').textContent, 'Votre sac : 7 Peau, 6 Croc.');
+  get('forge-close').click();
+  assert.equal(get('craft-view').open, false);
+  current = states.forge_near;
+  w.mount(current);
+  get('world-map').querySelector('[data-site="forge"]').dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
+  await waitFor(() => w.ready() && get('craft-view').open);
+  w.mount(states.far);
+  assert.equal(get('craft-view').open, false);
+  const custom = structuredClone(states.forge_near);
+  custom.tutorial.material_names.peau = 'Cuir personnalisé';
+  for (const player of custom.tutorial.players) for (const recipe of player.forge || []) recipe.max_level = 2;
+  w.mount(custom);
+  assert.match(get('forge-description').textContent, /jusqu’à \+2/);
+  assert.match(get('craft-materials').textContent, /Cuir personnalisé/);
+  assert.match(get('forge-catalogue').textContent, /À \+2/);
   dom.window.close();
-  console.log('Mira : proximité, acceptation, objectif visible et remise de quête vérifiés.');
+  console.log('Mira et Garrik : quête, forge à pied, fabrication, fermeture et sortie de proximité vérifiées.');
 })().catch(error => {dom.window.close(); console.error(error); process.exitCode=1;});

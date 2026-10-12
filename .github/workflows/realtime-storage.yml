@@ -1,13 +1,12 @@
 name: Controle stockage temps reel
 on:
-  push:
-    branches: [alpha-vercel-turso]
-    paths: [.github/workflows/realtime-storage.yml]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   inspect:
+    if: github.ref == 'refs/heads/prod'
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -22,10 +21,6 @@ jobs:
           mkdir -p .vercel
           node -e 'require("fs").writeFileSync(".vercel/project.json", JSON.stringify({projectId:"prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2",orgId:"team_qde9V6kikwwSvLtNrjAsAkRY",projectName:"jeux-rpg"}))'
       - name: Lister les integrations existantes
-        run: .tools/node_modules/.bin/vercel integration list --token "$VERCEL_TOKEN"
+        run: .tools/node_modules/.bin/vercel integration list
       - name: Decouvrir le stockage disponible
-        run: .tools/node_modules/.bin/vercel integration discover --category storage --token "$VERCEL_TOKEN"
-      - name: Verifier les options de provisionnement
-        run: .tools/node_modules/.bin/vercel integration add upstash --help
-      - name: Provisionner Redis gratuit pour jeux-rpg
-        run: .tools/node_modules/.bin/vercel integration add upstash/upstash-kv --name jeux-rpg-runtime --plan free -m primaryRegion=fra1 -m autoUpgrade=false -m prodPack=false -m eviction=false -e production --non-interactive --no-claim --no-env-pull --token "$VERCEL_TOKEN"
+        run: .tools/node_modules/.bin/vercel integration discover --category storage

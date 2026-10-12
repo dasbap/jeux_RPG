@@ -1,0 +1,34 @@
+{
+  "scope": "read-only remote observations and isolated test results; final checks pending",
+  "vercel": {
+    "observed_at": "2026-10-11",
+    "public_release": "82a7461613ec748014d3cf5a97bdade88f1d1ee3",
+    "dashboard_status": "Ready",
+    "six_hour_invocations": 48,
+    "six_hour_error_rate_percent": 0,
+    "logs_last_30_minutes": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "period": "Sep11 07:00-Oct11 07:00",
+    "active_cpu_display": "2h14m / 4h",
+    "memory_gbh": 39.3,
+    "memory_quota_gbh": 360,
+    "invocations": 2106,
+    "invocations_quota": 1000000,
+    "upstash_usage": "No data available yet",
+    "api_connector": "404 despite project present in signed-in dashboard"
+  },
+  "backup": {
+    "public_recipient_variable": "absent at observation",
+    "plaintext_uploaded": false,
+    "production_export_completed": false,
+    "production_promotion_completed": false
+  },
+  "dependency_scan": {
+    "python_pinned_packages": 26,
+    "known_python_vulnerabilities": 0,
+    "known_ui_npm_vulnerabilities": 0,
+    "known_browser_npm_vulnerabilities": 0
+  }
+}

@@ -1,3 +1,4 @@
+from .content import DATA
 from copy import deepcopy
 import math
 import re
@@ -7,7 +8,7 @@ RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
 from jeuxRPG._class.res.character.class_models import MODELS
 CLASSES = tuple(model['id'] for model in MODELS['classes'] if model['class_type'] != 'INVOCATION')
 STATS = ('hp', 'force', 'endurance', 'intelligence', 'sagesse')
-CLASS_XP = {'normal':1, 'warrior':1.5, 'caster':1.8, 'elite':2.5, 'boss':4}
+CLASS_XP = DATA['gameplay']['xp_classes']
 
 
 def finite(value, low, high):
@@ -29,7 +30,8 @@ def resolve(mobs, identifier, visited=None):
     return item
 
 
-def validate_mobs(mobs,classes=None):
+def validate_mobs(mobs,classes=None,xp_classes=None):
+    xp_classes = CLASS_XP if xp_classes is None else xp_classes
     classes = CLASSES if classes is None else classes
     if not isinstance(mobs, dict) or not 1 <= len(mobs) <= 200 or 'goblin' not in mobs:
         raise ValueError('De 1 à 200 espèces requises, dont goblin.')
@@ -47,7 +49,7 @@ def validate_mobs(mobs,classes=None):
         item = resolve(mobs, identifier)
         if item.get('class_name') not in classes or not isinstance(item.get('name'), str) or not 1 <= len(item['name']) <= 100 or item.get('rank') not in RANKS or type(item.get('damage')) is not int or not 0 <= item['damage'] <= 10000:
             raise ValueError('Classe de base, nom, rang ou dégâts invalides.')
-        if item.get('xp_class', 'normal') not in CLASS_XP or not finite(item.get('xp_multiplier', 1), 0, 100) or not finite(item.get('damage_growth', .5), 0, 1000):
+        if item.get('xp_class', 'normal') not in xp_classes or not finite(item.get('xp_multiplier', 1), 0, 100) or not finite(item.get('damage_growth', .5), 0, 1000):
             raise ValueError('Classe XP, multiplicateur ou progression des dégâts invalides.')
         stats = item.get('stats', {})
         if not isinstance(stats, dict) or set(stats)-set(STATS):
@@ -92,16 +94,17 @@ def validate_mobs(mobs,classes=None):
     return deepcopy(mobs)
 
 
-def level_factor(mob_level, player_level):
-    return 4 ** (max(-10, min(10, mob_level-player_level))/10)
+def level_factor(mob_level, player_level, gameplay=None):
+    rules = (gameplay or DATA['gameplay'])['rules']['combat']
+    return rules['level_xp_base'] ** (max(-rules['level_xp_limit'], min(rules['level_xp_limit'], mob_level-player_level))/rules['level_xp_divisor'])
 
 
-def experience(mob, player_level, base, models=None):
+def experience(mob, player_level, base, models=None, gameplay=None):
     classification = mob.get('xp_class')
     model = next((item for item in (models or MODELS)['classes'] if item['id'] == mob.get('class_name') or mob.get('class_name') in item.get('previous_ids',[])),{})
-    class_factor = CLASS_XP.get(classification,model.get('combat',{}).get('xp_factor',1))
+    class_factor = (gameplay or DATA['gameplay'])['xp_classes'].get(classification,model.get('combat',{}).get('xp_factor',1))
     level = max(1, mob.get('level',1))
-    return max(0, round(base*level*class_factor*mob.get('xp_multiplier',1)*level_factor(level,player_level)))
+    return max(0, round(base*level*class_factor*mob.get('xp_multiplier',1)*level_factor(level,player_level,gameplay)))
 
 
 def drop_rules(definition, legacy_rare):

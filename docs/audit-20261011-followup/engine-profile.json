@@ -1,0 +1,648 @@
+{
+  "command": "python -m cProfile -o followup.prof -m pytest test/test_multiplayer.py test/test_tactics.py test/test_distributed_runtime.py test/test_tutorial.py -q",
+  "tests_passed": 234,
+  "scope": "isolated instrumented fixtures, SQLite; cumulative times overlap, not production latency or comparable global before/after",
+  "total_instrumented_seconds": 36.471225689000036,
+  "functions": [
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "view",
+      "line": 150,
+      "calls": 3468,
+      "self_seconds": 0.300469,
+      "cumulative_seconds": 19.606085
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "_snapshot",
+      "line": 283,
+      "calls": 3169,
+      "self_seconds": 0.193818,
+      "cumulative_seconds": 17.68611
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "state",
+      "line": 309,
+      "calls": 2734,
+      "self_seconds": 0.07314,
+      "cumulative_seconds": 14.927299
+    },
+    {
+      "path": "jeuxRPG/multiplayer/world.py",
+      "name": "view",
+      "line": 123,
+      "calls": 3535,
+      "self_seconds": 0.239417,
+      "cumulative_seconds": 12.050039
+    },
+    {
+      "path": "jeuxRPG/multiplayer/skill_catalog.py",
+      "name": "library",
+      "line": 25,
+      "calls": 3489,
+      "self_seconds": 0.115781,
+      "cumulative_seconds": 7.937573
+    },
+    {
+      "path": "jeuxRPG/multiplayer/server.py",
+      "name": "server_close",
+      "line": 119,
+      "calls": 12,
+      "self_seconds": 0.000201,
+      "cumulative_seconds": 7.449046
+    },
+    {
+      "path": "jeuxRPG/multiplayer/command_queue.py",
+      "name": "close",
+      "line": 57,
+      "calls": 13,
+      "self_seconds": 5.2e-05,
+      "cumulative_seconds": 7.381716
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "unpack",
+      "line": 61,
+      "calls": 8944,
+      "self_seconds": 0.133826,
+      "cumulative_seconds": 5.383982
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "command",
+      "line": 408,
+      "calls": 727,
+      "self_seconds": 0.030552,
+      "cumulative_seconds": 5.318348
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "_execute",
+      "line": 475,
+      "calls": 753,
+      "self_seconds": 0.018635,
+      "cumulative_seconds": 4.827833
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "tick",
+      "line": 124,
+      "calls": 470,
+      "self_seconds": 0.019338,
+      "cumulative_seconds": 2.965449
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_building.py",
+      "name": "spawners",
+      "line": 39,
+      "calls": 5575,
+      "self_seconds": 0.095707,
+      "cumulative_seconds": 2.625142
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "execute",
+      "line": 531,
+      "calls": 743,
+      "self_seconds": 0.006975,
+      "cumulative_seconds": 1.673812
+    },
+    {
+      "path": "jeuxRPG/multiplayer/achievements.py",
+      "name": "view",
+      "line": 143,
+      "calls": 3478,
+      "self_seconds": 0.137954,
+      "cumulative_seconds": 1.405488
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "path",
+      "line": 62,
+      "calls": 310,
+      "self_seconds": 0.005845,
+      "cumulative_seconds": 1.323131
+    },
+    {
+      "path": "jeuxRPG/multiplayer/__init__.py",
+      "name": "<module>",
+      "line": 1,
+      "calls": 1,
+      "self_seconds": 4e-06,
+      "cumulative_seconds": 1.301752
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "<module>",
+      "line": 1,
+      "calls": 1,
+      "self_seconds": 4.8e-05,
+      "cumulative_seconds": 1.301103
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "cached_path",
+      "line": 75,
+      "calls": 178,
+      "self_seconds": 0.132327,
+      "cumulative_seconds": 1.295756
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "<module>",
+      "line": 1,
+      "calls": 1,
+      "self_seconds": 3.5e-05,
+      "cumulative_seconds": 1.169516
+    },
+    {
+      "path": "jeuxRPG/multiplayer/fields.py",
+      "name": "<module>",
+      "line": 1,
+      "calls": 1,
+      "self_seconds": 0.000129,
+      "cumulative_seconds": 1.129938
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "configured",
+      "line": 221,
+      "calls": 1,
+      "self_seconds": 5.7e-05,
+      "cumulative_seconds": 1.12556
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "load",
+      "line": 182,
+      "calls": 1,
+      "self_seconds": 0.00023,
+      "cumulative_seconds": 1.125159
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "validate",
+      "line": 10,
+      "calls": 1,
+      "self_seconds": 0.003427,
+      "cumulative_seconds": 1.123081
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "walkable",
+      "line": 28,
+      "calls": 466701,
+      "self_seconds": 0.63165,
+      "cumulative_seconds": 1.118524
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "valid_step",
+      "line": 44,
+      "calls": 207604,
+      "self_seconds": 0.154556,
+      "cumulative_seconds": 1.059255
+    },
+    {
+      "path": "jeuxRPG/_class/character.py",
+      "name": "create",
+      "line": 122,
+      "calls": 863,
+      "self_seconds": 0.003178,
+      "cumulative_seconds": 1.033422
+    },
+    {
+      "path": "jeuxRPG/multiplayer/progression.py",
+      "name": "resources",
+      "line": 79,
+      "calls": 4663,
+      "self_seconds": 0.031757,
+      "cumulative_seconds": 1.029552
+    },
+    {
+      "path": "jeuxRPG/multiplayer/achievements.py",
+      "name": "record",
+      "line": 8,
+      "calls": 134019,
+      "self_seconds": 0.542284,
+      "cumulative_seconds": 0.846596
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "execute_one",
+      "line": 231,
+      "calls": 400,
+      "self_seconds": 0.010731,
+      "cumulative_seconds": 0.825106
+    },
+    {
+      "path": "jeuxRPG/_class/universal_character.py",
+      "name": "initialize",
+      "line": 77,
+      "calls": 722,
+      "self_seconds": 0.003869,
+      "cumulative_seconds": 0.82505
+    },
+    {
+      "path": "jeuxRPG/multiplayer/forge.py",
+      "name": "catalogue",
+      "line": 53,
+      "calls": 3893,
+      "self_seconds": 0.078927,
+      "cumulative_seconds": 0.777384
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "__init__",
+      "line": 51,
+      "calls": 99,
+      "self_seconds": 0.009553,
+      "cumulative_seconds": 0.760937
+    },
+    {
+      "path": "jeuxRPG/multiplayer/achievements.py",
+      "name": "unlocked",
+      "line": 79,
+      "calls": 45322,
+      "self_seconds": 0.090606,
+      "cumulative_seconds": 0.76024
+    },
+    {
+      "path": "jeuxRPG/multiplayer/map_assets.py",
+      "name": "<genexpr>",
+      "line": 174,
+      "calls": 37,
+      "self_seconds": 4.9e-05,
+      "cumulative_seconds": 0.718807
+    },
+    {
+      "path": "jeuxRPG/multiplayer/achievements.py",
+      "name": "progress",
+      "line": 51,
+      "calls": 84667,
+      "self_seconds": 0.080433,
+      "cumulative_seconds": 0.710498
+    },
+    {
+      "path": "jeuxRPG/_class/character.py",
+      "name": "__init__",
+      "line": 183,
+      "calls": 863,
+      "self_seconds": 0.015569,
+      "cumulative_seconds": 0.616931
+    },
+    {
+      "path": "jeuxRPG/multiplayer/mob_rules.py",
+      "name": "resolve",
+      "line": 17,
+      "calls": 25062,
+      "self_seconds": 0.036175,
+      "cumulative_seconds": 0.578812
+    },
+    {
+      "path": "jeuxRPG/multiplayer/skill_catalog.py",
+      "name": "install",
+      "line": 120,
+      "calls": 99,
+      "self_seconds": 0.002465,
+      "cumulative_seconds": 0.514327
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "spawn",
+      "line": 385,
+      "calls": 189,
+      "self_seconds": 0.00426,
+      "cumulative_seconds": 0.396124
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "view",
+      "line": 863,
+      "calls": 3468,
+      "self_seconds": 0.0346,
+      "cumulative_seconds": 0.36763
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "free_position",
+      "line": 219,
+      "calls": 4592,
+      "self_seconds": 0.018835,
+      "cumulative_seconds": 0.326345
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "advance",
+      "line": 602,
+      "calls": 421,
+      "self_seconds": 0.006981,
+      "cumulative_seconds": 0.322312
+    },
+    {
+      "path": "jeuxRPG/multiplayer/command_journal.py",
+      "name": "encode_receipt",
+      "line": 9,
+      "calls": 675,
+      "self_seconds": 0.005047,
+      "cumulative_seconds": 0.313006
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "begin",
+      "line": 138,
+      "calls": 238,
+      "self_seconds": 0.00565,
+      "cumulative_seconds": 0.300537
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "ready",
+      "line": 945,
+      "calls": 476,
+      "self_seconds": 0.002828,
+      "cumulative_seconds": 0.285183
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "patrol_route",
+      "line": 231,
+      "calls": 656,
+      "self_seconds": 0.003046,
+      "cumulative_seconds": 0.28171
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "create_character",
+      "line": 27,
+      "calls": 193,
+      "self_seconds": 0.00052,
+      "cumulative_seconds": 0.278011
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tutorial.py",
+      "name": "new_party",
+      "line": 109,
+      "calls": 178,
+      "self_seconds": 0.000861,
+      "cumulative_seconds": 0.277944
+    },
+    {
+      "path": "jeuxRPG/multiplayer/skill_catalog.py",
+      "name": "validate",
+      "line": 37,
+      "calls": 99,
+      "self_seconds": 0.001017,
+      "cumulative_seconds": 0.261578
+    },
+    {
+      "path": "jeuxRPG/_class/universal_character.py",
+      "name": "register_model",
+      "line": 65,
+      "calls": 1299,
+      "self_seconds": 0.004454,
+      "cumulative_seconds": 0.251074
+    },
+    {
+      "path": "jeuxRPG/multiplayer/world.py",
+      "name": "zone_of",
+      "line": 231,
+      "calls": 67613,
+      "self_seconds": 0.087478,
+      "cumulative_seconds": 0.240026
+    },
+    {
+      "path": "jeuxRPG/_class/res/character/class_models.py",
+      "name": "table_from_model",
+      "line": 199,
+      "calls": 1312,
+      "self_seconds": 0.021778,
+      "cumulative_seconds": 0.216998
+    },
+    {
+      "path": "jeuxRPG/_class/universal_character.py",
+      "name": "initialize",
+      "line": 70,
+      "calls": 141,
+      "self_seconds": 0.000944,
+      "cumulative_seconds": 0.204177
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "register",
+      "line": 237,
+      "calls": 126,
+      "self_seconds": 0.00055,
+      "cumulative_seconds": 0.193755
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "_register",
+      "line": 222,
+      "calls": 130,
+      "self_seconds": 0.001438,
+      "cumulative_seconds": 0.193661
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "<genexpr>",
+      "line": 32,
+      "calls": 1400102,
+      "self_seconds": 0.161931,
+      "cumulative_seconds": 0.161931
+    },
+    {
+      "path": "jeuxRPG/multiplayer/schema.py",
+      "name": "initialize",
+      "line": 76,
+      "calls": 99,
+      "self_seconds": 0.002271,
+      "cumulative_seconds": 0.160883
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "_transaction",
+      "line": 186,
+      "calls": 9502,
+      "self_seconds": 0.015886,
+      "cumulative_seconds": 0.1522
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "advance",
+      "line": 1351,
+      "calls": 463,
+      "self_seconds": 0.002561,
+      "cumulative_seconds": 0.147991
+    },
+    {
+      "path": "jeuxRPG/_class/res/character/class_models.py",
+      "name": "skill_from_data",
+      "line": 183,
+      "calls": 3330,
+      "self_seconds": 0.01899,
+      "cumulative_seconds": 0.137387
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "complete_casts",
+      "line": 251,
+      "calls": 448,
+      "self_seconds": 0.001968,
+      "cumulative_seconds": 0.133692
+    },
+    {
+      "path": "jeuxRPG/multiplayer/accounts.py",
+      "name": "world_presence",
+      "line": 237,
+      "calls": 2722,
+      "self_seconds": 0.020258,
+      "cumulative_seconds": 0.12303
+    },
+    {
+      "path": "jeuxRPG/_class/res/character/stats/stat.py",
+      "name": "current_value",
+      "line": 132,
+      "calls": 56479,
+      "self_seconds": 0.061706,
+      "cumulative_seconds": 0.12158
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "control",
+      "line": 608,
+      "calls": 20,
+      "self_seconds": 0.000392,
+      "cumulative_seconds": 0.118644
+    },
+    {
+      "path": "jeuxRPG/_class/sub_character/invocations/invocation.py",
+      "name": "__init__",
+      "line": 8,
+      "calls": 141,
+      "self_seconds": 0.00038,
+      "cumulative_seconds": 0.111666
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "distance",
+      "line": 24,
+      "calls": 296974,
+      "self_seconds": 0.050166,
+      "cumulative_seconds": 0.098113
+    },
+    {
+      "path": "jeuxRPG/multiplayer/accounts.py",
+      "name": "record_party_locations",
+      "line": 204,
+      "calls": 3949,
+      "self_seconds": 0.019091,
+      "cumulative_seconds": 0.098032
+    },
+    {
+      "path": "jeuxRPG/multiplayer/distributed.py",
+      "name": "<module>",
+      "line": 1,
+      "calls": 1,
+      "self_seconds": 1.6e-05,
+      "cumulative_seconds": 0.097957
+    },
+    {
+      "path": "jeuxRPG/multiplayer/mob_rules.py",
+      "name": "experience",
+      "line": 99,
+      "calls": 6829,
+      "self_seconds": 0.031948,
+      "cumulative_seconds": 0.097605
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "sync_summons",
+      "line": 287,
+      "calls": 2979,
+      "self_seconds": 0.015518,
+      "cumulative_seconds": 0.094579
+    },
+    {
+      "path": "jeuxRPG/multiplayer/progression.py",
+      "name": "configure",
+      "line": 13,
+      "calls": 9150,
+      "self_seconds": 0.052608,
+      "cumulative_seconds": 0.091498
+    },
+    {
+      "path": "jeuxRPG/multiplayer/world.py",
+      "name": "graph",
+      "line": 255,
+      "calls": 3603,
+      "self_seconds": 0.065006,
+      "cumulative_seconds": 0.087365
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "_authenticate",
+      "line": 241,
+      "calls": 3533,
+      "self_seconds": 0.017749,
+      "cumulative_seconds": 0.084477
+    },
+    {
+      "path": "jeuxRPG/multiplayer/progression.py",
+      "name": "health_resources",
+      "line": 48,
+      "calls": 5153,
+      "self_seconds": 0.050672,
+      "cumulative_seconds": 0.080865
+    },
+    {
+      "path": "jeuxRPG/multiplayer/world.py",
+      "name": "<genexpr>",
+      "line": 237,
+      "calls": 640041,
+      "self_seconds": 0.074371,
+      "cumulative_seconds": 0.074371
+    },
+    {
+      "path": "jeuxRPG/multiplayer/service.py",
+      "name": "world_context",
+      "line": 39,
+      "calls": 3454,
+      "self_seconds": 0.014731,
+      "cumulative_seconds": 0.074015
+    },
+    {
+      "path": "jeuxRPG/multiplayer/accounts.py",
+      "name": "_party_location",
+      "line": 209,
+      "calls": 4391,
+      "self_seconds": 0.020246,
+      "cumulative_seconds": 0.073543
+    },
+    {
+      "path": "jeuxRPG/multiplayer/tactics.py",
+      "name": "execute",
+      "line": 962,
+      "calls": 119,
+      "self_seconds": 0.001326,
+      "cumulative_seconds": 0.071517
+    },
+    {
+      "path": "jeuxRPG/multiplayer/server.py",
+      "name": "_dispatch",
+      "line": 349,
+      "calls": 37,
+      "self_seconds": 0.00054,
+      "cumulative_seconds": 0.06954
+    },
+    {
+      "path": "jeuxRPG/multiplayer/server.py",
+      "name": "do_POST",
+      "line": 275,
+      "calls": 29,
+      "self_seconds": 6.9e-05,
+      "cumulative_seconds": 0.065458
+    }
+  ]
+}

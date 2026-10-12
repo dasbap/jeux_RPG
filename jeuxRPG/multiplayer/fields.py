@@ -74,7 +74,8 @@ def start(party, now):
     tutorial.migrate(party, now)
     party["field_mode"] = True
     party["fields"] = {}
-    return enter(party, "clearing", [1, 10], now)
+    start = content.gameplay()['rules']['start']
+    return enter(party, start['map'], [start['x'], start['y']], now)
 
 
 def enter(party, identifier, entry, now, pursuers=()):

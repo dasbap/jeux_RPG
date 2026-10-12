@@ -6,6 +6,9 @@ from . import content, mob_rules, map_building
 
 def catalog_rows(project, section):
     p = project
+    from .controller_gameplay import SECTIONS, rows
+    if section in dict(SECTIONS):
+        return rows(project, section)
     if section == 'maps':
         return [(key, data['name'], f"{data['width']} × {data['height']} · zone {map_building.zone_of(p.maps, key)}") for key, data in p.maps.items()]
     if section == 'mobs':
@@ -64,16 +67,16 @@ def preview(project, section, identifier, level=1, player_level=1):
         raise ValueError('Niveaux entiers entre 1 et 100.')
     if section == 'mobs':
         definition = mob_rules.resolve(project.mobs, identifier)
-        from .forge import RARE_DROPS
-        rules = mob_rules.drop_rules(definition, RARE_DROPS)
+        from .gameplay_catalog import rare_drops
+        rules = mob_rules.drop_rules(definition, rare_drops(project.content['gameplay']))
         class_view = preview(project,'classes',definition['class_name'],level)
         stats = deepcopy(class_view['stats'])
         if identifier == 'goblin':
-            from .world import GOBLIN
+            GOBLIN = project.content['gameplay']['rules']['tutorial']
             base = preview(project,'classes',definition['class_name'],1)['stats']['hp']
             stats['hp'] = GOBLIN['hp_hunt'] + max(0,stats['hp']-base)
         stats.update({key:round(value['base']+value['growth']*(level-1)) for key,value in definition.get('stats',{}).items()})
-        return {'stats':stats, 'modèle_au_niveau':class_view, 'espèce': identifier, 'niveau': level, 'niveau_joueur': player_level, 'dégâts': round(definition['damage'] + (level - 1) * definition['damage_growth']) if 'damage_growth' in definition else definition['damage'] + (level - 1) // 2, 'stats_remplacées': {key: round(value['base'] + value['growth'] * (level - 1)) for key, value in definition.get('stats', {}).items()}, 'xp': mob_rules.experience({**definition, 'level': level}, player_level, project.content['world']['mob_xp'], project.content['templates']), 'drops': [{'matériau': rule['item'], 'rare': rule['rare'], 'chance_au_moins_un_drop': round(1 - (1 - rule['chance']) ** rule['attempts'], 8), 'quantité_moyenne': rule['attempts'] * rule['chance'] * (rule['min'] + rule['max']) / 2} for rule in rules], 'définition_résolue': definition}
+        return {'stats':stats, 'modèle_au_niveau':class_view, 'espèce': identifier, 'niveau': level, 'niveau_joueur': player_level, 'dégâts': round(definition['damage'] + (level - 1) * definition['damage_growth']) if 'damage_growth' in definition else definition['damage'] + (level - 1) // 2, 'stats_remplacées': {key: round(value['base'] + value['growth'] * (level - 1)) for key, value in definition.get('stats', {}).items()}, 'xp': mob_rules.experience({**definition, 'level': level}, player_level, project.content['world']['mob_xp'], project.content['templates'], project.content['gameplay']), 'drops': [{'matériau': rule['item'], 'rare': rule['rare'], 'chance_au_moins_un_drop': round(1 - (1 - rule['chance']) ** rule['attempts'], 8), 'quantité_moyenne': rule['attempts'] * rule['chance'] * (rule['min'] + rule['max']) / 2} for rule in rules], 'définition_résolue': definition}
     if section == 'classes':
         from jeuxRPG._class.universal_character import register_model
         from jeuxRPG._class.character import CharacterMeta
@@ -108,7 +111,13 @@ def report(project):
     from .skill_catalog import validate as validate_skills
     models = project.content['templates']
     classes = [item['id'] for item in models['classes'] if item['class_type'] != 'INVOCATION']
-    checks = [('Contenu et classes', lambda: content.validate_content(project.content)), ('Espèces et drops', lambda: mob_rules.validate_mobs(project.mobs, classes)), ('Compétences et références', lambda: validate_skills(project.content, project.mobs)), ('Succès et lieux', lambda: content.validate_references(project.content, project.mobs, project.maps))]
+    checks = [('Contenu et classes', lambda: content.validate_content(project.content)), ('Espèces et drops', lambda: mob_rules.validate_mobs(project.mobs, classes, project.content['gameplay']['xp_classes'])), ('Compétences et références', lambda: validate_skills(project.content, project.mobs)), ('Succès et lieux', lambda: content.validate_references(project.content, project.mobs, project.maps))]
+    from .gameplay_catalog import validate_references as gameplay_references, validate_start
+    checks.extend([
+        ('Matériaux et invocations', lambda: gameplay_references(project.content['gameplay'], project.mobs, models)),
+        ('Apparition initiale', lambda: validate_start(project.content['gameplay'], project.maps)),
+        ('Rencontres et placements tactiques', project.validate_encounters),
+    ])
     previous = map_building.MOBS
     errors = []
     try:
@@ -137,7 +146,8 @@ def report(project):
     for key, definition in project.maps.items():
         if not definition.get('exits'):
             warnings.append(key + ' : aucune sortie ; vérifier que cette impasse est voulue.')
-    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ('maps','quests','mobs','achievements','economy','npcs','classes','skills','skill_models')}}
+    from .controller_gameplay import SECTIONS
+    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ['maps','quests','mobs','achievements','economy','npcs','classes','skills','skill_models',*[section for section, _ in SECTIONS]]}}
 
 
 def text(value):

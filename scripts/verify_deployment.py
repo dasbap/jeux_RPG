@@ -22,6 +22,15 @@ def deployment_request(url, data=None, headers=None):
     return Request(url, data=data, headers=deployment_headers(headers))
 
 
+def deployment_error_code(error):
+    try:
+        payload = json.loads(error.read(4096))
+    except (ValueError, UnicodeError):
+        return 'unknown'
+    code = payload.get('error') if isinstance(payload, dict) else None
+    return code if code in ('invalid_host', 'invalid_origin', 'unauthorized', 'unavailable', 'rate_limited') else 'unknown'
+
+
 async def verify_realtime(base, catalogue, token):
     async with connect(base.replace('https://', 'wss://') + '/api/ws', origin=base, additional_headers=deployment_headers(), open_timeout=30) as socket:
         await socket.send(json.dumps({'type': 'authenticate', 'headers': {'Authorization': 'Bearer ' + token}}))
@@ -87,6 +96,7 @@ def main():
         verify_release(base, expected_release)
     for route, expected in (("/", 200), ("/app_core.js", 200), ("/app_world.js", 200), ("/app_skills.js", 200), ("/app_tutorial.js", 200), ("/app_battle.js", 200), ("/app_camera.js", 200), ("/app_social.js", 200), ("/app.js", 200), ("/app_bootstrap.js", 200), ("/app_session.js", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
         status = None
+        error_code = 'unknown'
         for attempt in range(3):
             try:
                 headers = {"Origin": base}
@@ -103,6 +113,7 @@ def main():
                             raise SystemExit("Catalogue de classes invalide")
             except HTTPError as error:
                 status = error.code
+                error_code = deployment_error_code(error)
             except (URLError, TimeoutError):
                 status = None
             if status == expected:
@@ -110,7 +121,7 @@ def main():
             if attempt < 2:
                 time.sleep(5)
         if status != expected:
-            raise SystemExit(f"Vérification échouée : {route}, HTTP {status}, attendu {expected}")
+            raise SystemExit(f"Vérification échouée : {route}, HTTP {status}, attendu {expected}, code {error_code}")
         print(f"Route vérifiée : {route}, HTTP {status}")
     username = "verify_" + uuid.uuid4().hex[:12]
     password = uuid.uuid4().hex + uuid.uuid4().hex
