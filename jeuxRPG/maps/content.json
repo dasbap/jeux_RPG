@@ -25,10 +25,10 @@
         "count": 10,
         "reward_xp": 750,
         "description": "Battez les gobelins puis rapportez la nouvelle à Mira.",
-        "role": "tutorial_hunt",
         "previous_ids": [
           "mira_hunt"
-        ]
+        ],
+        "category": "tutorial"
       },
       {
         "id": "mira_hunt_2",
