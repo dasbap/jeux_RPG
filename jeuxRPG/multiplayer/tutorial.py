@@ -312,10 +312,10 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         return messages, False
     if action == "talk":
         npc_id = params["npc"]
-        if party["battle"] or party.get("transit") or (party.get("position") != npc_id and npc_id != "mira"):
+        if party["battle"] or party.get("transit") or party.get("position") != npc_id:
             raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
         npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
-        if npc is None and npc_id != "mira":
+        if npc is None:
             raise error("invalid_npc", "PNJ introuvable.", 404)
         states = content.quest_states(party)
         before = {key: value.get("status") for key, value in states.items()}
@@ -328,9 +328,7 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
                 party.update(step="hunt", quest="active")
             elif current == "completed" and previous != "completed" and party["step"] == "hunt":
                 party.update(step="craft", quest="completed")
-        if not messages:
-            messages.append(f"{npc['name'] if npc else 'Mira'} : {npc.get('dialogue') if npc else 'Bonjour, voyageur.'}")
-        return messages, False
+        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *messages], False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
         party["characters"][player_id] = pack(actor)
