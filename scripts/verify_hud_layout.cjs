@@ -175,7 +175,8 @@ const fixture=fixtures.combat;
    assert.deepEqual(errors,[]);
    fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
    await page.screenshot({path:path.join(root,`hud-captures/${width}x${height}.png`)});
-   for(const [name,adventure] of [['exploration',fixtures.field_village],['forge',{...fixtures.field_village,field:null,position:'forge'}]]){
+   const outingFixture={...fixtures.field_village,battle:null,field_mode:false,field_map:null};
+   for(const [name,adventure] of [['exploration',outingFixture],['forge',{...outingFixture,position:'forge'}]]){
     await page.evaluate(adventure=>window.eval(`session.tutorial=${JSON.stringify(adventure)};renderTutorial(session.tutorial);`),adventure);
     const explorationMenu=await rect('character-menu'),outing=await rect('outing-vitals'),camera=await rect('field-camera'),navigation=await rect('hud-navigation');
     assert(explorationMenu&&outing&&camera&&navigation,'Menu, PV, caméra et minicarte visibles hors combat');
