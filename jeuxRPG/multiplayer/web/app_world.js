@@ -53,15 +53,13 @@ function mountWorldMap(source, container = $("world-map")) {
   return retained;
 }
 function hudQuestTarget(adventure) {
-  const hunt = adventure.hunt_objective || {};
-  if (adventure.step === "complete") return {zone: adventure.world.current, point: null, label: "Tutoriel terminé"};
-  if (adventure.quest === "unaccepted") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: `Parler à ${hunt.npc || "Mira"}`};
-  if (adventure.quest === "active" && adventure.kills < (adventure.hunt_goal || hunt.count || 1)) return {zone: hunt.zone || adventure.world.current, point: hunt.map || null, label: `${adventure.hunt_name || "Quête"} · ${adventure.kills}/${adventure.hunt_goal || hunt.count || 1}`};
-  if (adventure.quest === "active") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: "Rendre la quête"};
-  if (adventure.quest === "completed" && adventure.step === "craft") return {zone: "rosee", point: "forge", label: "Rejoindre la forge"};
-  if (adventure.step === "travel") return {zone: "brume", point: null, label: "Rejoindre Brume"};
-  const active = (adventure.quest_journal || []).find(quest => quest.status === "active");
-  return active ? {zone: active.zone || adventure.world.current, point: active.map || active.npc || null, label: `${active.name} · ${active.progress}/${active.count}`} : {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
+  const quests = adventure.quest_journal || [];
+  const active = quests.find(quest => quest.status === "active");
+  if (active) {
+    const ready = active.progress >= active.count;
+    return {zone: ready ? adventure.world.current : active.zone || adventure.world.current, point: ready ? active.npc : active.map || null, label: ready ? `Rendre la quête : ${active.name}` : `${active.name} · ${active.progress}/${active.count}`};
+  }
+  return {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
 }
 function renderHudNavigation(adventure) {
   const svg = $("hud-minimap");
