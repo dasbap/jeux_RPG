@@ -80,3 +80,28 @@ def test_tutorial_quest_is_checked_by_server_before_state_changes(monkeypatch):
     assert p['step'] == 'village'
     assert p['quest'] != 'active'
     assert any('niveau 2' in message for message in messages)
+
+
+def test_tutorial_category_uses_the_same_quest_lifecycle(monkeypatch):
+    data = deepcopy(content.DEFAULTS)
+    ordinary = {**deepcopy(data['quests'][0]), 'id': 'ordinary_hunt', 'category': 'standard'}
+    data['quests'].append(ordinary)
+    monkeypatch.setattr(content, 'DATA', data)
+    p = party()
+    messages = content.quest_dialogue(p, 'mira')
+    assert sum(message.startswith('Quête acceptée') for message in messages) == 2
+    for _ in range(data['quests'][0]['count']):
+        content.quest_event(p, 'kill', 'goblin', 'lisiere')
+    states = p['custom_quests']
+    assert states[data['quests'][0]['id']]['progress'] == states['ordinary_hunt']['progress']
+    rewards = content.quest_dialogue(p, 'mira')
+    assert sum(message.startswith('Quête terminée') for message in rewards) == 2
+    assert states[data['quests'][0]['id']]['status'] == states['ordinary_hunt']['status'] == 'completed'
+    assert {item['id'] for item in content.quest_journal(p)} == {data['quests'][0]['id'], 'ordinary_hunt'}
+    assert content.quest_dialogue(p, 'mira') == []
+
+
+def test_catalogue_does_not_require_any_tutorial_quest():
+    data = deepcopy(content.DEFAULTS)
+    data['quests'] = []
+    assert content.validate_content(data)['quests'] == []
