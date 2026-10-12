@@ -219,8 +219,6 @@ class Project:
                 item = next(item for item in self.content[section] if item['id'] == identifier)
                 if any(other['id'] == replacement or replacement in other.get('previous_ids', []) for other in self.content[section] if other is not item):
                     raise ValueError('Identifiant déjà utilisé.')
-                if section == 'quests' and is_hunt(item):
-                    item['role'] = 'tutorial_hunt'
                 item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids', []), identifier]))
                 item['id'] = replacement
                 if section == 'quests':
@@ -334,10 +332,8 @@ class Project:
                     raise ValueError('Identifiant déjà utilisé.')
                 value = deepcopy(next(item for item in values if item['id'] == identifier))
                 value.update(id=replacement,name=value['name']+' · copie')
-                for key in ('previous_ids','table_id','role'):
+                for key in ('previous_ids','table_id','category','role'):
                     value.pop(key,None)
-                if section == 'quests' and is_hunt(value):
-                    value.pop('role',None)
                 values.append(value)
             self.validate()
         except Exception:
