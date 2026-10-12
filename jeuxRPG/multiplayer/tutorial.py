@@ -577,8 +577,6 @@ def execute(party, player_id, action, params, now, error, random):
         if party["battle"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
             raise error("invalid_npc", "Léon n'est pas présent dans votre zone.", 409)
         return [f"Léon : je séjourne {content.WORLD['merchant_stay_hours']:g} heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
-    if action == "craft" and party["quest"] != "completed":
-        raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
     if action == "talk" and position != params["npc"] or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":
