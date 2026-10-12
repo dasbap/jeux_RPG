@@ -280,7 +280,7 @@ function renderBattle(adventure, me) {
       inspectedCell = site.position;
       renderGame(session.tutorial, true);
       const nearby = Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5;
-      if (nearby && (site.id === "mira" && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3)) || site.dialogue)) tutorialCommand("talk", {npc: site.id});
+      if (nearby && (site.dialogue || site.id === "mira")) tutorialCommand("talk", {npc: site.id});
       else if (!nearby && site.id === "mira") message("Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle.");
       else if (!nearby && site.dialogue) message(`Approchez-vous de ${site.name} : double-cliquez sur sa position pour marcher jusqu’à lui parler.`);
       else message(site.name);
