@@ -143,7 +143,7 @@ def test_village_requires_proximity_for_quest_and_forge_and_restores_map():
     data["battle"]["players"]["p"]["position"] = [32, 20]
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 1, GameError, lambda: .5)
     assert data["quest"] == "active"
-    data["kills"] = 3
+    content.quest_states(data)[content.HUNT["id"]]["progress"] = content.HUNT["count"]
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 2, GameError, lambda: .5)
     assert data["quest"] == "completed"
     data["battle"]["players"]["p"]["position"] = [44, 12]
@@ -203,15 +203,18 @@ def test_unloaded_zone_regeneration_keeps_fractional_minutes_without_double_heal
     assert data["mobs"][0]["stats"]["hp"]["current"] == 52
 
 
-def test_fixed_zone_quest_counts_prior_kills_so_cleared_maps_cannot_block_it():
+def test_tutorial_quest_counts_only_events_after_acceptance():
     data = party()
     data.update(step="road", zone_kills={"lisiere": 3})
     fields.enter(data, "rosee", [32, 20], 0)
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 1, GameError, lambda: .5)
-    assert data["kills"] == 3
+    quest = content.quest_states(data)[content.HUNT["id"]]
+    assert quest["progress"] == 0
+    for _ in range(content.HUNT["count"]):
+        content.quest_event(data, "kill", content.HUNT["target"], content.HUNT["zone"])
+    assert quest["progress"] == content.HUNT["count"]
     tutorial.execute(data, "p", "talk", {"npc": "mira"}, 2, GameError, lambda: .5)
-    assert data["quest"] == "completed"
-
+    assert quest["status"] == "completed"
 
 def test_repop_requires_three_full_game_minutes_without_players():
     data = party()
