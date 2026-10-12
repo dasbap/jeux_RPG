@@ -157,8 +157,9 @@ def load_content(path=None):
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)
     for quest in result.get('quests', []):
-        if quest.pop('role', None) == 'tutorial_hunt':
-            quest['category'] = 'tutorial'
+        previous_role = quest.pop('role', None)
+        if previous_role == 'tutorial_hunt' or quest.get('id') == 'mira_hunt' or 'mira_hunt' in quest.get('previous_ids', []):
+            quest.setdefault('category', 'tutorial')
     result.setdefault('economy', deepcopy(DEFAULTS['economy']))
     result.setdefault('world', {})
     for key, value in DEFAULTS['world'].items():
