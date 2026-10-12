@@ -528,7 +528,8 @@ class GameService(AccountMixin):
             if source_row is None or target_row is None:
                 raise GameError("not_tutorial", "Aventure introuvable.", 409)
             source_party, target_party = json.loads(source_row[0]), json.loads(target_row["data"])
-            economy.migrate(source_party); economy.migrate(target_party)
+            economy.migrate(source_party)
+            economy.migrate(target_party)
             if source_party.get("battle") or source_party.get("transit") or target_party.get("battle") or target_party.get("transit"):
                 raise GameError("trade_busy", "Impossible d’échanger pendant un combat ou un trajet.", 409)
             if quantity:
