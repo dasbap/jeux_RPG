@@ -104,9 +104,9 @@ function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
 function renderWorld(adventure, me, mapContainer = $("world-map")) {
-  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
+  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. Les recettes disponibles sont proposées à la forge."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
-  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
+  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${adventure.material_names?.[item] || item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
   const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));

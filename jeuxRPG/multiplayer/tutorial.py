@@ -9,19 +9,9 @@ from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
 from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content
 
-TRAVEL_ENCOUNTER_CHANCE = .25
-
-
-STEPS = {
-    "clearing": ("Clairière des Éveillés", "Explorez la clairière pour rencontrer votre premier gobelin."),
-    "first_fight": ("Clairière des Éveillés", "Utilisez vos compétences ou votre attaque pour battre le gobelin."),
-    "road": ("Sentier de Rosée", "Votre premier combat est gagné. Rejoignez le village de Rosée."),
-    "village": ("Village de Rosée", "Parlez à Mira pour accepter sa quête de chasse."),
-    "hunt": ("Lisière de Rosée", "Battez trois gobelins puis rapportez la nouvelle à Mira."),
-    "craft": ("Forge de Rosée", "Fabriquez et équipez une veste avec les matériaux des gobelins."),
-    "travel": ("Route des Deux Villages", "Votre équipement est prêt. Rejoignez le village de Brume."),
-    "complete": ("Village de Brume", "Tutoriel terminé : combat, compétences, quête, butin et équipement maîtrisés."),
-}
+TRAVEL_RULES = content.DATA['gameplay']['rules']['travel']
+TRAVEL_ENCOUNTER_CHANCE = TRAVEL_RULES['encounter_chance']
+STEPS = {key: (value['name'], value['description']) for key, value in content.DATA['gameplay']['story'].items()}
 
 
 def create_character(player):
@@ -161,6 +151,7 @@ def view(party, me, now):
     result["hunt_goal"] = content.HUNT["count"]
     result["hunt_name"] = content.HUNT["name"]
     result["hunt_description"] = content.HUNT["description"]
+    result["material_names"] = {key: item['name'] for key, item in content.gameplay()['materials'].items()}
     result["location"], result["objective"] = STEPS[party["step"]]
     if party["step"] == "hunt":
         result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
@@ -466,7 +457,7 @@ def continue_journey(party, now, random, messages):
         destination = party["journey"].pop(0)
         source = party["position"]
         duration = world.walking_seconds(source, destination)
-        first_segment = min(150, duration * (.15 + .7 * random()))
+        first_segment = min(TRAVEL_RULES['segment_max_seconds'], duration * (TRAVEL_RULES['segment_min_fraction'] + TRAVEL_RULES['segment_random_fraction'] * random()))
         dangerous = source in world.ROAD_POINTS or destination in world.ROAD_POINTS or world.hazard(destination)
         if destination in world.ROAD_POINTS:
             party["position"] = destination

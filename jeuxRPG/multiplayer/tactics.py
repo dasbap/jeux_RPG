@@ -12,13 +12,15 @@ from .map_assets import read_catalog
 
 PRESETS = read_catalog("encounters")
 PLAYER_VISION = content.WORLD["player_vision"]
-SUMMON_VISION = 6
-CALL_TIME = 6.0
-SEARCH_TIME = 10 * progression.RATIO
-MOVE_TIME = 1.2
-STEALTH_MOVE_TIME = 2.4
-GOBLIN_MOVE_TIME = 2.4
-CONTROL_RULES = {"Squelette": {"energy": "Mana", "per_second": 0.4}}
+GAMEPLAY = content.DATA["gameplay"]
+SUMMON_VISION = GAMEPLAY["rules"]["combat"]["summon_vision"]
+CALL_TIME = GAMEPLAY["rules"]["movement"]["call_seconds"]
+SEARCH_TIME = GAMEPLAY["rules"]["movement"]["search_real_seconds"] * progression.RATIO
+MOVE_TIME = GAMEPLAY["rules"]["movement"]["move_seconds"]
+STEALTH_MOVE_TIME = GAMEPLAY["rules"]["movement"]["stealth_move_seconds"]
+GOBLIN_MOVE_TIME = GAMEPLAY["rules"]["movement"]["mob_move_seconds"]
+CONTROL_RULES = GAMEPLAY["summon_control"]
+AI_RULES = GAMEPLAY["rules"]["ai"]
 
 
 def distance(a, b):
@@ -131,7 +133,9 @@ def sight(preset, source, target):
 
 def sees(preset, mob, unit):
     return distance(mob["position"], unit["position"]) <= (
-        1.5 if unit.get("hidden") else 6
+        AI_RULES["hidden_detection_range"]
+        if unit.get("hidden")
+        else AI_RULES["detection_range"]
     ) and sight(preset, mob["position"], unit["position"])
 
 
@@ -367,7 +371,7 @@ def sync_summons(party, now):
 
 def follow_owner(preset, unit, owner, now):
     if (
-        distance(unit["position"], owner["position"]) <= 2
+        distance(unit["position"], owner["position"]) <= AI_RULES["summon_follow_range"]
         or unit.get("next_move", 0) > now
     ):
         return
@@ -475,7 +479,7 @@ def advance_summons(party, characters, now, random, messages):
             candidates = [
                 mob
                 for mob in party["mobs"]
-                if distance(unit["position"], mob["position"]) <= 6
+                if distance(unit["position"], mob["position"]) <= SUMMON_VISION
                 and sight(preset, unit["position"], mob["position"])
             ]
         if not candidates:
@@ -490,9 +494,9 @@ def advance_summons(party, characters, now, random, messages):
                 m["combat_id"],
             ),
         )
-        if distance(unit["position"], target["position"]) <= 1.5 and sight(
-            preset, unit["position"], target["position"]
-        ):
+        if distance(unit["position"], target["position"]) <= AI_RULES[
+            "melee_range"
+        ] and sight(preset, unit["position"], target["position"]):
             if unit["next_attack"] > now:
                 continue
             enemy = unpack(target)
@@ -501,7 +505,9 @@ def advance_summons(party, characters, now, random, messages):
             enemy.lose_hp(invocation, progression.simple_damage(invocation))
             target.update(pack(enemy))
             damaged(party, target, summon_id, now)
-            unit["next_attack"] = now + 3 * progression.RATIO
+            unit["next_attack"] = (
+                now + AI_RULES["summon_attack_seconds"] * progression.RATIO
+            )
             messages.append(
                 f"{invocation.name} termine son attaque contre {target['name']} : {max(0, before_hp - enemy.hp.current_value)} dégâts."
             )
@@ -836,7 +842,7 @@ def unalerted_allies(party, mob):
         if ally is not mob
         and ally["combat_id"] in mob["allies"]
         and not ally.get("alerted", False)
-        and distance(ally["position"], mob["position"]) < 10
+        and distance(ally["position"], mob["position"]) < AI_RULES["ally_call_range"]
     ]
 
 
@@ -927,11 +933,19 @@ def can_hide(party, player, position=None, retaining=False):
     if position is not None:
         unit["position"] = position
     preset = PRESETS[battle["preset"]]
-    if not any(distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]):
+    if not any(
+        distance(unit["position"], cover) <= AI_RULES["cover_range"]
+        for cover in preset["cover"]
+    ):
         return False
     return not any(
         (
-            distance(mob["position"], unit["position"]) <= (1.5 if retaining else 6)
+            distance(mob["position"], unit["position"])
+            <= (
+                AI_RULES["hidden_detection_range"]
+                if retaining
+                else AI_RULES["detection_range"]
+            )
             and sight(preset, mob["position"], unit["position"])
         )
         or (
@@ -953,7 +967,11 @@ def ready(party, player, now, error, redirect=False):
             409,
         )
     if party["ready"][player] > now and not redirect:
-        raise error("cooldown", "Attendez la fin du délai de 1,2 seconde.", 409)
+        raise error(
+            "cooldown",
+            f"Attendez la fin du délai de {progression.ACTION_SECONDS:g} seconde(s).",
+            409,
+        )
     if party.get("battle") and party["battle"]["players"][player].get("casting"):
         raise error("casting", "Votre incantation vous immobilise jusqu’à sa fin.", 409)
     return actor
@@ -1021,7 +1039,8 @@ def execute(party, player, action, params, now, error):
         messages = [f"{actor.name} se déplace sur le champ de bataille."]
     elif action == "hide":
         if not any(
-            distance(unit["position"], cover) <= 1.5 for cover in preset["cover"]
+            distance(unit["position"], cover) <= AI_RULES["cover_range"]
+            for cover in preset["cover"]
         ):
             raise error(
                 "no_cover", "Rejoignez une couverture pour vous dissimuler.", 409
@@ -1039,7 +1058,11 @@ def execute(party, player, action, params, now, error):
         corpse = next(
             (c for c in battle["corpses"] if c["id"] == params["target"]), None
         )
-        if not corpse or distance(unit["position"], corpse["position"]) > 1.5:
+        if (
+            not corpse
+            or distance(unit["position"], corpse["position"])
+            > AI_RULES["corpse_interact_range"]
+        ):
             raise error("too_far", "Approchez-vous du corps pour le dépecer.", 409)
         if corpse["harvested"]:
             raise error("already_harvested", "Vous avez déjà dépecé ce corps.", 409)
@@ -1197,7 +1220,8 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
             )
     for corpse in battle["corpses"]:
         if (
-            distance(mob["position"], corpse["position"]) <= 5
+            distance(mob["position"], corpse["position"])
+            <= AI_RULES["corpse_detection_range"]
             and sight(preset, mob["position"], corpse["position"])
             and corpse["id"] not in mob["known_dead"]
         ):
@@ -1222,7 +1246,7 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
         mob["last_known"] = units[target]["position"][:]
         if mob["state"] == "patrol" or previous != target:
             mob["needs_call"] = True
-        if mob.get("previous_distance", 0) <= 1.5 < visible[0][0]:
+        if mob.get("previous_distance", 0) <= AI_RULES["melee_range"] < visible[0][0]:
             mob["needs_call"] = True
         mob["previous_distance"] = visible[0][0]
         mob["state"] = "chase"
@@ -1263,7 +1287,7 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
         party, mob, target, characters, units, preset, now, messages
     ):
         return
-    if target and visible[0][0] <= 1.5:
+    if target and visible[0][0] <= AI_RULES["melee_range"]:
         if mob["windup_until"] is not None and mob["windup_until"] <= now:
             enemy = unpack(mob)
             actor = characters[target]
@@ -1285,12 +1309,16 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
                 units[target].pop("casting", None)
                 messages.append(f"{actor.name} : concentration brisée, sort annulé.")
             mob["windup_until"] = None
-            mob["next_attack"] = now + 9 + random() * 6
+            mob["next_attack"] = (
+                now
+                + AI_RULES["mob_attack_min_seconds"]
+                + random() * AI_RULES["mob_attack_random_seconds"]
+            )
             messages.append(
                 f"{mob['name']} utilise Entaille contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}."
             )
         elif mob["windup_until"] is None and mob["next_attack"] <= now:
-            mob["windup_until"] = now + 1.8
+            mob["windup_until"] = now + AI_RULES["mob_windup_seconds"]
         mob["intent"] = (
             "Va utiliser Entaille"
             if mob["windup_until"]
