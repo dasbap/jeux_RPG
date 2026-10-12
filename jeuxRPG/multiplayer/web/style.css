@@ -366,6 +366,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 
 .combat-active #character-menu{left:12px;right:auto;top:10px}
 .combat-active #outing-vitals{top:76px}
+.combat-active #outing-vitals .vitals-card{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "resources" "statuses";gap:4px}
 .combat-active #battle:not(.combat-mode) #field-camera{position:absolute;top:10px;right:12px;left:auto;z-index:40;width:auto;display:flex;gap:4px;border-radius:8px}
 .combat-active #battle:not(.combat-mode) #field-location{display:none}
 .combat-active .combat-mode #combat-player-panel{left:12px;top:68px}
@@ -373,6 +374,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 @media(max-width:750px){
   .combat-active #character-menu{left:6px;right:auto;top:max(6px,env(safe-area-inset-top))}
   .combat-active #outing-vitals{left:6px;top:calc(max(6px,env(safe-area-inset-top)) + 66px);width:calc(50vw - 83px);padding:5px}
+  .combat-active #outing-vitals .vitals-row{grid-template-columns:minmax(0,1fr)}
   .combat-active #battle:not(.combat-mode) #field-camera{top:max(6px,env(safe-area-inset-top));right:6px}
   .combat-active .combat-mode #combat-player-panel{left:6px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:6px;left:auto;top:max(6px,env(safe-area-inset-top))}
