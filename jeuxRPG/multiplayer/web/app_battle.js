@@ -23,7 +23,7 @@ function selectEntity(id) {
   const summon = adventure.battle?.summons?.[id], actor = adventure.players.find(p => p.id === session.me);
   if (focusedMob && summon?.owner === session.me && !summon.controlled && !busy && actor.hp > 0 && !actor.stunned && !actor.casting && actor.cooldown_real_seconds <= 0 && canPayControl(adventure, actor, summon)) tutorialCommand("control_units", {units: [id]});
   if (focusedMob === session.me && controlledUnits(adventure, session.me).length && !busy) tutorialCommand("control_units", {units: []});
-  renderTutorial(session.tutorial, true);
+  renderGame(session.tutorial, true);
   const ns = "http://www.w3.org/2000/svg";
   for (const card of $("mob-cards").querySelectorAll("[data-mob]")) card.classList.toggle("selected", card.dataset.mob === focusedMob);
   for (const group of $("world-map").querySelectorAll("[data-unit]")) {
@@ -261,7 +261,7 @@ function renderBattle(adventure, me) {
       if (cover) return message("Cette case est occupée par une couverture.");
       moveControlled(adventure, me, [x, y]);
     };
-    cell.onclick = () => { inspectedCell = [x, y]; renderTutorial(session.tutorial, true); };
+    cell.onclick = () => { inspectedCell = [x, y]; renderGame(session.tutorial, true); };
     cell.ondblclick = move;
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
@@ -278,7 +278,7 @@ function renderBattle(adventure, me) {
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
     node.onclick = () => {
       inspectedCell = site.position;
-      renderTutorial(session.tutorial, true);
+      renderGame(session.tutorial, true);
       const nearby = Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5;
       if (nearby && (site.id === "mira" && (adventure.step === "village" || adventure.step === "hunt" && adventure.kills >= (adventure.hunt_goal || 3)) || site.dialogue)) tutorialCommand("talk", {npc: site.id});
       else if (!nearby && site.id === "mira") message("Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle.");
