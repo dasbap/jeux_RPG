@@ -225,12 +225,6 @@ def execute(party, player, action, params, now, error, random):
     if action in ("buy", "sell"):
         merchant = next(item for item in nearby if item["id"] == site)
         return economy.execute(party, player, merchant, action, params["item"], params["quantity"], error), False
-    if action == "talk" and site != "mira":
-        npc = next(item for item in nearby if item["id"] == site)
-        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
-    if action == 'talk' and site == 'mira' and (party['step'] not in ('village', 'hunt') or party['step'] == 'hunt' and party['kills'] < content.HUNT['count'] and any(q['npc'] == 'mira' and not content.is_hunt(q) for q in content.DATA['quests'])):
-        npc = next(item for item in nearby if item['id'] == site)
-        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour !'}", *content.quest_dialogue(party, site)], False
     battle, position = party["battle"], party["position"]
     party.update(battle=None, position=site)
     try:
