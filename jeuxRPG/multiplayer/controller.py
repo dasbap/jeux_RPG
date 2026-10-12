@@ -8,12 +8,13 @@ import shutil
 from .content import load_content, validate_content, CONDITIONS, is_hunt
 from .map_assets import load, validate
 from .map_building import zone_of
+from .controller_gameplay import ControllerGameplayMixin, SECTIONS as GAMEPLAY_SECTIONS, FIXED as GAMEPLAY_FIXED
 
 
 RANKS = ('SSS', 'SS', 'S', 'AA', 'A', 'B', 'C', 'D', 'E')
 
 
-from .mob_rules import validate_mobs, resolve, CLASS_XP, drop_rules, STATS
+from .mob_rules import validate_mobs, resolve, drop_rules, STATS
 
 
 DECIMAL_FIELDS = {'chance','threshold','xp_multiplier','damage_growth','power','growth','cooldown','cast','range','duration','repop_seconds','xp_base','xp_exponent','merchant_stay_hours'}
@@ -33,7 +34,7 @@ from .controller_project import Project
 from .controller_editors import ControllerEditorsMixin
 
 
-class Controller(ControllerEditorsMixin):
+class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
     def __init__(self, root, project):
         import tkinter as tk
         from tkinter import ttk, messagebox, simpledialog
@@ -54,7 +55,7 @@ class Controller(ControllerEditorsMixin):
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')]:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')] + GAMEPLAY_SECTIONS:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
             search = ttk.Frame(page)
@@ -80,19 +81,28 @@ class Controller(ControllerEditorsMixin):
             self.tables[section] = table
             actions = ttk.Frame(page)
             actions.pack(fill='x', pady=8)
-            for label, action in [('Modifier', lambda s=section:self.edit(s))] + ([] if section == 'world' else [('Ajouter', lambda s=section:self.edit(s, True)), ('Supprimer', lambda s=section:self.delete(s))]):
+            for label, action in [('Modifier', lambda s=section:self.edit(s))] + ([] if section in {'world', *GAMEPLAY_FIXED} else [('Ajouter', lambda s=section:self.edit(s, True)), ('Supprimer', lambda s=section:self.delete(s))]):
                 ttk.Button(actions, text=label, command=action).pack(side='left', padx=4)
             ttk.Button(actions, text='Aperçu / références', command=lambda s=section:self.inspect(s)).pack(side='left', padx=4)
-            if section not in ('world','maps','npcs'):
+            if section not in ('world','maps','npcs') and section not in GAMEPLAY_FIXED:
                 ttk.Button(actions, text='Dupliquer', command=lambda s=section:self.duplicate(s)).pack(side='left', padx=4)
-            if section != 'world':
+            if section != 'world' and section not in dict(GAMEPLAY_SECTIONS):
                 ttk.Button(actions, text='Renommer identifiant', command=lambda s=section:self.rename(s)).pack(side='left', padx=4)
             if section == 'mobs':
                 ttk.Button(actions, text='Créer une sous-espèce', command=self.subspecies).pack(side='left', padx=4)
             if section == 'maps':
                 ttk.Button(actions, text='Éditer la carte dans le builder', command=self.builder).pack(side='left')
             if section == 'world':
-                ttk.Label(page, text='Trajets, rues, raccords et placements : bouton Builder → Assemblage / Trajets et rues.\nLe ratio de temps reste 1:3 ; les déplacements à pied restent à 6 km/h.').pack(anchor='w')
+                ttk.Label(page, text='Trajets, rues, raccords et placements : bouton Builder → Assemblage / Trajets et rues.\nLe temps, les déplacements et la régénération se règlent dans Règles du jeu.').pack(anchor='w')
+        navigation = ttk.Frame(root, padding=8)
+        navigation.pack(fill='x', before=notebook)
+        ttk.Label(navigation, text='Catalogue').pack(side='left')
+        titles = [notebook.tab(tab, 'text') for tab in notebook.tabs()]
+        chooser = ttk.Combobox(navigation, values=titles, state='readonly', width=48)
+        chooser.pack(side='left', padx=8)
+        chooser.current(0)
+        chooser.bind('<<ComboboxSelected>>', lambda event: notebook.select(chooser.current()))
+        notebook.bind('<<NotebookTabChanged>>', lambda event: chooser.current(notebook.index(notebook.select())))
         self.refresh()
 
     def remember(self, state=None):
@@ -113,6 +123,9 @@ class Controller(ControllerEditorsMixin):
             self.refresh()
 
     def inspect(self, section):
+        if section in dict(GAMEPLAY_SECTIONS):
+            self.inspect_gameplay(section)
+            return
         from .controller_tools import preview, references
         selected = self.tables[section].selection()
         if not selected:
@@ -182,6 +195,9 @@ class Controller(ControllerEditorsMixin):
         window.transient(self.root)
 
     def duplicate(self, section):
+        if section in dict(GAMEPLAY_SECTIONS):
+            self.duplicate_gameplay(section)
+            return
         selected = self.tables[section].selection()
         if not selected:
             return
@@ -213,6 +229,9 @@ class Controller(ControllerEditorsMixin):
                     table.selection_set(key)
 
     def label(self, key):
+        from .controller_gameplay import FIELD_LABELS
+        if key in FIELD_LABELS:
+            return FIELD_LABELS[key]
         if key.endswith('_base'):
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
@@ -240,7 +259,7 @@ class Controller(ControllerEditorsMixin):
         def condition_changed(event=None):
             condition = fields['condition'].get()
             if 'target' in fields:
-                from .forge import RECIPES
+                RECIPES = self.project.content['gameplay']['recipes']
                 targets = [''] + (list(RECIPES) if condition == 'craft' else [item['id'] for item in self.project.content['quests']] if condition == 'quests' else list(self.project.mobs))
                 fields['target'].configure(values=targets)
                 if fields['target'].get() not in targets or condition in ('level','discover'):
@@ -257,7 +276,7 @@ class Controller(ControllerEditorsMixin):
             fields['condition'].bind('<<ComboboxSelected>>', condition_changed)
             condition_changed()
         def kind_changed(event=None):
-            from .forge import RECIPES
+            RECIPES = self.project.content['gameplay']['recipes']
             targets = list(self.project.mobs) if fields['kind'].get() == 'kill' else list(RECIPES)
             fields['target'].configure(values=targets)
             if fields['target'].get() not in targets:
@@ -285,6 +304,9 @@ class Controller(ControllerEditorsMixin):
         return result[0] if result else None
 
     def edit(self, section, new=False):
+        if section in dict(GAMEPLAY_SECTIONS):
+            self.edit_gameplay(section, new)
+            return
         selected = self.tables[section].selection()
         if not new and not selected:
             return
@@ -350,16 +372,16 @@ class Controller(ControllerEditorsMixin):
                         values['previous_ids'] = current['previous_ids']
                 p.content[section] = [item for item in p.content.get(section,[]) if item['id'] != values['id']] + [values]
             elif section == 'mobs':
-                from . import forge
+                from .gameplay_catalog import rare_drops
                 old = resolve(p.mobs, key) if not new else {'name':'Nouvelle créature','class_name':next(item['id'] for item in p.content['templates']['classes'] if not item['playable'] and item['class_type'] != 'INVOCATION'),'rank':'D','damage':3,'loot':{'peau':1}}
                 public = {'id':key or '', 'name':old['name'], 'class_name':old['class_name'], 'rank':old['rank'], 'damage':old['damage'], 'damage_growth':float(old.get('damage_growth',.5)), 'xp_class':old.get('xp_class', 'normal'), 'xp_multiplier':float(old.get('xp_multiplier',1)), 'parent':p.mobs[key].get('parent','') if not new else ''}
-                values = self.form('Espèce / sous-espèce', public, {'class_name':[item['id'] for item in p.content['templates']['classes'] if item['class_type'] != 'INVOCATION'], 'rank':RANKS, 'xp_class':list(CLASS_XP), 'parent':['', *p.mobs]})
+                values = self.form('Espèce / sous-espèce', public, {'class_name':[item['id'] for item in p.content['templates']['classes'] if item['class_type'] != 'INVOCATION'], 'rank':RANKS, 'xp_class':list(p.content['gameplay']['xp_classes']), 'parent':['', *p.mobs]})
                 if not values:
                     return
                 stats = self.edit_stats(old)
                 if stats is None:
                     return
-                drops = self.edit_records('Drops', drop_rules(old, forge.RARE_DROPS), {'item':'peau','chance':1.0,'attempts':1,'min':1,'max':1,'rare':False})
+                drops = self.edit_records('Drops', drop_rules(old, rare_drops(p.content['gameplay'])), {'item':'peau','chance':1.0,'attempts':1,'min':1,'max':1,'rare':False})
                 if drops is None:
                     return
                 abilities = self.edit_records('Capacités', old.get('abilities',[]), {'name':'Frappe','type':'damage','level':1,'power':3.0,'growth':0.5,'cooldown':5.0,'cast':0.6,'range':1.5,'duration':2.0,'concentration':True}, {'type':['damage','heal','stun']})
@@ -422,7 +444,7 @@ class Controller(ControllerEditorsMixin):
                 self.status.set('Modification appliquée en mémoire. Enregistrez le projet pour la conserver.')
             self.refresh()
         except (ValueError, KeyError, TypeError) as exc:
-            p.maps, p.mobs, p.content = before
+            p.restore(before)
             self.messagebox.showerror('Modification refusée', str(exc), parent=self.root)
 
     def rename(self, section):
@@ -464,10 +486,13 @@ class Controller(ControllerEditorsMixin):
             self.tables['mobs'].selection_set(identifier)
             self.edit('mobs')
         except ValueError as exc:
-            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
+            self.project.restore(before)
             self.messagebox.showerror('Sous-espèce', str(exc), parent=self.root)
 
     def delete(self, section):
+        if section in dict(GAMEPLAY_SECTIONS):
+            self.delete_gameplay(section)
+            return
         selected = self.tables[section].selection()
         if not selected:
             return
@@ -494,7 +519,7 @@ class Controller(ControllerEditorsMixin):
             self.remember(before)
             self.refresh()
         except (ValueError, KeyError) as exc:
-            self.project.maps, self.project.mobs, self.project.content, self.project.encounters = before
+            self.project.restore(before)
             self.messagebox.showerror('Suppression refusée', str(exc), parent=self.root)
 
     def builder(self, new=False):

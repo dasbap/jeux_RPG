@@ -118,7 +118,7 @@ async function waitFor(check) {
   await waitFor(() => w.ready() && /Veste équipée/.test(get('forge-status').textContent));
   assert.equal(get('craft-view').open, true);
   assert.equal(calls.at(-1).action, 'craft');
-  assert.equal(get('craft-materials').textContent, 'Votre sac : 7 peau, 6 croc.');
+  assert.equal(get('craft-materials').textContent, 'Votre sac : 7 Peau, 6 Croc.');
   get('forge-close').click();
   assert.equal(get('craft-view').open, false);
   current = states.forge_near;
@@ -127,6 +127,13 @@ async function waitFor(check) {
   await waitFor(() => w.ready() && get('craft-view').open);
   w.mount(states.far);
   assert.equal(get('craft-view').open, false);
+  const custom = structuredClone(states.forge_near);
+  custom.tutorial.material_names.peau = 'Cuir personnalisé';
+  for (const player of custom.tutorial.players) for (const recipe of player.forge || []) recipe.max_level = 2;
+  w.mount(custom);
+  assert.match(get('forge-description').textContent, /jusqu’à \+2/);
+  assert.match(get('craft-materials').textContent, /Cuir personnalisé/);
+  assert.match(get('forge-catalogue').textContent, /À \+2/);
   dom.window.close();
   console.log('Mira et Garrik : quête, forge à pied, fabrication, fermeture et sortie de proximité vérifiées.');
 })().catch(error => {dom.window.close(); console.error(error); process.exitCode=1;});

@@ -583,7 +583,10 @@ def _register_socket(app, coordinator, environment, trusted):
         if host not in allowed or origin != scheme + "://" + host:
             await websocket.close(code=1008)
             return
-        if coordinator.connections >= 40 or coordinator.handshakes >= 16:
+        if (
+            coordinator.connections >= RuntimeStore.runtime_capacity()
+            or coordinator.handshakes >= 16
+        ):
             await websocket.close(code=1013)
             return
         coordinator.handshakes += 1
@@ -613,7 +616,7 @@ def _register_socket(app, coordinator, environment, trusted):
                     return
                 authenticated = headers["Authorization"]
                 await websocket.send_json({"type": "authenticated"})
-            if coordinator.connections >= 40:
+            if coordinator.connections >= RuntimeStore.runtime_capacity():
                 await websocket.close(code=1013)
                 return
         except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):

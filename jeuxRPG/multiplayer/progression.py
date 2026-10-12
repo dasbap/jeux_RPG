@@ -1,9 +1,10 @@
 import math
-from .content import WORLD
+from .content import WORLD, DATA
 
 
-RATIO = 3.0
-ACTION_SECONDS = 1.2
+RULES = DATA['gameplay']['rules']
+RATIO = RULES['time']['game_ratio']
+ACTION_SECONDS = RULES['time']['action_seconds']
 
 
 def required(level):
@@ -17,7 +18,7 @@ def configure(character):
         skill._poc_cost = base_cost
         capacity = next(energy.value for energy in character.energie if isinstance(energy, skill.energie_target))
         balance = getattr(skill,"balance",{})
-        skill.energie_cost = skill.catalog_cost if hasattr(skill,"catalog_cost") else balance.get("cost_fixed") if balance.get("cost_fixed") is not None else min(capacity,max(balance.get("cost_min",5),math.ceil(base_cost*balance.get("cost_factor",1.5))))
+        skill.energie_cost = skill.catalog_cost if hasattr(skill,"catalog_cost") else balance.get("cost_fixed") if balance.get("cost_fixed") is not None else min(capacity,max(balance.get("cost_min",RULES["combat"]["cost_min"]),math.ceil(base_cost*balance.get("cost_factor",RULES["combat"]["cost_factor"]))))
     return character
 
 
@@ -31,7 +32,7 @@ def attack_range(character,skill=None):
     if skill and hasattr(skill,'catalog_range'):
         return skill.catalog_range
     if skill and skill.skill_type.name not in ('DAMAGE','DEBUFF'):
-        return 6
+        return RULES['combat']['support_range']
     return character.combat_profile.get('attack_range',1.5)
 
 
@@ -42,7 +43,7 @@ def scale_skill(character, skill):
             if hasattr(skill,'catalog_growth'):
                 effect.value += round(skill.catalog_growth*(character.level-1))
             balance = getattr(skill,'balance',{})
-            effect.value = max(1,int(effect.value*balance.get('effect_factor',.55)+stat.current_value*balance.get('stat_factor',.25)))
+            effect.value = max(1,int(effect.value*balance.get('effect_factor',RULES['combat']['effect_factor'])+stat.current_value*balance.get('stat_factor',RULES['combat']['stat_factor'])))
 
 
 def health_resources(party, now):
@@ -58,17 +59,17 @@ def health_resources(party, now):
         active.add(key)
         timer = timers.setdefault(key, {"at": now, "fraction": 0})
         hp = data["stats"]["hp"]
-        minutes = max(0, int((now - timer["at"]) / 60))
+        minutes = max(0, int((now - timer["at"]) / RULES['time']['hp_regen_interval']))
         if hp["current"] <= 0 or hp["current"] >= hp["max"]:
             if minutes or timer["fraction"]:
                 timer.update(at=now, fraction=0)
             continue
         if not minutes:
             continue
-        amount = hp["max"] * .01 * minutes + timer["fraction"]
+        amount = hp["max"] * RULES['time']['hp_regen_fraction'] * minutes + timer["fraction"]
         gained = int(round(amount, 10))
         hp["current"] = min(hp["max"], hp["current"] + gained)
-        timer.update(at=timer["at"] + minutes * 60, fraction=0 if hp["current"] == hp["max"] else amount - gained)
+        timer.update(at=timer["at"] + minutes * RULES['time']['hp_regen_interval'], fraction=0 if hp["current"] == hp["max"] else amount - gained)
         changed = changed or gained > 0
     party["hp_regen"] = {key: value for key, value in timers.items() if key in active}
     if party.get("mobs"):
@@ -80,14 +81,14 @@ def resources(party, now):
     from .tutorial import unpack, pack
     health_changed = health_resources(party, now)
     last = party.setdefault("resource_at", now)
-    if now - last < RATIO:
+    if now - last < RULES['time']['resource_interval_real'] * RATIO:
         return health_changed
     elapsed = (now - last) / RATIO
     for key, data in party["characters"].items():
         character = unpack(data)
         fractions = party.setdefault("regen_fraction", {}).setdefault(key, {})
         for energy in character.energie:
-            rate = min(1.5, max(.2, energy.value * min(.1, energy.regen_rate) / 10))
+            rate = min(RULES["time"]["energy_regen_max"], max(RULES["time"]["energy_regen_min"], energy.value * min(RULES["time"]["energy_regen_fraction"], energy.regen_rate) / RULES["time"]["energy_regen_divisor"]))
             amount = elapsed * rate + fractions.get(type(energy).__name__, 0)
             gained = int(amount)
             energy.current_value = min(energy.value, energy.current_value + gained)
@@ -103,5 +104,5 @@ def casting(skill):
     if hasattr(skill,'catalog_cast'):
         return skill.catalog_cast.copy()
     physical = skill.DamageType and skill.DamageType.name == "PHYSICAL"
-    duration = .4 if physical else 2.0 if skill.skill_type.name == "INVOCATION" else 1.5
+    duration = RULES["combat"]["physical_cast"] if physical else RULES["combat"]["summon_cast"] if skill.skill_type.name == "INVOCATION" else RULES["combat"]["magic_cast"]
     return {"seconds": duration, "concentration": not bool(physical)}
