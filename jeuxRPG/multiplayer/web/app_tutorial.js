@@ -89,7 +89,6 @@ function renderGame(adventure, preserveBattle = false) {
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
   const activeQuest = (adventure.quest_journal || []).find(quest => quest.status === "active");
-  const hasQuest = Boolean(activeQuest);
   $("map-view").hidden = false;
   for (const view of ["social", "options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view;
   $("quest-view").hidden = currentView !== "quest";
@@ -180,7 +179,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("forge-keeper").textContent = nearbyNpc?.id === "forge" ? nearbyNpc.name : adventure.world?.places?.flatMap(place => place.points || []).find(point => point.id === "forge")?.name || "Forgeron";
   const forgeMaximum = me.forge?.[0]?.max_level ?? 10;
   $("forge-description").textContent = `Fabriquez ${me.forge?.length || 0} pièces indépendantes et améliorez-les jusqu’à +${forgeMaximum}. Les coûts figurent dans le catalogue.`;
-  $("forge-status").textContent = adventure.quest !== "completed" ? "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village." : `Forge débloquée : fabriquez ou améliorez chaque pièce indépendamment jusqu’à +${forgeMaximum}.`;
+  $("forge-status").textContent = `Fabriquez ou améliorez chaque pièce indépendamment jusqu’à +${forgeMaximum}.`;
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
   if (vest && adventure.quest === "completed") $("forge-status").textContent = `Veste équipée (+${vest.level}). ${adventure.step === "craft" ? "Votre compagnon doit encore fabriquer la sienne." : "Fabrication validée : rejoignez Brume pour terminer le tutoriel."}`;
   $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${materialName(item)}`).join(", ") || "aucun matériau"}.`;
