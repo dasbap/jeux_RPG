@@ -146,7 +146,8 @@ const fixture=fixtures.combat;
    }
    await page.locator('#game-menu-toggle').click();
    await page.locator('#show-social').click();
-   assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD');
+   const socialDiagnostic=await page.locator('#social-view').evaluate(node=>({hidden:node.hidden,style:getComputedStyle(node).display,parent:node.parentElement?.outerHTML.slice(0,180),parentDisplay:getComputedStyle(node.parentElement).display,ancestor:[...function*(element){while(element){yield {tag:element.tagName,id:element.id,classes:element.className,display:getComputedStyle(element).display};element=element.parentElement}}(node)].slice(0,9),body:document.body.className}));
+    assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD : '+JSON.stringify(socialDiagnostic));
    await page.locator('#back-view').click();
    await page.keyboard.press('Escape');
    await page.locator('#show-inventory').click();
