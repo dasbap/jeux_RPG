@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import shutil
 
-from .content import load_content, validate_content, CONDITIONS, is_hunt
+from .content import load_content, validate_content, CONDITIONS
 from .map_assets import load, validate
 from .map_building import zone_of
 
