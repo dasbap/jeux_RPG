@@ -20,11 +20,11 @@ near = snapshot(2)
 messages, _ = tutorial.execute(p, 'p', 'talk', {'npc':'mira'}, 0, GameError, lambda:.5)
 active = snapshot(3)
 active['events'] = [{'id':1, 'game_time':0, 'message':messages[-1]}]
-p['kills'] = content.HUNT['count'] + 1
+content.quest_states(p)[content.HUNT['id']]['progress'] = content.HUNT['count']
 ready = snapshot(4)
 messages, _ = tutorial.execute(p, 'p', 'talk', {'npc':'mira'}, 0, GameError, lambda:.5)
 completed = snapshot(5)
-completed['events'] = [{'id':2, 'game_time':0, 'message':messages[-1]}]
+completed['events'] = [{'id':2, 'game_time':0, 'message':next((text for text in messages if '750 XP' in text), messages[-1])}]
 p['battle']['players']['p']['position'] = next(site['position'] for site in fields.MAPS['rosee']['sites'] if site['id'] == 'forge')
 p['inventory']['p'] = {'peau':9, 'croc':9}
 forge_near = snapshot(6)
@@ -86,21 +86,21 @@ async function waitFor(check) {
   restoreMovement();
   w.mount(states.near);
   assert.equal(get('npc-view').hidden, false);
-  assert.equal(get('npc-actions').textContent, 'Accepter la quête');
+  assert.equal(get('npc-actions').textContent, 'Parler');
   assert.equal(get('quest-view').parentElement.className, 'dashboard-box quest-box');
   mira().dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
-  await waitFor(() => w.ready() && /gobelins vaincus/.test(get('quest-progress').textContent));
+  await waitFor(() => w.ready() && /0\/10/.test(get('quest-progress').textContent));
   assert.equal(calls.length, 1);
-  assert.match(get('quest-description').textContent, /Objectif : 10 gobelin/);
-  assert.match(get('npc-dialogue').textContent, /reste 10 gobelin/);
+  assert.match(get('quest-description').textContent, /Battez les gobelins/);
+  assert.match(get('npc-dialogue').textContent, /Mira/);
   assert.match(get('message').textContent, /Mira/);
   w.mount(states.ready);
-  assert.equal(get('npc-actions').textContent, 'Rendre la quête');
-  assert.match(get('npc-dialogue').textContent, /vaincu les 10 gobelins/);
+  assert.equal(get('npc-actions').textContent, 'Parler');
+  assert.match(get('npc-dialogue').textContent, /Mira/);
   get('npc-actions').querySelector('button').click();
   await waitFor(() => w.ready() && /accomplie/.test(get('quest-progress').textContent));
   assert.equal(calls.length, 2);
-  assert.match(get('forge-status').textContent, /Forge débloquée/);
+  assert.match(get('forge-status').textContent, /Fabriquez ou améliorez/);
   assert.match(get('message').textContent, /750 XP/);
   assert.equal(w.document.querySelectorAll('[style]').length, 0);
   current = states.forge_near;
