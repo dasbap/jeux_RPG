@@ -89,7 +89,7 @@ ROUTES = deepcopy(WORLD_MAP_DATA["clearing"].get("travel_routes", ROUTES))
 
 CURRENT = {"clearing": "clearing", "first_fight": "clearing", "road": "clearing",
            "village": "rosee", "hunt": "lisiere", "craft": "rosee", "travel": "rosee", "complete": "brume"}
-GOBLIN = {"hp_first": 18, "hp_hunt": 24, "xp_first": 50, "xp_hunt": 50, "loot": {"peau": 1, "croc": 1}}
+GOBLIN = {**content.DATA["gameplay"]["rules"]["tutorial"], "loot": {"peau": 1, "croc": 1}}
 
 
 def discovery(party):
@@ -317,5 +317,5 @@ def distance_km(source, destination):
 
 
 def walking_seconds(source, destination):
-    return distance_km(source, destination) / 6 * 3600
+    return distance_km(source, destination) / content.DATA['gameplay']['rules']['movement']['walking_kmh'] * 3600
 

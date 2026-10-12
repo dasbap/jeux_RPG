@@ -4,8 +4,10 @@ import json
 import re
 import secrets
 import time
+from .content import DATA
 
 
+SOCIAL_RULES = DATA['gameplay']['rules']['social']
 SESSION_SECONDS = 30 * 86400
 
 
@@ -227,9 +229,9 @@ class AccountMixin:
         counts = [sum(value['realm'] == index for value in presence) for index in range(1, self.realm_count + 1)]
         selected = realm or (existing or {}).get('realm')
         if selected is None:
-            selected = next((index for index, count in enumerate(counts, 1) if count < 40), None)
-        if type(selected) is not int or not 1 <= selected <= self.realm_count or counts[selected - 1] >= 40 and (not existing or existing['realm'] != selected):
-            raise GameError('server_full', 'Ce serveur est complet (40 joueurs). Réessayez ou choisissez un autre serveur.', 429)
+            selected = next((index for index, count in enumerate(counts, 1) if count < SOCIAL_RULES['realm_capacity']), None)
+        if type(selected) is not int or not 1 <= selected <= self.realm_count or counts[selected - 1] >= SOCIAL_RULES['realm_capacity'] and (not existing or existing['realm'] != selected):
+            raise GameError('server_full', f"Ce serveur est complet ({SOCIAL_RULES['realm_capacity']} joueurs). Réessayez ou choisissez un autre serveur.", 429)
         if not existing or existing['realm'] != selected or now - existing['seen'] >= 10:
             self.runtime_presence[player_id] = {'realm': selected, 'seen': now}
         return selected
@@ -252,7 +254,7 @@ class AccountMixin:
             row = self.db.execute('SELECT p.id,p.name,p.class_name,c.account_id FROM players p LEFT JOIN account_characters c ON c.player_id=p.id LEFT JOIN account_status a ON a.player_id=p.id WHERE p.id=? AND COALESCE(a.suspended,0)=0', (identifier,)).fetchone()
             if row:
                 nearby.append({**dict(row), **other, 'ally': row['account_id'] in team_accounts})
-        return {'realm': realm, 'realms': self.realm_count, 'capacity': 40, 'online': sum(p['realm'] == realm for p in self.runtime_presence.values()), 'nearby': nearby, 'pvp': False}
+        return {'realm': realm, 'realms': self.realm_count, 'capacity': SOCIAL_RULES['realm_capacity'], 'online': sum(p['realm'] == realm for p in self.runtime_presence.values()), 'nearby': nearby, 'team_capacity': SOCIAL_RULES['team_capacity'], 'pvp': False}
 
     def social_view(self, token):
         with self._transaction():
@@ -272,7 +274,7 @@ class AccountMixin:
                 for row in self.db.execute('SELECT a.id,a.username FROM team_members m JOIN accounts a ON a.id=m.account_id WHERE m.team_id=? AND m.active=1 ORDER BY m.joined', (team['id'],)):
                     player = next((item for item in self.db.execute('SELECT p.id,p.name FROM players p JOIN account_characters c ON c.player_id=p.id WHERE c.account_id=?', (row['id'],)) if item['id'] in self.runtime_presence and time.time() - self.runtime_presence[item['id']]['seen'] < 60), None)
                     members.append({**dict(row), 'online': player is not None, 'player_id': player['id'] if player else None, 'name': player['name'] if player else row['username'], 'realm': self.runtime_presence[player['id']]['realm'] if player else None, **(self._character_location(player['id']) if player else {})})
-                result['team'] = {'id': team['id'], 'owner': team['owner'], 'members': members, 'capacity': 4}
+                result['team'] = {'id': team['id'], 'owner': team['owner'], 'members': members, 'capacity': SOCIAL_RULES['team_capacity']}
                 result['rallies'] = [item for item in self.rallies.values() if item['team_id'] == team['id'] and item['expires'] > time.time() and item['sender'] != account['id']]
             result['guild_invitations'] = [dict(row) for row in self.db.execute("SELECT i.id,i.guild_id,g.name,a.username FROM guild_invites i JOIN guilds g ON g.id=i.guild_id JOIN accounts a ON a.id=i.sender WHERE i.recipient=? AND i.status='pending' AND i.expires>?", (account['id'], time.time()))]
             if guild:
@@ -315,7 +317,7 @@ class AccountMixin:
                 relation = self.db.execute('SELECT * FROM friendships WHERE first_id=? AND second_id=?', (first, second)).fetchone()
                 if action == 'friend_add':
                     count = self.db.execute("SELECT COUNT(*) FROM friendships WHERE (first_id=? OR second_id=?) AND status IN ('pending','accepted')", (account['id'], account['id'])).fetchone()[0]
-                    if count >= 200:
+                    if count >= SOCIAL_RULES['friend_capacity']:
                         raise GameError('capacity', 'La liste d’amis est complète.', 429)
                     if not relation or relation['status'] == 'removed':
                         self.db.execute("INSERT INTO friendships VALUES(?,?,?,'pending') ON CONFLICT(first_id,second_id) DO UPDATE SET requester=excluded.requester,status='pending'", (first, second, account['id']))
@@ -333,8 +335,8 @@ class AccountMixin:
                     self.db.execute('INSERT INTO teams VALUES(?,?)', (identifier, account['id']))
                     self.db.execute('INSERT INTO team_members VALUES(?,?,1,?) ON CONFLICT(account_id) DO UPDATE SET team_id=excluded.team_id,active=1,joined=excluded.joined', (account['id'], identifier, now))
                     team = self._team(account['id'])
-                if self.db.execute('SELECT COUNT(*) FROM team_members WHERE team_id=? AND active=1', (team['id'],)).fetchone()[0] >= 4:
-                    raise GameError('team_full', 'L’équipe est complète (4 joueurs).', 409)
+                if self.db.execute('SELECT COUNT(*) FROM team_members WHERE team_id=? AND active=1', (team['id'],)).fetchone()[0] >= SOCIAL_RULES['team_capacity']:
+                    raise GameError('team_full', f"L’équipe est complète ({SOCIAL_RULES['team_capacity']} joueurs).", 409)
                 self.db.execute("UPDATE team_invites SET status='replaced' WHERE sender=? AND recipient=? AND status='pending'", (account['id'], target))
                 self.db.execute("INSERT INTO team_invites VALUES(?,?,?,?,'pending',?)", (secrets.token_hex(16), team['id'], account['id'], target, now + 300))
             elif action in ('team_accept', 'team_decline'):
@@ -346,8 +348,8 @@ class AccountMixin:
                         raise GameError('already_in_team', 'Quittez votre équipe avant de rejoindre une autre.', 409)
                     if not self.db.execute('SELECT 1 FROM team_members WHERE account_id=? AND team_id=? AND active=1', (invite['sender'], invite['team_id'])).fetchone():
                         raise GameError('not_found', 'Cette équipe n’existe plus.', 404)
-                    if self.db.execute('SELECT COUNT(*) FROM team_members WHERE team_id=? AND active=1', (invite['team_id'],)).fetchone()[0] >= 4:
-                        raise GameError('team_full', 'L’équipe est complète (4 joueurs).', 409)
+                    if self.db.execute('SELECT COUNT(*) FROM team_members WHERE team_id=? AND active=1', (invite['team_id'],)).fetchone()[0] >= SOCIAL_RULES['team_capacity']:
+                        raise GameError('team_full', f"L’équipe est complète ({SOCIAL_RULES['team_capacity']} joueurs).", 409)
                     self.db.execute('INSERT INTO team_members VALUES(?,?,1,?) ON CONFLICT(account_id) DO UPDATE SET team_id=excluded.team_id,active=1,joined=excluded.joined', (account['id'], invite['team_id'], now))
                 self.db.execute('UPDATE team_invites SET status=? WHERE id=?', ('accepted' if action == 'team_accept' else 'declined', invite['id']))
             elif action == 'team_leave':

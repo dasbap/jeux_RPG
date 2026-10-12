@@ -292,6 +292,12 @@ class RuntimeStore:
                 self.due = now + 5
         self.observed_changes = self.db.total_changes
 
+    @staticmethod
+    def runtime_capacity():
+        from .content import DATA
+
+        return DATA["gameplay"]["rules"]["social"]["realm_capacity"]
+
     def request(self, message: RuntimeMessage, prepared_login=None) -> RuntimeResponse:
         if (
             self.db.total_changes != self.observed_changes
