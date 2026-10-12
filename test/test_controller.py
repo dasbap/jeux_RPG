@@ -169,7 +169,7 @@ def test_tutorial_quest_can_be_renamed_with_number_suffix_and_reloaded(tmp_path)
     loaded = controller.Project(p.directory)
     hunt = next(q for q in loaded.content['quests'] if content.is_hunt(q))
     assert hunt['id'] == 'mira_hunt_2'
-    assert hunt['role'] == 'tutorial_hunt'
+    assert hunt['category'] == 'tutorial'
     assert hunt['previous_ids'] == ['mira_hunt']
     assert hunt['npc'] == 'mira'
 
@@ -247,7 +247,7 @@ def test_installed_game_starts_with_renamed_tutorial_quest(tmp_path):
     p = project(tmp_path)
     p.rename('quests', 'mira_hunt', 'mira_hunt_2')
     p.save()
-    code = 'from jeuxRPG.multiplayer import content, tutorial; assert content.HUNT["id"] == "mira_hunt_2"; party = tutorial.new_party([{"id":"p","name":"Test","class_name":"Knight"}]); assert content.quest_dialogue(party, "mira") == []; assert content.quest_journal(party) == []'
+    code = 'from jeuxRPG.multiplayer import content, tutorial; assert content.HUNT["id"] == "mira_hunt_2"; party = tutorial.new_party([{"id":"p","name":"Test","class_name":"Knight"}]); assert any("Quête acceptée" in text for text in content.quest_dialogue(party, "mira")); assert any(quest["id"] == "mira_hunt_2" for quest in content.quest_journal(party))'
     result = subprocess.run([sys.executable, '-c', code], env={**os.environ, 'RPG_MAPS_FILE':str(p.directory)}, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
