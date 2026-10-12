@@ -8,7 +8,7 @@ import re
 
 DEFAULTS = {
     'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50, 'starting_gold': 100, 'trade_max_quantity': 999, 'trade_max_gold': 100000},
-    'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
+    'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'category': 'tutorial', 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
     'economy': [
         {'id': 'peau', 'name': 'Peau', 'buy': 8, 'sell': 4},
         {'id': 'croc', 'name': 'Croc', 'buy': 10, 'sell': 5},
@@ -36,7 +36,7 @@ def number(value, minimum, maximum):
 
 
 def is_hunt(quest):
-    return quest.get('role') == 'tutorial_hunt' or quest.get('role') is None and quest.get('id') == 'mira_hunt'
+    return quest.get('category') == 'tutorial'
 
 
 def validate_content(data):
@@ -74,8 +74,8 @@ def validate_content(data):
             aliases = item.get('previous_ids', [])
             if not isinstance(aliases, list) or len(aliases) > 100 or any(not isinstance(alias, str) or not re.fullmatch(r'[a-z0-9_]{1,64}', alias) for alias in aliases) or len(set(aliases)) != len(aliases):
                 raise ValueError('Historique des identifiants invalide.')
-            if item.get('role') not in (None, 'tutorial_hunt') or section != 'quests' and item.get('role'):
-                raise ValueError('Rôle interne invalide.')
+            if section == 'quests' and item.get('category', 'standard') not in ('standard', 'tutorial'):
+                raise ValueError('Catégorie de quête invalide.')
             for key in ('name', 'title') if section == 'achievements' else ('name', 'npc', 'target', 'description'):
                 if not isinstance(item.get(key), str) or not 1 <= len(item[key]) <= (2000 if key == 'description' else 100):
                     raise ValueError(f'{key} : texte requis.')
@@ -122,9 +122,6 @@ def validate_content(data):
         visited.add(identifier)
     for identifier in quests:
         check(identifier,set())
-    hunts = [q for q in data['quests'] if is_hunt(q)]
-    if len(hunts) != 1 or not any(q['npc'] == 'mira' and q['kind'] == 'kill' and q['target'] == 'goblin' and q.get('zone') == 'lisiere' for q in hunts):
-        raise ValueError('La quête de chasse de Mira est nécessaire au tutoriel.')
     for section in ('classes','skills'):
         if section in data and not isinstance(data[section],list):
             raise ValueError('Catalogue de classes/compétences invalide.')
@@ -170,7 +167,7 @@ def load_content(path=None):
 
 DATA = load_content()
 WORLD = DATA['world']
-HUNT = next(q for q in DATA['quests'] if is_hunt(q))
+HUNT = next((q for q in DATA['quests'] if is_hunt(q)), None)
 
 
 def gameplay(data=None):
@@ -192,6 +189,11 @@ def quest_states(party):
                 current['progress'] = max(current.get('progress', 0), previous.get('progress', 0))
                 if previous.get('status') == 'completed':
                     current['status'] = 'completed'
+    for quest in DATA['quests']:
+        if quest.get('category') != 'tutorial':
+            continue
+        if quest['id'] not in states and party.get('quest') in ('active', 'completed'):
+            states[quest['id']] = {'status': party['quest'], 'progress': min(quest['count'], party.get('kills', 0))}
     return states
 
 
@@ -199,7 +201,7 @@ def quest_event(party, kind, target, zone=None):
     states = quest_states(party)
     for quest in DATA['quests']:
         state = states.get(quest['id'])
-        if not is_hunt(quest) and state and state['status'] == 'active' and quest['kind'] == kind and quest['target'] == target and (not quest.get('zone') or quest['zone'] in (zone,party.get('field_map'),party.get('position'))) and (not quest.get('map') or quest['map'] == (party.get('field_map') or party.get('position'))):
+        if state and state['status'] == 'active' and quest['kind'] == kind and quest['target'] == target and (not quest.get('zone') or quest['zone'] in (zone,party.get('field_map'),party.get('position'))) and (not quest.get('map') or quest['map'] == (party.get('field_map') or party.get('position'))):
             state['progress'] = min(quest['count'], state['progress']+1)
 
 
@@ -220,7 +222,7 @@ def missing_requirements(party, quest):
     definitions = {item['id']:item for item in DATA['quests']}
     for identifier in requirements.get('quests',[]):
         definition = definitions[identifier]
-        completed = party.get('quest') == 'completed' if is_hunt(definition) else states.get(identifier,{}).get('status') == 'completed'
+        completed = states.get(identifier,{}).get('status') == 'completed'
         if not completed:
             missing.append('quête à terminer : '+definition['name'])
     return missing
@@ -231,7 +233,7 @@ def quest_dialogue(party, npc):
     messages = []
     states = quest_states(party)
     for quest in DATA['quests']:
-        if is_hunt(quest) or quest['npc'] != npc:
+        if quest['npc'] != npc:
             continue
         state = states.get(quest['id'])
         if state is None:
@@ -258,7 +260,7 @@ def quest_dialogue(party, npc):
 
 def quest_journal(party):
     quest_states(party)
-    return [{**deepcopy(quest), **party.get('custom_quests', {}).get(quest['id'], {'status': 'available', 'progress': 0})} for quest in DATA['quests'] if not is_hunt(quest) and quest['id'] in party.get('custom_quests', {})]
+    return [{**deepcopy(quest), **party.get('custom_quests', {}).get(quest['id'], {'status': 'available', 'progress': 0})} for quest in DATA['quests'] if quest['id'] in party.get('custom_quests', {})]
 
 
 def validate_references(data, mobs, maps):
