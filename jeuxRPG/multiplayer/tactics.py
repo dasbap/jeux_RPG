@@ -1178,7 +1178,11 @@ def defeated(party, mob, now, random, messages):
         and world.zone_of(party["position"]) == "lisiere"
         and mob.get("mob_id", "goblin") == "goblin"
     ):
-        party["kills"] = min(content.HUNT["count"], party["kills"] + 1) if content.HUNT else party["kills"] + 1
+        party["kills"] = (
+            min(content.HUNT["count"], party["kills"] + 1)
+            if content.HUNT
+            else party["kills"] + 1
+        )
     if not party.get("training"):
         achievements.event(party, "kills", mob.get("mob_id", "goblin"))
         content.quest_event(
