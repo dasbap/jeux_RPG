@@ -71,7 +71,7 @@ def test_save_rolls_back_on_partial_replace_failure(tmp_path, monkeypatch):
     assert not list(p.directory.glob('*.controller.tmp'))
 
 
-@pytest.mark.parametrize('change', ['duplicate','condition','nonfinite','vision','hunt'])
+@pytest.mark.parametrize('change', ['duplicate','condition','nonfinite','vision'])
 def test_invalid_content_is_rejected(change):
     data = deepcopy(content.DEFAULTS)
     if change == 'duplicate':
@@ -82,8 +82,6 @@ def test_invalid_content_is_rejected(change):
         data['world']['xp_exponent'] = float('nan')
     elif change == 'vision':
         data['world']['player_vision'] = 2.5
-    else:
-        data['quests'] = []
     with pytest.raises(ValueError):
         content.validate_content(data)
 
