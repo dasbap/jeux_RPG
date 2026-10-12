@@ -365,15 +365,22 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 }
 
 .combat-active #character-menu{left:12px;right:auto;top:10px}
+.combat-active #outing-vitals{top:68px}
+.combat-active #battle:not(.combat-mode) #field-camera{position:absolute;top:10px;right:12px;left:auto;z-index:40;width:auto;display:flex;gap:4px;border-radius:8px}
+.combat-active #battle:not(.combat-mode) #field-location{display:none}
 .combat-active .combat-mode #combat-player-panel{left:12px;top:68px}
 .combat-active .combat-mode #combat-enemy-panel{right:12px;left:auto;top:10px}
 @media(max-width:750px){
   .combat-active #character-menu{left:6px;right:auto;top:max(6px,env(safe-area-inset-top))}
+  .combat-active #outing-vitals{left:6px;top:calc(max(6px,env(safe-area-inset-top)) + 52px);width:calc(50vw - 83px);padding:5px}
+  .combat-active #battle:not(.combat-mode) #field-camera{top:max(6px,env(safe-area-inset-top));right:6px}
   .combat-active .combat-mode #combat-player-panel{left:6px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:6px;left:auto;top:max(6px,env(safe-area-inset-top))}
 }
 @media(max-height:500px) and (orientation:landscape){
   .combat-active #character-menu{left:8px;right:auto;top:8px}
+  .combat-active #outing-vitals{left:8px;top:58px}
+  .combat-active #battle:not(.combat-mode) #field-camera{top:8px;right:8px}
   .combat-active .combat-mode #combat-player-panel{left:8px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:8px;left:auto;top:8px}
 }
