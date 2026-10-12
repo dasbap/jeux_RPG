@@ -3,7 +3,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
-const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
+const fixtures=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const fixture=fixtures.combat;
 (async()=>{
  const browser=await chromium.launch({headless:true});
  try{
@@ -174,6 +175,20 @@ const fixture=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).combat;
    assert.deepEqual(errors,[]);
    fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
    await page.screenshot({path:path.join(root,`hud-captures/${width}x${height}.png`)});
+   const outingFixture={...fixtures.field_village,battle:null,field_mode:false,field_map:null};
+   for(const [name,adventure] of [['exploration',outingFixture],['forge',{...outingFixture,position:'forge'}]]){
+    await page.evaluate(adventure=>window.eval(`session.tutorial=${JSON.stringify(adventure)};renderTutorial(session.tutorial);`),adventure);
+    const explorationMenu=await rect('character-menu'),outing=await rect('outing-vitals'),camera=await rect('field-camera'),navigation=await rect('hud-navigation');
+    assert(explorationMenu&&outing&&camera&&navigation,'Menu, PV, caméra et minicarte visibles hors combat');
+    for(const [first,second] of [[explorationMenu,outing],[explorationMenu,camera],[outing,camera],[outing,navigation],[camera,navigation]]) assert(!overlaps(first,second),'Commandes et ressources sans chevauchement hors combat');
+    for(const box of [explorationMenu,outing,camera]) assert(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height,'HUD hors combat dans les limites de l’écran');
+    for(const card of await page.locator('#outing-vitals .vitals-card').all()){
+     const nameBox=await card.locator('.vitals-name').boundingBox(),resourceBox=await card.locator('.vitals-resources').boundingBox(),statusBox=await card.locator('.vitals-statuses').boundingBox();
+     assert(!overlaps(nameBox,resourceBox)&&!overlaps(resourceBox,statusBox),'Nom, ressources et statuts lisibles sans collision');
+     for(const row of await card.locator('.vitals-row').all()) assert(!overlaps(await row.locator('progress').boundingBox(),await row.locator('span').boundingBox()),'Valeurs et jauges sans chevauchement');
+    }
+    await page.screenshot({path:path.join(root,`hud-captures/${name}-${width}x${height}.png`)});
+   }
    await page.close();
   }
   console.log('HUD vérifié dans Chromium : ordinateur, mobile portrait et paysage.');
