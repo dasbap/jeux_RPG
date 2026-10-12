@@ -32,6 +32,7 @@ def test_independent_drop_attempts_and_quantity_ranges():
 def test_subspecies_inherits_and_overrides_stats_drops_and_abilities(tmp_path, monkeypatch):
     p = project(tmp_path)
     p.mobs['goblin'].update(stats={'hp':{'base':20,'growth':5},'force':{'base':4,'growth':2}}, abilities=[ability(level=3)], drops=[{'item':'gem','chance':.1,'attempts':2,'min':1,'max':1,'rare':True}])
+    p.content['gameplay']['materials']['gem'] = {'name': 'Gemme', 'rare_chance': .1}
     p.mobs['goblin_mage'] = {'parent':'goblin','name':'Gobelin mage','xp_class':'caster','xp_multiplier':1.5,'stats':{'hp':{'base':12,'growth':3}}}
     p.validate()
     monkeypatch.setattr(map_building,'MOBS',p.mobs)

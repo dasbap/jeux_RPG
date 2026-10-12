@@ -104,9 +104,9 @@ function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
 function renderWorld(adventure, me, mapContainer = $("world-map")) {
-  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
+  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. Les recettes disponibles sont proposées à la forge."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
-  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
+  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${adventure.material_names?.[item] || item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
   const world = adventure.world;
   const places = world.places;
   const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));
@@ -313,7 +313,14 @@ function toggleGameMenu(open = $("game-menu-items").hidden) {
   $("game-menu-items").hidden = !open;
   $("game-menu-toggle").setAttribute("aria-expanded", String(open));
 }
+function openForge() {
+  if (!session?.tutorial) return;
+  renderTutorial(session.tutorial);
+  $("forge-feedback").textContent = "";
+  if (!$("craft-view").open) $("craft-view").showModal();
+}
 function showView(view) {
+  if (view === "craft") return tutorialCommand("talk", {npc: "forge"});
   toggleGameMenu(false);
   if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderTutorial(session.tutorial);return;}
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;

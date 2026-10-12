@@ -26,9 +26,19 @@ jobs:
     steps:
       - name: Verifier l'acces de deploiement
         env:
+          RPG_BACKUP_RECIPIENT: ${{ vars.RPG_BACKUP_RECIPIENT }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
+          if [ -z "$RPG_BACKUP_RECIPIENT" ]; then
+            echo "Variable publique RPG_BACKUP_RECIPIENT absente : configurer la cle age du proprietaire avant toute mutation de production."
+            exit 1
+          fi
+          if [ "${#RPG_ADMIN_TOKEN}" -lt 32 ]; then
+            echo "Secret GitHub production RPG_ADMIN_TOKEN absent ou trop court : requis pour le controle du build prebuilt ; ne pas afficher sa valeur."
+            exit 1
+          fi
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "Secret GitHub Actions VERCEL_TOKEN absent : nécessaire pour publier le projet Vercel existant jeux-rpg."
             exit 1
@@ -46,6 +56,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
+      - name: Installer uv pour le build Python Vercel
+        run: python -m pip install uv==0.13.0
       - run: python -m pip install -c constraints.txt '.[test]'
       - run: python -m pytest -q
       - run: npm install --prefix .deploy-tools vercel@62.2.0 jsdom@26.1.0
@@ -65,6 +77,29 @@ jobs:
         run: node scripts/verify_touch_controls.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - name: Installer le chiffrement de sauvegarde
+        run: sudo apt-get update && sudo apt-get install --yes age
+      - name: Exporter et restaurer Turso avant migration
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RPG_BACKUP_RECIPIENT: ${{ vars.RPG_BACKUP_RECIPIENT }}
+        run: |
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/production-before.sqlite3"' EXIT
+          python -m scripts.export_turso_backup "$RUNNER_TEMP/production-before.sqlite3" > backup-check.json
+          age -r "$RPG_BACKUP_RECIPIENT" -o production-before.sqlite3.age "$RUNNER_TEMP/production-before.sqlite3"
+          sha256sum production-before.sqlite3.age > backup-checksum.txt
+      - name: Conserver uniquement la sauvegarde chiffree hors production
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: turso-before-${{ github.sha }}
+          path: |
+            production-before.sqlite3.age
+            backup-checksum.txt
+            backup-check.json
+          retention-days: 30
+          if-no-files-found: error
       - name: Initialiser et verifier la base Turso
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
@@ -94,10 +129,20 @@ jobs:
           for key, value in values.items():
               subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive'], input=value, text=True, check=True)
           PY
+      - name: Recuperer la configuration de build du projet exact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: .deploy-tools/node_modules/.bin/vercel pull --yes --environment=production --scope team_qde9V6kikwwSvLtNrjAsAkRY
+      - name: Construire l'artefact de production en CI
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RPG_RELEASE_SHA: ${{ github.sha }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
+        run: .deploy-tools/node_modules/.bin/vercel build --prod
       - name: Preparer la version de production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: .deploy-tools/node_modules/.bin/vercel deploy --prod --skip-domain --yes --env RPG_RELEASE_SHA="$GITHUB_SHA" > deployment-url.txt
+        run: .deploy-tools/node_modules/.bin/vercel deploy --prebuilt --prod --skip-domain --yes --env RPG_RELEASE_SHA="$GITHUB_SHA" > deployment-url.txt
       - name: Verifier les routes et la connexion admin en ligne
         run: python scripts/verify_deployment.py
         env:

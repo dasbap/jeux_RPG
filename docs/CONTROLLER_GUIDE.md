@@ -38,6 +38,13 @@ Le contrôleur est un outil externe au jeu. Il modifie les définitions, pas les
 | Compétences moteur | Effets multiples, invocations, buffs, coûts, scaling, portée et incantation |
 | PNJ | Carte, nom, identifiant, dialogue, joueur lié facultatif et placement par clic |
 | Monde | Délai de repop, XP des mobs, courbe d’XP, durée de séjour du marchand et vision des joueurs |
+| Forge / recettes | Création, emplacement, cinq bonus, matériaux et aperçu des améliorations |
+| Matériaux / équipement | Noms affichés, probabilités rares et emplacements personnalisés |
+| Règles du jeu | Temps, régénération, déplacement, combat, IA, saignement, capacités sociales, trajets et apparition initiale |
+| Améliorations rares | Matériaux supplémentaires, niveau de début et formule de quantité |
+| Groupes de rencontres / récompenses XP | Probabilités successives et multiplicateurs de rang des mobs |
+| Contrôle des invocations | Énergie et consommation par seconde |
+| Textes du tutoriel | Nom et description des étapes existantes |
 
 Les cartes fixes, les rencontres, les collisions, les rues et les durées des trajets se règlent depuis le **Builder**. Son guide complet se trouve dans [BUILDER_GUIDE.md](BUILDER_GUIDE.md).
 
@@ -45,7 +52,7 @@ Les cartes fixes, les rencontres, les collisions, les rues et les durées des tr
 
 Sélectionner une carte dans **Cartes / zones**, puis **Éditer la carte dans le builder**. Tous les outils existants sont disponibles, notamment **Assemblage des cartes**, **Aperçu rendu final** et **Trajets / rues**. Le builder utilise les espèces créées dans l’onglet Mobs même avant leur enregistrement.
 
-Enregistrer depuis le builder valide et enregistre les quatre catalogues du projet. En fermant le builder avec des modifications non enregistrées, choisir de les garder dans le contrôleur ou de les abandonner. Annuler depuis le contrôleur restaure aussi les modifications récupérées du builder.
+Enregistrer depuis le builder valide et enregistre les cinq fichiers de catalogue du projet. En fermant le builder avec des modifications non enregistrées, choisir de les garder dans le contrôleur ou de les abandonner. Annuler depuis le contrôleur restaure aussi les modifications récupérées du builder.
 
 Le bouton Supprimer d’une carte ouvre le builder : utiliser son outil **Supprimer carte**, qui protège les cartes du tutoriel et leurs références.
 
@@ -228,3 +235,15 @@ Le réglage **Monde → Activer le PvP optionnel** contrôle entièrement les du
 Lorsque le PvP est désactivé, les comptes ne peuvent ni rejoindre ni démarrer un duel et l’interface masque le bouton de duel. Lorsque le réglage est activé, le système de duel reste volontaire : un joueur crée un salon, l’autre le rejoint avec l’invitation, puis le propriétaire choisit explicitement **Duel optionnel**. Le mode aventure, les rencontres PvE et la présence dans le même monde ne déclenchent jamais automatiquement un combat entre joueurs.
 
 Les personnages locaux historiques conservent les tests de compatibilité du moteur de duel, mais la disponibilité visible des comptes dépend toujours du réglage du Controller.
+
+## Réglages et projet complet
+
+Le sélecteur **Catalogue** permet d’accéder à tous les onglets, même sur un petit écran. Les réglages sont enregistrés dans `content.json`, sous `gameplay`. Les anciens projets reçoivent automatiquement les valeurs historiques. Aucune modification de l’équilibrage n’est appliquée par défaut.
+
+Les valeurs numériques, les probabilités et les références sont validées avant enregistrement. Une suppression de matériau, de recette ou d’emplacement encore utilisé est refusée. Les modifications invalides sont annulées sans perdre le projet. La position initiale doit être praticable et permettre de rejoindre une sortie.
+
+**Projet complet (JSON)** donne accès aux quatre racines `maps`, `encounters`, `mobs` et `content`, y compris les terrains tactiques des rencontres. Modifier puis appliquer valide l’ensemble du projet ; Annuler modification et Rétablir fonctionnent aussi pour cet éditeur. Les modèles de classes et compétences sont contenus dans `content.templates`, puis enregistrés séparément dans `classes.json`.
+
+Enregistrer ne modifie pas le serveur déjà démarré : redémarrer le jeu ou publier les cinq fichiers de catalogue pour appliquer les nouvelles définitions. Les équipements connus sont recalculés au chargement selon leurs recettes, sans cumuler les bonus à chaque passage. Une pièce ancienne dont la recette a été retirée reste conservée dans la sauvegarde. Un changement d’emplacement de recette conserve l’emplacement des pièces déjà fabriquées.
+
+Le contrôleur couvre les contenus et les paramètres exposés du moteur. Les étapes et identifiants nécessaires au tutoriel restent protégés. Ajouter un nouveau type d’effet programmé, un nouveau mécanisme de combat ou un arbre de dialogue demande encore une modification du code Python.

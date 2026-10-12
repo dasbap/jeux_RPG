@@ -32,7 +32,7 @@ def is_hunt(quest):
 
 
 def validate_content(data):
-    if not isinstance(data, dict) or set(data)-{'classes','skills','templates'} != set(DEFAULTS):
+    if not isinstance(data, dict) or set(data)-{'classes','skills','templates','gameplay'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
     limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64), 'guild_max_members': (2, 500)}
     if not isinstance(data['world'], dict) or set(data['world']) != set(limits) | {'pvp_enabled'} or type(data['world'].get('pvp_enabled')) is not bool:
@@ -112,7 +112,10 @@ def validate_content(data):
     if 'templates' in data:
         from jeuxRPG._class.res.character.class_models import validate as validate_templates
         validate_templates(data['templates'])
-    return deepcopy(data)
+    from .gameplay_catalog import DEFAULTS as gameplay_defaults, validate as validate_gameplay
+    result = deepcopy(data)
+    result['gameplay'] = validate_gameplay(result.get('gameplay', gameplay_defaults))
+    return result
 
 
 def content_path():
@@ -132,7 +135,7 @@ def content_path():
 def load_content(path=None):
     path = Path(path) if path else content_path()
     if not path.exists():
-        return deepcopy(DEFAULTS)
+        return validate_content(DEFAULTS)
     if path.stat().st_size > 1024*1024:
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
@@ -147,6 +150,11 @@ def load_content(path=None):
 DATA = load_content()
 WORLD = DATA['world']
 HUNT = next(q for q in DATA['quests'] if is_hunt(q))
+
+
+def gameplay(data=None):
+    from .gameplay_catalog import DEFAULTS as gameplay_defaults
+    return (DATA if data is None else data).get('gameplay', gameplay_defaults)
 
 
 def quest_states(party):
@@ -233,7 +241,8 @@ def quest_journal(party):
 
 
 def validate_references(data, mobs, maps):
-    from .forge import RECIPES
+    from .gameplay_catalog import DEFAULTS as gameplay_defaults
+    RECIPES = data.get('gameplay', gameplay_defaults)['recipes']
     from .map_building import zone_of
     zones = {zone_of(maps, identifier) for identifier in maps}
     for definition in [*data['quests'], *data['achievements']]:

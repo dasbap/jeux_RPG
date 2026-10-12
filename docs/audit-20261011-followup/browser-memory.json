@@ -1,0 +1,106 @@
+{
+  "commit": "426019f1f23d4b27e689d5b852df4147b8d7f097",
+  "run_id": 38145286094,
+  "job_id": 114487226693,
+  "reports": [
+    {
+      "scope": "Chromium fixture, 100 warmup + 500 updates, forced GC; not physical mobile INP",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "before": {
+        "dom": {
+          "documents": 1,
+          "nodes": 4707,
+          "jsEventListeners": 1033
+        },
+        "heap": {
+          "usedSize": 5636748,
+          "totalSize": 6103040,
+          "embedderHeapUsedSize": 4058656,
+          "backingStorageSize": 1525864
+        }
+      },
+      "after": {
+        "dom": {
+          "documents": 1,
+          "nodes": 4689,
+          "jsEventListeners": 1033
+        },
+        "heap": {
+          "usedSize": 5774032,
+          "totalSize": 6627328,
+          "embedderHeapUsedSize": 4510848,
+          "backingStorageSize": 1524727
+        }
+      }
+    },
+    {
+      "scope": "Chromium fixture, 100 warmup + 500 updates, forced GC; not physical mobile INP",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "before": {
+        "dom": {
+          "documents": 1,
+          "nodes": 3055,
+          "jsEventListeners": 549
+        },
+        "heap": {
+          "usedSize": 5370668,
+          "totalSize": 6365184,
+          "embedderHeapUsedSize": 3460872,
+          "backingStorageSize": 1525724
+        }
+      },
+      "after": {
+        "dom": {
+          "documents": 1,
+          "nodes": 3037,
+          "jsEventListeners": 549
+        },
+        "heap": {
+          "usedSize": 5512296,
+          "totalSize": 6627328,
+          "embedderHeapUsedSize": 3785984,
+          "backingStorageSize": 1524620
+        }
+      }
+    },
+    {
+      "scope": "Chromium fixture, 100 warmup + 500 updates, forced GC; not physical mobile INP",
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "before": {
+        "dom": {
+          "documents": 1,
+          "nodes": 4147,
+          "jsEventListeners": 865
+        },
+        "heap": {
+          "usedSize": 5578084,
+          "totalSize": 6365184,
+          "embedderHeapUsedSize": 3742408,
+          "backingStorageSize": 1525801
+        }
+      },
+      "after": {
+        "dom": {
+          "documents": 1,
+          "nodes": 4129,
+          "jsEventListeners": 865
+        },
+        "heap": {
+          "usedSize": 5718188,
+          "totalSize": 6627328,
+          "embedderHeapUsedSize": 4249272,
+          "backingStorageSize": 1524697
+        }
+      }
+    }
+  ]
+}

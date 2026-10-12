@@ -29,7 +29,10 @@ class Project:
             if not target.exists():
                 shutil.copyfile(source, target)
         self.content = load_content(self.directory/'content.json')
-        self.mobs = validate_mobs(json.loads((self.directory/'mobs.json').read_text(encoding='utf-8'))['maps'],classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
+        self.mobs = validate_mobs(json.loads((self.directory/'mobs.json').read_text(encoding='utf-8'))['maps'],classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'],xp_classes=self.content['gameplay']['xp_classes'])
+        from .gameplay_catalog import material_ids
+        for item in material_ids(self.mobs):
+            self.content['gameplay']['materials'].setdefault(item, {'name': item.replace('_', ' '), 'rare_chance': 0.})
         from . import map_building
         previous = map_building.MOBS
         try:
@@ -68,6 +71,9 @@ class Project:
 
     def state(self):
         return deepcopy((self.maps, self.mobs, self.content, self.encounters))
+
+    def restore(self, state):
+        self.maps, self.mobs, self.content, self.encounters = deepcopy(state)
 
     def document(self):
         return {'maps': deepcopy(self.maps), 'encounters': deepcopy(self.encounters), 'mobs': deepcopy(self.mobs), 'content': deepcopy(self.content)}
@@ -121,7 +127,7 @@ class Project:
         return True
 
     def validate(self):
-        validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'])
+        validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'],xp_classes=self.content['gameplay']['xp_classes'])
         from .skill_catalog import library, make_skill
         from jeuxRPG._class.res.character.class_models import skill_to_data
         available = library(self.content,self.mobs)
@@ -134,11 +140,13 @@ class Project:
                     del definitions[identifier]
                 else:
                     definitions[identifier] = skill_to_data(make_skill(available[identifier],{}))
-        validate_content(self.content)
+        self.content['gameplay'] = validate_content(self.content)['gameplay']
+        from .gameplay_catalog import validate_references as validate_gameplay_references
+        validate_gameplay_references(self.content['gameplay'], self.mobs, self.content['templates'])
         self.validate_encounters()
         from .skill_catalog import validate as validate_catalog
         validate_catalog(self.content,self.mobs)
-        from . import map_building, forge
+        from . import map_building
         previous = map_building.MOBS
         try:
             map_building.MOBS = self.mobs
@@ -146,8 +154,10 @@ class Project:
         finally:
             map_building.MOBS = previous
         npcs = {site['id'] for data in self.maps.values() for site in data.get('sites', [])}
+        from .gameplay_catalog import validate_start
+        validate_start(self.content['gameplay'], self.maps)
         for quest in self.content['quests']:
-            if quest['npc'] not in npcs or quest.get('zone') and quest['zone'] not in self.maps or quest['kind'] == 'kill' and quest['target'] not in self.mobs or quest['kind'] == 'craft' and quest['target'] not in forge.RECIPES:
+            if quest['npc'] not in npcs or quest.get('zone') and quest['zone'] not in self.maps or quest['kind'] == 'kill' and quest['target'] not in self.mobs or quest['kind'] == 'craft' and quest['target'] not in self.content['gameplay']['recipes']:
                 raise ValueError(f"{quest['name']} : PNJ, zone ou cible introuvable.")
         from .content import validate_references
         validate_references(self.content, self.mobs, self.maps)
@@ -165,6 +175,9 @@ class Project:
                 item = next(item for item in self.content['templates']['classes'] if item['id'] == identifier)
                 item['id'] = replacement
                 item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids',[]),identifier]))
+                controls = self.content['gameplay']['summon_control']
+                if identifier in controls:
+                    controls[replacement] = controls.pop(identifier)
                 for definition in self.content['templates']['skills'].values():
                     for effect in definition['effects'].values():
                         if effect.get('invocation',{} ) and effect['invocation'].get('class') == identifier:

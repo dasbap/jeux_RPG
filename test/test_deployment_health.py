@@ -11,6 +11,18 @@ from scripts import verify_deployment
 BASE = 'https://jeux-test-dasbaps-projects.vercel.app'
 
 
+@pytest.mark.parametrize('body,expected', [
+    (b'{"error":"invalid_host","message":"private response"}', 'invalid_host'),
+    (b'{"error":"invalid_origin"}', 'invalid_origin'),
+    (b'{"error":"private response"}', 'unknown'),
+    (b'<html>private response</html>', 'unknown'),
+    (b'[]', 'unknown'),
+])
+def test_deployment_error_exposes_only_known_code(body, expected):
+    error = HTTPError(BASE, 403, 'private response', {}, io.BytesIO(body))
+    assert verify_deployment.deployment_error_code(error) == expected
+
+
 def response(body, content_type):
     result = io.BytesIO(body)
     result.headers = Message()

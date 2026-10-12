@@ -364,3 +364,25 @@ def test_production_ticks_only_recently_active_players():
     assert store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(b,)).fetchone()[0] == before
     assert store.db.execute('SELECT data FROM tutorials WHERE session_id=?',(a,)).fetchone()[0] != active_before
     store.close()
+
+
+def test_guild_invitation_cannot_be_accepted_by_another_account(game):
+    alice, bob, eve = [account(game, name) for name in ('InviteOwner', 'InviteTarget', 'InviteOutsider')]
+    game.social_action(alice['token'], 'guild_create', {'name': 'Guilde de preuve'})
+    identifier = guild_invite(game, alice, bob)
+    with pytest.raises(GameError) as failure:
+        game.social_action(eve['token'], 'guild_accept', {'invite_id': identifier})
+    assert failure.value.code == 'not_found'
+    assert game.social_view(eve['token'])['guild'] is None
+    game.social_action(bob['token'], 'guild_accept', {'invite_id': identifier})
+    assert game.social_view(bob['token'])['guild']['id'] == game.social_view(alice['token'])['guild']['id']
+
+
+def test_team_invitation_from_departed_owner_cannot_create_membership(game):
+    alice, bob = [account(game, name) for name in ('DepartedOwner', 'PendingTarget')]
+    identifier = invite(game, alice, bob)
+    game.social_action(alice['token'], 'team_leave', {})
+    with pytest.raises(GameError) as failure:
+        game.social_action(bob['token'], 'team_accept', {'invite_id': identifier})
+    assert failure.value.code == 'not_found'
+    assert game.social_view(bob['token'])['team'] is None
