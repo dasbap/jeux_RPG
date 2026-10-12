@@ -80,6 +80,7 @@ function renderGame(adventure, preserveBattle = false) {
   }
   touchMove.disabled = busy || !inspectedCell;
   const me = adventure.players.find(player => player.id === session.me);
+  const vest = me.gear.find(piece => piece.slot === "torso");
   const fieldInteractions = adventure.field_interactions || [];
   const fieldSites = new Set(fieldInteractions.map(site => site.id));
   const worldPoints = adventure.world?.places?.flatMap(place => place.points || []) || [];
