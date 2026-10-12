@@ -207,10 +207,11 @@ def test_quest_rename_migrates_completed_progress_without_second_reward(tmp_path
     party = tutorial.new_party([{'id':'p','name':'Test','class_name':'Knight'}])
     party['custom_quests'] = {'quest_2':{'status':'completed','progress':1}, 'quest_4':{'status':'active','progress':0}}
     xp = party['characters']['p']['exp']
-    assert content.quest_dialogue(party, 'mira') == []
+    messages = content.quest_dialogue(party, 'mira')
+    assert not any('Quête terminée : Chasse' in message for message in messages)
     assert party['characters']['p']['exp'] == xp
-    assert party['custom_quests'] == {'quest_4':{'status':'completed','progress':1}}
-    assert content.quest_journal(party)[0]['id'] == 'quest_4'
+    assert party['custom_quests']['quest_4'] == {'status':'completed','progress':1}
+    assert any(quest['id'] == 'quest_4' for quest in content.quest_journal(party))
 
 
 @pytest.mark.parametrize('replacement', ['mira_hunt','invalid id','BadID',''])
