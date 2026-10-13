@@ -1,7 +1,7 @@
 {
   "clearing": {
     "id": "field_clearing",
-    "name": "Forêt des Éveillés · sentier oublié",
+    "name": "Sentier oublié",
     "width": 88,
     "height": 20,
     "cell_metres": 2,
@@ -8531,8 +8531,7 @@
         ]
       }
     ],
-    "zone_id": "clearing",
-    "zone_level": 1,
+    "zone_id": "foret_eveilles",
     "spawners": [
       {
         "position": [
@@ -8713,7 +8712,59 @@
         ],
         "rotation": 90
       }
-    ]
+    ],
+    "logical_zones": {
+      "foret_eveilles": {
+        "name": "Forêt des Éveillés",
+        "level": 1,
+        "world_view": {
+          "position": [
+            70,
+            300
+          ]
+        }
+      },
+      "zone_rosee": {
+        "name": "Rosée",
+        "level": 1,
+        "world_view": {
+          "position": [
+            450,
+            300
+          ]
+        }
+      },
+      "zone_lisiere": {
+        "name": "Lisière",
+        "level": 2,
+        "world_view": {
+          "position": [
+            750,
+            300
+          ]
+        }
+      },
+      "zone_brume": {
+        "name": "Brume",
+        "level": 4,
+        "world_view": {
+          "position": [
+            1050,
+            300
+          ]
+        }
+      },
+      "grotte_oublies": {
+        "name": "Grotte des Oubliés",
+        "level": 1,
+        "world_view": {
+          "position": [
+            550,
+            550
+          ]
+        }
+      }
+    }
   },
   "rosee": {
     "id": "field_rosee",
@@ -12355,8 +12406,7 @@
         "kind": "flowers"
       }
     ],
-    "zone_id": "rosee",
-    "zone_level": 1,
+    "zone_id": "zone_rosee",
     "spawners": [],
     "world_origin": [
       155,
@@ -14390,8 +14440,7 @@
         "kind": "flowers"
       }
     ],
-    "zone_id": "lisiere",
-    "zone_level": 2,
+    "zone_id": "zone_lisiere",
     "spawners": [],
     "world_origin": [
       201,
@@ -20421,7 +20470,7 @@
         "kind": "tree"
       }
     ],
-    "zone_id": "lisiere",
+    "zone_id": "zone_lisiere",
     "spawners": [
       {
         "mob_id": "goblin",
@@ -20681,7 +20730,6 @@
       }
     ],
     "level": 3,
-    "zone_level": 3,
     "world_origin": [
       244,
       8
@@ -21545,7 +21593,7 @@
         "kind": "grass"
       }
     ],
-    "zone_id": "rosee",
+    "zone_id": "zone_rosee",
     "spawners": [
       {
         "position": [
@@ -21571,12 +21619,11 @@
       121,
       -13
     ],
-    "zone_level": 1,
     "bridge_rotations": []
   },
   "cave_1": {
     "id": "field_cave_1",
-    "name": "Grotte · salle 1",
+    "name": "Entrée de la Grotte des Oubliés",
     "width": 22,
     "height": 16,
     "cell_metres": 2,
@@ -21612,7 +21659,7 @@
     "biome": "cave",
     "paths": [],
     "decorations": [],
-    "zone_id": "rosee",
+    "zone_id": "grotte_oublies",
     "spawners": [
       {
         "position": [
@@ -21639,7 +21686,6 @@
       "final": false,
       "lock_until_clear": true
     },
-    "level": 1,
     "world_origin": [
       150,
       123
@@ -21648,7 +21694,7 @@
   },
   "cave_2": {
     "id": "field_cave_2",
-    "name": "Grotte · salle 2",
+    "name": "Fond de la Grotte des Oubliés",
     "width": 44,
     "height": 16,
     "cell_metres": 2,
@@ -21680,7 +21726,7 @@
     "biome": "cave",
     "paths": [],
     "decorations": [],
-    "zone_id": "rosee",
+    "zone_id": "grotte_oublies",
     "spawners": [
       {
         "position": [
@@ -21698,7 +21744,6 @@
       "final": true,
       "lock_until_clear": true
     },
-    "level": 1,
     "world_origin": [
       179,
       123
@@ -23721,8 +23766,7 @@
         "kind": "flowers"
       }
     ],
-    "zone_id": "brume",
-    "zone_level": 4,
+    "zone_id": "zone_brume",
     "spawners": [],
     "world_origin": [
       284,
