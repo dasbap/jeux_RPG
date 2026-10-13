@@ -1,11 +1,18 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationInfo,
+    model_validator,
+)
 
 from .catalog import Catalog, Positive, Quantity, default_catalog
 
 
-class Family(str, Enum):
+class Family(StrEnum):
     GOBLIN = "Goblin"
     ORC = "Orc"
     DRAGON = "DragonWhelp"
@@ -14,7 +21,7 @@ class Family(str, Enum):
     SACRED = "SacredResistantMob"
 
 
-class Slot(str, Enum):
+class Slot(StrEnum):
     HELMET = "helmet"
     CHEST = "chest"
     BOOTS = "boots"
@@ -60,7 +67,10 @@ class Gear(BaseModel):
     @classmethod
     def from_definition(cls, identifier, tier, catalog):
         definition = catalog.equipment[identifier]
-        return cls.model_validate({"family": definition.family, "slot": definition.slot, "tier": tier}, context={"catalog": catalog})
+        return cls.model_validate(
+            {"family": definition.family, "slot": definition.slot, "tier": tier},
+            context={"catalog": catalog},
+        )
 
     @property
     def definition_id(self):
@@ -72,7 +82,10 @@ class Gear(BaseModel):
 
     @property
     def required_level(self):
-        return self._catalog.equipment[self.definition_id].minimum_level + (self.tier - 1) * self._catalog.rules.levels_per_tier
+        return (
+            self._catalog.equipment[self.definition_id].minimum_level
+            + (self.tier - 1) * self._catalog.rules.levels_per_tier
+        )
 
     @property
     def name(self):
@@ -80,12 +93,20 @@ class Gear(BaseModel):
 
     @property
     def bonuses(self):
-        return {stat: amount * self.tier for stat, amount in self._catalog.equipment[self.definition_id].bonuses.items()}
+        return {
+            stat: amount * self.tier
+            for stat, amount in self._catalog.equipment[
+                self.definition_id
+            ].bonuses.items()
+        }
 
     @property
     def ingredients(self):
         recipe = self._catalog.recipes[self.definition_id]
-        return {self._catalog.ranked_material(key, self.tier): amount for key, amount in recipe.ingredients.items()}
+        return {
+            self._catalog.ranked_material(key, self.tier): amount
+            for key, amount in recipe.ingredients.items()
+        }
 
 
 class Inventory(BaseModel):
@@ -106,7 +127,11 @@ class Inventory(BaseModel):
         for identifier in self.materials:
             self._catalog.material(identifier)
         for identifier, gear in self.items.items():
-            if not identifier.startswith("item-") or not identifier[5:].isdecimal() or int(identifier[5:]) >= self.next_id:
+            if (
+                not identifier.startswith("item-")
+                or not identifier[5:].isdecimal()
+                or int(identifier[5:]) >= self.next_id
+            ):
                 raise ValueError("Identifiant d'objet invalide")
             if gear.definition_id not in self._catalog.equipment:
                 raise ValueError("Équipement absent du catalogue")
@@ -125,12 +150,19 @@ class Inventory(BaseModel):
             self.materials[identifier] = self.materials.get(identifier, 0) + amount
 
     def add_loot(self, family, tier: int, hide: int, trophy: int):
-        self.add_materials({material_id(family, tier, "hide"): hide, material_id(family, tier, "trophy"): trophy})
+        self.add_materials(
+            {
+                material_id(family, tier, "hide"): hide,
+                material_id(family, tier, "trophy"): trophy,
+            }
+        )
 
     def recipes(self):
-        discovered = {self._catalog.material(identifier) for identifier in self.materials}
+        discovered = {
+            self._catalog.material(identifier) for identifier in self.materials
+        }
         recipes = set()
-        for key, recipe in self._catalog.recipes.items():
+        for _key, recipe in self._catalog.recipes.items():
             gear = self._catalog.equipment[recipe.equipment]
             for material, tier in discovered:
                 if material in recipe.ingredients:
@@ -139,7 +171,10 @@ class Inventory(BaseModel):
 
     def craft(self, recipe_id: str):
         gear = parse_recipe(recipe_id, self._catalog)
-        if any(self.materials.get(key, 0) < amount for key, amount in gear.ingredients.items()):
+        if any(
+            self.materials.get(key, 0) < amount
+            for key, amount in gear.ingredients.items()
+        ):
             raise ValueError("Matériaux insuffisants")
         identifier = f"item-{self.next_id:06d}"
         for key, amount in gear.ingredients.items():
@@ -168,7 +203,10 @@ class Inventory(BaseModel):
         by_definition = {gear.definition_id: gear for gear in gears}
         for definition in self._catalog.sets.values():
             if all(identifier in by_definition for identifier in definition.equipment):
-                tiers = {by_definition[identifier].tier for identifier in definition.equipment}
+                tiers = {
+                    by_definition[identifier].tier
+                    for identifier in definition.equipment
+                }
                 if len(tiers) == 1:
                     for stat, amount in definition.bonuses.items():
                         result[stat] = result.get(stat, 0) + amount * next(iter(tiers))

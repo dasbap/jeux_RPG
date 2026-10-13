@@ -1,8 +1,6 @@
-from typing import List, Optional, Union
-
-from jeuxRPG.i18n import t
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.team.team import Team
+from jeuxRPG.i18n import t
 
 
 class Alliance(Team):
@@ -11,19 +9,19 @@ class Alliance(Team):
     Used for temporary groupings in fights.
     """
 
-    def __init__(self, name: str = "", members: List[Union[Character, Team]] = None) -> None:
+    def __init__(self, name: str = "", members: list[Character | Team] = None) -> None:
         """Initialize an Alliance without modifying Character.team references."""
         self.name = name or f"Alliance-{len(Team.all_teams) + 1}"
-        self.fighters: List[Character] = []
-        self.allies: List[Team] = []
-        self.enemies: List[Team] = []
-        self.leader: Optional[Character] = None
+        self.fighters: list[Character] = []
+        self.allies: list[Team] = []
+        self.enemies: list[Team] = []
+        self.leader: Character | None = None
 
         if members:
             for member in members:
                 self.add_member(member)
 
-    def add_member(self, member: Union[Character, Team]) -> None:
+    def add_member(self, member: Character | Team) -> None:
         """Add a member to the alliance without changing its team affiliation."""
         if isinstance(member, Character):
             if member not in self.fighters:
@@ -35,7 +33,7 @@ class Alliance(Team):
         else:
             raise TypeError("Alliance members must be Character or Team instances")
 
-    def remove_member(self, member: Union[Character, Team]) -> None:
+    def remove_member(self, member: Character | Team) -> None:
         """Remove a member from the alliance."""
         if isinstance(member, Character):
             if member in self.fighters:

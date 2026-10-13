@@ -6,14 +6,14 @@ enabling future expansion (NPCs, mobs, world data, etc.).
 """
 
 from __future__ import annotations
+
 import json
-import os
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
-from dataclasses import asdict
-from .safe_io import valid_id, contained, atomic_json
+from typing import Any, TypeVar
+
+from .safe_io import atomic_json, contained, valid_id
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +22,15 @@ T = TypeVar("T")
 
 class SaveCategory(Enum):
     """Categories for different save types - each gets its own subdirectory."""
-    PLAYERS = "players"       # Player characters (Discord users)
-    NPCS = "npcs"             # Non-player characters
-    MOBS = "mobs"             # Spawned monsters/creatures
-    WORLD = "world"           # World/map data (towns, regions)
-    SESSIONS = "sessions"     # Active game sessions/battles
-    TEAMS = "teams"           # Team/alliance data
-    QUESTS = "quests"         # Quest progress (future)
-    INVENTORY = "inventory"   # Inventories (future)
+
+    PLAYERS = "players"  # Player characters (Discord users)
+    NPCS = "npcs"  # Non-player characters
+    MOBS = "mobs"  # Spawned monsters/creatures
+    WORLD = "world"  # World/map data (towns, regions)
+    SESSIONS = "sessions"  # Active game sessions/battles
+    TEAMS = "teams"  # Team/alliance data
+    QUESTS = "quests"  # Quest progress (future)
+    INVENTORY = "inventory"  # Inventories (future)
 
 
 class SaveManager:
@@ -49,14 +50,14 @@ class SaveManager:
         npc_ids = manager.list_ids(SaveCategory.NPCS)
     """
 
-    _instance: Optional["SaveManager"] = None
+    _instance: SaveManager | None = None
 
-    def __init__(self, base_path: Union[str, Path] = ".data/saves"):
+    def __init__(self, base_path: str | Path = ".data/saves"):
         self._base_path = Path(base_path)
         self._ensure_directories()
 
     @classmethod
-    def get_instance(cls, base_path: Union[str, Path] = ".data/saves") -> "SaveManager":
+    def get_instance(cls, base_path: str | Path = ".data/saves") -> SaveManager:
         """Get or create the singleton instance."""
         if cls._instance is None:
             cls._instance = cls(base_path)
@@ -71,7 +72,7 @@ class SaveManager:
     def base_path(self) -> Path:
         return self._base_path
 
-    def set_base_path(self, path: Union[str, Path]) -> None:
+    def set_base_path(self, path: str | Path) -> None:
         """Change base path and recreate directories."""
         self._base_path = Path(path)
         self._ensure_directories()
@@ -80,7 +81,9 @@ class SaveManager:
         """Create all category subdirectories."""
         self._base_path.mkdir(parents=True, exist_ok=True)
         for category in SaveCategory:
-            contained(self._base_path, self._base_path / category.value).mkdir(exist_ok=True)
+            contained(self._base_path, self._base_path / category.value).mkdir(
+                exist_ok=True
+            )
 
         # Migrate legacy flat player files into per-player folders if needed
         try:
@@ -126,9 +129,9 @@ class SaveManager:
         self,
         category: SaveCategory,
         entity_id: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         *,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """
         Save entity data to the appropriate category directory.
@@ -165,7 +168,7 @@ class SaveManager:
         self,
         category: SaveCategory,
         entity_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Load entity data from the appropriate category directory.
 
@@ -182,7 +185,7 @@ class SaveManager:
             return None
 
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 payload = json.load(f)
             return payload.get("data")
         except Exception as e:
@@ -193,7 +196,7 @@ class SaveManager:
         self,
         category: SaveCategory,
         entity_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Load full payload including metadata."""
         filepath = self._get_filepath(category, entity_id)
 
@@ -201,7 +204,7 @@ class SaveManager:
             return None
 
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.exception(f"Failed to load {category.value}/{entity_id}: {e}")
@@ -226,7 +229,7 @@ class SaveManager:
         """Check if a save file exists."""
         return self._get_filepath(category, entity_id).exists()
 
-    def list_ids(self, category: SaveCategory) -> List[str]:
+    def list_ids(self, category: SaveCategory) -> list[str]:
         """List all entity IDs in a category."""
         category_path = self._base_path / category.value
         if not category_path.exists():
@@ -241,9 +244,9 @@ class SaveManager:
                 ids.add(entry.name)
             elif entry.is_file() and entry.suffix == ".json":
                 ids.add(entry.stem)
-        return sorted(list(ids))
+        return sorted(ids)
 
-    def load_all(self, category: SaveCategory) -> Dict[str, Dict[str, Any]]:
+    def load_all(self, category: SaveCategory) -> dict[str, dict[str, Any]]:
         """Load all entities in a category."""
         result = {}
         for entity_id in self.list_ids(category):
@@ -268,7 +271,7 @@ class SaveManager:
             try:
                 contained(players_path, file)
                 valid_id(file.stem)
-                with open(file, "r", encoding="utf-8") as f:
+                with open(file, encoding="utf-8") as f:
                     payload = json.load(f)
                 # Determine entity id
                 entity_id = payload.get("id") or file.stem
@@ -280,7 +283,12 @@ class SaveManager:
                 char_file = contained(players_path, player_dir / "character.json")
                 if char_file.exists():
                     continue
-                payload = {"id": entity_id, "category": SaveCategory.PLAYERS.value, "data": data, "metadata": payload.get("metadata", {})}
+                payload = {
+                    "id": entity_id,
+                    "category": SaveCategory.PLAYERS.value,
+                    "data": data,
+                    "metadata": payload.get("metadata", {}),
+                }
                 atomic_json(char_file, payload)
 
                 # Remove legacy file
@@ -306,7 +314,7 @@ class SaveManager:
 
     def migrate_legacy_save(
         self,
-        legacy_path: Union[str, Path],
+        legacy_path: str | Path,
         category: SaveCategory,
         id_extractor: callable = None,
     ) -> int:
@@ -328,7 +336,7 @@ class SaveManager:
         count = 0
         for file in legacy_path.glob("*.json"):
             try:
-                with open(file, "r", encoding="utf-8") as f:
+                with open(file, encoding="utf-8") as f:
                     legacy_data = json.load(f)
 
                 # Extract ID from legacy format or filename
@@ -342,7 +350,9 @@ class SaveManager:
                 # Extract data portion
                 data = legacy_data.get("data", legacy_data)
 
-                if self.save(category, entity_id, data, metadata={"migrated_from": str(file)}):
+                if self.save(
+                    category, entity_id, data, metadata={"migrated_from": str(file)}
+                ):
                     count += 1
 
             except Exception as e:

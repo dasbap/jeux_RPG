@@ -9,10 +9,96 @@ def show(value):
     print(json.dumps(value, ensure_ascii=True, indent=2))
 
 
-def interactive(session):
+def _inventory_summary(session):
+    from jeuxRPG.adventure.equipment import material_name
+
+    return {
+        "materiaux": {
+            material_name(key, session.catalog): count
+            for key, count in session.inventory.materials.items()
+        },
+        "objets": {key: gear.name for key, gear in session.inventory.items.items()},
+        "equipes": session.status()["equipped"],
+    }
+
+
+def _recipe_summary(session):
     from jeuxRPG.adventure.equipment import material_name, parse_recipe
 
-    print("Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, carte, chemins, voyager <chemin>, auberge <jour|nuit>, observer, explorer <repere>, recolter, dormir <jour|nuit>, recruter <pnj>, camp <nom>, fonder, relier <zone>, relais <chemin>, halte <chemin>, attendre <heures>, quitter")
+    return {
+        key: {
+            "nom": parse_recipe(key, session.catalog).name,
+            "ingredients": {
+                material_name(material, session.catalog): {
+                    "requis": amount,
+                    "disponible": session.inventory.materials.get(material, 0),
+                }
+                for material, amount in parse_recipe(
+                    key, session.catalog
+                ).ingredients.items()
+            },
+        }
+        for key in session.inventory.recipes()
+    }
+
+
+def _rest_command(operation, when):
+    if when not in {"jour", "nuit"}:
+        raise ValueError("Choisissez jour ou nuit")
+    show(operation({"jour": "day", "nuit": "night"}[when]))
+
+
+def _observe(session):
+    show(session.observe())
+    session.save()
+
+
+def _equip_command(session, identifier):
+    session.equip(identifier)
+    print("Objet équipé.")
+
+
+def _unequip_command(session, slot):
+    session.unequip(slot)
+    print("Objet retiré.")
+
+
+def _interactive_command(session, action, arguments):
+    handlers = {
+        "combat": (0, lambda: show(session.encounter())),
+        "carte": (0, lambda: show(session.world_map())),
+        "chemins": (0, lambda: show(session.available_paths())),
+        "voyager": (1, lambda key: show(session.travel(key))),
+        "auberge": (1, lambda when: _rest_command(session.rest_at_inn, when)),
+        "observer": (0, lambda: _observe(session)),
+        "explorer": (1, lambda key: show(session.explore(key))),
+        "dormir": (1, lambda when: _rest_command(session.rest_at_camp, when)),
+        "recolter": (0, lambda: show(session.gather())),
+        "recruter": (1, lambda key: show({"workers": session.hire(key)})),
+        "fonder": (0, lambda: show(session.upgrade_village())),
+        "relier": (1, lambda key: show(session.connect_village(key))),
+        "relais": (1, lambda key: show(session.build_relay(key))),
+        "halte": (1, lambda key: show(session.travel(key, stop_at_relay=True))),
+        "attendre": (1, lambda hours: show(session.advance_world(int(hours)))),
+        "personnage": (0, lambda: show(session.status())),
+        "inventaire": (0, lambda: show(_inventory_summary(session))),
+        "recettes": (0, lambda: show(_recipe_summary(session))),
+        "craft": (1, lambda key: print(f"Objet fabriqué : {session.craft(key)}")),
+        "equiper": (1, lambda key: _equip_command(session, key)),
+        "retirer": (1, lambda slot: _unequip_command(session, slot)),
+    }
+    if action == "camp" and arguments:
+        show(session.establish_camp(" ".join(arguments)))
+    elif action in handlers and len(arguments) == handlers[action][0]:
+        handlers[action][1](*arguments)
+    else:
+        print("Commande inconnue ou arguments incorrects.")
+
+
+def interactive(session):
+    print(
+        "Commandes : combat, personnage, inventaire, recettes, craft <recette>, equiper <objet>, retirer <slot>, carte, chemins, voyager <chemin>, auberge <jour|nuit>, observer, explorer <repere>, recolter, dormir <jour|nuit>, recruter <pnj>, camp <nom>, fonder, relier <zone>, relais <chemin>, halte <chemin>, attendre <heures>, quitter"
+    )
     while True:
         try:
             command = shlex.split(input("rpg> "))
@@ -24,88 +110,15 @@ def interactive(session):
         if not command:
             continue
         action, *arguments = command
+        if action == "quitter":
+            return
         try:
-            if action == "quitter":
-                return
-            if action == "combat" and not arguments:
-                show(session.encounter())
-            elif action == "carte" and not arguments:
-                show(session.world_map())
-            elif action == "chemins" and not arguments:
-                show(session.available_paths())
-            elif action == "voyager" and len(arguments) == 1:
-                show(session.travel(arguments[0]))
-            elif action == "auberge" and len(arguments) == 1:
-                if arguments[0] not in {"jour", "nuit"}:
-                    raise ValueError("Choisissez jour ou nuit")
-                show(session.rest_at_inn({"jour": "day", "nuit": "night"}[arguments[0]]))
-            elif action == "observer" and not arguments:
-                show(session.observe())
-                session.save()
-            elif action == "explorer" and len(arguments) == 1:
-                show(session.explore(arguments[0]))
-            elif action == "dormir" and len(arguments) == 1:
-                if arguments[0] not in {"jour", "nuit"}:
-                    raise ValueError("Choisissez jour ou nuit")
-                show(session.rest_at_camp({"jour": "day", "nuit": "night"}[arguments[0]]))
-            elif action == "recolter" and not arguments:
-                show(session.gather())
-            elif action == "recruter" and len(arguments) == 1:
-                show({"workers": session.hire(arguments[0])})
-            elif action == "camp" and arguments:
-                show(session.establish_camp(" ".join(arguments)))
-            elif action == "fonder" and not arguments:
-                show(session.upgrade_village())
-            elif action == "relier" and len(arguments) == 1:
-                show(session.connect_village(arguments[0]))
-            elif action == "relais" and len(arguments) == 1:
-                show(session.build_relay(arguments[0]))
-            elif action == "halte" and len(arguments) == 1:
-                show(session.travel(arguments[0], stop_at_relay=True))
-            elif action == "attendre" and len(arguments) == 1:
-                show(session.advance_world(int(arguments[0])))
-            elif action == "personnage" and not arguments:
-                show(session.status())
-            elif action == "inventaire" and not arguments:
-                show({"materiaux": {material_name(key, session.catalog): count for key, count in session.inventory.materials.items()},
-                      "objets": {key: gear.name for key, gear in session.inventory.items.items()},
-                      "equipes": session.status()["equipped"]})
-            elif action == "recettes" and not arguments:
-                show({key: {"nom": parse_recipe(key, session.catalog).name,
-                            "ingredients": {material_name(material, session.catalog): {"requis": amount, "disponible": session.inventory.materials.get(material, 0)}
-                                            for material, amount in parse_recipe(key, session.catalog).ingredients.items()}}
-                      for key in session.inventory.recipes()})
-            elif action == "craft" and len(arguments) == 1:
-                print(f"Objet fabriqué : {session.craft(arguments[0])}")
-            elif action == "equiper" and len(arguments) == 1:
-                session.equip(arguments[0])
-                print("Objet équipé.")
-            elif action == "retirer" and len(arguments) == 1:
-                session.unequip(arguments[0])
-                print("Objet retiré.")
-            else:
-                print("Commande inconnue ou arguments incorrects.")
+            _interactive_command(session, action, arguments)
         except ValueError as error:
             print(str(error))
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Arène RPG persistante et craft")
-    parser.add_argument("--class", dest="class_name", default="Knight")
-    parser.add_argument("--name", default="Héros")
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--mode", choices=["adventure", "simulation", "world"])
-    parser.add_argument("--floors", type=int)
-    parser.add_argument("--world-save", help="État partagé de la simulation du monde")
-    parser.add_argument("--ticks", type=int, help="Nombre d’heures à simuler sans joueur")
-    parser.add_argument("--resources", help="Fichier ou dossier de ressources JSON")
-    parser.add_argument("--save", default=".data/adventure/player.json")
-    parser.add_argument("--battles", type=int)
-    parser.add_argument("--interval", type=float, default=0.5)
-    parser.add_argument("--interactive", action="store_true")
-    parser.add_argument("--no-auto-craft", action="store_true")
-    parser.add_argument("--json", action="store_true")
-    args = parser.parse_args()
+def _cli_mode(args, parser):
     if args.ticks is not None and args.ticks < 1:
         parser.error("--ticks doit être positif")
     if args.floors is not None and args.floors < 1:
@@ -117,6 +130,29 @@ def main():
     if not args.name.strip():
         parser.error("--name ne peut pas être vide")
     mode = args.mode or ("simulation" if args.floors is not None else "adventure")
+    return mode
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Arène RPG persistante et craft")
+    parser.add_argument("--class", dest="class_name", default="Knight")
+    parser.add_argument("--name", default="Héros")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--mode", choices=["adventure", "simulation", "world"])
+    parser.add_argument("--floors", type=int)
+    parser.add_argument("--world-save", help="État partagé de la simulation du monde")
+    parser.add_argument(
+        "--ticks", type=int, help="Nombre d’heures à simuler sans joueur"
+    )
+    parser.add_argument("--resources", help="Fichier ou dossier de ressources JSON")
+    parser.add_argument("--save", default=".data/adventure/player.json")
+    parser.add_argument("--battles", type=int)
+    parser.add_argument("--interval", type=float, default=0.5)
+    parser.add_argument("--interactive", action="store_true")
+    parser.add_argument("--no-auto-craft", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    mode = _cli_mode(args, parser)
     if mode == "world":
         from jeuxRPG.adventure.catalog import load_catalog
         from jeuxRPG.adventure.frontier import WorldSimulation
@@ -138,22 +174,40 @@ def main():
     if mode == "simulation":
         from jeuxRPG._balance.simulator import simulate_tower
 
-        show(simulate_tower(class_name=args.class_name, difficulty="easy", floors=args.floors or 2,
-                            start_floor=1, enemies_per_floor=1, seed=args.seed, resolution="reward_curve"))
+        show(
+            simulate_tower(
+                class_name=args.class_name,
+                difficulty="easy",
+                floors=args.floors or 2,
+                start_floor=1,
+                enemies_per_floor=1,
+                seed=args.seed,
+                resolution="reward_curve",
+            )
+        )
         return
     from jeuxRPG.adventure import Adventure
 
     try:
-        session = Adventure(args.save, args.class_name, args.name, args.seed, resources=args.resources, world_save=args.world_save)
+        session = Adventure(
+            args.save,
+            args.class_name,
+            args.name,
+            args.seed,
+            resources=args.resources,
+            world_save=args.world_save,
+        )
     except (ValueError, OSError) as error:
         parser.error(f"Chargement impossible : {error}")
     session.save()
     stopped = False
     previous_handler = None
     if not args.interactive:
+
         def stop(signum, frame):
             nonlocal stopped
             stopped = True
+
         previous_handler = signal.signal(signal.SIGINT, stop)
     try:
         if args.interactive:
@@ -165,14 +219,28 @@ def main():
             if args.json:
                 show(result)
             else:
-                outcome = {"victory": "victoire", "defeat": "défaite", "draw": "match nul"}[result["outcome"]]
-                print(f"Combat {result['battle']} — {result['enemy']} niveau {result['enemy_level']} : {outcome}, {result['rounds']} rounds. Niveau {result['level']}.", flush=True)
+                outcome = {
+                    "victory": "victoire",
+                    "defeat": "défaite",
+                    "draw": "match nul",
+                }[result["outcome"]]
+                print(
+                    f"Combat {result['battle']} — {result['enemy']} niveau {result['enemy_level']} : {outcome}, {result['rounds']} rounds. Niveau {result['level']}.",
+                    flush=True,
+                )
                 if result["loot"]:
                     from jeuxRPG.adventure.equipment import material_name
+
                     for material, amount in result["loot"]["materials"].items():
-                        print(f"Butin : {amount} {material_name(material, session.catalog)}.", flush=True)
+                        print(
+                            f"Butin : {amount} {material_name(material, session.catalog)}.",
+                            flush=True,
+                        )
                 for identifier in result["crafted"]:
-                    print(f"Fabriqué et équipé : {session.inventory.items[identifier].name} ({identifier}).", flush=True)
+                    print(
+                        f"Fabriqué et équipé : {session.inventory.items[identifier].name} ({identifier}).",
+                        flush=True,
+                    )
             count += 1
             if not stopped and (args.battles is None or count < args.battles):
                 time.sleep(args.interval)

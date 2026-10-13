@@ -1,27 +1,34 @@
-from typing import Dict, List, Literal, TypedDict, Union
+from typing import Literal, TypedDict
 
 from jeuxRPG._class.res.advantage import Advantage
-from jeuxRPG._class.res.character.alteration.alteration import Alteration, Buff, DeBuff, Resistance
-
+from jeuxRPG._class.res.character.alteration.alteration import (
+    Alteration,
+    Buff,
+    DeBuff,
+    Resistance,
+)
 from jeuxRPG._class.res.character.stats.basic_stat import Energie
 from jeuxRPG._class.res.character.stats.stat import DefaultStat
 
-from jeuxRPG._class.res.classType import DamageType as DT
 
 class DamageType(TypedDict):
-    Incoming: List
-    Reduction: Dict[Union[Literal["%"],Literal["-"],Literal["+"]], List[Resistance]]
+    Incoming: list
+    Reduction: dict[Literal["%"] | Literal["-"] | Literal["+"], list[Resistance]]
+
 
 class AlterationDictType(TypedDict):
-    buff: List[Buff]
-    debuff: List[DeBuff]
-    invulnerability: List[Alteration]
+    buff: list[Buff]
+    debuff: list[DeBuff]
+    invulnerability: list[Alteration]
     Damage: DamageType
-    stun: List[Alteration]
+    stun: list[Alteration]
 
 
 class Status_Dict_type(TypedDict):
-    stats: Dict[str, Dict[str,Union[DefaultStat, Dict[str, Energie]]], ]
+    stats: dict[
+        str,
+        dict[str, DefaultStat | dict[str, Energie]],
+    ]
     alteration: AlterationDictType
     advantage: Advantage
     Death_in: int

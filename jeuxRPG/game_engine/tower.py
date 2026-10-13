@@ -1,11 +1,10 @@
 import random
-from typing import Callable, Iterable, Tuple
+from collections.abc import Callable, Iterable
 
-from jeuxRPG.game_engine.engine import GameEngine
+from jeuxRPG._class._event.confrontation.encounter.fight import Fight
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.mob.mob import Mob
-from jeuxRPG._class._event.confrontation.encounter.fight import Fight
-
+from jeuxRPG.game_engine.engine import GameEngine
 
 TOWER_DIFFICULTIES = {
     "easy": {
@@ -58,7 +57,9 @@ class TowerRun:
     def __init__(self, engine: GameEngine):
         self.engine = engine
 
-    def _party_members(self, player: Character | Iterable[Character]) -> list[Character]:
+    def _party_members(
+        self, player: Character | Iterable[Character]
+    ) -> list[Character]:
         if isinstance(player, Character):
             return [player]
         return list(player)
@@ -86,7 +87,9 @@ class TowerRun:
         reward = max(1, round(mob.get_xp_reward() * multiplier))
         mob.get_xp_reward = lambda reward=reward: reward
 
-    def rest_party_after_floor(self, party: Iterable[Character], difficulty: str) -> None:
+    def rest_party_after_floor(
+        self, party: Iterable[Character], difficulty: str
+    ) -> None:
         heal_ratio = self._difficulty_multiplier(difficulty, "floor_heal_ratio")
         if heal_ratio <= 0:
             return
@@ -107,7 +110,9 @@ class TowerRun:
         multiplier = self._difficulty_multiplier(difficulty, "boss_stat_multiplier")
         self._boost_stat(mob, "HP", round((10 + floor * 4 * rank) * multiplier))
         self._boost_stat(mob, "Endurance", round((2 + floor * rank) * multiplier))
-        self._boost_stat(mob, "Force", round((2 + ((floor + 1) // 2) * rank) * multiplier))
+        self._boost_stat(
+            mob, "Force", round((2 + ((floor + 1) // 2) * rank) * multiplier)
+        )
 
     def _make_mob(
         self,
@@ -118,12 +123,15 @@ class TowerRun:
         difficulty: str = "normal",
     ) -> Mob:
         difficulty = normalize_tower_difficulty(difficulty)
-        uid = f"mob_f{floor}_{idx}_{random.randint(0,99999)}"
+        uid = f"mob_f{floor}_{idx}_{random.randint(0, 99999)}"
         name = f"Coriace L{floor}#{idx}" if is_boss else f"Mob L{floor}#{idx}"
         mob = Character.create("Mob", user_id=uid, name=name)
         # Scale mob to floor level and selected tower difficulty.
         boss_level_bonus = 2 + (max(1, boss_rank) - 1) * 2
-        level_floor = max(1, round(floor * self._difficulty_multiplier(difficulty, "level_multiplier")))
+        level_floor = max(
+            1,
+            round(floor * self._difficulty_multiplier(difficulty, "level_multiplier")),
+        )
         target_level = level_floor + (boss_level_bonus if is_boss else 0)
         xp = self._xp_for_level(target_level)
         if xp > 0:
@@ -136,7 +144,9 @@ class TowerRun:
         self._apply_tower_xp_reward(mob, difficulty)
         return mob
 
-    def _is_boss_floor(self, floor: int, boss_start_floor: int, boss_floor_interval: int) -> bool:
+    def _is_boss_floor(
+        self, floor: int, boss_start_floor: int, boss_floor_interval: int
+    ) -> bool:
         if boss_floor_interval <= 0 or floor < boss_start_floor:
             return False
         return (floor - boss_start_floor) % boss_floor_interval == 0
@@ -146,7 +156,7 @@ class TowerRun:
         player: Character | Iterable[Character],
         start_floor: int = 1,
         max_floors: int = 3,
-        enemies_before_boss_range: Tuple[int, int] = (5, 8),
+        enemies_before_boss_range: tuple[int, int] = (5, 8),
         boss_start_floor: int = 5,
         boss_floor_interval: int = 5,
         special_boss_interval: int = 10,
@@ -179,8 +189,14 @@ class TowerRun:
 
             # Boss encounter
             if self._is_boss_floor(floor, boss_start_floor, boss_floor_interval):
-                boss_rank = 2 if special_boss_interval > 0 and floor % special_boss_interval == 0 else 1
-                boss = self._make_mob(floor, 0, is_boss=True, boss_rank=boss_rank, difficulty=difficulty)
+                boss_rank = (
+                    2
+                    if special_boss_interval > 0 and floor % special_boss_interval == 0
+                    else 1
+                )
+                boss = self._make_mob(
+                    floor, 0, is_boss=True, boss_rank=boss_rank, difficulty=difficulty
+                )
                 boss_fight = Fight(party, boss, name=f"Floor{floor}-Boss")
                 self.engine.run_fights([boss_fight])
                 if not self._party_is_alive(party):

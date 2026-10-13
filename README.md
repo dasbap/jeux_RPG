@@ -415,3 +415,5 @@ Le [parcours client sur les données actuelles](docs/DEMO_UI.md) utilise des cli
 L’exécution de l’audit complémentaire, les preuves et les réserves sont dans [le rapport courant](docs/audit-20261011-followup/REPORT.md). Les protections master/prod sont actives. La publication exige désormais une sauvegarde Turso exportée, restaurée et conservée chiffrée ; configurer la variable publique `RPG_BACKUP_RECIPIENT` avant de lancer le workflow. [Le rapport précédent](docs/audit-20261011/FINAL_REPORT.md) conserve les preuves historiques.
 
 Pour contrôler une sauvegarde SQLite exportée et stable, arrêter le serveur qui écrit ce fichier puis lancer `python scripts/verify_backup.py chemin/monde.sqlite3`. Le contrôle ouvre la source en lecture seule, restaure une copie temporaire, compare ses tables et vérifie la réouverture du moteur. Il ne crée pas une sauvegarde durable et ne certifie pas les sauvegardes distantes Turso ou Redis.
+
+Les conventions uniformes du moteur et les contrôles de non-régression sont décrits dans [la politique de qualité](docs/ENGINE_QUALITY.md).

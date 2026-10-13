@@ -1,13 +1,10 @@
-import math
 import json
+import math
+from copy import deepcopy
 from functools import lru_cache
 from heapq import heappop, heappush
-from copy import deepcopy
 
-from . import forge, progression, achievements, content
-from . import mob_rules, mob_abilities
-
-
+from . import achievements, content, forge, mob_abilities, mob_rules, progression
 from .map_assets import read_catalog
 
 PRESETS = read_catalog("encounters")
@@ -253,8 +250,8 @@ def cast_view(party, player, now):
 
 
 def complete_casts(party, now, random):
-    from .tutorial import execute_one, unpack
     from .service import GameError
+    from .tutorial import execute_one, unpack
 
     if not party.get("battle"):
         return []
@@ -396,8 +393,20 @@ def advance_companions(party, characters, preset, now):
         follow_owner(preset, companions[key], battle["players"][owner], now)
 
 
+def _defeated_summon_target(party, target, characters, now, random, messages):
+    from .tutorial import pack, sync_mobs, unpack
+
+    if not advance_boss_phase(target, messages):
+        party["mobs"].remove(target)
+        party["characters"] = {key: pack(c) for key, c in characters.items()}
+        defeated(party, target, now, random, messages)
+        for key, data in party["characters"].items():
+            characters[key] = unpack(data)
+    sync_mobs(party)
+
+
 def advance_summons(party, characters, now, random, messages):
-    from .tutorial import unpack, pack, sync_mobs
+    from .tutorial import pack, unpack
 
     battle = party["battle"]
     preset = PRESETS[battle["preset"]]
@@ -446,15 +455,9 @@ def advance_summons(party, characters, now, random, messages):
                 damaged(party, target, summon_id, now)
                 messages.append(f"{invocation.name} utilise {skill.name}.")
                 if not enemy.is_alive():
-                    if not advance_boss_phase(target, messages):
-                        party["mobs"].remove(target)
-                        party["characters"] = {
-                            key: pack(c) for key, c in characters.items()
-                        }
-                        defeated(party, target, now, random, messages)
-                        for key, data in party["characters"].items():
-                            characters[key] = unpack(data)
-                    sync_mobs(party)
+                    _defeated_summon_target(
+                        party, target, characters, now, random, messages
+                    )
             continue
         if unit.get("controlled"):
             order = unit.get("order", {"type": "hold"})
@@ -512,15 +515,9 @@ def advance_summons(party, characters, now, random, messages):
                 f"{invocation.name} termine son attaque contre {target['name']} : {max(0, before_hp - enemy.hp.current_value)} dégâts."
             )
             if not enemy.is_alive():
-                if not advance_boss_phase(target, messages):
-                    party["mobs"].remove(target)
-                    party["characters"] = {
-                        key: pack(c) for key, c in characters.items()
-                    }
-                    defeated(party, target, now, random, messages)
-                    for key, data in party["characters"].items():
-                        characters[key] = unpack(data)
-                sync_mobs(party)
+                _defeated_summon_target(
+                    party, target, characters, now, random, messages
+                )
         elif unit["next_move"] <= now:
             route = path(preset, unit["position"], target["position"])
             if route:
@@ -611,8 +608,135 @@ def charge_control(party, characters, now, messages):
             )
 
 
+def _control_units(party, player, params, now, error, units, characters):
+    from .tutorial import pack
+
+    battle = party["battle"]
+    ids = params["units"]
+    charge_control(party, characters, now, [])
+    energy = {type(e).__name__: e.current_value for e in characters[player].energie}
+    if any(
+        u["control_cost"]["per_second"]
+        and energy.get(u["control_cost"]["energy"], 0) <= 0
+        and party.get("control_credit", {})
+        .get(player, {})
+        .get(u["control_cost"]["energy"], 0)
+        <= 0
+        for u in units
+    ):
+        raise error(
+            "control_energy", "Énergie insuffisante pour prendre le contrôle.", 409
+        )
+    for key, unit in battle["summons"].items():
+        if unit["owner"] != player:
+            continue
+        if key in ids:
+            if not unit.get("controlled"):
+                unit.update(
+                    controlled=True,
+                    order={"type": "hold"},
+                    route=[],
+                    control_at=now,
+                )
+        else:
+            release_control(unit)
+    party["characters"] = {key: pack(c) for key, c in characters.items()}
+    return ["Contrôle des alliés mis à jour."]
+
+
+def _unit_skill(party, player, params, now, error, units, characters):
+    from .tutorial import pack
+
+    battle = party["battle"]
+    if len(units) != 1:
+        raise error(
+            "invalid_units", "Une compétence exige une seule invocation contrôlée."
+        )
+    unit = units[0]
+    invocation = characters[player].invocations.get_all()[unit["index"]]
+    skill = (
+        invocation.skills.get(params["skill_name"])
+        if isinstance(params["skill_name"], str)
+        else None
+    )
+    enemy = next(
+        (mob for mob in party["mobs"] if mob["combat_id"] == params["target"]), None
+    )
+    if not skill or skill.skill_type.name != "DAMAGE":
+        raise error("unknown_skill", "Compétence offensive non acquise.")
+    if (
+        unit.get("casting")
+        or invocation.is_stunned()
+        or unit.get("skill_ready", {}).get(skill.name, 0) > now
+        or not skill.can_afford(invocation)
+    ):
+        raise error(
+            "skill_unavailable", "Énergie, incantation ou délai insuffisant.", 409
+        )
+    if (
+        not enemy
+        or not visible(party, player, enemy)
+        or distance(unit["position"], enemy["position"])
+        > progression.attack_range(invocation, skill)
+        or not sight(PRESETS[battle["preset"]], unit["position"], enemy["position"])
+    ):
+        raise error("out_of_range", "Cible invisible, masquée ou hors de portée.", 409)
+    charge_control(party, characters, now, [])
+    if not unit.get("controlled"):
+        raise error("control_energy", "Le contrôle a expiré.", 409)
+    timing = progression.casting(skill)
+    invocation.consume_energie(skill.energie_cost, skill.energie_target)
+    unit.update(
+        route=[],
+        order={"type": "hold"},
+        casting={
+            "skill_name": skill.name,
+            "target": enemy["combat_id"],
+            "ends_at": now + timing["seconds"] * progression.RATIO,
+            "concentration": timing["concentration"],
+        },
+    )
+    unit.setdefault("skill_ready", {})[skill.name] = (
+        unit["casting"]["ends_at"] + skill.cooldown * progression.RATIO
+    )
+    party["characters"] = {key: pack(c) for key, c in characters.items()}
+    party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
+    return [f"{invocation.name} commence {skill.name}."]
+
+
+def _validate_unit_routes(party, ids, units, target, routes, params, error):
+    preset = PRESETS[party["battle"]["preset"]]
+    if not walkable(preset, target) or set(routes) != set(ids):
+        raise error("invalid_path", "Destination ou chemins invalides.")
+    for key, unit in zip(ids, units, strict=True):
+        route = routes[key]
+        if (
+            isinstance(route, list)
+            and len(route) <= preset["width"] * preset["height"]
+            and params.get("encounter") is not None
+            and unit["position"] in route
+            and all(walkable(preset, point) for point in route)
+        ):
+            route = route[route.index(unit["position"]) + 1 :]
+            routes = {**routes, key: route}
+        if (
+            not isinstance(route, list)
+            or len(route) > preset["width"] * preset["height"]
+            or (route[-1] if route else unit["position"]) != target
+        ):
+            raise error("invalid_path", "Chemin d’allié invalide.")
+        previous = unit["position"]
+        for point in route:
+            if not valid_step(preset, previous, point):
+                raise error(
+                    "invalid_path", "Chemin d’allié bloqué ou vitesse impossible."
+                )
+            previous = point
+    return routes
+
+
 def control(party, player, action, params, now, error):
-    from .tutorial import unpack, pack
+    from .tutorial import pack, unpack
 
     battle = party.get("battle")
     if not battle:
@@ -642,35 +766,7 @@ def control(party, player, action, params, now, error):
         )
     characters = {key: unpack(data) for key, data in party["characters"].items()}
     if action == "control_units":
-        charge_control(party, characters, now, [])
-        energy = {type(e).__name__: e.current_value for e in characters[player].energie}
-        if any(
-            u["control_cost"]["per_second"]
-            and energy.get(u["control_cost"]["energy"], 0) <= 0
-            and party.get("control_credit", {})
-            .get(player, {})
-            .get(u["control_cost"]["energy"], 0)
-            <= 0
-            for u in units
-        ):
-            raise error(
-                "control_energy", "Énergie insuffisante pour prendre le contrôle.", 409
-            )
-        for key, unit in battle["summons"].items():
-            if unit["owner"] != player:
-                continue
-            if key in ids:
-                if not unit.get("controlled"):
-                    unit.update(
-                        controlled=True,
-                        order={"type": "hold"},
-                        route=[],
-                        control_at=now,
-                    )
-            else:
-                release_control(unit)
-        party["characters"] = {key: pack(c) for key, c in characters.items()}
-        return ["Contrôle des alliés mis à jour."]
+        return _control_units(party, player, params, now, error, units, characters)
     if not ids or any(not u.get("controlled") for u in units):
         raise error(
             "not_controlled",
@@ -678,62 +774,7 @@ def control(party, player, action, params, now, error):
             409,
         )
     if action == "unit_skill":
-        if len(units) != 1:
-            raise error(
-                "invalid_units", "Une compétence exige une seule invocation contrôlée."
-            )
-        unit = units[0]
-        invocation = characters[player].invocations.get_all()[unit["index"]]
-        skill = (
-            invocation.skills.get(params["skill_name"])
-            if isinstance(params["skill_name"], str)
-            else None
-        )
-        enemy = next(
-            (mob for mob in party["mobs"] if mob["combat_id"] == params["target"]), None
-        )
-        if not skill or skill.skill_type.name != "DAMAGE":
-            raise error("unknown_skill", "Compétence offensive non acquise.")
-        if (
-            unit.get("casting")
-            or invocation.is_stunned()
-            or unit.get("skill_ready", {}).get(skill.name, 0) > now
-            or not skill.can_afford(invocation)
-        ):
-            raise error(
-                "skill_unavailable", "Énergie, incantation ou délai insuffisant.", 409
-            )
-        if (
-            not enemy
-            or not visible(party, player, enemy)
-            or distance(unit["position"], enemy["position"])
-            > progression.attack_range(invocation, skill)
-            or not sight(PRESETS[battle["preset"]], unit["position"], enemy["position"])
-        ):
-            raise error(
-                "out_of_range", "Cible invisible, masquée ou hors de portée.", 409
-            )
-        charge_control(party, characters, now, [])
-        if not unit.get("controlled"):
-            raise error("control_energy", "Le contrôle a expiré.", 409)
-        timing = progression.casting(skill)
-        invocation.consume_energie(skill.energie_cost, skill.energie_target)
-        unit.update(
-            route=[],
-            order={"type": "hold"},
-            casting={
-                "skill_name": skill.name,
-                "target": enemy["combat_id"],
-                "ends_at": now + timing["seconds"] * progression.RATIO,
-                "concentration": timing["concentration"],
-            },
-        )
-        unit.setdefault("skill_ready", {})[skill.name] = (
-            unit["casting"]["ends_at"] + skill.cooldown * progression.RATIO
-        )
-        party["characters"] = {key: pack(c) for key, c in characters.items()}
-        party["ready"][player] = now + progression.ACTION_SECONDS * progression.RATIO
-        return [f"{invocation.name} commence {skill.name}."]
+        return _unit_skill(party, player, params, now, error, units, characters)
     if any(unit.get("casting") for unit in units):
         raise error(
             "casting", "L’invocation est immobilisée pendant son incantation.", 409
@@ -746,33 +787,7 @@ def control(party, player, action, params, now, error):
     ):
         raise error("invalid_order", "Ordre invalide.")
     if order == "move":
-        preset = PRESETS[battle["preset"]]
-        if not walkable(preset, target) or set(routes) != set(ids):
-            raise error("invalid_path", "Destination ou chemins invalides.")
-        for key, unit in zip(ids, units, strict=True):
-            route = routes[key]
-            if (
-                isinstance(route, list)
-                and len(route) <= preset["width"] * preset["height"]
-                and params.get("encounter") is not None
-                and unit["position"] in route
-                and all(walkable(preset, point) for point in route)
-            ):
-                route = route[route.index(unit["position"]) + 1 :]
-                routes = {**routes, key: route}
-            if (
-                not isinstance(route, list)
-                or len(route) > preset["width"] * preset["height"]
-                or (route[-1] if route else unit["position"]) != target
-            ):
-                raise error("invalid_path", "Chemin d’allié invalide.")
-            previous = unit["position"]
-            for point in route:
-                if not valid_step(preset, previous, point):
-                    raise error(
-                        "invalid_path", "Chemin d’allié bloqué ou vitesse impossible."
-                    )
-                previous = point
+        routes = _validate_unit_routes(party, ids, units, target, routes, params, error)
     elif order == "attack":
         enemy = (
             next((m for m in party["mobs"] if m["combat_id"] == target), None)
@@ -977,6 +992,59 @@ def ready(party, player, now, error, redirect=False):
     return actor
 
 
+def _battle_move(party, player, params, now, error, actor):
+    unit = party["battle"]["players"][player]
+    preset = PRESETS[party["battle"]["preset"]]
+    destination = [params["x"], params["y"]]
+    route = params["path"]
+    if (
+        not walkable(preset, destination)
+        or not isinstance(route, list)
+        or len(route) > preset["width"] * preset["height"]
+        or not route
+        or route[-1] != destination
+    ):
+        raise error("invalid_path", "Trajet invalide.")
+    if (
+        params.get("encounter") is not None
+        and unit["position"] in route
+        and all(walkable(preset, point) for point in route)
+    ):
+        route = route[route.index(unit["position"]) + 1 :]
+    previous = unit["position"]
+    for point in route:
+        if not valid_step(preset, previous, point):
+            raise error("invalid_path", "Trajet bloqué ou vitesse impossible.")
+        previous = point
+    moving = bool(unit["route"])
+    previous_duration = (
+        step_time(unit["position"], unit["route"][0]) if moving else MOVE_TIME
+    )
+    unit["route"] = deepcopy(route)
+    if moving and route:
+        unit["next_move"] = (
+            now
+            + max(0, unit["next_move"] - now)
+            * step_time(unit["position"], route[0])
+            / previous_duration
+        )
+    if not moving:
+        unit["next_move"] = now + (
+            step_time(
+                unit["position"],
+                route[0],
+                STEALTH_MOVE_TIME
+                if unit.get("hidden")
+                and can_hide(party, player, route[0], retaining=True)
+                else MOVE_TIME,
+            )
+            if route
+            else MOVE_TIME
+        )
+    messages = [f"{actor.name} se déplace sur le champ de bataille."]
+    return messages
+
+
 def execute(party, player, action, params, now, error):
     battle = party.get("battle")
     if not battle:
@@ -990,53 +1058,7 @@ def execute(party, player, action, params, now, error):
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]
     if action == "battle_move":
-        destination = [params["x"], params["y"]]
-        route = params["path"]
-        if (
-            not walkable(preset, destination)
-            or not isinstance(route, list)
-            or len(route) > preset["width"] * preset["height"]
-            or not route
-            or route[-1] != destination
-        ):
-            raise error("invalid_path", "Trajet invalide.")
-        if (
-            params.get("encounter") is not None
-            and unit["position"] in route
-            and all(walkable(preset, point) for point in route)
-        ):
-            route = route[route.index(unit["position"]) + 1 :]
-        previous = unit["position"]
-        for point in route:
-            if not valid_step(preset, previous, point):
-                raise error("invalid_path", "Trajet bloqué ou vitesse impossible.")
-            previous = point
-        moving = bool(unit["route"])
-        previous_duration = (
-            step_time(unit["position"], unit["route"][0]) if moving else MOVE_TIME
-        )
-        unit["route"] = deepcopy(route)
-        if moving and route:
-            unit["next_move"] = (
-                now
-                + max(0, unit["next_move"] - now)
-                * step_time(unit["position"], route[0])
-                / previous_duration
-            )
-        if not moving:
-            unit["next_move"] = now + (
-                step_time(
-                    unit["position"],
-                    route[0],
-                    STEALTH_MOVE_TIME
-                    if unit.get("hidden")
-                    and can_hide(party, player, route[0], retaining=True)
-                    else MOVE_TIME,
-                )
-                if route
-                else MOVE_TIME
-            )
-        messages = [f"{actor.name} se déplace sur le champ de bataille."]
+        messages = _battle_move(party, player, params, now, error, actor)
     elif action == "hide":
         if not any(
             distance(unit["position"], cover) <= AI_RULES["cover_range"]
@@ -1134,8 +1156,8 @@ def damaged(party, mob, actor, now):
 
 
 def defeated(party, mob, now, random, messages):
-    from .tutorial import unpack, pack
     from . import world
+    from .tutorial import pack, unpack
 
     killer = mob.get("last_hit_by")
     killer_data = party["characters"].get(killer) or next(
@@ -1199,8 +1221,102 @@ def defeated(party, mob, now, random, messages):
         party["step"] = "road"
 
 
-def _advance_mob(party, mob, characters, units, preset, now, random, messages):
+def _resolve_mob_intent(
+    party, mob, characters, units, preset, now, random, messages, target, visible
+):
     from .tutorial import unpack
+
+    battle = party["battle"]
+    if target and visible[0][0] <= AI_RULES["melee_range"]:
+        if mob["windup_until"] is not None and mob["windup_until"] <= now:
+            enemy = unpack(mob)
+            actor = characters[target]
+            actor.drop_xp = lambda killer: ""
+            before_hp = actor.hp.current_value
+            before_invocations_hp = sum(
+                invocation.hp.current_value
+                for invocation in actor.invocations.get_all()
+            )
+            actor.lose_hp(enemy, max(1, mob.get("attack_damage", 3)))
+            if (
+                actor.hp.current_value < before_hp
+                or sum(i.hp.current_value for i in actor.invocations.get_all())
+                < before_invocations_hp
+            ):
+                battle["damage_received"] = True
+            cast = units[target].get("casting")
+            if cast and cast["concentration"] and actor.hp.current_value < before_hp:
+                units[target].pop("casting", None)
+                messages.append(f"{actor.name} : concentration brisée, sort annulé.")
+            mob["windup_until"] = None
+            mob["next_attack"] = (
+                now
+                + AI_RULES["mob_attack_min_seconds"]
+                + random() * AI_RULES["mob_attack_random_seconds"]
+            )
+            messages.append(
+                f"{mob['name']} utilise Entaille contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}."
+            )
+        elif mob["windup_until"] is None and mob["next_attack"] <= now:
+            mob["windup_until"] = now + AI_RULES["mob_windup_seconds"]
+        mob["intent"] = (
+            "Va utiliser Entaille"
+            if mob["windup_until"]
+            else "Prépare sa prochaine attaque"
+        )
+    else:
+        mob["windup_until"] = None
+        destination = (
+            mob["last_known"]
+            if mob["state"] == "search"
+            else units[target]["position"]
+            if target
+            else None
+        )
+        if mob["state"] == "search" and mob.get("search_until", now) <= now:
+            mob.update(state="patrol", last_known=None, search_until=None)
+            destination = None
+        if (
+            mob["state"] == "search"
+            and destination
+            and distance(mob["position"], destination) < 1
+        ):
+            candidates = [
+                [destination[0] + dx, destination[1] + dy]
+                for dx, dy in ((2, 0), (0, 2), (-2, 0), (0, -2))
+            ]
+            candidates = [p for p in candidates if walkable(preset, p)]
+            if candidates:
+                destination = candidates[int(now / 6) % len(candidates)]
+        if destination is None:
+            if "patrol_route" not in mob:
+                mob["patrol_route"] = patrol_route(preset, 0)
+            patrol = mob["patrol_route"]
+            index = mob.setdefault("patrol_index", 0)
+            if mob["position"] == patrol[index]:
+                index = (index + 1) % len(patrol)
+                mob["patrol_index"] = index
+            destination = patrol[index]
+        route = (
+            path(preset, mob["position"], destination)
+            if mob["next_move"] <= now
+            else None
+        )
+        if route:
+            mob["next_move"] = now + step_time(
+                mob["position"], route[0], GOBLIN_MOVE_TIME
+            )
+            mob["position"] = route[0]
+        mob["intent"] = (
+            "Poursuit un joueur"
+            if target
+            else "Cherche à la dernière position connue"
+            if mob["state"] == "search"
+            else "Patrouille"
+        )
+
+
+def _advance_mob(party, mob, characters, units, preset, now, random, messages):
 
     battle = party["battle"]
     if not walkable(preset, mob["position"]):
@@ -1294,97 +1410,13 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
         party, mob, target, characters, units, preset, now, messages
     ):
         return
-    if target and visible[0][0] <= AI_RULES["melee_range"]:
-        if mob["windup_until"] is not None and mob["windup_until"] <= now:
-            enemy = unpack(mob)
-            actor = characters[target]
-            actor.drop_xp = lambda killer: ""
-            before_hp = actor.hp.current_value
-            before_invocations_hp = sum(
-                invocation.hp.current_value
-                for invocation in actor.invocations.get_all()
-            )
-            actor.lose_hp(enemy, max(1, mob.get("attack_damage", 3)))
-            if (
-                actor.hp.current_value < before_hp
-                or sum(i.hp.current_value for i in actor.invocations.get_all())
-                < before_invocations_hp
-            ):
-                battle["damage_received"] = True
-            cast = units[target].get("casting")
-            if cast and cast["concentration"] and actor.hp.current_value < before_hp:
-                units[target].pop("casting", None)
-                messages.append(f"{actor.name} : concentration brisée, sort annulé.")
-            mob["windup_until"] = None
-            mob["next_attack"] = (
-                now
-                + AI_RULES["mob_attack_min_seconds"]
-                + random() * AI_RULES["mob_attack_random_seconds"]
-            )
-            messages.append(
-                f"{mob['name']} utilise Entaille contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}."
-            )
-        elif mob["windup_until"] is None and mob["next_attack"] <= now:
-            mob["windup_until"] = now + AI_RULES["mob_windup_seconds"]
-        mob["intent"] = (
-            "Va utiliser Entaille"
-            if mob["windup_until"]
-            else "Prépare sa prochaine attaque"
-        )
-    else:
-        mob["windup_until"] = None
-        destination = (
-            mob["last_known"]
-            if mob["state"] == "search"
-            else units[target]["position"]
-            if target
-            else None
-        )
-        if mob["state"] == "search" and mob.get("search_until", now) <= now:
-            mob.update(state="patrol", last_known=None, search_until=None)
-            destination = None
-        if (
-            mob["state"] == "search"
-            and destination
-            and distance(mob["position"], destination) < 1
-        ):
-            candidates = [
-                [destination[0] + dx, destination[1] + dy]
-                for dx, dy in ((2, 0), (0, 2), (-2, 0), (0, -2))
-            ]
-            candidates = [p for p in candidates if walkable(preset, p)]
-            if candidates:
-                destination = candidates[int(now / 6) % len(candidates)]
-        if destination is None:
-            if "patrol_route" not in mob:
-                mob["patrol_route"] = patrol_route(preset, 0)
-            patrol = mob["patrol_route"]
-            index = mob.setdefault("patrol_index", 0)
-            if mob["position"] == patrol[index]:
-                index = (index + 1) % len(patrol)
-                mob["patrol_index"] = index
-            destination = patrol[index]
-        route = (
-            path(preset, mob["position"], destination)
-            if mob["next_move"] <= now
-            else None
-        )
-        if route:
-            mob["next_move"] = now + step_time(
-                mob["position"], route[0], GOBLIN_MOVE_TIME
-            )
-            mob["position"] = route[0]
-        mob["intent"] = (
-            "Poursuit un joueur"
-            if target
-            else "Cherche à la dernière position connue"
-            if mob["state"] == "search"
-            else "Patrouille"
-        )
+    _resolve_mob_intent(
+        party, mob, characters, units, preset, now, random, messages, target, visible
+    )
 
 
 def advance(party, now, random):
-    from .tutorial import unpack, pack, recover
+    from .tutorial import pack, recover, unpack
 
     battle = party.get("battle")
     if not battle or now < battle.get("next_brain", 0):

@@ -1,5 +1,5 @@
-from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.stats.stat import DefaultStat
+from jeuxRPG.i18n import t
 
 
 class Energie(DefaultStat):
@@ -35,16 +35,17 @@ class Energie(DefaultStat):
         regen_amount = int(self.value * self.regen_rate)
         self._current_value = min(self.value, self.current_value + regen_amount)
 
-    def change_type(self,new_type):
-        if not issubclass(new_type, Energie) : raise TypeError("Can only convert to Energie subclasses")
+    def change_type(self, new_type):
+        if not issubclass(new_type, Energie):
+            raise TypeError("Can only convert to Energie subclasses")
         return super().change_type(new_type)
-
 
     def is_full(self) -> bool:
         return self.current_value >= self.value
 
     def __repr__(self):
         return self.__str__()
+
 
 class VitalStat(DefaultStat):
     """Classe de base pour les statistiques vitales comme les HP."""
@@ -60,11 +61,13 @@ class VitalStat(DefaultStat):
         self._current_value = 0
 
     def change_type(self, new_type):
-        if not issubclass(new_type, VitalStat) : raise TypeError("Can only convert to VitalStat subclasses")
+        if not issubclass(new_type, VitalStat):
+            raise TypeError("Can only convert to VitalStat subclasses")
         return super().change_type(new_type)
 
     def is_full(self) -> bool:
         return self.current_value >= self.value
+
 
 class AttributeStat(DefaultStat):
     """Classe de base pour les attributs de caractère (Force, Intelligence, etc.)."""
@@ -73,8 +76,10 @@ class AttributeStat(DefaultStat):
         super().__init__(value)
 
     def change_type(self, new_type):
-        if not issubclass(new_type, AttributeStat) : raise TypeError("Can only convert to AttributeStat subclasses")
+        if not issubclass(new_type, AttributeStat):
+            raise TypeError("Can only convert to AttributeStat subclasses")
         return super().change_type(new_type)
+
     def __str__(self) -> str:
         return self.format()
 
@@ -83,9 +88,13 @@ class AttributeStat(DefaultStat):
         translated_name = t(f"stat.{self.name}", lang)
         if translated_name == f"stat.{self.name}":
             translated_name = self.name
-        return t("stat.attr_str", lang, name=translated_name, current=self.current_value)
+        return t(
+            "stat.attr_str", lang, name=translated_name, current=self.current_value
+        )
+
 
 # Statistiques vitales --------------------------------------------------------
+
 
 class HP(VitalStat):
     """Points de vie (Hit Points)."""
@@ -101,7 +110,9 @@ class HP(VitalStat):
         self._current_value += healed
         return healed
 
+
 # Statistiques d'énergie -----------------------------------------------------
+
 
 class Mana(Energie):
     """Énergie magique utilisée pour les sorts."""
@@ -109,11 +120,13 @@ class Mana(Energie):
     def __init__(self, value: int, regen_rate: float = 0.15):
         super().__init__(value, regen_rate)
 
+
 class Aura(Energie):
     """Énergie spirituelle utilisée pour les capacités spéciales."""
 
     def __init__(self, value: int, regen_rate: float = 0.1):
         super().__init__(value, regen_rate)
+
 
 class Ki(Energie):
     """Énergie interne utilisée pour les techniques martiales."""
@@ -121,13 +134,16 @@ class Ki(Energie):
     def __init__(self, value: int, regen_rate: float = 0.2):
         super().__init__(value, regen_rate)
 
+
 class Foie(Energie):
     """Énergie de courage utilisée pour les capacités défensives."""
 
     def __init__(self, value: int, regen_rate: float = 0.05):
         super().__init__(value, regen_rate)
 
+
 # Attributs de caractère -----------------------------------------------------
+
 
 class Force(AttributeStat):
     """Force physique brute."""
@@ -135,17 +151,20 @@ class Force(AttributeStat):
     def __init__(self, value: int):
         super().__init__(value)
 
+
 class Endurance(AttributeStat):
     """Résistance physique et capacité à endurer."""
 
     def __init__(self, value: int):
         super().__init__(value)
 
+
 class Intelligence(AttributeStat):
     """Capacité cognitive et magique."""
 
     def __init__(self, value: int):
         super().__init__(value)
+
 
 class Sagesse(AttributeStat):
     """Jugement, perspicacité et intuition."""

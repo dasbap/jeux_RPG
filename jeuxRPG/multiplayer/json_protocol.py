@@ -6,7 +6,7 @@ def object_json(raw):
         result = {}
         for key, value in items:
             if key in result:
-                raise ValueError('duplicate key')
+                raise ValueError("duplicate key")
             result[key] = value
         return result
 
@@ -15,5 +15,5 @@ def object_json(raw):
 
     result = json.loads(raw, object_pairs_hook=pairs, parse_constant=constant)
     if not isinstance(result, dict):
-        raise ValueError('object expected')
+        raise ValueError("object expected")
     return result

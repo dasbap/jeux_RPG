@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class ObjectCreation:
     def __init__(self):
         self.attribute_required: dict[str, Any] = {}
@@ -29,7 +30,7 @@ class ObjectCreation:
         except Exception:
             return False
 
-    def update_attribute_required(self, **attribute_required : str) -> bool:
+    def update_attribute_required(self, **attribute_required: str) -> bool:
         try:
             if not all(isinstance(k, str) for k in attribute_required):
                 raise ValueError("Keys must be strings")
@@ -41,10 +42,10 @@ class ObjectCreation:
     def reset_attribute_required(self) -> None:
         self.attribute_required = {}
 
+    def _update_groupe(self, creation):
+        if hasattr(self.group, "last_create"):
+            self.group.last_create = creation
 
-    def _update_groupe(self,creation):
-        if hasattr(self.group,"last_create"):
-                self.group.last_create = creation
     def create_object(self, attribute_spe: dict[str, Any] | None = None) -> object:
         if self.object_target is None:
             return None

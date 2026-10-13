@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 class Config:
     BASE_DIR = Path(os.getenv("BOTKIRITOGAME", Path(__file__).parent))
@@ -20,15 +22,13 @@ class Config:
             "_event": {
                 "confrontation": {
                     "encounter": ["fight.py", "team_battle.py"],
-                    "res": ["team.py"]
+                    "res": ["team.py"],
                 }
             },
-            "stats": ["basic_stat.py", "stat.py"]
+            "stats": ["basic_stat.py", "stat.py"],
         },
-        "_function":{
-            "Character":["level_up_f"],
-            "skill":["custom"]
-        }
+        "_function": {"Character": ["level_up_f"], "skill": ["custom"]},
     }
+
 
 config = Config()

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Dict, Mapping
 import json
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
 
 from jeuxRPG._class.res.character import table_stat_subclass as tables
 from jeuxRPG._class.skills.skill import Skill
 from jeuxRPG._class.skills.skillEffect import SkillEffect
 
 # Map class display names to their class tables (dicts)
-CLASS_TABLES: Dict[str, Dict[str, Any]] = {
+CLASS_TABLES: dict[str, dict[str, Any]] = {
     "Knight": getattr(tables, "knight_table", None),
     "Mage": getattr(tables, "mage_table", None),
     "Archer": getattr(tables, "archer_table", None),
@@ -22,7 +23,7 @@ CLASS_TABLES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def _read_json(maybe_path: str | Path | Mapping[str, Any]) -> Dict[str, Any]:
+def _read_json(maybe_path: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(maybe_path, (str, Path)):
         p = Path(maybe_path)
         with p.open("r", encoding="utf-8") as f:
@@ -33,7 +34,7 @@ def _read_json(maybe_path: str | Path | Mapping[str, Any]) -> Dict[str, Any]:
         raise TypeError("Expected file path or mapping for overrides")
 
 
-def _deep_update_dict(target: Dict[str, Any], patch: Dict[str, Any]) -> None:
+def _deep_update_dict(target: dict[str, Any], patch: dict[str, Any]) -> None:
     for k, v in patch.items():
         if isinstance(v, dict) and isinstance(target.get(k), dict):
             _deep_update_dict(target[k], v)
@@ -41,9 +42,9 @@ def _deep_update_dict(target: Dict[str, Any], patch: Dict[str, Any]) -> None:
             target[k] = v
 
 
-def apply_class_overrides(overrides: str | Path | Mapping[str, Any]) -> Dict[str, Any]:
+def apply_class_overrides(overrides: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     data = _read_json(overrides)
-    applied: Dict[str, Any] = {}
+    applied: dict[str, Any] = {}
     for class_name, patch in data.items():
         table = CLASS_TABLES.get(class_name)
         if not isinstance(table, dict):
@@ -54,7 +55,7 @@ def apply_class_overrides(overrides: str | Path | Mapping[str, Any]) -> Dict[str
     return applied
 
 
-def apply_skill_overrides(overrides: str | Path | Mapping[str, Any]) -> Dict[str, Any]:
+def apply_skill_overrides(overrides: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     """
     Structure example:
     {
@@ -72,7 +73,7 @@ def apply_skill_overrides(overrides: str | Path | Mapping[str, Any]) -> Dict[str
     }
     """
     data = _read_json(overrides)
-    applied: Dict[str, Any] = {}
+    applied: dict[str, Any] = {}
 
     for class_name, levels in data.items():
         table = CLASS_TABLES.get(class_name)
@@ -99,10 +100,15 @@ def apply_skill_overrides(overrides: str | Path | Mapping[str, Any]) -> Dict[str
                 if isinstance(effects_patch, dict):
                     for eff_key, eff_vals in effects_patch.items():
                         eff_obj = skill_obj.effects.get(eff_key)
-                        if isinstance(eff_obj, SkillEffect) and isinstance(eff_vals, dict):
+                        if isinstance(eff_obj, SkillEffect) and isinstance(
+                            eff_vals, dict
+                        ):
                             if "value" in eff_vals and eff_vals["value"] is not None:
                                 eff_obj.value = eff_vals["value"]
-                            if "duration" in eff_vals and eff_vals["duration"] is not None:
+                            if (
+                                "duration" in eff_vals
+                                and eff_vals["duration"] is not None
+                            ):
                                 eff_obj.duration = eff_vals["duration"]
                             if "name" in eff_vals and eff_vals["name"]:
                                 eff_obj.name = eff_vals["name"]

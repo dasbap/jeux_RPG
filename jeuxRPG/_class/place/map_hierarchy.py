@@ -4,25 +4,27 @@ Provides:
 - Static hierarchy: Dimension > Continent > Kingdom > Town (from JSON)
 - Place-based "world" graph: Town objects + travel links (no coordinate system)
 """
+
 import json
-from pathlib import Path
-from typing import Optional, Dict, List
 
 from jeuxRPG._class.place.town import Town
 
+
 class MapLevel:
-    def __init__(self, name: str, level_type: str, size: Optional[tuple]=None, parent=None):
+    def __init__(
+        self, name: str, level_type: str, size: tuple | None = None, parent=None
+    ):
         self.name = name
         self.level_type = level_type  # 'dimension', 'continent', 'kingdom', 'town'
         self.size = size  # (width, height)
         self.parent = parent
-        self.children: List[MapLevel] = []
+        self.children: list[MapLevel] = []
 
-    def add_child(self, child: 'MapLevel'):
+    def add_child(self, child: "MapLevel"):
         self.children.append(child)
         child.parent = self
 
-    def get_full_path(self) -> List[str]:
+    def get_full_path(self) -> list[str]:
         node = self
         path = []
         while node:
@@ -34,7 +36,7 @@ class MapLevel:
         return f"<{self.level_type.capitalize()}: {self.name} ({self.size})>"
 
 
-def load_map_hierarchy(structure_path: str, towns_data: Dict[str, Dict]) -> MapLevel:
+def load_map_hierarchy(structure_path: str, towns_data: dict[str, dict]) -> MapLevel:
     """
     Load the map hierarchy from structure.json and towns.json.
     Returns the root MapLevel (dimension).
@@ -57,7 +59,7 @@ def load_map_hierarchy(structure_path: str, towns_data: Dict[str, Dict]) -> MapL
     return root
 
 
-def get_towns_data(towns_path: str) -> Dict[str, Dict]:
+def get_towns_data(towns_path: str) -> dict[str, dict]:
     with open(towns_path, encoding="utf-8") as f:
         data = json.load(f)
     return {t["name"]: t for t in data["towns"]}

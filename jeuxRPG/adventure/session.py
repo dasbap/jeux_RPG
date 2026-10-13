@@ -1,25 +1,27 @@
-from contextlib import nullcontext
-from copy import deepcopy
 import json
 import os
-from pathlib import Path
 import random
 import tempfile
-from typing import Any, Annotated
+from contextlib import nullcontext
+from copy import deepcopy
+from pathlib import Path
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
-from jeuxRPG._class.character import Character, CharacterMeta
 from jeuxRPG._class._event.confrontation.encounter.fight import Fight
+from jeuxRPG._class.character import Character, CharacterMeta
 from jeuxRPG._class.res.character.stats import basic_stat
-from jeuxRPG._class.res.classType import SkillType, DamageType
+from jeuxRPG._class.res.classType import DamageType, SkillType
 from jeuxRPG._class.skills.skill import Skill
 from jeuxRPG._class.skills.skillEffect import SkillEffect
-from .equipment import Gear, Inventory, Positive, Quantity, parse_recipe, value as resource_id
+
 from .catalog import default_catalog, load_catalog
-from .world import LocationState, WorldMixin
-from .frontier import FrontierState, FrontierMixin, WorldSimulation
 from .coordination import world_lock
+from .equipment import Gear, Inventory, Positive, Quantity, parse_recipe
+from .equipment import value as resource_id
+from .frontier import FrontierMixin, FrontierState, WorldSimulation
+from .world import LocationState, WorldMixin
 
 
 class EnergyState(BaseModel):
@@ -57,7 +59,9 @@ class SaveState(BaseModel):
 
 
 STAT_NAMES = ("HP", "Force", "Endurance", "Intelligence", "Sagesse")
-ENERGY_TYPES = {name: getattr(basic_stat, name) for name in ("Mana", "Aura", "Ki", "Foie")}
+ENERGY_TYPES = {
+    name: getattr(basic_stat, name) for name in ("Mana", "Aura", "Ki", "Foie")
+}
 
 
 def as_tuple(value):
@@ -65,16 +69,28 @@ def as_tuple(value):
 
 
 class Adventure(FrontierMixin, WorldMixin):
-    def __init__(self, path: str | Path, class_name="Knight", name="Héros", seed=42, resources=None, world_save=None):
+    def __init__(
+        self,
+        path: str | Path,
+        class_name="Knight",
+        name="Héros",
+        seed=42,
+        resources=None,
+        world_save=None,
+    ):
         self.path = Path(path)
         self.rng = random.Random(seed)
-        self.catalog = load_catalog(resources) if resources is not None else default_catalog()
+        self.catalog = (
+            load_catalog(resources) if resources is not None else default_catalog()
+        )
         self.inventory = Inventory.for_catalog(self.catalog)
         self.battles = self.wins = self.losses = self.draws = 0
         self._bonuses = {}
         self.location = None
         self.world_path = Path(world_save) if world_save is not None else None
-        self.frontier = FrontierState(clock=self.catalog.geography.start_hour if self.catalog.geography else 8)
+        self.frontier = FrontierState(
+            clock=self.catalog.geography.start_hour if self.catalog.geography else 8
+        )
         if self.path.exists():
             self._load()
         else:
@@ -89,20 +105,42 @@ class Adventure(FrontierMixin, WorldMixin):
         if self.location:
             self.frontier.clock = max(self.frontier.clock, self.location.elapsed_hours)
             self.location.elapsed_hours = self.frontier.clock
-            self.frontier.discovered = list(dict.fromkeys([*self.frontier.discovered, self.location.zone, *(key for key, zone in self.catalog.zones.items() if not zone.hidden)]))
+            self.frontier.discovered = list(
+                dict.fromkeys(
+                    [
+                        *self.frontier.discovered,
+                        self.location.zone,
+                        *(
+                            key
+                            for key, zone in self.catalog.zones.items()
+                            if not zone.hidden
+                        ),
+                    ]
+                )
+            )
         self._remove_overlevel_equipment()
         self._prepare_player()
 
     def _prepare_player(self):
-        if not any(skill.skill_type in {SkillType.DAMAGE, SkillType.INVOCATION} for skill in self.player.skills.values()):
+        if not any(
+            skill.skill_type in {SkillType.DAMAGE, SkillType.INVOCATION}
+            for skill in self.player.skills.values()
+        ):
             definition = self.catalog.skills[self.catalog.rules.fallback_skill]
-            self.player.skills[definition.name] = Skill(name=definition.name, skill_type=SkillType.DAMAGE,
-                                                       damage_type=DamageType[definition.damage_type],
-                                                       effects={"damage": SkillEffect(value=definition.damage)}, energie_cost=definition.energie_cost,
-                                                       energie_target=type(self.player.energie[0]), cooldown=definition.cooldown)
+            self.player.skills[definition.name] = Skill(
+                name=definition.name,
+                skill_type=SkillType.DAMAGE,
+                damage_type=DamageType[definition.damage_type],
+                effects={"damage": SkillEffect(value=definition.damage)},
+                energie_cost=definition.energie_cost,
+                energie_target=type(self.player.energie[0]),
+                cooldown=definition.cooldown,
+            )
 
     def _load(self):
-        state = SaveState.model_validate_json(self.path.read_text(encoding="utf-8"), context={"catalog": self.catalog})
+        state = SaveState.model_validate_json(
+            self.path.read_text(encoding="utf-8"), context={"catalog": self.catalog}
+        )
         if state.version != 1:
             raise ValueError("Version de sauvegarde non prise en charge")
         self.frontier = state.frontier
@@ -115,7 +153,9 @@ class Adventure(FrontierMixin, WorldMixin):
             raise ValueError("Personnage sauvegardé invalide")
         if p.stats["HP"] < 1 or p.exp >= p.level * 100:
             raise ValueError("Progression sauvegardée invalide")
-        if not p.energies or len({energy.kind for energy in p.energies}) != len(p.energies):
+        if not p.energies or len({energy.kind for energy in p.energies}) != len(
+            p.energies
+        ):
             raise ValueError("Énergies dupliquées")
         self.player = Character.create(p.class_name, p.user_id, p.name)
         self.player.level, self.player.exp = p.level, p.exp
@@ -140,7 +180,12 @@ class Adventure(FrontierMixin, WorldMixin):
         if p.hp > self.player.hp.value:
             raise ValueError("Points de vie sauvegardés invalides")
         self.player.hp.current_value = p.hp
-        self.battles, self.wins, self.losses, self.draws = state.battles, state.wins, state.losses, state.draws
+        self.battles, self.wins, self.losses, self.draws = (
+            state.battles,
+            state.wins,
+            state.losses,
+            state.draws,
+        )
         if self.wins + self.losses + self.draws != self.battles:
             raise ValueError("Compteurs de combats incohérents")
         try:
@@ -153,25 +198,52 @@ class Adventure(FrontierMixin, WorldMixin):
         hp = self.player.hp.current_value
         for name in STAT_NAMES:
             stat = self.player.get_stat(name)
-            stat.update_base_value(stat.value - self._bonuses.get(name, 0) + bonuses.get(name, 0))
+            stat.update_base_value(
+                stat.value - self._bonuses.get(name, 0) + bonuses.get(name, 0)
+            )
         self._bonuses = bonuses
         self.player.hp.current_value = min(hp, self.player.hp.value)
 
     def snapshot(self):
         p = self.player
         return SaveState(
-            player=PlayerState(user_id=p.user_id, name=p.name, class_name=p.char_class,
-                               level=p.level, exp=p.exp, hp=p.hp.current_value,
-                               stats={name: p.get_stat(name).value - self._bonuses.get(name, 0) for name in STAT_NAMES},
-                               energies=[EnergyState(kind=type(energy).__name__, maximum=energy.value,
-                                                     current=energy.current_value, regen_rate=energy.regen_rate)
-                                         for energy in p.energie]),
-            inventory=self.inventory, battles=self.battles, wins=self.wins, losses=self.losses,
-            draws=self.draws, location=self.location, frontier=self.frontier, rng_state=json.loads(json.dumps(self.rng.getstate())),
+            player=PlayerState(
+                user_id=p.user_id,
+                name=p.name,
+                class_name=p.char_class,
+                level=p.level,
+                exp=p.exp,
+                hp=p.hp.current_value,
+                stats={
+                    name: p.get_stat(name).value - self._bonuses.get(name, 0)
+                    for name in STAT_NAMES
+                },
+                energies=[
+                    EnergyState(
+                        kind=type(energy).__name__,
+                        maximum=energy.value,
+                        current=energy.current_value,
+                        regen_rate=energy.regen_rate,
+                    )
+                    for energy in p.energie
+                ],
+            ),
+            inventory=self.inventory,
+            battles=self.battles,
+            wins=self.wins,
+            losses=self.losses,
+            draws=self.draws,
+            location=self.location,
+            frontier=self.frontier,
+            rng_state=json.loads(json.dumps(self.rng.getstate())),
         )
 
     def save(self):
-        with world_lock(self.world_path) if self.world_path is not None else nullcontext():
+        with (
+            world_lock(self.world_path)
+            if self.world_path is not None
+            else nullcontext()
+        ):
             self._sync_world()
             self._save_player()
 
@@ -179,8 +251,14 @@ class Adventure(FrontierMixin, WorldMixin):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = None
         try:
-            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent,
-                                             prefix=f".{self.path.name}.", suffix=".tmp", delete=False) as stream:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.path.parent,
+                prefix=f".{self.path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as stream:
                 temporary = Path(stream.name)
                 stream.write(self.snapshot().model_dump_json(indent=2))
                 stream.flush()
@@ -194,9 +272,13 @@ class Adventure(FrontierMixin, WorldMixin):
 
     def craft(self, recipe_id):
         if not self.can_craft:
-            raise ValueError("Le craft est réservé aux ateliers des villages, villes et capitales")
+            raise ValueError(
+                "Le craft est réservé aux ateliers des villages, villes et capitales"
+            )
         if not self.can_craft_gear(parse_recipe(recipe_id, self.catalog)):
-            raise ValueError("Le niveau de l’objet doit être strictement inférieur à la moitié du niveau du village")
+            raise ValueError(
+                "Le niveau de l’objet doit être strictement inférieur à la moitié du niveau du village"
+            )
         identifier = self.inventory.craft(recipe_id)
         self.save()
         return identifier
@@ -204,7 +286,10 @@ class Adventure(FrontierMixin, WorldMixin):
     def equip(self, identifier):
         if identifier not in self.inventory.items:
             raise ValueError("Objet absent de l’inventaire")
-        if self.location and self.inventory.items[identifier].required_level > self.level_cap:
+        if (
+            self.location
+            and self.inventory.items[identifier].required_level > self.level_cap
+        ):
             raise ValueError("Objet au-dessus du niveau maximal de ce monde")
         self.inventory.equip(identifier)
         self.refresh_equipment()
@@ -219,10 +304,20 @@ class Adventure(FrontierMixin, WorldMixin):
         if not self.can_craft:
             return []
         crafted = []
-        tiers = sorted({self.catalog.material(identifier)[1] for identifier in self.inventory.materials}, reverse=True)
+        tiers = sorted(
+            {
+                self.catalog.material(identifier)[1]
+                for identifier in self.inventory.materials
+            },
+            reverse=True,
+        )
         for tier in tiers:
             for definition in self.catalog.sets.values():
-                owned = {gear.definition_id: identifier for identifier, gear in self.inventory.items.items() if gear.tier == tier}
+                owned = {
+                    gear.definition_id: identifier
+                    for identifier, gear in self.inventory.items.items()
+                    if gear.tier == tier
+                }
                 required = {}
                 possible = True
                 for key in definition.equipment:
@@ -234,10 +329,20 @@ class Adventure(FrontierMixin, WorldMixin):
                     gear = Gear.from_definition(key, tier, self.catalog)
                     for material, amount in gear.ingredients.items():
                         required[material] = required.get(material, 0) + amount
-                if not possible or any(self.inventory.materials.get(key, 0) < amount for key, amount in required.items()):
+                if not possible or any(
+                    self.inventory.materials.get(key, 0) < amount
+                    for key, amount in required.items()
+                ):
                     continue
-                candidates = [Gear.from_definition(key, tier, self.catalog) for key in definition.equipment]
-                if any(not self.can_craft_gear(candidate) or (self.location and candidate.required_level > self.level_cap) for candidate in candidates):
+                candidates = [
+                    Gear.from_definition(key, tier, self.catalog)
+                    for key in definition.equipment
+                ]
+                if any(
+                    not self.can_craft_gear(candidate)
+                    or (self.location and candidate.required_level > self.level_cap)
+                    for candidate in candidates
+                ):
                     continue
                 prospective = Inventory.for_catalog(self.catalog)
                 prospective.items = dict(self.inventory.items)
@@ -246,7 +351,9 @@ class Adventure(FrontierMixin, WorldMixin):
                     gear = Gear.from_definition(key, tier, self.catalog)
                     prospective.items[key] = gear
                     prospective.equipped[gear.slot] = key
-                if sum(prospective.bonuses().values()) <= sum(self.inventory.bonuses().values()):
+                if sum(prospective.bonuses().values()) <= sum(
+                    self.inventory.bonuses().values()
+                ):
                     continue
                 for key in definition.equipment:
                     identifier = owned.get(key)
@@ -260,8 +367,12 @@ class Adventure(FrontierMixin, WorldMixin):
         for recipe in self.inventory.recipes():
             gear = self.catalog.equipment[self.catalog.recipe(recipe)[0]]
             tier = self.catalog.recipe(recipe)[1]
-            candidate = Gear.from_definition(self.catalog.recipe(recipe)[0], tier, self.catalog)
-            if not self.can_craft_gear(candidate) or (self.location and candidate.required_level > self.level_cap):
+            candidate = Gear.from_definition(
+                self.catalog.recipe(recipe)[0], tier, self.catalog
+            )
+            if not self.can_craft_gear(candidate) or (
+                self.location and candidate.required_level > self.level_cap
+            ):
                 continue
             existing = self.inventory.equipped.get(gear.slot)
             if existing and self.inventory.items[existing].tier >= tier:
@@ -275,10 +386,14 @@ class Adventure(FrontierMixin, WorldMixin):
         self.refresh_equipment()
         return crafted
 
-    def encounter(self, max_rounds=200, auto_craft=False, family=None, enemy_level=None):
+    def encounter(
+        self, max_rounds=200, auto_craft=False, family=None, enemy_level=None
+    ):
         if family is not None and family not in self.catalog.creatures:
             raise ValueError("Créature inconnue")
-        if enemy_level is not None and (type(enemy_level) is not int or enemy_level < 1):
+        if enemy_level is not None and (
+            type(enemy_level) is not int or enemy_level < 1
+        ):
             raise ValueError("Niveau de créature invalide")
         original = self.player
         combatant = self.combat_player()
@@ -304,14 +419,25 @@ class Adventure(FrontierMixin, WorldMixin):
         report["effective_level"] = self.effective_level
         return report
 
-    def _encounter(self, max_rounds=200, auto_craft=False, family=None, enemy_level=None):
+    def _encounter(
+        self, max_rounds=200, auto_craft=False, family=None, enemy_level=None
+    ):
         if type(max_rounds) is not int or max_rounds < 1:
             raise ValueError("Nombre de rounds invalide")
-        pool = self.catalog.zone_creatures(self.location.zone) if self.current_zone else list(self.catalog.creatures)
+        pool = (
+            self.catalog.zone_creatures(self.location.zone)
+            if self.current_zone
+            else list(self.catalog.creatures)
+        )
         family = family or pool[self.battles % len(pool)]
-        enemy_level = enemy_level if enemy_level is not None else max(1, self.player.level - 1)
+        enemy_level = (
+            enemy_level if enemy_level is not None else max(1, self.player.level - 1)
+        )
         if self.current_zone:
-            enemy_level = min(self.current_zone.max_level, max(self.current_zone.min_level, enemy_level))
+            enemy_level = min(
+                self.current_zone.max_level,
+                max(self.current_zone.min_level, enemy_level),
+            )
         enemy = self.create_enemy(family, enemy_level)
         level, exp = self.player.level, self.player.exp
         if not self.player.is_alive():
@@ -341,13 +467,24 @@ class Adventure(FrontierMixin, WorldMixin):
             materials = {}
             for drop in self.catalog.creatures[family].drops:
                 key = self.catalog.ranked_material(drop.material, tier)
-                materials[key] = materials.get(key, 0) + self.rng.randint(drop.minimum, drop.maximum) * self.catalog.creatures[family].loot_multiplier
+                materials[key] = (
+                    materials.get(key, 0)
+                    + self.rng.randint(drop.minimum, drop.maximum)
+                    * self.catalog.creatures[family].loot_multiplier
+                )
             self.inventory.add_materials(materials)
             loot = {"family": family, "tier": tier, "materials": materials}
         elif lost:
             self.player.level, self.player.exp = level, exp
         self.player.invocations.kill_all()
-        for stat in [self.player.hp, self.player.force, self.player.endurance, self.player.intelligence, self.player.sagesse, *self.player.energie]:
+        for stat in [
+            self.player.hp,
+            self.player.force,
+            self.player.endurance,
+            self.player.intelligence,
+            self.player.sagesse,
+            *self.player.energie,
+        ]:
             stat.clear_effects()
             stat.set_max()
         for skill in self.player.skills.values():
@@ -358,16 +495,25 @@ class Adventure(FrontierMixin, WorldMixin):
         for values in self.player.status["alteration"]["Damage"]["Reduction"].values():
             values.clear()
         crafted = self.auto_craft() if auto_craft else []
-        return {"battle": self.battles, "enemy": family, "enemy_level": enemy_level,
-                "variant": self.catalog.creatures[family].variant,
-                "outcome": "victory" if won else "defeat" if lost else "draw", "rounds": rounds,
-                "loot": loot, "crafted": crafted, "level": self.player.level}
+        return {
+            "battle": self.battles,
+            "enemy": family,
+            "enemy_level": enemy_level,
+            "variant": self.catalog.creatures[family].variant,
+            "outcome": "victory" if won else "defeat" if lost else "draw",
+            "rounds": rounds,
+            "loot": loot,
+            "crafted": crafted,
+            "level": self.player.level,
+        }
 
     def create_enemy(self, family, level):
         if type(level) is not int or level < 1:
             raise ValueError("Niveau de créature invalide")
         definition = self.catalog.creatures[resource_id(family)]
-        enemy = Character.create(definition.character_class, f"enemy-{self.battles + 1}", definition.name)
+        enemy = Character.create(
+            definition.character_class, f"enemy-{self.battles + 1}", definition.name
+        )
         for threshold, upgrade in enemy.class_table["upgrade_stats"].items():
             count = max(0, level - max(2, threshold) + 1)
             if not count:
@@ -382,17 +528,33 @@ class Adventure(FrontierMixin, WorldMixin):
                 enemy.skills.update(deepcopy(skills))
         for stat in STAT_NAMES:
             attribute = enemy.get_stat(stat)
-            attribute.update_base_value(max(1, int(attribute.value * definition.stat_multiplier)))
+            attribute.update_base_value(
+                max(1, int(attribute.value * definition.stat_multiplier))
+            )
         enemy.hp.set_max()
         enemy.level = level
         return enemy
 
     def status(self):
-        return {"location": self.location.model_dump() if self.location else None,
-                "effective_level": self.effective_level, "world_max_level": self.level_cap,
-                "can_craft": self.can_craft, "village_level": self.village_level, "craft_max_level": self.craft_max_level, "hour": self.location.elapsed_hours % 24 if self.location else None,
-                "night": self.is_night if self.location else None,
-                "name": self.player.name, "class": self.player.char_class, "level": self.player.level,
-                "exp": self.player.exp, "hp": self.player.hp.current_value, "hp_max": self.player.hp.value,
-                "battles": self.battles, "wins": self.wins, "losses": self.losses, "draws": self.draws,
-                "bonuses": self.inventory.bonuses(), "equipped": dict(self.inventory.equipped)}
+        return {
+            "location": self.location.model_dump() if self.location else None,
+            "effective_level": self.effective_level,
+            "world_max_level": self.level_cap,
+            "can_craft": self.can_craft,
+            "village_level": self.village_level,
+            "craft_max_level": self.craft_max_level,
+            "hour": self.location.elapsed_hours % 24 if self.location else None,
+            "night": self.is_night if self.location else None,
+            "name": self.player.name,
+            "class": self.player.char_class,
+            "level": self.player.level,
+            "exp": self.player.exp,
+            "hp": self.player.hp.current_value,
+            "hp_max": self.player.hp.value,
+            "battles": self.battles,
+            "wins": self.wins,
+            "losses": self.losses,
+            "draws": self.draws,
+            "bonuses": self.inventory.bonuses(),
+            "equipped": dict(self.inventory.equipped),
+        }

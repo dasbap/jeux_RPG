@@ -21,7 +21,9 @@ def execute(party, player, merchant, action, item, quantity, error):
     migrate(party)
     if not merchant or not merchant.get("merchant"):
         raise error("not_merchant", "Ce PNJ ne propose pas de commerce.", 409)
-    if type(quantity) is not int or not 1 <= quantity <= content.WORLD.get("trade_max_quantity", 999):
+    if type(quantity) is not int or not 1 <= quantity <= content.WORLD.get(
+        "trade_max_quantity", 999
+    ):
         raise error("invalid_quantity", "Quantité d’échange invalide.")
     definition = prices().get(item)
     if definition is None:

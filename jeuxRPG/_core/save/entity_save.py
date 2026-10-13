@@ -6,16 +6,18 @@ ensuring consistent save formats and easier evolution.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Type, TypeVar
+
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any, TypeVar
 
 T = TypeVar("T", bound="EntitySaveData")
 
 
 class EntityType(Enum):
     """Type of game entity for polymorphic loading."""
+
     PLAYER = "player"
     NPC = "npc"
     MOB = "mob"
@@ -30,6 +32,7 @@ class EntitySaveData:
 
     Subclasses add specific fields for players, NPCs, mobs, etc.
     """
+
     # Identity
     entity_id: str
     entity_type: str  # EntityType value
@@ -43,32 +46,32 @@ class EntitySaveData:
     hp_max: int = 0
 
     # Stats snapshot
-    stats: Dict[str, int] = field(default_factory=dict)
+    stats: dict[str, int] = field(default_factory=dict)
 
     # Energies: list of {type, current, max, regen_rate}
-    energies: List[Dict[str, Any]] = field(default_factory=list)
+    energies: list[dict[str, Any]] = field(default_factory=list)
 
     # Skills: list of skill names or full skill data
-    skills: List[str] = field(default_factory=list)
+    skills: list[str] = field(default_factory=list)
 
     # Active alterations
-    alterations: List[Dict[str, Any]] = field(default_factory=list)
+    alterations: list[dict[str, Any]] = field(default_factory=list)
 
     # Metadata
     created_at: str = ""
     updated_at: str = ""
     version: int = 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
-        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        data["updated_at"] = datetime.now(UTC).isoformat()
         if not data["created_at"]:
             data["created_at"] = data["updated_at"]
         return data
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], data: dict[str, Any]) -> T:
         """Create instance from dictionary."""
         # Filter to only known fields
         known_fields = {f.name for f in cls.__dataclass_fields__.values()}
@@ -76,7 +79,9 @@ class EntitySaveData:
         return cls(**filtered)
 
     @classmethod
-    def from_character(cls: Type[T], character: Any, entity_type: EntityType = EntityType.PLAYER) -> T:
+    def from_character(
+        cls: type[T], character: Any, entity_type: EntityType = EntityType.PLAYER
+    ) -> T:
         """
         Create save data from a Character instance.
 
@@ -89,17 +94,21 @@ class EntitySaveData:
         for stat_name in ["force", "endurance", "intelligence", "sagesse"]:
             stat = getattr(character, stat_name, None)
             if stat is not None:
-                stats[stat_name] = stat.current_value if hasattr(stat, "current_value") else int(stat)
+                stats[stat_name] = (
+                    stat.current_value if hasattr(stat, "current_value") else int(stat)
+                )
 
         # Extract energies
         energies = []
         for energie in getattr(character, "energie", []):
-            energies.append({
-                "type": type(energie).__name__,
-                "current": getattr(energie, "current_value", 0),
-                "max": getattr(energie, "value", 0),
-                "regen_rate": getattr(energie, "regen_rate", 0.0),
-            })
+            energies.append(
+                {
+                    "type": type(energie).__name__,
+                    "current": getattr(energie, "current_value", 0),
+                    "max": getattr(energie, "value", 0),
+                    "regen_rate": getattr(energie, "regen_rate", 0.0),
+                }
+            )
 
         # Extract skill names
         skills = list(getattr(character, "skills", {}).keys())
@@ -131,13 +140,14 @@ class PlayerSaveData(EntitySaveData):
 
     Extends base with Discord-specific and player progression fields.
     """
+
     # Discord integration
     discord_user_id: str = ""
     discord_username: str = ""
 
     # Team/alliance
-    team_id: Optional[str] = None
-    alliance_id: Optional[str] = None
+    team_id: str | None = None
+    alliance_id: str | None = None
 
     # Progression
     total_battles: int = 0
@@ -145,15 +155,17 @@ class PlayerSaveData(EntitySaveData):
     losses: int = 0
 
     # Inventory (future)
-    inventory: List[Dict[str, Any]] = field(default_factory=list)
+    inventory: list[dict[str, Any]] = field(default_factory=list)
     gold: int = 0
 
     # Quest progress (future)
-    active_quests: List[str] = field(default_factory=list)
-    completed_quests: List[str] = field(default_factory=list)
+    active_quests: list[str] = field(default_factory=list)
+    completed_quests: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_character(cls, character: Any, discord_user_id: str = "", discord_username: str = "") -> "PlayerSaveData":
+    def from_character(
+        cls, character: Any, discord_user_id: str = "", discord_username: str = ""
+    ) -> PlayerSaveData:
         """Create player save from character with Discord info."""
         base = EntitySaveData.from_character(character, EntityType.PLAYER)
         return cls(
@@ -168,6 +180,7 @@ class NpcSaveData(EntitySaveData):
     """
     Save data for NPCs (merchants, quest givers, etc.).
     """
+
     # NPC behavior
     npc_role: str = ""  # "merchant", "quest_giver", "trainer", etc.
     dialogue_state: str = "default"
@@ -178,10 +191,10 @@ class NpcSaveData(EntitySaveData):
     location_building: str = ""
 
     # Merchant data (if applicable)
-    shop_inventory: List[Dict[str, Any]] = field(default_factory=list)
+    shop_inventory: list[dict[str, Any]] = field(default_factory=list)
 
     # Quest data (if applicable)
-    offered_quests: List[str] = field(default_factory=list)
+    offered_quests: list[str] = field(default_factory=list)
 
     # AI behavior
     is_hostile: bool = False
@@ -189,7 +202,7 @@ class NpcSaveData(EntitySaveData):
     respawn_time_seconds: int = 300
 
     @classmethod
-    def from_character(cls, character: Any, npc_role: str = "") -> "NpcSaveData":
+    def from_character(cls, character: Any, npc_role: str = "") -> NpcSaveData:
         """Create NPC save from character."""
         base = EntitySaveData.from_character(character, EntityType.NPC)
         return cls(
@@ -203,29 +216,32 @@ class MobSaveData(EntitySaveData):
     """
     Save data for mobs/monsters.
     """
+
     # Mob identity
     mob_type: str = ""  # "goblin", "orc", "dragon_whelp", etc.
     is_boss: bool = False
 
     # Spawn info
     spawn_location: str = ""
-    spawn_group_id: Optional[str] = None
+    spawn_group_id: str | None = None
 
     # Combat behavior
     aggro_range: float = 10.0
-    patrol_path: List[str] = field(default_factory=list)
+    patrol_path: list[str] = field(default_factory=list)
 
     # Loot (future)
     loot_table_id: str = ""
-    guaranteed_drops: List[str] = field(default_factory=list)
+    guaranteed_drops: list[str] = field(default_factory=list)
 
     # State
     is_spawned: bool = True
-    last_killed_at: Optional[str] = None
+    last_killed_at: str | None = None
     kill_count: int = 0  # Times this mob was killed (for respawning mobs)
 
     @classmethod
-    def from_character(cls, character: Any, mob_type: str = "", is_boss: bool = False) -> "MobSaveData":
+    def from_character(
+        cls, character: Any, mob_type: str = "", is_boss: bool = False
+    ) -> MobSaveData:
         """Create mob save from character."""
         entity_type = EntityType.BOSS if is_boss else EntityType.MOB
         base = EntitySaveData.from_character(character, entity_type)

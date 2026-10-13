@@ -1,11 +1,8 @@
-
-from typing import List, Optional, Union
-
-from jeuxRPG.i18n import t
 from jeuxRPG._class.character import Character
+from jeuxRPG.i18n import t
 
 
-class Team():
+class Team:
     """Represents a team of characters with alliance and enemy relationships.
 
     Attributes:
@@ -13,10 +10,12 @@ class Team():
         DEFAULT_NAME_FORMAT (str): Format for default team names.
     """
 
-    all_teams: List['Team'] = []
+    all_teams: list["Team"] = []
     DEFAULT_NAME_FORMAT: str = "Team {index}"
 
-    def __init__(self, name: str = "", Team_member : Union[list[Character], Character] = [] ) -> None:
+    def __init__(
+        self, name: str = "", Team_member: list[Character] | Character | None = None
+    ) -> None:
         """Initialize a new Team.
 
         Args:
@@ -27,13 +26,13 @@ class Team():
             ValueError: If the team name is already taken.
         """
         self._validate_name_uniqueness(name)
-        self.leader : Character = None
+        self.leader: Character | None = None
         self.name = name or self._generate_default_name()
-        self.fighters: List[Character] = []
-        self.allies: List[Team] = []
-        self.enemies: List[Team] = []
+        self.fighters: list[Character] = []
+        self.allies: list[Team] = []
+        self.enemies: list[Team] = []
         if not isinstance(Team_member, Character):
-            for member in Team_member:
+            for member in Team_member or ():
                 self.add_fighter(member)
         else:
             self.change_leader(Team_member)
@@ -57,8 +56,13 @@ class Team():
 
     def __str__(self) -> str:
         """Return a string representation of the team."""
-        return t("team.str", name=self.name, fighters=len(self.fighters),
-                 allies=len(self.allies), enemies=len(self.enemies))
+        return t(
+            "team.str",
+            name=self.name,
+            fighters=len(self.fighters),
+            allies=len(self.allies),
+            enemies=len(self.enemies),
+        )
 
     def __repr__(self) -> str:
         """Return an unambiguous string representation of the team."""
@@ -122,12 +126,13 @@ class Team():
             if leader.team != self:
                 raise RuntimeError("Can't be the leader of a team if his not in")
             elif self.leader is leader:
-                raise RuntimeError(f"{leader.name} is already the leader of {self.name}")
+                raise RuntimeError(
+                    f"{leader.name} is already the leader of {self.name}"
+                )
         else:
             self.add_fighter(leader)
 
         self.leader = leader
-
 
     def remove_leader(self):
         if self.leader:
@@ -151,7 +156,7 @@ class Team():
         self.fighters.remove(fighter)
         fighter.team = None
 
-    def add_ally(self, ally: 'Team', mutual: bool = True) -> None:
+    def add_ally(self, ally: "Team", mutual: bool = True) -> None:
         """Form an alliance with another team.
 
         Args:
@@ -179,7 +184,7 @@ class Team():
         if mutual:
             ally.add_ally(self, mutual=False)
 
-    def remove_ally(self, ally: 'Team', mutual: bool = True) -> None:
+    def remove_ally(self, ally: "Team", mutual: bool = True) -> None:
         """Dissolve an alliance with another team.
 
         Args:
@@ -197,7 +202,7 @@ class Team():
         if mutual:
             ally.remove_ally(self, mutual=False)
 
-    def add_enemy(self, enemy: 'Team', mutual: bool = True) -> None:
+    def add_enemy(self, enemy: "Team", mutual: bool = True) -> None:
         """Declare another team as an enemy.
 
         Args:
@@ -225,7 +230,7 @@ class Team():
         if mutual:
             enemy.add_enemy(self, mutual=False)
 
-    def remove_enemy(self, enemy: 'Team', mutual: bool = True) -> None:
+    def remove_enemy(self, enemy: "Team", mutual: bool = True) -> None:
         """Remove enmity with another team.
 
         Args:
@@ -255,7 +260,7 @@ class Team():
         self._validate_name_uniqueness(new_name)
         self.name = new_name
 
-    def is_ally(self, ally : Union[Character, 'Team']) -> bool:
+    def is_ally(self, ally: "Character | Team") -> bool:
         """Check if a fighter belongs to an allied team.
 
         Args:
@@ -269,7 +274,7 @@ class Team():
         """
 
         if isinstance(ally, Character):
-            return (self == ally.team or ally.team in self.allies if ally.team else False)
+            return self == ally.team or ally.team in self.allies if ally.team else False
         if isinstance(ally, Team):
             return ally in self.get_allies()
         raise TypeError("Can only check Character or Team instances")
@@ -308,19 +313,19 @@ class Team():
 
         return fighter.team is self
 
-    def get_allies(self) -> List['Team']:
+    def get_allies(self) -> list["Team"]:
         """Get a copy of the list of allied teams."""
         return self.allies.copy()
 
-    def get_enemies(self) -> List['Team']:
+    def get_enemies(self) -> list["Team"]:
         """Get a copy of the list of enemy teams."""
         return self.enemies.copy()
 
-    def get_fighters(self) -> List[Character]:
+    def get_fighters(self) -> list[Character]:
         """Get a copy of the list of the fighter in the Team."""
         return self.fighters.copy()
 
-    def merge_with(self, other: 'Team') -> None:
+    def merge_with(self, other: "Team") -> None:
         """Merge another team into this one.
 
         Args:
@@ -355,13 +360,10 @@ class Team():
         Team.remove_team(other)
 
     def any_alive(self) -> bool:
-        for fighter in self.get_fighters():
-            if fighter.is_alive() : return True
-        else:
-            return False
+        return any(fighter.is_alive() for fighter in self.get_fighters())
 
     @classmethod
-    def remove_team(cls, team_to_remove: 'Team') -> None:
+    def remove_team(cls, team_to_remove: "Team") -> None:
         """Remove a team from the global team list and clean up relationships.
 
         Args:
@@ -384,7 +386,7 @@ class Team():
                 team.enemies.remove(team_to_remove)
 
     @classmethod
-    def get_team_by_name(cls, name: str) -> Optional['Team']:
+    def get_team_by_name(cls, name: str) -> "Team | None":
         """Find a team by its name.
 
         Args:
