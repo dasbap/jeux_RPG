@@ -1,9 +1,10 @@
 import math
 import time
+from .content import DATA
 
 
 class GameClock:
-    ratio = 3.0
+    ratio = DATA['gameplay']['rules']['time']['game_ratio']
 
     def __init__(self, epoch_wall, epoch_game=0.0, monotonic=time.monotonic, wall=time.time, minimum_game=0.0):
         self._monotonic = monotonic

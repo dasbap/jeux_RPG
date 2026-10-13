@@ -365,15 +365,24 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 }
 
 .combat-active #character-menu{left:12px;right:auto;top:10px}
+.combat-active #outing-vitals{top:76px}
+.combat-active #outing-vitals .vitals-card{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "resources" "statuses";gap:4px}
+.combat-active #battle:not(.combat-mode) #field-camera{position:absolute;top:10px;right:12px;left:auto;z-index:40;width:auto;display:flex;gap:4px;border-radius:8px}
+.combat-active #battle:not(.combat-mode) #field-location{display:none}
 .combat-active .combat-mode #combat-player-panel{left:12px;top:68px}
 .combat-active .combat-mode #combat-enemy-panel{right:12px;left:auto;top:10px}
 @media(max-width:750px){
   .combat-active #character-menu{left:6px;right:auto;top:max(6px,env(safe-area-inset-top))}
+  .combat-active #outing-vitals{left:6px;top:calc(max(6px,env(safe-area-inset-top)) + 66px);width:calc(50vw - 83px);padding:5px}
+  .combat-active #outing-vitals .vitals-row{grid-template-columns:minmax(0,1fr)}
+  .combat-active #battle:not(.combat-mode) #field-camera{top:max(6px,env(safe-area-inset-top));right:6px}
   .combat-active .combat-mode #combat-player-panel{left:6px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:6px;left:auto;top:max(6px,env(safe-area-inset-top))}
 }
 @media(max-height:500px) and (orientation:landscape){
   .combat-active #character-menu{left:8px;right:auto;top:8px}
+  .combat-active #outing-vitals{left:8px;top:74px}
+  .combat-active #battle:not(.combat-mode) #field-camera{top:8px;right:8px}
   .combat-active .combat-mode #combat-player-panel{left:8px;top:58px}
   .combat-active .combat-mode #combat-enemy-panel{right:8px;left:auto;top:8px}
 }
@@ -398,3 +407,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
   #hud-minimap{height:54px}
   #hud-objective{font-size:.54rem}
 }
+
+#craft-view{box-sizing:border-box;width:min(960px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;border:1px solid #70608d;border-radius:18px;background:#171c26;color:#eceef3;box-shadow:0 24px 80px #0009}#craft-view::backdrop{background:#080c14bf}.forge-header{display:flex;justify-content:space-between;align-items:center;gap:16px}.forge-header h2,.forge-header p{margin:0 0 8px}.forge-header button{flex:none}#craft-materials{padding:12px;background:#293044;border-radius:10px}#forge-feedback{color:#ffd67a}#forge-catalogue .quest-recipe{border:2px solid #ffd67a}@media(max-width:600px){#craft-view{padding:16px}#forge-catalogue{grid-template-columns:1fr}.forge-header h2{font-size:1.3rem}}
+
+.combat-active.hud-menu-open .combat-mode .consultation:has(#social-view:not([hidden])){display:block!important}

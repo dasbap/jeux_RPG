@@ -70,7 +70,7 @@ async function checkPendingMovement() {
   const context = {busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room",
     session: {id: "room", me: "p0", revision: 1, tutorial: adventure}, requestId: () => "request", lastPlayer: null, crypto: {randomUUID: () => "request"},
     $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {}, scheduleRefresh: () => {},
-    renderTutorial: () => {}, message: () => {}, moveControlled: async (party, actor, destination) => moves.push(destination),
+    renderGame: () => {}, message: () => {}, moveControlled: async (party, actor, destination) => moves.push(destination),
     api: () => new Promise(resolve => {resolveCommand = resolve;})};
   vm.createContext(context);
   const pending = vm.runInContext(`${command}; command("strike", {session_id: "room", revision: 1});`, context);
@@ -108,7 +108,7 @@ async function checkCompactAcknowledgement() {
   const adventure = {battle: {}, players: []};
   const context = {busy: false, stateEpoch: 0, pendingBattleMove: null, sessionId: "room",
     session: {id: "room", revision: 1, state: "running", tutorial: adventure}, requestId: () => "request", lastPlayer: null,
-    $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {}, scheduleRefresh: () => {}, renderTutorial: () => {}, message: () => {},
+    $: () => ({disabled: false, hidden: false}), remember: () => {}, refresh: async () => {}, scheduleRefresh: () => {}, renderGame: () => {}, message: () => {},
     api: () => new Promise(resolve => {resolveCommand = resolve;})};
   vm.createContext(context);
   const pending = vm.runInContext(`${command}; command("strike", {session_id: "room", revision: 1});`, context);

@@ -1,5 +1,7 @@
 # Audit final du RPG — 11 octobre 2026
 
+> Rapport historique : les états de protection et de publication sont remplacés par [le suivi courant](../audit-20261011-followup/REPORT.md). Les mesures ci-dessous gardent leur date et leur périmètre.
+
 Le dépôt a été réaudité, les défauts démontrés corrigés et les vérifications accessibles exécutées. L’audit distingue les preuves locales, les preuves CI et les observations de production. Les contrôles nécessitant les comptes fournisseurs restent explicitement ouverts. La cible de 90/100 n’est pas déclarée atteinte : l’évaluation argumentée est **85/100**, indicative et non certifiée.
 
 Le propriétaire a autorisé la fusion lorsque tous les tests sont verts, puis demandé de reporter la sécurisation de `prod`. Les corrections de cette clôture passent par la [PR #34](https://github.com/dasbap/jeux_RPG/pull/34) vers `master`. **Aucun nouveau déploiement de ces corrections n’est lancé tant que cette étape de sécurisation est reportée.** La production existante reste la version `82a7461613ec748014d3cf5a97bdade88f1d1ee3`.

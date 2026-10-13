@@ -1,0 +1,92 @@
+"""Compare path results and cold CPU cost with an explicit repository revision."""
+
+import argparse
+import ast
+import json
+from pathlib import Path
+import subprocess
+import time
+import tracemalloc
+
+from jeuxRPG.multiplayer import tactics
+
+
+def measure(baseline):
+    source = subprocess.check_output(
+        ["git", "show", baseline + ":jeuxRPG/multiplayer/tactics.py"], text=True
+    )
+    tree = ast.parse(source)
+    node = next(
+        n
+        for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name == "cached_path"
+    )
+    old = dict(vars(tactics))
+    exec(
+        compile(ast.Module(body=[node], type_ignores=[]), "<baseline-path>", "exec"),
+        old,
+    )
+    functions = [old["cached_path"], tactics.cached_path]
+    cases = []
+    for preset in tactics.PRESETS.values():
+        cover = tuple(tuple(p) for p in preset["cover"] + preset.get("blocked", []))
+        points = [
+            (x, y)
+            for x in range(preset["width"])
+            for y in range(preset["height"])
+            if tactics.walkable(preset, (x, y))
+        ]
+        if points:
+            for point in points[:: max(1, len(points) // 12)]:
+                cases.append(
+                    (preset["width"], preset["height"], cover, points[0], point)
+                )
+    timings, peaks, expected = [], [], None
+    for function in functions:
+        samples = []
+        for _ in range(3):
+            function.cache_clear()
+            started = time.process_time()
+            results = [function(*case) for case in cases]
+            samples.append(time.process_time() - started)
+            if expected is None:
+                expected = results
+            assert results == expected, "A route or tie-breaking decision changed"
+        timings.append(min(samples))
+        function.cache_clear()
+        tracemalloc.start()
+        try:
+            assert [function(*case) for case in cases] == expected
+            peaks.append(tracemalloc.get_traced_memory()[1])
+        finally:
+            tracemalloc.stop()
+    return {
+        "baseline": baseline,
+        "cases": len(cases),
+        "identical": True,
+        "cold_cpu_seconds": timings,
+        "traced_peak_bytes": peaks,
+        "cpu_budget_ratio": 1.25,
+        "cpu_budget_met": timings[1] <= timings[0] * 1.25,
+        "memory_budget_bytes": 1024 * 1024,
+        "memory_budget_met": peaks[1] <= 1024 * 1024,
+        "cpu_change_percent": round(100 * (timings[1] / timings[0] - 1), 2),
+    }
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--baseline", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args()
+    report = measure(args.baseline)
+    if not report["memory_budget_met"]:
+        raise SystemExit(
+            "Path allocation peak exceeds 1 MiB on the differential workload"
+        )
+    if not report["cpu_budget_met"]:
+        raise SystemExit(
+            "Cold CPU regression greater than 25% on the differential workload"
+        )
+    Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report))

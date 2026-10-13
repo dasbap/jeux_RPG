@@ -21,18 +21,18 @@ def test_all_requirements_gate_acceptance_and_explain_missing(monkeypatch):
     p = party()
     messages = content.quest_dialogue(p,'mira')
     assert 'second' not in p['custom_quests']
-    assert 'niveau 5' in messages[0] and 'succès requis' in messages[0] and 'quête à terminer' in messages[0]
+    assert any('niveau 5' in message and 'succès requis' in message and 'quête à terminer' in message for message in messages)
     p['characters']['p']['level'] = 5
     p['characters']['q']['level'] = 4
-    p['quest'] = 'completed'
+    p['custom_quests']['mira_hunt'] = {'status': 'completed', 'progress': 3}
     p['achievements']['kills'] = 10
     assert len(content.missing_requirements(p,data['quests'][-1])) == 1
     p['characters']['q']['level'] = 5
     assert content.missing_requirements(p,data['quests'][-1]) == []
-    assert 'Quête acceptée' in content.quest_dialogue(p,'mira')[0]
+    assert any('Quête acceptée : second' in message for message in content.quest_dialogue(p,'mira'))
     p['characters']['q']['level'] = 1
     content.quest_event(p,'kill','goblin')
-    assert 'Quête terminée' in content.quest_dialogue(p,'mira')[0]
+    assert any('Quête terminée : second' in message for message in content.quest_dialogue(p,'mira'))
     assert content.quest_dialogue(p,'mira') == []
 
 
@@ -71,12 +71,37 @@ def test_cycles_rejected_and_renaming_updates_requirements(tmp_path):
 
 
 def test_tutorial_quest_is_checked_by_server_before_state_changes(monkeypatch):
-    hunt = deepcopy(content.HUNT)
-    hunt['requirements'] = {'level':2}
-    monkeypatch.setattr(content,'HUNT',hunt)
+    data = deepcopy(content.DATA)
+    next(quest for quest in data['quests'] if quest.get('category') == 'tutorial')['requirements'] = {'level':2}
+    monkeypatch.setattr(content,'DATA',data)
     p = party()
-    p.update(step='village',battle=None)
+    p.update(step='village',position='mira',battle=None)
     messages, _ = tutorial.execute_one(p,'p','talk',{'npc':'mira'},0,lambda *args:RuntimeError(args),lambda:.5)
     assert p['step'] == 'village'
     assert p['quest'] != 'active'
-    assert 'niveau 2' in messages[0]
+    assert any('niveau 2' in message for message in messages)
+
+
+def test_tutorial_category_uses_the_same_quest_lifecycle(monkeypatch):
+    data = deepcopy(content.DEFAULTS)
+    ordinary = {**deepcopy(data['quests'][0]), 'id': 'ordinary_hunt', 'category': 'standard'}
+    data['quests'].append(ordinary)
+    monkeypatch.setattr(content, 'DATA', data)
+    p = party()
+    messages = content.quest_dialogue(p, 'mira')
+    assert sum(message.startswith('Quête acceptée') for message in messages) == 2
+    for _ in range(data['quests'][0]['count']):
+        content.quest_event(p, 'kill', 'goblin', 'lisiere')
+    states = p['custom_quests']
+    assert states[data['quests'][0]['id']]['progress'] == states['ordinary_hunt']['progress']
+    rewards = content.quest_dialogue(p, 'mira')
+    assert sum(message.startswith('Quête terminée') for message in rewards) == 2
+    assert states[data['quests'][0]['id']]['status'] == states['ordinary_hunt']['status'] == 'completed'
+    assert {item['id'] for item in content.quest_journal(p)} == {data['quests'][0]['id'], 'ordinary_hunt'}
+    assert content.quest_dialogue(p, 'mira') == []
+
+
+def test_catalogue_does_not_require_any_tutorial_quest():
+    data = deepcopy(content.DEFAULTS)
+    data['quests'] = []
+    assert content.validate_content(data)['quests'] == []

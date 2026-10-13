@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {JSDOM} = require('jsdom');
+const root = path.resolve(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/index.html'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/app_world.js'), 'utf8');
+const dom = new JSDOM(html, {runScripts: 'outside-only'});
+const calls = [];
+dom.window.$ = id => dom.window.document.getElementById(id);
+dom.window.session = {id: 'room'};
+dom.window.busy = false;
+dom.window.sectionChanged = () => true;
+dom.window.tutorialCommand = (action, params) => calls.push({action, params});
+dom.window.eval(source.slice(source.indexOf("function hudQuestTarget("), source.indexOf("function renderHudNavigation(")) + source.slice(source.indexOf("function renderEndgame(")) + ";window.renderEndgame=renderEndgame;window.hudQuestTarget=hudQuestTarget;");
+const contract = {id: 'veteran_hunt', name: '<img src=x onerror=alert(1)>', progress: 2, count: 2, min_level: 5, reward_xp: 25, repeatable: true, status: 'claimable'};
+const adventure = {endgame: [contract], world: {current: 'rosee'}, quest_journal: []};
+dom.window.renderEndgame(adventure);
+const list = dom.window.$('endgame-list');
+assert.equal(list.querySelector('img'), null);
+assert(list.textContent.includes(contract.name));
+list.querySelector('button').click();
+assert.equal(JSON.stringify(calls), JSON.stringify([{action: 'endgame_claim', params: {challenge: 'veteran_hunt'}}]));
+assert(dom.window.hudQuestTarget(adventure).label.includes('2/2'));
+for (const status of ['locked', 'active', 'completed']) {
+  dom.window.renderEndgame({...adventure, endgame: [{...contract, status}]});
+  assert.equal(list.querySelector('button'), null);
+}
+dom.window.renderEndgame({...adventure, battle: {}});
+assert(list.querySelector('button').disabled);
+dom.window.renderEndgame({...adventure, endgame: []});
+assert(dom.window.$('endgame-contracts').hidden);
+dom.window.close();
+console.log('Contrats UI : états, récompense, texte sûr, blocage en combat et objectif HUD vérifiés.');

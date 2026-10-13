@@ -89,7 +89,7 @@ ROUTES = deepcopy(WORLD_MAP_DATA["clearing"].get("travel_routes", ROUTES))
 
 CURRENT = {"clearing": "clearing", "first_fight": "clearing", "road": "clearing",
            "village": "rosee", "hunt": "lisiere", "craft": "rosee", "travel": "rosee", "complete": "brume"}
-GOBLIN = {"hp_first": 18, "hp_hunt": 24, "xp_first": 50, "xp_hunt": 50, "loot": {"peau": 1, "croc": 1}}
+GOBLIN = {**content.DATA["gameplay"]["rules"]["tutorial"], "loot": {"peau": 1, "croc": 1}}
 
 
 def discovery(party):
@@ -154,16 +154,12 @@ def view(party, me, traveller=None):
             point["locked_reason"] = None
             point["local"] = key == zone_of(party.get("position", CURRENT[step])) and party.get("position") not in ROAD_POINTS
             point["can_interact"] = point["local"] and not fighting and not moving
-            if point["id"] == "forge" and party["quest"] != "completed":
-                point["locked_reason"] = "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village."
-            elif point["id"] == "mira" and step == "hunt" and party["kills"] < content.HUNT["count"]:
-                point["locked_reason"] = f"Mira attend encore {content.HUNT['count'] - party['kills']} gobelin(s) vaincu(s)."
             if not fighting and not moving and party.get("position", CURRENT[step]) == point["id"]:
-                if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == content.HUNT["count"]):
+                if point["id"] == "mira":
                     point["action"] = "dialogue"
-                elif point["id"] == "forge" and party["quest"] == "completed":
+                elif point["id"] == "forge":
                     point["action"] = "forge"
-                elif point["id"] == "clearing_fight" and step == "clearing" or point["id"] == "hunt" and step == "hunt" and party["kills"] < content.HUNT["count"] or point["id"] == "training" and step in ("craft", "travel"):
+                elif point["id"] == "clearing_fight" and step == "clearing" or point["id"] == "hunt" and step == "hunt" or point["id"] == "training" and step in ("craft", "travel"):
                     point["action"] = "explore"
         places.append(place)
     routes = []
@@ -317,5 +313,5 @@ def distance_km(source, destination):
 
 
 def walking_seconds(source, destination):
-    return distance_km(source, destination) / 6 * 3600
+    return distance_km(source, destination) / content.DATA['gameplay']['rules']['movement']['walking_kmh'] * 3600
 

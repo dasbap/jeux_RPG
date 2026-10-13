@@ -7,21 +7,11 @@ from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.res.character.stats import basic_stat
 from jeuxRPG._class.res.character.alteration import alteration
 from jeuxRPG._class.sub_character.invocations.invocation import Invocation
-from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content
+from . import world, encounters, progression, forge, tactics, achievements, bleeding, fields, content, economy
 
-TRAVEL_ENCOUNTER_CHANCE = .25
-
-
-STEPS = {
-    "clearing": ("Clairière des Éveillés", "Explorez la clairière pour rencontrer votre premier gobelin."),
-    "first_fight": ("Clairière des Éveillés", "Utilisez vos compétences ou votre attaque pour battre le gobelin."),
-    "road": ("Sentier de Rosée", "Votre premier combat est gagné. Rejoignez le village de Rosée."),
-    "village": ("Village de Rosée", "Parlez à Mira pour accepter sa quête de chasse."),
-    "hunt": ("Lisière de Rosée", "Battez trois gobelins puis rapportez la nouvelle à Mira."),
-    "craft": ("Forge de Rosée", "Fabriquez et équipez une veste avec les matériaux des gobelins."),
-    "travel": ("Route des Deux Villages", "Votre équipement est prêt. Rejoignez le village de Brume."),
-    "complete": ("Village de Brume", "Tutoriel terminé : combat, compétences, quête, butin et équipement maîtrisés."),
-}
+TRAVEL_RULES = content.DATA['gameplay']['rules']['travel']
+TRAVEL_ENCOUNTER_CHANCE = TRAVEL_RULES['encounter_chance']
+STEPS = {key: (value['name'], value['description']) for key, value in content.DATA['gameplay']['story'].items()}
 
 
 def create_character(player):
@@ -109,7 +99,7 @@ def recover(character):
 def new_party(players):
     return {"step": "clearing", "kills": 0, "quest": "unaccepted", "mob": None,
             "characters": {p["id"]: pack(create_character(p)) for p in players},
-            "inventory": {p["id"]: {} for p in players}, "equipment": {},
+            "inventory": {p["id"]: {} for p in players}, "gold": {p["id"]: content.WORLD.get("starting_gold", 0) for p in players}, "equipment": {},
             "ready": {p["id"]: 0 for p in players}, "visited": ["clearing"], "seen_mobs": [], "position": "clearing", "journey": [], "mobs": [], "combat_step": "clearing", "transit": None}
 
 
@@ -157,14 +147,16 @@ def view(party, me, now):
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party)
     result["endgame"] = content.endgame_view(party)
-    result["hunt_objective"] = {key: content.HUNT.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
+    hunt = content.HUNT or {"id": None, "npc": None, "target": None, "zone": None, "map": None, "count": 0, "name": "", "description": ""}
+    result["hunt_objective"] = {key: hunt.get(key) for key in ("id", "npc", "target", "zone", "map", "count")}
     result["repop_seconds"] = content.WORLD["repop_seconds"]
-    result["hunt_goal"] = content.HUNT["count"]
-    result["hunt_name"] = content.HUNT["name"]
-    result["hunt_description"] = content.HUNT["description"]
+    result["hunt_goal"] = hunt["count"]
+    result["hunt_name"] = hunt["name"]
+    result["hunt_description"] = hunt["description"]
+    result["material_names"] = {key: item['name'] for key, item in content.gameplay()['materials'].items()}
     result["location"], result["objective"] = STEPS[party["step"]]
     if party["step"] == "hunt":
-        result["objective"] = f"{content.HUNT['description']} · {party['kills']}/{content.HUNT['count']} gobelin(s)."
+        result["objective"] = f"{hunt['description']} · {party['kills']}/{hunt['count']} gobelin(s)."
     result["location"] = world.point_name(party.get("position", world.CURRENT[party["step"]]))
     transit = party.get("transit")
     result["moving"] = bool(transit and not party["battle"] and transit.get('paused_at') is None)
@@ -174,6 +166,10 @@ def view(party, me, now):
     result.pop("fields", None)
     fields.reveal(party)
     result["field_interactions"] = fields.interactions(party, me)
+    merchant = next((site for site in result["field_interactions"] if site.get("merchant")), None)
+    if merchant is None:
+        merchant = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site.get("merchant") and site["id"] == party.get("position")), None)
+    result["merchant"] = {"id": merchant["id"], "name": merchant["name"]} if merchant else None
     result["battle"] = tactics.view(party, now, me)
     result["mobs"] = [deepcopy(m) for m in party["mobs"] if tactics.visible(party, me, m)]
     for enemy in result["mobs"]:
@@ -199,7 +195,7 @@ def view(party, me, now):
                                   "effects": status_view(party, player_id, data["effects"], now), "stunned": character.is_stunned(), "invocation_limit": character.invocations.get_limit(),
                                   "can_attack": actionable and not party["battle"]["players"][player_id].get("casting") if party["battle"] else False,
                                   "casting": tactics.cast_view(party, player_id, now),
-                                  "energies": data["energies"], "inventory": party["inventory"][player_id],
+                                  "energies": data["energies"], "inventory": party["inventory"][player_id], "gold": party["gold"][player_id], "market": economy.catalogue(),
                                   "equipment": " · ".join(f"{v['name']} +{v['level']}" for v in party["equipment"].get(player_id, {}).values()) or None,
                                   "gear": list(party["equipment"].get(player_id, {}).values()),
                                   "forge": forge.catalogue(party, player_id),
@@ -320,35 +316,23 @@ def execute_one(party, player_id, action, params, now, error, random, resolved=F
         return [content.claim_endgame(party, params["challenge"], error)], False
     if action == "talk":
         npc_id = params["npc"]
-        if npc_id != "mira":
-            if party["battle"] or party.get("transit") or party.get("position") != npc_id:
-                raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
-            npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
-            if npc is None:
-                raise error("invalid_npc", "PNJ introuvable.", 404)
-            return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, npc_id)], False
-        if party["battle"]:
-            raise error("invalid_npc", "PNJ inaccessible pendant le combat.", 409)
-        if party["step"] == "village":
-            missing = content.missing_requirements(party, content.HUNT)
-            if missing:
-                return [f"{content.HUNT['name']} inaccessible : {'; '.join(missing)}."], False
-            party.update(step="hunt", quest="active")
-            if party.get("field_mode"):
-                party["kills"] = min(content.HUNT["count"], party.get("zone_kills", {}).get("lisiere", 0))
-            messages.extend(content.quest_dialogue(party, "mira"))
-            messages.append(f"Mira : {content.HUNT['description']} · {content.HUNT['count']} gobelin(s).")
-        elif party["step"] == "hunt" and party["kills"] >= content.HUNT["count"]:
-            party.update(step="craft", quest="completed")
-            achievements.event(party, "quests", content.HUNT["id"])
-            for key, character in characters.items():
-                if content.HUNT["reward_xp"]:
-                    character.gain_exp(content.HUNT["reward_xp"])
-                party["characters"][key] = pack(character)
-            messages.append(f"Mira : merci ! Chaque aventurier reçoit {content.HUNT['reward_xp']} XP. La forge est désormais ouverte.")
-        else:
-            raise error("quest_incomplete", f"Mira attend {content.HUNT['count']} gobelin(s) vaincu(s).", 409)
-        return messages, False
+        if party["battle"] or party.get("transit") or party.get("position") != npc_id:
+            raise error("invalid_npc", "PNJ inaccessible depuis votre position actuelle.", 409)
+        npc = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == npc_id), None)
+        if npc is None:
+            raise error("invalid_npc", "PNJ introuvable.", 404)
+        states = content.quest_states(party)
+        before = {key: value.get("status") for key, value in states.items()}
+        messages.extend(content.quest_dialogue(party, npc_id))
+        tutorial_quests = [quest for quest in content.DATA["quests"] if quest.get("category") == "tutorial" and quest["npc"] == npc_id]
+        for quest in tutorial_quests:
+            previous = before.get(quest["id"])
+            current = states.get(quest["id"], {}).get("status")
+            if current == "active" and previous != "active" and party["step"] == "village":
+                party.update(step="hunt", quest="active")
+            elif current == "completed" and previous != "completed" and party["step"] == "hunt":
+                party.update(step="craft", quest="completed")
+        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *messages], False
     if action == "rest" and not party["battle"]:
         actor.hp.current_value = actor.hp.value
         party["characters"][player_id] = pack(actor)
@@ -368,6 +352,7 @@ def migrate(party, now):
     party.setdefault("skill_ready", {})
     party.setdefault("effect_at", {})
     forge.migrate(party)
+    economy.migrate(party)
     if "mobs" not in party or party["mob"] and not party["mobs"]:
         party["mobs"] = [{**party["mob"], "combat_id": "mob", "next_attack": now + 40}] if party["mob"] else []
     if party.get("rules_version", 0) < 8:
@@ -469,7 +454,7 @@ def continue_journey(party, now, random, messages):
         destination = party["journey"].pop(0)
         source = party["position"]
         duration = world.walking_seconds(source, destination)
-        first_segment = min(150, duration * (.15 + .7 * random()))
+        first_segment = min(TRAVEL_RULES['segment_max_seconds'], duration * (TRAVEL_RULES['segment_min_fraction'] + TRAVEL_RULES['segment_random_fraction'] * random()))
         dangerous = source in world.ROAD_POINTS or destination in world.ROAD_POINTS or world.hazard(destination)
         if destination in world.ROAD_POINTS:
             party["position"] = destination
@@ -547,7 +532,7 @@ def execute(party, player_id, action, params, now, error, random):
         party["field_mode"] = True
         party.setdefault("fields", {})
         return fields.enter(party, identifier, party["field_return_entry"] if party.get("field_return_from") == identifier and party.get("field_return_entry") else fields.arrival_point(identifier), now), False
-    if party.get("field_map") and action in ("talk", "craft", "upgrade"):
+    if party.get("field_map") and action in ("talk", "craft", "upgrade", "buy", "sell"):
         return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):
         if party["battle"] or party["mobs"] or party["mob"]:
@@ -584,13 +569,16 @@ def execute(party, player_id, action, params, now, error, random):
     position = party["position"]
     if party["transit"] and not party["battle"]:
         raise error("moving", "Attendez votre arrivée pour interagir.", 409)
+    if action in ("buy", "sell"):
+        if party["battle"] or party.get("transit") or party["position"] != params["npc"]:
+            raise error("wrong_location", "Rejoignez le marchand avant d’échanger.", 409)
+        merchant = next((site for definition in fields.MAPS.values() for site in definition.get("sites", []) if site["id"] == params["npc"]), None)
+        return economy.execute(party, player_id, merchant, action, params["item"], params["quantity"], error), False
     if action == "talk" and params["npc"] == "leon":
         merchant = npc(now)
         if party["battle"] or not merchant["location"] or world.zone_of(position) not in ("rosee", "brume") or merchant["location"] not in world.PLACES[world.zone_of(position)]["name"] or position in world.ROAD_POINTS:
             raise error("invalid_npc", "Léon n'est pas présent dans votre zone.", 409)
         return [f"Léon : je séjourne {content.WORLD['merchant_stay_hours']:g} heures dans chaque village. Ma boutique n'est pas encore ouverte."], False
-    if action == "craft" and party["quest"] != "completed":
-        raise error("forge_locked", "Forge verrouillée : terminez la quête de Mira et rendez-la au village.", 409)
     if action == "talk" and position != params["npc"] or action == "craft" and position != "forge":
         raise error("wrong_location", "Rejoignez ce point avant d'y effectuer une action.", 409)
     if action == "explore":

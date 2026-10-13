@@ -1,15 +1,18 @@
-from . import progression
+from . import progression, content
+
+
+RULES = content.gameplay()["rules"]["bleeding"]
 
 
 def apply(mob, player, force, now):
-    mob.setdefault("bleeding", []).append({"source": player, "damage": max(2, int(force * .05)), "next": now + 2 * progression.RATIO, "ticks": 3})
+    mob.setdefault("bleeding", []).append({"source": player, "damage": max(RULES["damage_min"], int(force * RULES["force_factor"])), "next": now + RULES["tick_real_seconds"] * progression.RATIO, "ticks": RULES["ticks"]})
 
 
 def status(mob, now):
     stacks = mob.get("bleeding", [])
     if not stacks:
         return []
-    remaining = max(stack["next"] + (stack["ticks"] - 1) * 2 * progression.RATIO for stack in stacks)
+    remaining = max(stack["next"] + (stack["ticks"] - 1) * RULES["tick_real_seconds"] * progression.RATIO for stack in stacks)
     return [{"group": "debuff", "type": "DOT", "name": f"Saignement ×{len(stacks)}", "value": len(stacks), "duration": 1, "remaining_seconds": max(0, remaining - now) / progression.RATIO, "synthetic": True}]
 
 
@@ -32,7 +35,7 @@ def advance(party, now, random):
                 enemy.lose_hp(unpack(source), stack["damage"])
                 mob["last_hit_by"] = stack["source"]
             stack["ticks"] -= 1
-            stack["next"] = now + 2 * progression.RATIO
+            stack["next"] = now + RULES["tick_real_seconds"] * progression.RATIO
         mob["bleeding"] = [stack for stack in mob.get("bleeding", []) if stack["ticks"] > 0]
         mob.update(pack(enemy))
         if enemy.hp.current_value < before:

@@ -53,18 +53,15 @@ function mountWorldMap(source, container = $("world-map")) {
   return retained;
 }
 function hudQuestTarget(adventure) {
-  const hunt = adventure.hunt_objective || {};
-  if (adventure.step === "complete") {
-    const contract = (adventure.endgame || []).find(item => item.status === "claimable") || (adventure.endgame || []).find(item => item.status === "active");
-    return contract ? {zone: contract.zone || adventure.world.current, point: null, label: `${contract.name} · ${contract.progress}/${contract.count}`} : {zone: adventure.world.current, point: null, label: "Endgame · aucun contrat actif"};
+  const quests = adventure.quest_journal || [];
+  const active = quests.find(quest => quest.status === "active");
+  if (active) {
+    const ready = active.progress >= active.count;
+    return {zone: ready ? adventure.world.current : active.zone || adventure.world.current, point: ready ? active.npc : active.map || null, label: ready ? `Rendre la quête : ${active.name}` : `${active.name} · ${active.progress}/${active.count}`};
   }
-  if (adventure.quest === "unaccepted") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: `Parler à ${hunt.npc || "Mira"}`};
-  if (adventure.quest === "active" && adventure.kills < (adventure.hunt_goal || hunt.count || 1)) return {zone: hunt.zone || adventure.world.current, point: hunt.map || null, label: `${adventure.hunt_name || "Quête"} · ${adventure.kills}/${adventure.hunt_goal || hunt.count || 1}`};
-  if (adventure.quest === "active") return {zone: adventure.world.places.some(place => place.id === "rosee") ? "rosee" : adventure.world.current, point: hunt.npc || "mira", label: "Rendre la quête"};
-  if (adventure.quest === "completed" && adventure.step === "craft") return {zone: "rosee", point: "forge", label: "Rejoindre la forge"};
-  if (adventure.step === "travel") return {zone: "brume", point: null, label: "Rejoindre Brume"};
-  const active = (adventure.quest_journal || []).find(quest => quest.status === "active");
-  return active ? {zone: active.zone || adventure.world.current, point: active.map || active.npc || null, label: `${active.name} · ${active.progress}/${active.count}`} : {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
+  const contract = (adventure.endgame || []).find(item => item.status === "claimable") || (adventure.endgame || []).find(item => item.status === "active");
+  if (contract) return {zone: contract.zone || adventure.world.current, point: null, label: `${contract.name} · ${contract.progress}/${contract.count}`};
+  return {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
 }
 function renderHudNavigation(adventure) {
   const svg = $("hud-minimap");
@@ -107,16 +104,30 @@ function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
 function renderWorld(adventure, me, mapContainer = $("world-map")) {
-  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. La forge propose six pièces indépendantes."]);
+  paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. Les recettes disponibles sont proposées à la forge."]);
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
-  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
+  paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${adventure.material_names?.[item] || item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
+  $("gold-balance").textContent = `Or : ${me.gold ?? 0}`;
+  $("market-panel").hidden = !adventure.merchant;
+  $("market-details").replaceChildren();
+  if (adventure.merchant) {
+    $("market-title").textContent = `Commerce · ${adventure.merchant.name}`;
+    for (const price of me.market || []) {
+      const row = document.createElement("article"); row.className = "codex-card";
+      const title = document.createElement("strong"); title.textContent = price.name; row.append(title);
+      const info = document.createElement("span"); info.textContent = ` · achat ${price.buy} or · vente ${price.sell} or`; row.append(info);
+      const buy = document.createElement("button"); buy.textContent = "Acheter 1"; buy.disabled = busy || (me.gold ?? 0) < price.buy; buy.onclick = () => tutorialCommand("buy", {npc: adventure.merchant.id, item: price.id, quantity: 1}); row.append(buy);
+      const sell = document.createElement("button"); sell.textContent = "Vendre 1"; sell.disabled = busy || (me.inventory[price.id] || 0) < 1; sell.onclick = () => tutorialCommand("sell", {npc: adventure.merchant.id, item: price.id, quantity: 1}); row.append(sell);
+      $("market-details").append(row);
+    }
+  }
   const world = adventure.world;
   const places = world.places;
   const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));
   function keepMapOpen() {
     currentView = "map";
     document.body.classList.add("hud-menu-open");
-    if (session?.tutorial) renderTutorial(session.tutorial);
+    if (session?.tutorial) renderGame(session.tutorial);
   }
   function choosePoint(point) {
     mapPoint = point.id;
@@ -316,11 +327,41 @@ function toggleGameMenu(open = $("game-menu-items").hidden) {
   $("game-menu-items").hidden = !open;
   $("game-menu-toggle").setAttribute("aria-expanded", String(open));
 }
+function openForge() {
+  if (!session?.tutorial) return;
+  renderGame(session.tutorial);
+  $("forge-feedback").textContent = "";
+  if (!$("craft-view").open) $("craft-view").showModal();
+}
 function showView(view) {
+  if (view === "craft") return tutorialCommand("talk", {npc: "forge"});
   toggleGameMenu(false);
-  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderTutorial(session.tutorial);return;}
+  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderGame(session.tutorial);return;}
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
-  if (session && session.tutorial) renderTutorial(session.tutorial);
+  if (session && session.tutorial) renderGame(session.tutorial);
+}
+
+function renderEndgame(adventure) {
+  const contracts = adventure.endgame || [];
+  $("endgame-contracts").hidden = !contracts.length;
+  if (!sectionChanged("endgame", [session.id, contracts, busy, Boolean(adventure.battle), Boolean(adventure.transit)])) return;
+  $("endgame-list").replaceChildren();
+  for (const contract of contracts) {
+    const row = document.createElement("article");
+    row.dataset.endgameId = contract.id;
+    const description = document.createElement("p");
+    const status = {locked: `Verrouillé · tutoriel terminé et niveau ${contract.min_level} requis`, active: "En cours", claimable: "Récompense disponible", completed: "Accompli"}[contract.status];
+    description.textContent = `${contract.name} · ${contract.progress}/${contract.count} · ${contract.reward_xp} XP · ${contract.repeatable ? "Répétable" : "Unique"} · ${status}`;
+    row.append(description);
+    if (contract.status === "claimable") {
+      const claim = document.createElement("button");
+      claim.textContent = "Recevoir la récompense";
+      claim.disabled = busy || Boolean(adventure.battle) || Boolean(adventure.transit);
+      claim.onclick = () => tutorialCommand("endgame_claim", {challenge: contract.id});
+      row.append(claim);
+    }
+    $("endgame-list").append(row);
+  }
 }

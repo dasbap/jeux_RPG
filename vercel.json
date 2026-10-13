@@ -1,5 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
-  "buildCommand": "python scripts/check_vercel.py"
+  "regions": [
+    "fra1"
+  ],
+  "buildCommand": "python scripts/check_vercel.py",
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{!(app.py|jeuxRPG|pyproject.toml|requirements.txt|constraints.txt|uv.lock),!(jeuxRPG)/**,**/.env*,**/*.{sqlite3,sqlite3-*,db,db-*,log,pem,key,pyc}}"
+    }
+  }
 }

@@ -1,5 +1,5 @@
 "use strict";
-for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderTutorial(session.tutorial); });
+for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderGame(session.tutorial); });
 
 const touchControls = globalThis.createRpgTouchControls?.({
   state: () => {
@@ -56,3 +56,5 @@ $("mob-list-toggle").addEventListener("click", () => {
   $("mob-list-toggle").setAttribute("aria-expanded", String(!collapsed));
   $("mob-list-toggle").setAttribute("aria-label", collapsed ? "Afficher la liste des monstres" : "Réduire la liste des monstres");
 });
+
+$("forge-close").addEventListener("click", () => $("craft-view").close());

@@ -114,6 +114,8 @@ def validate(maps):
                 raise ValueError(f"{key} : joueur lié invalide.")
             if not isinstance(site.get("dialogue", ""), str) or len(site.get("dialogue", "")) > 2000:
                 raise ValueError(f"{key} : dialogue invalide.")
+            if type(site.get("merchant", False)) is not bool:
+                raise ValueError(f"{key} : statut marchand invalide.")
     dungeon_rooms = {}
     for key, definition in maps.items():
         dungeon = definition.get("dungeon")

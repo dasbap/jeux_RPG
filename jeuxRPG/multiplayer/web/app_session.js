@@ -55,7 +55,7 @@ async function command(action, params = {}) {
   if (busy) return;
   stateEpoch++;
   busy = true;
-  if (session?.tutorial) renderTutorial(session.tutorial);
+  if (session?.tutorial) renderGame(session.tutorial);
   message("");
   $("attack").disabled = true;
   try {
@@ -87,6 +87,8 @@ async function command(action, params = {}) {
     } else if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
     if (!session) return;
     if (action === "talk") message(data.session.events?.at(-1)?.message || "Dialogue mis à jour dans le journal de quête.");
+    if (action === "talk" && params.npc === "forge") openForge();
+    if (["craft", "upgrade"].includes(action)) $("forge-feedback").textContent = data.session.events?.at(-1)?.message || "Équipement mis à jour.";
     sessionId = session.id;
     remember();
     if (data.invite) {
@@ -103,10 +105,11 @@ async function command(action, params = {}) {
     if (session.state !== "lobby") $("invitation").hidden = true;
   } catch (error) {
     message(error.message, true);
+    if (["craft", "upgrade"].includes(action) || action === "talk" && params.npc === "forge") $("forge-feedback").textContent = error.message;
   } finally {
     busy = false;
     if (lastPlayer && $("characters").hidden) render({player: lastPlayer});
-    else if (session?.tutorial) renderTutorial(session.tutorial);
+    else if (session?.tutorial) renderGame(session.tutorial);
     const pending = pendingBattleMove;
     pendingBattleMove = null;
     if (pending && session?.id === pending.sessionId && session.tutorial?.battle && session.tutorial.encounter_number === pending.encounter) {
@@ -152,13 +155,13 @@ $("restore-form").addEventListener("submit", async event => {
 for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
 $("game-menu-toggle").addEventListener("click", () => toggleGameMenu());
-document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
-$("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
+document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial || $("craft-view").open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
+$("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderGame(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
   focusedEnemy = session?.tutorial?.mobs?.some(mob => mob.combat_id === focusedMob && mob.stats.hp.current > 0) ? focusedMob : "";
-  if (session?.tutorial) renderTutorial(session.tutorial);
+  if (session?.tutorial) renderGame(session.tutorial);
 });
 $("chat-form").addEventListener("submit", async event => {
   event.preventDefault();

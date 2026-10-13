@@ -10,7 +10,7 @@ from jeuxRPG.multiplayer.service import GameService
 
 def table_summary(connection):
     result = {}
-    for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"):
+    for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND (name NOT LIKE 'sqlite_%' OR name='sqlite_sequence') ORDER BY name"):
         quoted = '"' + name.replace('"', '""') + '"'
         rows = sorted(repr(tuple(row)) for row in connection.execute('SELECT * FROM ' + quoted))
         result[name] = {'rows': len(rows), 'digest': hashlib.sha256('\n'.join(rows).encode()).hexdigest()}

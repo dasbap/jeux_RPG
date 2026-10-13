@@ -73,7 +73,8 @@ def test_one_kilometre_takes_ten_game_minutes_and_random_encounter_checks(game):
     assert game.state(player["token"])["session"]["tutorial"]["position"] != "brume"
     state = finish_trip(game, player)
     assert len(draws) >= 4
-    assert state["state"] == "finished"
+    assert state["state"] == "running"
+    assert state["tutorial"]["step"] == "complete"
     assert state["tutorial"]["position"] == "brume"
     assert world.walking_seconds("rosee", "rosee_brume") + world.walking_seconds("rosee_brume", "brume") == 600
 
@@ -87,7 +88,8 @@ def test_trip_finishes_at_distance_deadline_when_server_ticks_regularly(game):
     assert game.state(player["token"])["session"]["tutorial"]["moving"]
     game.clock.value = 600
     game.tick()
-    assert game.state(player["token"])["session"]["state"] == "finished"
+    assert game.state(player["token"])["session"]["state"] == "running"
+    assert game.state(player["token"])["session"]["tutorial"]["step"] == "complete"
 
 
 def test_three_goblins_share_one_combat_and_attack_without_player_action(game):
@@ -147,23 +149,17 @@ def test_combat_pauses_remaining_walk_and_blocks_local_interactions(game, monkey
     assert transit["remaining"] == remaining
 
 
-def test_locked_forge_explains_required_quest_on_map_and_in_api(game):
+def test_forge_is_available_without_any_quest_requirement(game):
     player, session = prepare(game, "hunt", "forge")
     state = game.state(player["token"])["session"]
     forge = next(p for place in state["tutorial"]["world"]["places"] for p in place["points"] if p["id"] == "forge")
-    assert "rendez-la" in forge["locked_reason"]
-    assert forge["can_interact"]
-    with pytest.raises(GameError) as error:
-        act(game, player, "craft", recipe="veste")
-    assert error.value.code == "forge_locked"
-    party = load_party(game, session["id"])
-    party.update(step="craft", quest="completed")
-    save_party(game, session["id"], party)
-    state = game.state(player["token"])["session"]
-    forge = next(p for place in state["tutorial"]["world"]["places"] for p in place["points"] if p["id"] == "forge")
     assert forge["locked_reason"] is None
+    assert forge["can_interact"]
     assert forge["action"] == "forge"
-
+    try:
+        act(game, player, "craft", recipe="veste")
+    except GameError as failure:
+        assert failure.code != "forge_locked"
 
 def test_merchant_stays_eight_hours_and_is_absent_during_crossing():
     assert tutorial.npc(0)["location"] == "Rosée"

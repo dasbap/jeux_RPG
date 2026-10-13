@@ -191,8 +191,9 @@ def test_mira_accepts_stale_revision_then_revalidates_changed_quest():
     assert accepted['status'] == 200
     assert accepted['body']['session']['tutorial']['quest'] == 'active'
     stale = talk()
-    assert stale['status'] == 409
-    assert stale['body']['error'] == 'quest_incomplete'
+    assert stale['status'] == 200
+    assert stale['body']['session']['tutorial']['quest'] == 'active'
+    assert stale['body']['session']['tutorial']['quest_journal'] == accepted['body']['session']['tutorial']['quest_journal']
     store.close()
 
 
@@ -313,6 +314,40 @@ def test_http_compatibility_reads_same_memory():
         assert state.status_code == 200
         assert state.headers['x-rpg-runtime'] == 'memory'
         assert client.get('/api/admin/accounts').status_code == 401
+
+
+@pytest.mark.parametrize('public', ['', 'https://game.example.test'])
+def test_new_deployment_validates_origin_before_relay_to_old_owner(public):
+    common = {**ENV, 'VERCEL': '1', 'VERCEL_PROJECT_PRODUCTION_URL': 'game.vercel.app', 'RPG_PUBLIC_ORIGIN': public}
+    old = {**common, 'VERCEL_URL': 'old.vercel.app'}
+    new = {**common, 'VERCEL_URL': 'new.vercel.app'}
+    store = RuntimeStore(old)
+    coordinator = Coordinator(new, store=store)
+    received = []
+    original = coordinator.rpc
+
+    async def record(item):
+        received.append(item)
+        return await original(item)
+
+    coordinator.rpc = record
+    with TestClient(create_app(new, coordinator), base_url='https://new.vercel.app') as client:
+        accepted = client.get('/api/admin/accounts', headers={'origin': 'https://new.vercel.app'})
+        assert accepted.status_code == 401
+        assert accepted.json()['error'] == 'unauthorized'
+        canonical = 'game.example.test' if public else 'game.vercel.app'
+        assert received[0]['host'] == canonical
+        assert received[0]['headers']['origin'] == 'https://' + canonical
+        for headers, error in [
+            ({'host': 'evil.test', 'origin': 'https://evil.test'}, 'invalid_host'),
+            ({'origin': 'https://evil.test'}, 'invalid_origin'),
+            ({'origin': 'https://new.vercel.app', 'sec-fetch-site': 'cross-site'}, 'invalid_origin'),
+            ({'host': 'evil.test', 'x-forwarded-host': 'new.vercel.app'}, 'invalid_host'),
+        ]:
+            rejected = client.get('/api/admin/accounts', headers=headers)
+            assert rejected.status_code == 403
+            assert rejected.json()['error'] == error
+        assert len(received) == 1
 
 
 @pytest.mark.skipif(not os.environ.get('RPG_TEST_REDIS_URL'), reason='Redis réel disponible dans le workflow de publication')

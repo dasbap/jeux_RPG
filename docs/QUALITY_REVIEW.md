@@ -1,5 +1,7 @@
 # Révision de qualité
 
+> Rapport historique : les états de protection et de publication sont remplacés par [le suivi courant](audit-20261011-followup/REPORT.md). Les mesures ci-dessous gardent leur date et leur périmètre.
+
 Date : 8 octobre 2026. Intégration des PR #16 et #17 sur `master`, version `0.11.0a25`. Mise à jour du 9 octobre : le workflow de publication cible `prod` ; `master` est la branche principale. Le commit servi par le domaine public reste à vérifier dans Vercel.
 
 Cette révision corrige le logiciel existant. Elle conserve les cartes, les cinq classes jouables, les quêtes, les recettes et les règles de combat. Elle ne crée aucune fonctionnalité de jeu.

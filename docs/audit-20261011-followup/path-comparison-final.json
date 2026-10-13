@@ -1,0 +1,16 @@
+{
+  "baseline": "0e4f42e57e80b4097da631d66f9c30756e28212f",
+  "cases": 298,
+  "identical": true,
+  "cold_cpu_seconds": [
+    0.7884922569999999,
+    0.7198171430000002
+  ],
+  "traced_peak_bytes": [
+    377936,
+    422840
+  ],
+  "cpu_budget_ratio": 1.25,
+  "cpu_budget_met": true,
+  "cpu_change_percent": -8.71
+}
