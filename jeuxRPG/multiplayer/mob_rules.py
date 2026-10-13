@@ -159,6 +159,10 @@ def validate_mobs(mobs, classes=None, xp_classes=None):
         if raw.get("parent") is not None and not isinstance(raw["parent"], str):
             raise ValueError("Parent invalide.")
         item = resolve(mobs, identifier)
+        if "level" in item and (
+            type(item["level"]) is not int or not 1 <= item["level"] <= 100
+        ):
+            raise ValueError("Niveau de départ du mob : entier de 1 à 100 requis.")
         if (
             item.get("class_name") not in classes
             or not isinstance(item.get("name"), str)

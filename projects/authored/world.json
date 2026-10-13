@@ -20638,7 +20638,7 @@
     "zone_id": "zone_lisiere",
     "spawners": [
       {
-        "mob_id": "goblin",
+        "mob_id": "gobelin_boss",
         "level": null,
         "count": 1,
         "name": "Chef Gobelin",
@@ -20702,10 +20702,10 @@
         ]
       },
       {
-        "mob_id": "goblin",
+        "mob_id": "garde_gobelin",
         "level": 2,
         "count": 1,
-        "name": "garde gobelin",
+        "name": "Garde gobelin",
         "position": [
           25,
           16
@@ -20822,10 +20822,10 @@
         ]
       },
       {
-        "mob_id": "goblin",
+        "mob_id": "garde_gobelin",
         "level": 2,
         "count": 1,
-        "name": "garde goblin",
+        "name": "Garde gobelin",
         "position": [
           25,
           24
@@ -20846,10 +20846,10 @@
         ]
       },
       {
-        "mob_id": "goblin",
+        "mob_id": "garde_gobelin",
         "level": 2,
         "count": 1,
-        "name": "garde goblin",
+        "name": "Garde gobelin",
         "position": [
           34,
           20
@@ -20870,10 +20870,10 @@
         ]
       },
       {
-        "mob_id": "goblin",
+        "mob_id": "garde_gobelin",
         "level": 2,
         "count": 1,
-        "name": "garde goblin",
+        "name": "Garde gobelin",
         "position": [
           16,
           20
