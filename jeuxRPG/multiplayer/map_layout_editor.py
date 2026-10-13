@@ -159,6 +159,7 @@ class LayoutEditor:
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
         ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(side="left", padx=4)
         ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(side="left", padx=4)
+        ttk.Button(bar, text="Propriétés zone", command=self.zone_properties).pack(side="left", padx=4)
         ttk.Button(bar, text="Modifier le nom", command=self.rename).pack(
             side="left", padx=4
         )
@@ -359,6 +360,30 @@ class LayoutEditor:
         self.zone_choice["values"] = list(layout_places(self.editor.maps))
         self.zone.set(key)
         self.mode.set("Carte générale")
+        self.draw()
+
+    def zone_properties(self):
+        key = self.selected if self.mode.get() == "Carte générale" else self.zone.get()
+        zones = self.editor.maps["clearing"].get("logical_zones", {})
+        if key not in zones:
+            return
+        zone = zones[key]
+        values = self.editor.form("Propriétés de la zone", {
+            "name": zone["name"],
+            "level": zone.get("level", 1),
+            "description": zone.get("description", ""),
+        })
+        if not values:
+            return
+        try:
+            level = int(values["level"])
+            if not 1 <= level <= 100 or not 1 <= len(values["name"].strip()) <= 100:
+                raise ValueError()
+        except ValueError:
+            self.editor.messages.showerror("Zone", "Nom ou niveau invalide.")
+            return
+        self.editor.remember()
+        zone.update(name=values["name"].strip(), level=level, description=values["description"].strip())
         self.draw()
 
     def delete_zone(self):
