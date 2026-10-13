@@ -21,6 +21,7 @@ def test_mapless_zone_can_contain_multiple_maps_and_be_saved(tmp_path):
 
     assert zone_of(maps, "cave_1") == "grotte_oublies"
     assert zone_of(maps, "cave_2") == "grotte_oublies"
+    maps["cave_1"].pop("level", None)
     assert map_level(maps, "cave_1") == 5
 
     places = layout_places(maps)
