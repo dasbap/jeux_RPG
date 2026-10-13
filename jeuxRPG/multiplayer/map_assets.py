@@ -308,6 +308,23 @@ def validate(maps):
     ):
         raise ValueError("Les cartes du tutoriel doivent être conservées.")
     maps = deepcopy(maps)
+    logical_zones = maps.get("clearing", {}).get("logical_zones", {})
+    if not isinstance(logical_zones, dict) or len(logical_zones) > 100:
+        raise ValueError("Zones logiques invalides (100 maximum).")
+    from .map_layout_editor import validate_layout
+    for zone_id, zone in logical_zones.items():
+        if (
+            not isinstance(zone_id, str)
+            or not re.fullmatch(r"[a-z0-9_]{1,64}", zone_id)
+            or zone_id in maps
+            or not isinstance(zone, dict)
+            or not isinstance(zone.get("name"), str)
+            or not 1 <= len(zone["name"].strip()) <= 100
+            or type(zone.get("level", 1)) is not int
+            or not 1 <= zone.get("level", 1) <= 100
+        ):
+            raise ValueError("Définition de zone logique invalide.")
+        validate_layout(zone.get("world_view", {}))
     site_owners = set()
     owners = set(maps)
     for definition in maps.values():
