@@ -32,3 +32,13 @@ jobs:
           path: |
             dist/*
             dependency-audit.json
+  requirements-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python -m venv venv
+      - run: .\venv\Scripts\python.exe -m pip install -c constraints.txt -r requirements.txt
+      - run: .\venv\Scripts\python.exe main.py --help
