@@ -71,7 +71,7 @@ class MapEditor:
         self.zone_choice = ttk.Combobox(
             options,
             textvariable=self.zone_filter,
-            values=["", *sorted({zone_of(self.maps, key) for key in self.maps})],
+            values=["", *sorted(self.maps.get("clearing", {}).get("logical_zones", {}))],
             width=16,
         )
         self.zone_choice.pack(side="left", padx=4)
@@ -256,7 +256,7 @@ class MapEditor:
         }
         if hasattr(self, "zone_choice"):
             self.zone_choice.configure(
-                values=["", *sorted({zone_of(self.maps, key) for key in self.maps})]
+                values=["", *sorted(self.maps.get("clearing", {}).get("logical_zones", {}))]
             )
         self.map_labels = labels
         self.choice.configure(values=list(labels))
@@ -986,7 +986,7 @@ class MapEditor:
                 if key == "object_choice"
                 else ["est", "ouest", "nord", "sud"]
                 if key == "direction"
-                else sorted({zone_of(self.maps, key) for key in self.maps})
+                else sorted(self.maps.get("clearing", {}).get("logical_zones", {}))
                 if key in ("from_zone", "to_zone")
                 else ["", *self.maps, *self.maps.get("clearing", {}).get("logical_zones", {})]
                 if key == "zone_id"
