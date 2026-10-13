@@ -211,6 +211,8 @@ def references(project, section, key):
             for value in project.content["achievements"]
             if value["condition"] == "craft" and value.get("target") == key
         )
+    if section == "recipes":
+        result.extend("contrats/" + value["id"] for value in project.content.get("endgame", []) if value["kind"] == "craft" and value["target"] == key)
     if section == "xp_classes":
         result.extend(
             "mobs/" + name

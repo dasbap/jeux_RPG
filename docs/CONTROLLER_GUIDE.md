@@ -6,7 +6,7 @@ Depuis le dépôt :
 
 ```powershell
 python -m pip install --upgrade .
-python controller.py
+python -m jeuxRPG.multiplayer.controller
 ```
 
 Après installation, le raccourci fonctionne aussi :
@@ -18,7 +18,7 @@ jeux-rpg-controller
 Le contrôleur utilise le dossier `maps` du répertoire courant. Pour un projet séparé :
 
 ```powershell
-python controller.py D:\RPG\mon_monde\maps
+python -m jeuxRPG.multiplayer.controller D:\RPG\mon_monde\maps
 ```
 
 Un dossier neuf est initialisé avec les catalogues fournis. Tkinter doit être présent dans Python ; il est normalement inclus avec l’installation Windows.
@@ -263,3 +263,14 @@ Le contrôleur couvre les contenus et les paramètres exposés du moteur. Les é
 L’onglet **Contrats** définit les objectifs de chasse ou de fabrication, leur niveau minimum, leur lieu éventuel et la récompense XP par personnage. Un contrat peut être unique ou répétable. Les contrats se débloquent après l’arrivée finale à Brume ; l’aventure reste alors active.
 
 Le journal de quête affiche la progression et le bouton **Recevoir la récompense**. La validation exige un objectif complet et un personnage hors combat et hors trajet. Un contrat répétable repart à zéro après validation ; un contrat unique reste accompli. Les récompenses sont traitées côté serveur et un identifiant de requête rejoué ne les attribue pas deux fois. Les progrès et validations sont sauvegardés, y compris après renommage du contrat dans le Controller.
+
+
+## Fiabilité du projet et lancement du moteur
+
+Le Controller et le moteur utilisent les catalogues du même dossier `maps` du répertoire courant lorsqu’il existe. Pour un dossier distinct, définissez `RPG_MAPS_FILE` vers ce dossier complet avant de démarrer le serveur. Les surcharges explicites `RPG_CONTENT_FILE` et `RPG_CLASSES_FILE` restent possibles ; elles doivent correspondre au projet choisi. Le redémarrage reste nécessaire pour appliquer les modifications.
+
+L’ouverture valide les références et la jouabilité. Les identifiants de PNJ doivent être uniques dans tout le projet. Une carte utilisée comme apparition initiale peut être renommée : sa règle de départ est mise à jour avec les autres références.
+
+Une sauvegarde contrôle les tailles compatibles avec la relecture, détecte les modifications externes et verrouille le projet pendant l’écriture. Si une autre instance a enregistré, rechargez le projet avant de continuer. Les fichiers précédents sont conservés pendant le remplacement ; une écriture interrompue est restaurée à la prochaine ouverture. Cette récupération ne remplace pas une sauvegarde externe du dossier, notamment en cas de défaillance du disque.
+
+Dans le Builder intégré, **Enregistrer sous** exporte une copie complète dans le dossier choisi. Le projet original reste ouvert et ses modifications en mémoire restent à enregistrer. Les durées des trajets utilisent la vitesse et le ratio réglés dans le projet. Les formulaires longs disposent d’un défilement et de boutons de validation fixes.

@@ -153,24 +153,16 @@ def validate_content(data):
 
 
 def content_path():
-    configured = os.environ.get('RPG_CONTENT_FILE')
-    if configured:
-        return Path(configured)
-    maps = os.environ.get('RPG_MAPS_FILE')
-    if maps:
-        source = Path(maps)
-        sibling = (source if source.is_dir() else source.parent) / 'content.json'
-        if sibling.exists():
-            return sibling
-    local = Path.cwd() / 'maps' / 'content.json'
-    return local if local.exists() else Path(__file__).resolve().parents[1] / 'maps' / 'content.json'
+    from jeuxRPG.catalog_paths import catalog_path
+    return catalog_path('content.json')
 
 
 def load_content(path=None):
     path = Path(path) if path else content_path()
     if not path.exists():
         return validate_content(DEFAULTS)
-    if path.stat().st_size > 1024*1024:
+    from jeuxRPG.catalog_paths import catalog_limit
+    if path.stat().st_size > catalog_limit('content.json'):
         raise ValueError('Catalogue de contenu trop volumineux.')
     data = json.loads(path.read_text(encoding='utf-8'))
     result = data.get('content',data)

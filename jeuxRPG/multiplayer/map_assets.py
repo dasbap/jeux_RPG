@@ -13,6 +13,7 @@ def validate(maps):
     if not {"clearing", "rosee", "lisiere", "hunt", "forest", "cave_1", "brume"} <= maps.keys():
         raise ValueError("Les cartes du tutoriel doivent être conservées.")
     maps = deepcopy(maps)
+    site_owners = set()
     owners = set(maps)
     for definition in maps.values():
         history = definition.get('previous_ids',[]) if isinstance(definition,dict) else []
@@ -108,6 +109,9 @@ def validate(maps):
         if any(not isinstance(identifier, str) or not re.fullmatch(r"[a-zA-Z0-9_:-]{1,80}", identifier) for identifier in ids) or len(set(ids)) != len(ids):
             raise ValueError(f"{key} : identifiants PNJ invalides ou dupliqués.")
         for site in definition.get("sites", []):
+            if site["id"] in site_owners:
+                raise ValueError(f"{key} : identifiant PNJ déjà utilisé sur une autre carte : {site['id']}.")
+            site_owners.add(site["id"])
             if not isinstance(site.get("id"), str) or not isinstance(site.get("name"), str) or len(site["name"]) > 100:
                 raise ValueError(f"{key} : PNJ invalide.")
             if site.get("owner") is not None and not isinstance(site["owner"], str):
@@ -185,7 +189,8 @@ def load(path):
     path = Path(path)
     if path.is_dir():
         return validate(read_catalog("fields", path))
-    if path.stat().st_size > 8 * 1024 * 1024:
+    from jeuxRPG.catalog_paths import MAP_LIMIT
+    if path.stat().st_size > MAP_LIMIT:
         raise ValueError("Fichier de cartes trop volumineux.")
     return validate(json.loads(path.read_text(encoding="utf-8")))
 
@@ -199,7 +204,11 @@ def save(path, maps):
 
 
 def read_catalog(kind, directory=None):
-    directory = Path(directory) if directory else Path(__file__).resolve().parents[1] / "maps"
+    from jeuxRPG.catalog_paths import catalog_path, project_directory
+    if directory is None:
+        name = {"fields": "world.json", "mobs": "mobs.json", "encounters": "encounters.json"}.get(kind)
+        directory = catalog_path(name).parent if name else project_directory()
+    directory = Path(directory)
     result = {}
     for path in sorted(directory.glob("*.json")):
         if path.stat().st_size > 8 * 1024 * 1024:

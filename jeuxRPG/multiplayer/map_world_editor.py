@@ -45,6 +45,8 @@ class WorldEditor:
         from tkinter import ttk, messagebox
         from . import world
         self.editor, self.tk, self.messagebox = editor, tk, editor.messages
+        from .content import gameplay
+        self.rules = getattr(editor, 'gameplay', gameplay())['rules']
         from .editor_ui import EditorPanel
         self.panel = EditorPanel(editor.root)
         self.window = self.panel.content
@@ -52,7 +54,7 @@ class WorldEditor:
         self.panel.geometry('850x580')
         self.streets, self.routes = world_metadata(editor.maps, world.VILLAGE_STREETS, world.ROUTES)
         self.zone = tk.StringVar(value=editor.selected.get())
-        ttk.Label(self.window, text='Les chemins rapides utilisent 6 km/h et le ratio 1:3. Les rues définissent la topologie de la carte générale ; le décor se peint séparément.').pack(fill='x', padx=8, pady=8)
+        ttk.Label(self.window, text='Les durées utilisent la vitesse et le ratio du projet courant. Les rues définissent la topologie de la carte générale ; le décor se peint séparément.').pack(fill='x', padx=8, pady=8)
         self.roads = tk.Listbox(self.window, height=6)
         self.roads.pack(fill='x', padx=8)
         bar = ttk.Frame(self.window)
@@ -73,8 +75,8 @@ class WorldEditor:
     def refresh(self):
         self.roads.delete(0,'end')
         for route in self.routes:
-            seconds = route['distance_km']/6*3600
-            self.roads.insert('end',f"{route['name']} [{route['id']}] : {route['from']} → {route['to']} · {route['distance_km']:g} km · {seconds/60:g} min jeu / {seconds/3:g} s réelles")
+            seconds = route['distance_km']/self.rules['movement']['walking_kmh']*3600
+            self.roads.insert('end',f"{route['name']} [{route['id']}] : {route['from']} → {route['to']} · {route['distance_km']:g} km · {seconds/60:g} min jeu / {seconds/self.rules['time']['game_ratio']:g} s réelles")
         self.list.delete(0,'end')
         for street in self.streets.get(self.zone.get(),{}).get('streets',[]):
             self.list.insert('end',f"{street['name']} [{street['id']}] : {', '.join(street['buildings'])}")
@@ -85,14 +87,14 @@ class WorldEditor:
             return
         index = selection[0] if selection else None
         old = {} if new else self.routes[index]
-        minutes = old.get('distance_km',.1)*10
+        minutes = old.get('distance_km',.1)/self.rules['movement']['walking_kmh']*60
         values = self.editor.form('Chemin rapide',{'route_id':old.get('id',''), 'name':old.get('name','Chemin'), 'from_zone':old.get('from','clearing'), 'to_zone':old.get('to','rosee'), 'distance_km':old.get('distance_km',.1), 'travel_minutes':minutes})
         if not values:
             return
         try:
             distance = float(values['distance_km'])
             if float(values['travel_minutes']) != minutes:
-                distance = float(values['travel_minutes'])/10
+                distance = float(values['travel_minutes'])/60*self.rules['movement']['walking_kmh']
             item = {**old, 'id':values['route_id'], 'name':values['name'], 'from':values['from_zone'], 'to':values['to_zone'], 'distance_km':distance}
             routes = deepcopy(self.routes)
             if new:
