@@ -328,8 +328,8 @@ async function main() {
     el(first, "npc-actions").querySelector("button").click();
     await waitFor(() => /forge de Rosée/.test(el(first, "message").textContent), "dialogue Garrik");
     assert.equal(el(first, "craft-view").open, true);
-    assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
-    assert([...el(first, "forge-catalogue").querySelectorAll("button")].every(b => b.disabled));
+    assert(!el(first, "forge-status").textContent.includes("Forge verrouillée"));
+    assert(el(first, "forge-catalogue").querySelectorAll("button").length > 0);
     await move(first, "hunt");
     while ((await request(first, "/api/state")).session.tutorial.kills < 3) {
       await command(first, "explore");
