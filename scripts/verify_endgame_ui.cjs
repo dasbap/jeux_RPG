@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {JSDOM} = require('jsdom');
+const {JSDOM} = require('../.ui-test/node_modules/jsdom');
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/index.html'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/app_world.js'), 'utf8');

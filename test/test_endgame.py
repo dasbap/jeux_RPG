@@ -1,12 +1,14 @@
 from copy import deepcopy
 import json
+from pathlib import Path
+import shutil
 import uuid
 
 import pytest
 
 from jeuxRPG.multiplayer import content, forge, realtime_store, state_bundles, tutorial
 from jeuxRPG.multiplayer.service import GameError, GameService
-from test.test_controller import project
+from jeuxRPG.multiplayer.controller_project import Project
 
 
 def definition(**values):
@@ -103,7 +105,9 @@ def test_claim_receipt_and_progress_survive_restart(tmp_path, contracts):
 
 
 def test_controller_migration_rename_and_invalid_reference(tmp_path, monkeypatch):
-    p = project(tmp_path)
+    directory = tmp_path / 'maps'
+    shutil.copytree(Path(__file__).parent / 'fixtures' / 'reference_world', directory)
+    p = Project(directory)
     assert p.content['endgame'] == content.DEFAULTS['endgame']
     p.rename('endgame', 'veteran_hunt', 'renamed_hunt')
     p.save()
