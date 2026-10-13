@@ -319,6 +319,8 @@ def _validate_objectives(data):
                 raise ValueError("Historique des identifiants invalide.")
             if section == "quests" and item.get("category", "standard") not in (
                 "standard",
+                "main",
+                "side",
                 "tutorial",
             ):
                 raise ValueError("Catégorie de quête invalide.")
