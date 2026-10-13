@@ -302,6 +302,7 @@ def record(party):
 
 def _known_places(visited, step):
     known = set(visited)
+    known.update(WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}))
     if step != "clearing" and step != "first_fight":
         known.add("rosee")
     if "rosee" in visited:
