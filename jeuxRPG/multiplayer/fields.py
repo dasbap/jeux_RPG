@@ -214,20 +214,17 @@ def interactions(party, player):
 
 
 def execute(party, player, action, params, now, error, random):
-    from . import tutorial, forge
+    from . import tutorial, forge, economy
     nearby = interactions(party, player)
-    site = params.get("npc") if action == "talk" else "forge"
+    site = params.get("npc") if action in ("talk", "buy", "sell") else "forge"
     if site not in {item["id"] for item in nearby}:
         raise error("wrong_location", "Approchez-vous du lieu pour interagir.", 409)
     unit = party["battle"]["players"][player]
     if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
         raise error("in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409)
-    if action == "talk" and site != "mira":
-        npc = next(item for item in nearby if item["id"] == site)
-        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour, voyageur.'}", *content.quest_dialogue(party, site)], False
-    if action == 'talk' and site == 'mira' and (party['step'] not in ('village', 'hunt') or party['step'] == 'hunt' and party['kills'] < content.HUNT['count'] and any(q['npc'] == 'mira' and not content.is_hunt(q) for q in content.DATA['quests'])):
-        npc = next(item for item in nearby if item['id'] == site)
-        return [f"{npc['name']} : {npc.get('dialogue') or 'Bonjour !'}", *content.quest_dialogue(party, site)], False
+    if action in ("buy", "sell"):
+        merchant = next(item for item in nearby if item["id"] == site)
+        return economy.execute(party, player, merchant, action, params["item"], params["quantity"], error), False
     battle, position = party["battle"], party["position"]
     party.update(battle=None, position=site)
     try:

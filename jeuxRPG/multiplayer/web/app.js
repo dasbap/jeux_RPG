@@ -107,7 +107,7 @@ function render(state) {
   $("new-room").hidden = session.state !== "finished";
   const winner = session.players.find(player => player.id === session.winner);
   $("result").textContent = session.state === "finished" ? (winner ? `${winner.name} remporte le duel.` : "Session terminée.") : "";
-  if (session.tutorial) renderTutorial(session.tutorial);
+  if (session.tutorial) renderGame(session.tutorial);
   $("events").replaceChildren();
   for (const event of session.events) {
     const li = document.createElement("li");

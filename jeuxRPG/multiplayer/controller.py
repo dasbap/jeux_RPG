@@ -55,7 +55,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')] + GAMEPLAY_SECTIONS:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('economy', 'Économie'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')] + GAMEPLAY_SECTIONS:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
             search = ttk.Frame(page)
@@ -84,9 +84,9 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             for label, action in [('Modifier', lambda s=section:self.edit(s))] + ([] if section in {'world', *GAMEPLAY_FIXED} else [('Ajouter', lambda s=section:self.edit(s, True)), ('Supprimer', lambda s=section:self.delete(s))]):
                 ttk.Button(actions, text=label, command=action).pack(side='left', padx=4)
             ttk.Button(actions, text='Aperçu / références', command=lambda s=section:self.inspect(s)).pack(side='left', padx=4)
-            if section not in ('world','maps','npcs') and section not in GAMEPLAY_FIXED:
+            if section not in ('world','maps','npcs','economy') and section not in GAMEPLAY_FIXED:
                 ttk.Button(actions, text='Dupliquer', command=lambda s=section:self.duplicate(s)).pack(side='left', padx=4)
-            if section != 'world' and section not in dict(GAMEPLAY_SECTIONS):
+            if section not in ('world','economy') and section not in dict(GAMEPLAY_SECTIONS):
                 ttk.Button(actions, text='Renommer identifiant', command=lambda s=section:self.rename(s)).pack(side='left', padx=4)
             if section == 'mobs':
                 ttk.Button(actions, text='Créer une sous-espèce', command=self.subspecies).pack(side='left', padx=4)
@@ -236,7 +236,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
             return key[:-7]+' · croissance par niveau'
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie', 'pvp_enabled':'Activer le PvP optionnel'}.get(key, key)
+        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'starting_gold':'Or initial', 'trade_max_quantity':'Quantité max par échange', 'trade_max_gold':'Or max par échange', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie', 'buy':'Prix d’achat au marchand', 'sell':'Prix de vente au marchand', 'merchant':'Marchand', 'pvp_enabled':'Activer le PvP optionnel'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -399,6 +399,18 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                     values.pop('parent')
                 history = p.mobs.get(identifier,{}).get('previous_ids',[]) if not new else []
                 p.mobs[identifier] = {**({'previous_ids':history} if history else {}), **values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities, 'phases':phases}
+            elif section == 'economy':
+                old = {'id':'', 'name':'Nouveau matériau', 'buy':10, 'sell':5} if new else next(item for item in p.content['economy'] if item['id'] == key)
+                values = self.form('Prix économique', old)
+                if not values:
+                    return
+                if values['sell'] > values['buy']:
+                    raise ValueError('Le prix de vente joueur ne peut pas dépasser le prix d’achat.')
+                if not new and values['id'] != key:
+                    raise ValueError('Supprimez puis recréez le matériau pour changer son identifiant.')
+                if new and any(item['id'] == values['id'] for item in p.content['economy']):
+                    raise ValueError('Identifiant déjà utilisé.')
+                p.content['economy'] = [item for item in p.content['economy'] if item['id'] != values['id']] + [values]
             elif section in ('quests', 'achievements'):
                 default = {'id':'', 'name':'Nouvelle quête', 'npc':'mira', 'kind':'kill', 'target':'goblin', 'zone':'', 'map':'', 'count':1, 'reward_xp':50, 'description':'Objectif de quête'} if section == 'quests' else {'id':'', 'name':'Nouveau succès', 'condition':'kills', 'threshold':1, 'title':'Nouveau titre', 'target':'', 'zone':'', 'map':''}
                 old = default if new else next(item for item in p.content[section] if item['id'] == key)
@@ -423,7 +435,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                     p.content[section] = [item for item in p.content[section] if item['id'] != (values['id'] if not new else None)] + [values]
             else:
                 map_id, index = key.rsplit(':',1) if key else (next(iter(p.maps)), None)
-                old = {'id':'', 'name':'Nouveau PNJ', 'dialogue':'Bonjour !', 'owner':''} if new else {k:v for k,v in p.maps[map_id]['sites'][int(index)].items() if k != 'position'}
+                old = {'id':'', 'name':'Nouveau PNJ', 'dialogue':'Bonjour !', 'owner':'', 'merchant':False} if new else {k:v for k,v in p.maps[map_id]['sites'][int(index)].items() if k != 'position'}
                 values = self.form('PNJ', {'map_id':map_id, **old}, {'map_id':list(p.maps)})
                 if not values:
                     return

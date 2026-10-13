@@ -19,7 +19,7 @@ const fixture=fixtures.combat;
    await page.evaluate(()=>{window.fetch=()=>new Promise(()=>{});window.setInterval=()=>0;});
    for(const file of ['map_artwork.js','mobile_controls.js',...require('./client_source.cjs').files]) await page.addScriptTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web',file),'utf8')});
    await page.evaluate(adventure=>{
-    window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderTutorial(session.tutorial);`);
+    window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderGame(session.tutorial);`);
    },fixture);
    await page.locator('#zone-banner').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished));});
    await page.addScriptTag({content:require('axe-core').source});
@@ -57,7 +57,7 @@ const fixture=fixtures.combat;
    assert.equal(await page.locator('#field-left,#field-up,#field-down,#field-right').count(),0,'Flèches de caméra retirées');
    await page.locator('#mob-list-toggle').click();
    assert(!(await page.locator('#combat-enemy-panel').isVisible()),'Liste entièrement repliable');
-   await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+   await page.evaluate(()=>window.eval('renderGame(session.tutorial);'));
    assert(!(await page.locator('#combat-enemy-panel').isVisible()),'Liste reste repliée après mise à jour');
    await page.locator('#mob-list-toggle').click();
    assert(await page.locator('#combat-enemy-panel').isVisible(),'Liste réouvrable hors menu');
@@ -68,14 +68,14 @@ const fixture=fixtures.combat;
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:dragX,y:dragY}]});
     await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:dragX-60,y:dragY+30}]});
     assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Caméra tactile libre pendant le glissement');
-    await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+    await page.evaluate(()=>window.eval('renderGame(session.tutorial);'));
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     await cdp.detach();
    }else{
     await page.mouse.move(dragX,dragY);await page.mouse.down();
     await page.mouse.move(dragX-60,dragY+30,{steps:4});
     assert.equal(await page.evaluate(()=>window.eval('fieldCamera.follow')),false,'Caméra libre pendant le clic maintenu');
-    await page.evaluate(()=>window.eval('renderTutorial(session.tutorial);'));
+    await page.evaluate(()=>window.eval('renderGame(session.tutorial);'));
     await page.mouse.up();
    }
    await page.waitForTimeout(1000);
@@ -115,7 +115,7 @@ const fixture=fixtures.combat;
    }
    await page.evaluate(()=>{document.getElementById('message').textContent='';document.querySelectorAll('[data-layout-fixture]').forEach(node=>node.remove());});
    await page.evaluate(()=>{
-    window.eval("const arcActor=session.tutorial.players.find(p=>p.id===session.me);const arcSkill=arcActor.skills.find(s=>skillCategory(s)==='offense');if(arcSkill){arcActor.skills.push({...arcSkill,name:'Arc test 2'},{...arcSkill,name:'Arc test 3'});}renderTutorial(session.tutorial);");
+    window.eval("const arcActor=session.tutorial.players.find(p=>p.id===session.me);const arcSkill=arcActor.skills.find(s=>skillCategory(s)==='offense');if(arcSkill){arcActor.skills.push({...arcSkill,name:'Arc test 2'},{...arcSkill,name:'Arc test 3'});}renderGame(session.tutorial);");
    });
    await page.mouse.move(1,1);
    await page.locator('#skill-offense button').evaluate(node=>node.hudLongAction());
@@ -128,7 +128,7 @@ const fixture=fixtures.combat;
    assert(quickNames.every(name=>favorites.includes(name)),'Les monstres proposent uniquement les compétences rapides désignées');
    assert.equal(await page.locator('.battle-map').getAttribute('clip-path'),'inset(0)','Découpe sur le viewport entier sans couper une partie du terrain');
    await page.mouse.move(1,1);
-   await page.evaluate(()=>window.eval("session.tutorial.battle.corpses=[{id:'layout-corpse',name:'Corps test',position:[...session.tutorial.battle.players[session.me].position],harvested:[]}];renderTutorial(session.tutorial);"));
+   await page.evaluate(()=>window.eval("session.tutorial.battle.corpses=[{id:'layout-corpse',name:'Corps test',position:[...session.tutorial.battle.players[session.me].position],harvested:[]}];renderGame(session.tutorial);"));
    const harvest=page.locator('#corpse-actions button');
    assert.equal(await harvest.getAttribute('aria-label'),'Dépecer Corps test','Dépeçage accessible avec une icône compacte');
    const harvestBox=await harvest.boundingBox();
@@ -146,7 +146,8 @@ const fixture=fixtures.combat;
    }
    await page.locator('#game-menu-toggle').click();
    await page.locator('#show-social').click();
-   assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD');
+   const socialDiagnostic=await page.locator('#social-view').evaluate(node=>({hidden:node.hidden,style:getComputedStyle(node).display,parent:node.parentElement?.outerHTML.slice(0,180),parentDisplay:getComputedStyle(node.parentElement).display,ancestor:[...function*(element){while(element){yield {tag:element.tagName,id:element.id,classes:element.className,display:getComputedStyle(element).display};element=element.parentElement}}(node)].slice(0,9),body:document.body.className}));
+    assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD : '+JSON.stringify(socialDiagnostic));
    await page.locator('#back-view').click();
    await page.keyboard.press('Escape');
    await page.locator('#show-inventory').click();
@@ -156,7 +157,7 @@ const fixture=fixtures.combat;
    // Allocation/listener regression on an isolated fixture, after warmup and forced GC.
    const cdp = await page.context().newCDPSession(page);
    const renderMany = count => page.evaluate(count => {
-    window.eval(`for(let i=0;i<${count};i++){session.tutorial.players[0].cooldown_real_seconds=i%2?0.7:0;renderTutorial(session.tutorial);}`);
+    window.eval(`for(let i=0;i<${count};i++){session.tutorial.players[0].cooldown_real_seconds=i%2?0.7:0;renderGame(session.tutorial);}`);
    }, count);
    await renderMany(100);
    await cdp.send('HeapProfiler.collectGarbage');
@@ -177,7 +178,7 @@ const fixture=fixtures.combat;
    await page.screenshot({path:path.join(root,`hud-captures/${width}x${height}.png`)});
    const outingFixture={...fixtures.field_village,battle:null,field_mode:false,field_map:null};
    for(const [name,adventure] of [['exploration',outingFixture],['forge',{...outingFixture,position:'forge'}]]){
-    await page.evaluate(adventure=>window.eval(`session.tutorial=${JSON.stringify(adventure)};renderTutorial(session.tutorial);`),adventure);
+    await page.evaluate(adventure=>window.eval(`session.tutorial=${JSON.stringify(adventure)};renderGame(session.tutorial);`),adventure);
     const explorationMenu=await rect('character-menu'),outing=await rect('outing-vitals'),camera=await rect('field-camera'),navigation=await rect('hud-navigation');
     assert(explorationMenu&&outing&&camera&&navigation,'Menu, PV, caméra et minicarte visibles hors combat');
     for(const [first,second] of [[explorationMenu,outing],[explorationMenu,camera],[outing,camera],[outing,navigation],[camera,navigation]]) assert(!overlaps(first,second),'Commandes et ressources sans chevauchement hors combat');

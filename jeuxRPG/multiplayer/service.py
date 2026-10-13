@@ -418,6 +418,9 @@ class GameService(AccountMixin):
                    "talk": {"session_id", "revision", "npc", "world_context"},
                    "craft": {"session_id", "revision", "recipe"},
                    "upgrade": {"session_id", "revision", "recipe"},
+                   "buy": {"session_id", "revision", "npc", "item", "quantity"},
+                   "sell": {"session_id", "revision", "npc", "item", "quantity"},
+                   "trade": {"session_id", "revision", "target_player", "item", "quantity", "gold"},
                    "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
                    "stop_move": {"session_id", "revision", "encounter"},
                    "hide": {"session_id", "revision"},
@@ -496,7 +499,62 @@ class GameService(AccountMixin):
             self.db.execute("UPDATE sessions SET state='running', revision=revision+1 WHERE id=?", (session["id"],))
             self._event(session["id"], now, "Bienvenue dans la clairière. Le tutoriel peut se jouer seul ou avec un compagnon.")
             return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
-        if action in ("enter_zone", "explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
+        if action == "trade":
+            from . import economy, content, tactics
+            session = self._session(player, params["session_id"])
+            if params["revision"] > session["revision"]:
+                raise GameError("stale_revision", "La version demandée est plus récente que l'état serveur.", 409)
+            target_id = params["target_player"]
+            item, quantity, gold = params["item"], params["quantity"], params["gold"]
+            if not isinstance(target_id, str) or target_id == player_id or not isinstance(item, str) or type(quantity) is not int or type(gold) is not int or quantity < 0 or gold < 0 or quantity > content.WORLD["trade_max_quantity"] or gold > content.WORLD["trade_max_gold"] or not quantity and not gold or quantity and item not in economy.prices():
+                raise GameError("invalid_trade", "Échange invalide.")
+            source_account = self.db.execute("SELECT account_id FROM account_characters WHERE player_id=?", (player_id,)).fetchone()
+            target_account = self.db.execute("SELECT account_id FROM account_characters WHERE player_id=?", (target_id,)).fetchone()
+            if not source_account or not target_account:
+                raise GameError("trade_forbidden", "Les échanges exigent deux comptes joueurs.", 403)
+            source_team, target_team = self._team(source_account[0]), self._team(target_account[0])
+            if not source_team or not target_team or source_team["id"] != target_team["id"]:
+                raise GameError("trade_forbidden", "Les échanges sont réservés aux alliés de la même équipe.", 403)
+            source_location, target_location = self._character_location(player_id), self._character_location(target_id)
+            same_location = source_location.get("zone") is not None and source_location.get("zone") == target_location.get("zone")
+            if source_location.get("map") or target_location.get("map"):
+                same_location = same_location and source_location.get("map") == target_location.get("map")
+                a, b = source_location.get("position"), target_location.get("position")
+                same_location = same_location and isinstance(a, list) and isinstance(b, list) and tactics.distance(a, b) <= 1.5
+            else:
+                same_location = same_location and source_location.get("point") == target_location.get("point")
+            if not same_location:
+                raise GameError("trade_distance", "Rapprochez-vous de votre allié pour échanger.", 409)
+            source_row = self.db.execute("SELECT data FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()
+            target_row = self.db.execute("""SELECT t.session_id,t.data FROM tutorials t JOIN members m ON m.session_id=t.session_id
+                JOIN sessions s ON s.id=t.session_id WHERE m.player_id=? ORDER BY s.created DESC LIMIT 1""", (target_id,)).fetchone()
+            if source_row is None or target_row is None:
+                raise GameError("not_tutorial", "Aventure introuvable.", 409)
+            source_party, target_party = json.loads(source_row[0]), json.loads(target_row["data"])
+            economy.migrate(source_party)
+            economy.migrate(target_party)
+            if source_party.get("battle") or source_party.get("transit") or target_party.get("battle") or target_party.get("transit"):
+                raise GameError("trade_busy", "Impossible d’échanger pendant un combat ou un trajet.", 409)
+            if quantity:
+                source_inventory = source_party["inventory"][player_id]
+                if source_inventory.get(item, 0) < quantity:
+                    raise GameError("missing_materials", "Matériaux insuffisants.", 409)
+                source_inventory[item] -= quantity
+                target_inventory = target_party["inventory"][target_id]
+                target_inventory[item] = target_inventory.get(item, 0) + quantity
+            if gold:
+                if source_party["gold"][player_id] < gold:
+                    raise GameError("missing_gold", "Or insuffisant.", 409)
+                source_party["gold"][player_id] -= gold
+                target_party["gold"][target_id] += gold
+            self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(source_party), session["id"]))
+            self.db.execute("UPDATE tutorials SET data=? WHERE session_id=?", (json.dumps(target_party), target_row["session_id"]))
+            self.db.execute("UPDATE sessions SET revision=revision+1 WHERE id IN (?,?)", (session["id"], target_row["session_id"]))
+            self.dirty_sessions.add(target_row["session_id"])
+            label = economy.prices().get(item, {}).get("name", item) if quantity else ""
+            self._event(session["id"], now, f"Échange vers un allié : {quantity} {label}".strip() + (f" · {gold} or" if gold else ""))
+            return {"session": self._snapshot(player, self._session(player, session["id"]), now, compact=compact)}
+        if action in ("enter_zone", "explore", "strike", "skill", "rest", "travel", "move", "talk", "craft", "upgrade", "buy", "sell", "battle_move", "stop_move", "hide", "harvest", "leave_battle", "control_units", "unit_order", "unit_skill"):
             session = self._session(player, params["session_id"])
             if session["state"] != "running" and not (session["state"] == "finished" and self.db.execute("SELECT 1 FROM tutorials WHERE session_id=?", (session["id"],)).fetchone()):
                 raise GameError("not_running", "Le tutoriel n'est pas en cours.", 409)

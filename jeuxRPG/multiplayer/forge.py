@@ -71,8 +71,6 @@ def catalogue(party, player):
 
 def execute(party, player, action, recipe, error):
     from .tutorial import unpack, pack
-    if party["quest"] != "completed":
-        raise error("forge_locked", "Forge verrouillée : terminez et rendez la quête de Mira.", 409)
     if party["position"] != "forge" or party.get("battle") or party.get("transit"):
         raise error("wrong_location", "Rejoignez la forge hors combat pour fabriquer ou améliorer une pièce.", 409)
     if not isinstance(recipe, str) or recipe not in RECIPES:

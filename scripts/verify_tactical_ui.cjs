@@ -12,7 +12,7 @@ const dom = new JSDOM(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/i
 dom.window.setInterval = () => 0;
 dom.window.eval(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/map_artwork.js"), "utf8"));
 dom.window.eval(require('./client_source.cjs')() + `
-window.uiTest = {gridPath, calls: [], world: adventure => {worldCameras.clear(); mapPlace = adventure.world.places[0].id; renderWorld(adventure, adventure.players[0]);}, render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderTutorial(adventure);}};
+window.uiTest = {gridPath, calls: [], world: adventure => {worldCameras.clear(); mapPlace = adventure.world.places[0].id; renderWorld(adventure, adventure.players[0]);}, render: (adventure, events = []) => {session = {id: "ui", me: "p0", tutorial: adventure, events}; renderGame(adventure);}};
 tutorialCommand = async (action, params) => window.uiTest.calls.push({action, params});
 `);
 const el = id => dom.window.document.getElementById(id);
