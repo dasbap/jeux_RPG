@@ -8529,6 +8529,15 @@
           2,
           13
         ]
+      },
+      {
+        "position": [
+          31,
+          0
+        ],
+        "destination": null,
+        "entry": null,
+        "name": "Porte de voyage"
       }
     ],
     "zone_id": "foret_eveilles",
@@ -8742,6 +8751,40 @@
         "to": "brume",
         "name": "Route des Deux Villages",
         "distance_km": 1.0
+      },
+      {
+        "id": "link_3516d81727964944",
+        "name": "Nouvelle route",
+        "from": "cave_1",
+        "to": "clearing",
+        "distance_km": 0.01,
+        "bidirectional": true,
+        "combat_map": "",
+        "from_entry": [
+          0,
+          7
+        ],
+        "to_entry": [
+          31,
+          0
+        ]
+      },
+      {
+        "id": "link_b2f15f563af441e1",
+        "name": "Nouvelle route",
+        "from": "cave_2",
+        "to": "lisiere",
+        "distance_km": 0.1,
+        "bidirectional": true,
+        "combat_map": "",
+        "from_entry": [
+          31,
+          15
+        ],
+        "to_entry": [
+          12,
+          0
+        ]
       }
     ],
     "logical_zones": {
@@ -8750,7 +8793,7 @@
         "level": 1,
         "world_view": {
           "position": [
-            70,
+            186,
             300
           ]
         }
@@ -8771,7 +8814,7 @@
         "world_view": {
           "position": [
             450,
-            100
+            142
           ]
         }
       },
@@ -8790,8 +8833,8 @@
         "level": 5,
         "world_view": {
           "position": [
-            415,
-            301
+            186,
+            142
           ]
         }
       }
@@ -12864,6 +12907,15 @@
           2,
           20
         ]
+      },
+      {
+        "position": [
+          12,
+          0
+        ],
+        "destination": null,
+        "entry": null,
+        "name": "Porte de voyage"
       }
     ],
     "spawns": [],
@@ -21758,6 +21810,15 @@
           7
         ],
         "name": "Salle 2"
+      },
+      {
+        "position": [
+          0,
+          7
+        ],
+        "destination": null,
+        "entry": null,
+        "name": "Porte de voyage"
       }
     ],
     "spawns": [
@@ -21836,6 +21897,15 @@
           7
         ],
         "name": "Salle 1"
+      },
+      {
+        "position": [
+          31,
+          15
+        ],
+        "destination": null,
+        "entry": null,
+        "name": "Porte de voyage"
       }
     ],
     "spawns": [
