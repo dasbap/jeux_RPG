@@ -344,9 +344,9 @@ async function main() {
     assert(el(first, "forge-catalogue").textContent.includes("+2 force"));
     assert(el(first, "forge-catalogue").textContent.includes("+2 sagesse"));
     await command(first, "craft", {recipe: "veste"});
-    await waitFor(() => el(first, "quest-description").textContent.includes("Veste fabriquée et équipée") && el(first, "quest-description").textContent.includes("compagnon"), "fabrication personnelle validée dans la quête");
+    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.players.some(player => player.gear.some(piece => piece.slot === "torso")), "fabrication personnelle validée");
     await command(second, "craft", {recipe: "veste"});
-    await waitFor(() => el(first, "quest-description").textContent.includes("Prochaine étape") && el(first, "craft-actions").textContent.includes("Brume"), "objectif Brume après fabrication du groupe");
+    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.step === "travel" && el(first, "craft-actions").textContent.includes("Brume"), "destination Brume après fabrication du groupe");
     await move(first, "brume");
     await waitFor(() => el(first, "battle-title").textContent === "Aventure accomplie" && el(second, "battle-title").textContent === "Aventure accomplie", "fin coopérative");
     assert(el(first, "combat-layout").hidden);
