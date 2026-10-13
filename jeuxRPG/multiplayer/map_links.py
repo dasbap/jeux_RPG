@@ -157,8 +157,6 @@ def remove_link(maps, source, kind, index, both=False):
     elif kind == "route":
         routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
         route = routes[index]
-        if route["id"] in {"clearing_rosee", "rosee_lisiere", "rosee_brume"}:
-            raise ValueError("Ce chemin est nécessaire au tutoriel.")
         if both or not route.get("bidirectional", True):
             routes.pop(index)
         else:
