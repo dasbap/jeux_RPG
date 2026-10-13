@@ -71,9 +71,12 @@ def layout_places(maps):
     from .map_building import zone_of
 
     places = deepcopy(world.PLACES)
+    logical = maps.get("clearing", {}).get("logical_zones", {})
     for key in list(places):
-        if key not in maps:
+        if key not in maps and key not in logical:
             del places[key]
+    for key, data in logical.items():
+        places[key] = {"name": data["name"], "x": 70, "y": 300, "points": []}
     map_ids = set(maps)
     for place in places.values():
         place["points"] = [
@@ -88,10 +91,10 @@ def layout_places(maps):
             places[key]["name"] = data["name"]
         else:
             places.setdefault(
-                zone, {"name": maps[zone]["name"], "x": 70, "y": 300, "points": []}
+                zone, {"name": (maps[zone] if zone in maps else logical[zone])["name"], "x": 70, "y": 300, "points": []}
             )["points"].append({"id": key, "name": data["name"], "type": "rencontre"})
     for key, place in places.items():
-        streets = maps[key].get("village_streets", world.VILLAGE_STREETS.get(key, {}))
+        streets = maps.get(key, {}).get("village_streets", world.VILLAGE_STREETS.get(key, {}))
         square_id = streets.get("square")
         if square_id:
             square = next((p for p in place["points"] if p["id"] == square_id), None)
@@ -116,7 +119,12 @@ def layout_places(maps):
                     point = {"id": building, "name": "Bâtiment", "type": "bâtiment"}
                     place["points"].append(point)
                 point.update(x=430 + j * 130, y=y)
-    return apply_layout(places, maps)
+    positioned = apply_layout(places, maps)
+    for key, zone in logical.items():
+        position = zone.get("world_view", {}).get("position")
+        if position is not None:
+            positioned[key]["x"], positioned[key]["y"] = position
+    return positioned
 
 
 class LayoutEditor:
@@ -146,6 +154,8 @@ class LayoutEditor:
             )
             choice.pack(side="left", padx=4)
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
+        ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(side="left", padx=4)
+        ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(side="left", padx=4)
         ttk.Button(bar, text="Modifier le nom", command=self.rename).pack(
             side="left", padx=4
         )
@@ -204,7 +214,7 @@ class LayoutEditor:
                     point.get("y", 65 if i < 2 else 175),
                     point["name"],
                 )
-            layout = self.editor.maps[self.zone.get()].get(
+            layout = self.editor.maps.get(self.zone.get(), {}).get(
                 "village_streets", world.VILLAGE_STREETS.get(self.zone.get())
             )
             chains = (
@@ -281,9 +291,13 @@ class LayoutEditor:
         ]
         key = self.dragging
         if self.mode.get() == "Carte générale":
-            self.editor.maps[key].setdefault("world_view", {})["position"] = point
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = zones[key] if key in zones else self.editor.maps[key]
+            data.setdefault("world_view", {})["position"] = point
         else:
-            view = self.editor.maps[self.zone.get()].setdefault("world_view", {})
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = zones[self.zone.get()] if self.zone.get() in zones else self.editor.maps[self.zone.get()]
+            view = data.setdefault("world_view", {})
             if key == "__entry__":
                 view["entry"] = point
             else:
@@ -309,12 +323,52 @@ class LayoutEditor:
             return
         self.editor.remember()
         if self.mode.get() == "Carte générale":
-            self.editor.maps[self.selected]["name"] = name
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = zones[self.selected] if self.selected in zones else self.editor.maps[self.selected]
+            data["name"] = name
         else:
             self.editor.maps[self.zone.get()].setdefault("world_view", {}).setdefault(
                 "points", {}
             ).setdefault(self.selected, {})["name"] = name
         self.editor.refresh_choice()
+        self.draw()
+
+    def create_zone(self):
+        import re
+
+        values = self.editor.form("Nouvelle zone sans carte", {"id": "", "name": "Nouvelle zone", "level": 1})
+        if not values:
+            return
+        key = values["id"].strip()
+        zones = self.editor.maps["clearing"].setdefault("logical_zones", {})
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", key) or key in zones or key in self.editor.maps:
+            self.editor.messages.showerror("Zone", "Identifiant invalide ou déjà utilisé.")
+            return
+        try:
+            level = int(values["level"])
+            if not 1 <= level <= 100 or not 1 <= len(values["name"].strip()) <= 100:
+                raise ValueError()
+        except ValueError:
+            self.editor.messages.showerror("Zone", "Nom ou niveau invalide.")
+            return
+        self.editor.remember()
+        zones[key] = {"name": values["name"].strip(), "level": level, "world_view": {"position": [350, 300]}}
+        self.zone.set(key)
+        self.mode.set("Carte générale")
+        self.draw()
+
+    def delete_zone(self):
+        key = self.selected if self.mode.get() == "Carte générale" else self.zone.get()
+        zones = self.editor.maps["clearing"].get("logical_zones", {})
+        if key not in zones:
+            return
+        if any(data.get("zone_id") == key for data in self.editor.maps.values()):
+            self.editor.messages.showerror("Zone", "Détachez d'abord les cartes de cette zone.")
+            return
+        self.editor.remember()
+        del zones[key]
+        self.selected = None
+        self.zone.set(next(iter(layout_places(self.editor.maps))))
         self.draw()
 
     def undo(self):
