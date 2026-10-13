@@ -6,7 +6,7 @@ from jeuxRPG.multiplayer.map_layout_editor import LayoutEditor, layout_places
 
 
 def test_local_and_packaged_world_group_maps_into_five_zones():
-    for path in ("maps/world.json", "jeuxRPG/maps/world.json"):
+    for path in ("projects/authored/world.json", "jeuxRPG/maps/world.json"):
         data = json.loads(Path(path).read_text())
         maps = data.get("maps", data)
         places = layout_places(maps)
@@ -41,7 +41,7 @@ class Canvas:
 
 
 def test_builder_views_contain_only_zones_or_member_maps_and_actual_links():
-    data = json.loads(Path("maps/world.json").read_text())
+    data = json.loads(Path("projects/authored/world.json").read_text())
     maps = data.get("maps", data)
     viewer = LayoutEditor.__new__(LayoutEditor)
     viewer.editor = SimpleNamespace(maps=maps)

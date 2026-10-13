@@ -96,7 +96,9 @@ for identifier, definition in MAPS.items():
     if (
         identifier not in world.PLACES
         and parent_zone in world.PLACES
-        and zone != parent_zone
+        and not any(
+            point["id"] == identifier for point in world.PLACES[parent_zone]["points"]
+        )
     ):
         for place in world.PLACES.values():
             place["points"] = [

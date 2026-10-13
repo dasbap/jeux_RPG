@@ -318,7 +318,7 @@ def _known_places(visited, step):
                 known.add(route["to"])
             if route.get("bidirectional") and route["to"] in visited:
                 known.add(route["from"])
-    return known
+    return {zone_of(point) for point in known if zone_of(point) in PLACES}
 
 
 def _visible_routes(known, step, fighting, moving):

@@ -155,13 +155,19 @@ def begin(party, now, origin):
         None,
     )
     combat_map = road.get("combat_map") if road and origin == "travel" else None
-    preset = (
-        PRESETS["field_" + combat_map]
-        if combat_map
-        else PRESETS["field_" + party["field_map"]]
-        if party.get("field_map")
-        else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
-    )
+    variant = str(1 + (party.get("encounter_number", 1) - 1) % 3)
+    map_id = combat_map or party.get("field_map")
+    if map_id:
+        preset = PRESETS["field_" + map_id]
+    elif zone + "_" + variant in PRESETS:
+        preset = PRESETS[zone + "_" + variant]
+    else:
+        map_id = party["position"]
+        if "field_" + map_id not in PRESETS:
+            map_id = next(
+                key for key in world.WORLD_MAP_DATA if world.zone_of(key) == zone
+            )
+        preset = PRESETS["field_" + map_id]
     players = {
         key: {
             "position": [1, 6 + index],

@@ -554,7 +554,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 )
 
         actions = self.ttk.Frame(dialog, padding=8)
-        actions.pack(fill="x")
+        actions.pack(side="bottom", fill="x", before=frame)
         self.ttk.Button(actions, text="Appliquer", command=accept).pack(
             side="left", padx=4
         )
@@ -1307,7 +1307,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
 
 def main():
     parser = argparse.ArgumentParser(description="Contrôleur graphique du contenu RPG")
-    parser.add_argument("directory", nargs="?", default="maps")
+    parser.add_argument("directory", nargs="?", default="projects/authored")
     args = parser.parse_args()
     import tkinter as tk
 

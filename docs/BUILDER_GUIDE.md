@@ -383,3 +383,5 @@ Dans « Trajets / rues », chaque chemin rapide possède une carte de départ, u
 Enregistrez le projet et redémarrez le serveur pour appliquer ces changements au jeu.
 
 Dans les formulaires de trajet, le bouton « Créer / choisir sur la carte » ouvre une grille interactive pour chaque porte. Cliquez une case praticable : les coordonnées sont remplies automatiquement et une nouvelle porte sera créée à la validation du trajet (ou à « Appliquer » dans Trajets / rues). Une porte existante peut être réutilisée ; un passage ou un PNJ n’est pas remplacé. Annuler le formulaire ne crée aucune porte.
+
+Le projet éditable livré avec cette branche se trouve dans `projects/authored/`. Ouvrez ce dossier dans le controller pour modifier ce catalogue. Les données du jeu installé restent dans `jeuxRPG/maps/`.
