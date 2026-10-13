@@ -302,19 +302,53 @@ def record(party):
 
 def _known_places(visited, step):
     known = set(visited)
+    known.update(WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}))
     if step != "clearing" and step != "first_fight":
         known.add("rosee")
     if "rosee" in visited:
         known.add("lisiere")
     if step in ("craft", "travel", "complete"):
         known.add("brume")
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map_id in visited and _map.get("zone_id") in PLACES:
+            known.add(_map["zone_id"])
     for route in ROUTES:
         if "bidirectional" in route:
             if route["from"] in visited:
                 known.add(route["to"])
             if route.get("bidirectional") and route["to"] in visited:
                 known.add(route["from"])
-    return known
+    return {zone_of(point) for point in known if zone_of(point) in PLACES}
+
+
+def _visible_routes(known, step, fighting, moving):
+    routes = []
+    for definition in ROUTES:
+        if zone_of(definition["from"]) in known and zone_of(definition["to"]) in known:
+            route = {**definition, "destination": None}
+            if (
+                not fighting
+                and not moving
+                and step == "road"
+                and route["id"] == "clearing_rosee"
+            ):
+                route["destination"] = "rosee"
+            elif (
+                not fighting
+                and not moving
+                and step == "travel"
+                and route["id"] == "rosee_brume"
+            ):
+                route["destination"] = "brume"
+            for endpoint in ("from", "to"):
+                map_id = route[endpoint]
+                if map_id in WORLD_MAP_DATA:
+                    parent = WORLD_MAP_DATA[map_id].get("zone_id")
+                    if parent in PLACES:
+                        route[endpoint] = parent
+            if route["from"] != route["to"]:
+                routes.append(route)
+    return routes
 
 
 def view(party, me, traveller=None):
@@ -326,6 +360,12 @@ def view(party, me, traveller=None):
     places = []
     for key, definition in PLACES.items():
         if key not in known:
+            continue
+        if (
+            key in WORLD_MAP_DATA
+            and WORLD_MAP_DATA[key].get("zone_id") in PLACES
+            and WORLD_MAP_DATA[key]["zone_id"] != key
+        ):
             continue
         place = {
             "id": key,
@@ -361,9 +401,11 @@ def view(party, me, traveller=None):
         for point in place["points"]:
             point["action"] = None
             point["locked_reason"] = None
+            current_zone = zone_of(party.get("position", CURRENT[step]))
+            if current_zone in WORLD_MAP_DATA:
+                current_zone = WORLD_MAP_DATA[current_zone].get("zone_id", current_zone)
             point["local"] = (
-                key == zone_of(party.get("position", CURRENT[step]))
-                and party.get("position") not in ROAD_POINTS
+                key == current_zone and party.get("position") not in ROAD_POINTS
             )
             point["can_interact"] = point["local"] and not fighting and not moving
             if (
@@ -385,25 +427,7 @@ def view(party, me, traveller=None):
                 ):
                     point["action"] = "explore"
         places.append(place)
-    routes = []
-    for definition in ROUTES:
-        if definition["from"] in known and definition["to"] in known:
-            route = {**definition, "destination": None}
-            if (
-                not fighting
-                and not moving
-                and step == "road"
-                and route["id"] == "clearing_rosee"
-            ):
-                route["destination"] = "rosee"
-            elif (
-                not fighting
-                and not moving
-                and step == "travel"
-                and route["id"] == "rosee_brume"
-            ):
-                route["destination"] = "brume"
-            routes.append(route)
+    routes = _visible_routes(known, step, fighting, moving)
     bestiary = []
     if "goblin" in mobs:
         advantages = goblin_table["advantage"]
@@ -584,8 +608,43 @@ ROAD_POINTS = {
 
 LEVELS = {"clearing": 1, "rosee": 1, "lisiere": 2, "brume": 4}
 
+for _zone_id, _zone in (
+    WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}).items()
+):
+    _position = _zone.get("world_view", {}).get("position", [350, 300])
+    PLACES[_zone_id] = {
+        "name": _zone["name"],
+        "type": "zone",
+        "x": _position[0],
+        "y": _position[1],
+        "description": _zone.get("description", _zone["name"]),
+        "points": [],
+    }
+    LEVELS[_zone_id] = _zone.get("level", 1)
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map.get("zone_id") == _zone_id:
+            _point = _map.get("world_view", {}).get("position", [170, 175])
+            PLACES[_zone_id]["points"].append(
+                {
+                    "id": _map_id,
+                    "name": _map["name"],
+                    "type": "rencontre",
+                    "x": _point[0],
+                    "y": _point[1],
+                }
+            )
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map.get("zone_id") == _zone_id and _map_id in PLACES:
+            for _point in PLACES[_map_id].get("points", []):
+                if not any(p["id"] == _point["id"] for p in PLACES[_zone_id]["points"]):
+                    PLACES[_zone_id]["points"].append(deepcopy(_point))
+
 
 def zone_of(point):
+    if point in WORLD_MAP_DATA:
+        from .map_building import zone_of as map_zone
+
+        return map_zone(WORLD_MAP_DATA, point)
     if point in ROAD_POINTS:
         return ROAD_POINTS[point]["zone"]
     if point in PLACES:
@@ -599,6 +658,8 @@ def zone_of(point):
 def point_name(point):
     if point in ROAD_POINTS:
         return ROAD_POINTS[point]["name"]
+    if point in WORLD_MAP_DATA:
+        return WORLD_MAP_DATA[point]["name"]
     zone = zone_of(point)
     if point == zone:
         return PLACES[zone]["name"]
@@ -641,7 +702,7 @@ def graph(known):
                 graph[source].append(destination)
                 graph[destination].append(source)
     for route in ROUTES:
-        if route["from"] in known and route["to"] in known:
+        if zone_of(route["from"]) in known and zone_of(route["to"]) in known:
             middle = route["id"]
             graph[middle] = [route["to"]]
             graph[route["from"]].append(middle)

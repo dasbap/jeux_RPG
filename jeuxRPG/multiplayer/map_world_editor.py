@@ -3,6 +3,37 @@ import re
 from copy import deepcopy
 
 
+def add_travel_door(maps, map_id, point, name="Porte de voyage"):
+    from . import tactics
+
+    data = maps.get(map_id)
+    if (
+        data is None
+        or not isinstance(point, list)
+        or len(point) != 2
+        or any(type(n) is not int for n in point)
+    ):
+        raise ValueError("Carte ou coordonnées de porte invalides.")
+    if (
+        not tactics.walkable(data, point)
+        or point in data.get("water", [])
+        and point not in data.get("bridges", [])
+    ):
+        raise ValueError("Choisissez une case praticable pour la porte.")
+    existing = next((g for g in data["exits"] if g["position"] == point), None)
+    if existing:
+        if existing.get("destination"):
+            raise ValueError(
+                "Cette case contient déjà un passage vers une autre carte."
+            )
+        return
+    if any(item["position"] == point for item in data.get("sites", [])):
+        raise ValueError("Cette case contient déjà un PNJ.")
+    data["exits"].append(
+        {"position": point[:], "destination": None, "entry": None, "name": name}
+    )
+
+
 def world_metadata(maps, streets, routes):
     streets, routes = deepcopy(streets), deepcopy(routes)
     for key, data in maps.items():
@@ -41,8 +72,8 @@ def world_metadata(maps, streets, routes):
             streets[key] = deepcopy(layout)
     if "travel_routes" in maps["clearing"]:
         routes = deepcopy(maps["clearing"]["travel_routes"])
-    if not isinstance(routes, list) or not 3 <= len(routes) <= 100:
-        raise ValueError("De 3 à 100 chemins rapides requis.")
+    if not isinstance(routes, list) or not 0 <= len(routes) <= 100:
+        raise ValueError("De 0 à 100 chemins rapides autorisés.")
     seen = set()
     for route in routes:
         if (
@@ -66,9 +97,30 @@ def world_metadata(maps, streets, routes):
             or not 0.0001 <= distance <= 1000
         ):
             raise ValueError("Distance de chemin comprise entre 0.0001 et 1000 km.")
+        for endpoint in ("from", "to"):
+            point = route.get(endpoint + "_entry")
+            if point is not None:
+                data = maps[route[endpoint]]
+                if (
+                    not isinstance(point, list)
+                    or len(point) != 2
+                    or any(type(n) is not int for n in point)
+                    or not 0 <= point[0] < data["width"]
+                    or not 0 <= point[1] < data["height"]
+                    or point in data.get("cover", []) + data.get("blocked", [])
+                    or point in data.get("water", [])
+                    and point not in data.get("bridges", [])
+                    or not any(
+                        g["position"] == point and not g.get("destination")
+                        for g in data["exits"]
+                    )
+                ):
+                    raise ValueError(
+                        "Choisissez une porte de sortie praticable sur chaque carte."
+                    )
+        if route.get("combat_map") and route["combat_map"] not in maps:
+            raise ValueError("Carte de combat inconnue.")
         seen.add(route["id"])
-    if not {"clearing_rosee", "rosee_lisiere", "rosee_brume"} <= seen:
-        raise ValueError("Les trois chemins du tutoriel doivent être conservés.")
     return streets, routes
 
 
@@ -89,6 +141,7 @@ class WorldEditor:
         self.window = self.panel.content
         self.panel.title("Trajets et rues")
         self.panel.geometry("850x580")
+        self.pending_doors = []
         self.streets, self.routes = world_metadata(
             editor.maps, world.VILLAGE_STREETS, world.ROUTES
         )
@@ -104,6 +157,7 @@ class WorldEditor:
         for label, command in (
             ("Ajouter un chemin", lambda: self.road(True)),
             ("Modifier le chemin", self.road),
+            ("Supprimer le chemin", self.delete_road),
         ):
             ttk.Button(bar, text=label, command=command).pack(side="left")
         choice = ttk.Combobox(
@@ -161,8 +215,11 @@ class WorldEditor:
             {
                 "route_id": old.get("id", ""),
                 "name": old.get("name", "Chemin"),
-                "from_zone": old.get("from", "clearing"),
-                "to_zone": old.get("to", "rosee"),
+                "from_map": old.get("from", "clearing"),
+                "from_entry": old.get("from_entry", ""),
+                "to_map": old.get("to", "rosee"),
+                "to_entry": old.get("to_entry", ""),
+                "combat_map": old.get("combat_map", ""),
                 "distance_km": old.get("distance_km", 0.1),
                 "travel_minutes": minutes,
             },
@@ -181,10 +238,17 @@ class WorldEditor:
                 **old,
                 "id": values["route_id"],
                 "name": values["name"],
-                "from": values["from_zone"],
-                "to": values["to_zone"],
+                "from": values["from_map"],
+                "to": values["to_map"],
+                "combat_map": values["combat_map"].strip(),
                 "distance_km": distance,
             }
+            for endpoint in ("from", "to"):
+                raw = values[endpoint + "_entry"].strip()
+                if raw:
+                    item[endpoint + "_entry"] = [int(n.strip()) for n in raw.split(",")]
+                else:
+                    item.pop(endpoint + "_entry", None)
             routes = deepcopy(self.routes)
             if new:
                 routes.append(item)
@@ -192,10 +256,35 @@ class WorldEditor:
                 routes[index] = item
             candidate = deepcopy(self.editor.maps)
             candidate["clearing"]["travel_routes"] = routes
+            created = [
+                (item[endpoint], item[endpoint + "_entry"][:])
+                for endpoint in ("from", "to")
+                if values.get(endpoint + "_create_door")
+            ]
+            for map_id, point in [*self.pending_doors, *created]:
+                add_travel_door(candidate, map_id, point)
             world_metadata(candidate, self.streets, routes)
+            self.pending_doors.extend(created)
             self.routes = routes
             self.refresh()
         except (ValueError, KeyError) as exc:
+            self.messagebox.showerror("Trajet", str(exc), parent=self.window)
+
+    def delete_road(self):
+        selection = self.roads.curselection()
+        if not selection:
+            return
+        routes = deepcopy(self.routes)
+        routes.pop(selection[0])
+        candidate = deepcopy(self.editor.maps)
+        candidate["clearing"]["travel_routes"] = routes
+        try:
+            for map_id, point in self.pending_doors:
+                add_travel_door(candidate, map_id, point)
+            world_metadata(candidate, self.streets, routes)
+            self.routes = routes
+            self.refresh()
+        except ValueError as exc:
             self.messagebox.showerror("Trajet", str(exc), parent=self.window)
 
     def layout(self):
@@ -264,6 +353,8 @@ class WorldEditor:
             if key in candidate:
                 candidate[key]["village_streets"] = deepcopy(layout)
         try:
+            for map_id, point in self.pending_doors:
+                add_travel_door(candidate, map_id, point)
             world_metadata(candidate, self.streets, self.routes)
             candidate = validate(candidate)
             self.editor.remember()

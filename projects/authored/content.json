@@ -1,0 +1,465 @@
+{
+  "kind": "content",
+  "maps": {},
+  "content": {
+    "world": {
+      "repop_seconds": 180,
+      "mob_xp": 50,
+      "xp_base": 500,
+      "xp_exponent": 1.8,
+      "merchant_stay_hours": 8,
+      "player_vision": 12,
+      "guild_max_members": 50,
+      "pvp_enabled": false,
+      "starting_gold": 100,
+      "trade_max_quantity": 999,
+      "trade_max_gold": 100000
+    },
+    "quests": [
+      {
+        "id": "mira_hunt_1",
+        "name": "Protéger la lisière",
+        "npc": "mira",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "lisiere",
+        "count": 10,
+        "reward_xp": 750,
+        "description": "Battez les gobelins puis rapportez la nouvelle à Mira.",
+        "previous_ids": [
+          "mira_hunt"
+        ],
+        "category": "tutorial"
+      },
+      {
+        "id": "mira_hunt_2",
+        "name": "Le chef Gobelin",
+        "npc": "mira",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "hunt",
+        "count": 1,
+        "reward_xp": 1200,
+        "description": "il y a un nouveau chef gobelin au dessus de la foret, occupe t'en"
+      }
+    ],
+    "achievements": [
+      {
+        "id": "silent",
+        "name": "Victoire sans alerter d’ennemi",
+        "condition": "silent",
+        "threshold": 1,
+        "title": "Ombre silencieuse"
+      },
+      {
+        "id": "untouched",
+        "name": "Victoire sans dégâts au groupe ni aux invocations",
+        "condition": "untouched",
+        "threshold": 1,
+        "title": "Intouchable"
+      },
+      {
+        "id": "fast",
+        "name": "Victoire en 30 secondes réelles maximum",
+        "condition": "fast",
+        "threshold": 30,
+        "title": "Éclair de la lisière"
+      },
+      {
+        "id": "higher",
+        "name": "Seul contre un ennemi de niveau supérieur",
+        "condition": "higher",
+        "threshold": 1,
+        "title": "Briseur de limites"
+      },
+      {
+        "id": "superiority",
+        "name": "Victoire en supériorité numérique",
+        "condition": "superiority",
+        "threshold": 1,
+        "title": "Force du nombre"
+      },
+      {
+        "id": "inferiority",
+        "name": "Victoire en infériorité numérique",
+        "condition": "inferiority",
+        "threshold": 1,
+        "title": "Contre toute attente"
+      },
+      {
+        "id": "level_5",
+        "name": "Atteindre le niveau 5",
+        "condition": "level",
+        "threshold": 5,
+        "title": "Aventurier confirmé"
+      },
+      {
+        "id": "level_10",
+        "name": "Atteindre le niveau 10",
+        "condition": "level",
+        "threshold": 10,
+        "title": "Vétéran"
+      },
+      {
+        "id": "level_20",
+        "name": "Atteindre le niveau 20",
+        "condition": "level",
+        "threshold": 20,
+        "title": "Légende vivante"
+      },
+      {
+        "id": "kills_1",
+        "name": "Vaincre 1 créatures",
+        "condition": "kills",
+        "threshold": 1,
+        "title": "Première victoire"
+      },
+      {
+        "id": "kills_10",
+        "name": "Vaincre 10 créatures",
+        "condition": "kills",
+        "threshold": 10,
+        "title": "Chasseur"
+      },
+      {
+        "id": "kills_50",
+        "name": "Vaincre 50 créatures",
+        "condition": "kills",
+        "threshold": 50,
+        "title": "Fléau des gobelins"
+      },
+      {
+        "id": "kills_100",
+        "name": "Vaincre 100 créatures",
+        "condition": "kills",
+        "threshold": 100,
+        "title": "Gardien des chemins"
+      }
+    ],
+    "economy": [
+      {
+        "id": "peau",
+        "name": "Peau",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc",
+        "name": "Croc",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "peau_gobelin",
+        "name": "Peau de gobelin",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc_gobelin",
+        "name": "Croc de gobelin",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "cristal_gobelin",
+        "name": "Cristal gobelin",
+        "buy": 80,
+        "sell": 40
+      },
+      {
+        "id": "noyau_gobelin",
+        "name": "Noyau gobelin",
+        "buy": 200,
+        "sell": 100
+      }
+    ],
+    "endgame": [
+      {
+        "id": "veteran_hunt",
+        "name": "Chasse vétéran",
+        "kind": "kill",
+        "target": "goblin",
+        "zone": "",
+        "count": 10,
+        "min_level": 5,
+        "reward_xp": 500,
+        "repeatable": true
+      }
+    ],
+    "gameplay": {
+      "materials": {
+        "peau": {
+          "name": "Peau",
+          "rare_chance": 0.0
+        },
+        "croc": {
+          "name": "Croc",
+          "rare_chance": 0.0
+        },
+        "peau_gobelin": {
+          "name": "Peau de gobelin",
+          "rare_chance": 0.0
+        },
+        "croc_gobelin": {
+          "name": "Croc de gobelin",
+          "rare_chance": 0.0
+        },
+        "oreille_gobelin": {
+          "name": "Oreille de gobelin",
+          "rare_chance": 0.0
+        },
+        "cristal_gobelin": {
+          "name": "Cristal de gobelin",
+          "rare_chance": 0.08
+        },
+        "noyau_gobelin": {
+          "name": "Noyau de gobelin",
+          "rare_chance": 0.02
+        }
+      },
+      "slots": {
+        "head": "Tête",
+        "torso": "Torse",
+        "hands": "Mains",
+        "legs": "Jambes",
+        "feet": "Pieds",
+        "waist": "Taille"
+      },
+      "recipes": {
+        "casque": {
+          "slot": "head",
+          "name": "Casque de la lisière",
+          "adjective": "raffiné",
+          "cost": {
+            "peau": 2,
+            "croc": 1
+          },
+          "hp": 3,
+          "endurance": 1,
+          "intelligence": 2,
+          "sagesse": 1
+        },
+        "veste": {
+          "slot": "torso",
+          "name": "Veste de la lisière",
+          "adjective": "solide",
+          "cost": {
+            "peau": 2,
+            "croc": 3
+          },
+          "hp": 10,
+          "endurance": 3
+        },
+        "gants": {
+          "slot": "hands",
+          "name": "Gants de la lisière",
+          "adjective": "précis",
+          "cost": {
+            "peau": 2,
+            "croc": 2
+          },
+          "hp": 2,
+          "endurance": 1,
+          "force": 2
+        },
+        "jambieres": {
+          "slot": "legs",
+          "name": "Jambières de la lisière",
+          "adjective": "robustes",
+          "cost": {
+            "peau": 3,
+            "croc": 2
+          },
+          "hp": 5,
+          "endurance": 2,
+          "force": 1
+        },
+        "bottes": {
+          "slot": "feet",
+          "name": "Bottes de la lisière",
+          "adjective": "agiles",
+          "cost": {
+            "peau": 2,
+            "croc": 1
+          },
+          "hp": 3,
+          "endurance": 1,
+          "sagesse": 1
+        },
+        "ceinture": {
+          "slot": "waist",
+          "name": "Ceinture de la lisière",
+          "adjective": "renforcée",
+          "cost": {
+            "peau": 1,
+            "croc": 2
+          },
+          "hp": 2,
+          "endurance": 1,
+          "intelligence": 1,
+          "sagesse": 2
+        }
+      },
+      "rules": {
+        "time": {
+          "game_ratio": 3.0,
+          "action_seconds": 1.2,
+          "hp_regen_fraction": 0.01,
+          "hp_regen_interval": 60.0,
+          "resource_interval_real": 1.0,
+          "energy_regen_min": 0.2,
+          "energy_regen_max": 1.5,
+          "energy_regen_fraction": 0.1,
+          "energy_regen_divisor": 10.0
+        },
+        "movement": {
+          "walking_kmh": 6.0,
+          "move_seconds": 1.2,
+          "stealth_move_seconds": 2.4,
+          "mob_move_seconds": 2.4,
+          "call_seconds": 6.0,
+          "search_real_seconds": 10.0
+        },
+        "combat": {
+          "summon_vision": 6,
+          "support_range": 6.0,
+          "effect_factor": 0.55,
+          "stat_factor": 0.25,
+          "level_xp_base": 4.0,
+          "level_xp_limit": 10.0,
+          "level_xp_divisor": 10.0,
+          "cost_min": 5,
+          "cost_factor": 1.5,
+          "physical_cast": 0.4,
+          "summon_cast": 2.0,
+          "magic_cast": 1.5
+        },
+        "forge": {
+          "max_level": 10,
+          "hp_per_level": 2,
+          "stat_every_levels": 2,
+          "cost_linear": 1,
+          "cost_quadratic": 1
+        },
+        "social": {
+          "team_capacity": 4,
+          "realm_capacity": 40,
+          "friend_capacity": 200
+        },
+        "encounters": {
+          "factor_min": 0.25,
+          "factor_max": 1.5,
+          "difficulty_base": 2.0,
+          "level_divisor": 5.0,
+          "delta_limit": 10.0
+        },
+        "tutorial": {
+          "hp_first": 18,
+          "hp_hunt": 24,
+          "xp_first": 50,
+          "xp_hunt": 50
+        },
+        "travel": {
+          "encounter_chance": 0.25,
+          "segment_max_seconds": 150.0,
+          "segment_min_fraction": 0.15,
+          "segment_random_fraction": 0.7
+        },
+        "ai": {
+          "melee_range": 1.5,
+          "detection_range": 6.0,
+          "hidden_detection_range": 1.5,
+          "cover_range": 1.5,
+          "corpse_interact_range": 1.5,
+          "corpse_detection_range": 5.0,
+          "ally_call_range": 10.0,
+          "summon_follow_range": 2.0,
+          "summon_attack_seconds": 3.0,
+          "mob_windup_seconds": 1.8,
+          "mob_attack_min_seconds": 9.0,
+          "mob_attack_random_seconds": 6.0
+        },
+        "bleeding": {
+          "damage_min": 2,
+          "force_factor": 0.05,
+          "tick_real_seconds": 2.0,
+          "ticks": 3
+        },
+        "start": {
+          "map": "clearing",
+          "x": 1,
+          "y": 10
+        }
+      },
+      "rare_costs": [
+        {
+          "item": "cristal_gobelin",
+          "start_level": 4,
+          "offset": 2,
+          "divisor": 2
+        },
+        {
+          "item": "noyau_gobelin",
+          "start_level": 8,
+          "offset": 7,
+          "divisor": 1
+        }
+      ],
+      "encounter_chain": [
+        0.9,
+        0.3,
+        0.1,
+        0.03,
+        0.001
+      ],
+      "summon_control": {
+        "Squelette": {
+          "energy": "Mana",
+          "per_second": 0.4
+        }
+      },
+      "xp_classes": {
+        "normal": 1.0,
+        "warrior": 1.5,
+        "caster": 1.8,
+        "elite": 2.5,
+        "boss": 4.0
+      },
+      "story": {
+        "clearing": {
+          "name": "Clairière des Éveillés",
+          "description": "Explorez la clairière pour rencontrer votre premier gobelin."
+        },
+        "first_fight": {
+          "name": "Clairière des Éveillés",
+          "description": "Utilisez vos compétences ou votre attaque pour battre le gobelin."
+        },
+        "road": {
+          "name": "Sentier de Rosée",
+          "description": "Votre premier combat est gagné. Rejoignez le village de Rosée."
+        },
+        "village": {
+          "name": "Village de Rosée",
+          "description": "Parlez à Mira pour accepter sa quête de chasse."
+        },
+        "hunt": {
+          "name": "Lisière de Rosée",
+          "description": "Battez trois gobelins puis rapportez la nouvelle à Mira."
+        },
+        "craft": {
+          "name": "Forge de Rosée",
+          "description": "Fabriquez et équipez une veste avec les matériaux des gobelins."
+        },
+        "travel": {
+          "name": "Route des Deux Villages",
+          "description": "Votre équipement est prêt. Rejoignez le village de Brume."
+        },
+        "complete": {
+          "name": "Village de Brume",
+          "description": "Tutoriel terminé : combat, compétences, quête, butin et équipement maîtrisés."
+        }
+      }
+    }
+  }
+}
