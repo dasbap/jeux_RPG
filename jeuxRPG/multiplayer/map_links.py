@@ -77,9 +77,9 @@ def connect_maps(
         from . import world
         from .map_building import zone_of
 
-        if zone_of(maps, source) != source or zone_of(maps, destination) != destination:
+        if zone_of(maps, source) == zone_of(maps, destination):
             raise ValueError(
-                "Les chemins rapides relient des zones racines. Pour les secteurs, choisissez un trajet."
+                "Les chemins rapides relient deux zones différentes. Pour une même zone, choisissez un passage ou un trajet."
             )
         result = deepcopy(maps)
         routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))

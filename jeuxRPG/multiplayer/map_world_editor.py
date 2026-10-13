@@ -66,6 +66,22 @@ def world_metadata(maps, streets, routes):
             or not 0.0001 <= distance <= 1000
         ):
             raise ValueError("Distance de chemin comprise entre 0.0001 et 1000 km.")
+        for endpoint in ("from", "to"):
+            point = route.get(endpoint + "_entry")
+            if point is not None:
+                data = maps[route[endpoint]]
+                if (
+                    not isinstance(point, list) or len(point) != 2
+                    or any(type(n) is not int for n in point)
+                    or not 0 <= point[0] < data["width"]
+                    or not 0 <= point[1] < data["height"]
+                    or point in data.get("cover", []) + data.get("blocked", [])
+                    or point in data.get("water", []) and point not in data.get("bridges", [])
+                    or not any(g["position"] == point and not g.get("destination") for g in data["exits"])
+                ):
+                    raise ValueError("Choisissez une porte de sortie praticable sur chaque carte.")
+        if route.get("combat_map") and route["combat_map"] not in maps:
+            raise ValueError("Carte de combat inconnue.")
         seen.add(route["id"])
     return streets, routes
 
@@ -160,8 +176,11 @@ class WorldEditor:
             {
                 "route_id": old.get("id", ""),
                 "name": old.get("name", "Chemin"),
-                "from_zone": old.get("from", "clearing"),
-                "to_zone": old.get("to", "rosee"),
+                "from_map": old.get("from", "clearing"),
+                "from_entry": old.get("from_entry", ""),
+                "to_map": old.get("to", "rosee"),
+                "to_entry": old.get("to_entry", ""),
+                "combat_map": old.get("combat_map", ""),
                 "distance_km": old.get("distance_km", 0.1),
                 "travel_minutes": minutes,
             },
@@ -180,10 +199,17 @@ class WorldEditor:
                 **old,
                 "id": values["route_id"],
                 "name": values["name"],
-                "from": values["from_zone"],
-                "to": values["to_zone"],
+                "from": values["from_map"],
+                "to": values["to_map"],
+                "combat_map": values["combat_map"].strip(),
                 "distance_km": distance,
             }
+            for endpoint in ("from", "to"):
+                raw = values[endpoint + "_entry"].strip()
+                if raw:
+                    item[endpoint + "_entry"] = [int(n.strip()) for n in raw.split(",")]
+                else:
+                    item.pop(endpoint + "_entry", None)
             routes = deepcopy(self.routes)
             if new:
                 routes.append(item)

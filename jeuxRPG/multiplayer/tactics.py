@@ -144,8 +144,13 @@ def begin(party, now, origin):
         if party["position"] in world.ROAD_POINTS
         else world.zone_of(party["position"])
     )
+    transit = party.get("transit") or {}
+    road = next((r for r in world.ROUTES if r["id"] in (transit.get("source"), transit.get("destination"), party["position"])), None)
+    combat_map = road.get("combat_map") if road and origin == "travel" else None
     preset = (
-        PRESETS["field_" + party["field_map"]]
+        PRESETS["field_" + combat_map]
+        if combat_map
+        else PRESETS["field_" + party["field_map"]]
         if party.get("field_map")
         else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
     )
@@ -158,6 +163,10 @@ def begin(party, now, origin):
         }
         for index, key in enumerate(party["characters"])
     }
+    occupied = []
+    for unit in players.values():
+        unit["position"] = free_position(preset, unit["position"], occupied)
+        occupied.append(unit["position"])
     party["battle"] = {
         "preset": preset["id"],
         "players": players,

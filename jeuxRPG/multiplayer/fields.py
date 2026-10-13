@@ -32,6 +32,11 @@ def gate(x, y, destination, entry, name):
 
 def arrival_point(identifier, source=None):
     definition = MAPS[identifier]
+    if source in world.ROAD_POINTS:
+        route = next(route for route in world.ROUTES if route["id"] == source)
+        endpoint = "from" if route["from"] == identifier else "to"
+        if route.get(endpoint + "_entry") is not None:
+            return route[endpoint + "_entry"][:]
     origin = world.zone_of(source)
     if source in world.ROAD_POINTS:
         route = next(route for route in world.ROUTES if route["id"] == source)
@@ -68,16 +73,17 @@ for place in world.PLACES.values():
 
 for identifier in MAPS:
     root_zone = zone_of(MAPS, identifier)
+    zone_definition = MAPS.get(root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {}))
     if root_zone not in world.PLACES:
         world.PLACES[root_zone] = {
-            "name": MAPS[root_zone]["name"],
+            "name": zone_definition["name"],
             "type": "zone",
             "x": 70,
             "y": 300 + 30 * len(world.PLACES),
             "description": "Zone personnalisée.",
             "points": [],
         }
-        world.LEVELS[root_zone] = MAPS[root_zone].get("zone_level", 1)
+        world.LEVELS[root_zone] = zone_definition.get("level", zone_definition.get("zone_level", 1))
 for identifier, definition in MAPS.items():
     zone = world.zone_of(identifier)
     parent_zone = zone_of(MAPS, identifier)
@@ -123,9 +129,8 @@ for identifier, definition in MAPS.items():
 for identifier in MAPS:
     root_zone = zone_of(MAPS, identifier)
     if root_zone in world.LEVELS:
-        world.LEVELS[root_zone] = MAPS[root_zone].get(
-            "zone_level", world.LEVELS[root_zone]
-        )
+        definition = MAPS.get(root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {}))
+        world.LEVELS[root_zone] = definition.get("level", definition.get("zone_level", world.LEVELS[root_zone]))
 
 
 apply_layout(world.PLACES, MAPS)

@@ -333,6 +333,10 @@ class MapEditor:
                 "Suppression", "Cette carte est nécessaire au tutoriel."
             )
             return
+        from . import world
+        if any(key in (r["from"], r["to"], r.get("combat_map")) for r in self.maps["clearing"].get("travel_routes", world.ROUTES)):
+            self.messages.showerror("Suppression", "Retirez d’abord les trajets utilisant cette carte.")
+            return
         if any(
             item.get("destination") == key or item.get("fast_destination") == key
             for value in self.maps.values()
@@ -925,6 +929,11 @@ class MapEditor:
                 "link_mode": "Type : passage immédiat / trajet à pied / rapide sur carte générale",
                 "route_id": "Identifiant du chemin",
                 "from_zone": "Zone de départ",
+                "from_map": "Carte de départ",
+                "to_map": "Carte d’arrivée",
+                "from_entry": "Porte de départ x,y",
+                "to_entry": "Porte d’arrivée x,y",
+                "combat_map": "Carte de combat en voyage (vide = automatique)",
                 "to_zone": "Zone d’arrivée",
                 "distance_km": "Distance (km)",
                 "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)",
@@ -945,6 +954,7 @@ class MapEditor:
                 "width": "Largeur (cases)",
                 "height": "Hauteur (cases)",
                 "biome": "Ambiance",
+                "map_kind": "Type de carte",
                 "destination": "Carte destination (vide = sortie complète)",
                 "entry": "Case d’arrivée x,y",
                 "fast_destination": "Provenance du chemin rapide",
@@ -980,7 +990,11 @@ class MapEditor:
                 entries[key] = variable
                 continue
             choices = (
-                ["passage", "trajet", "rapide"]
+                ["exploration", "combat"]
+                if key == "map_kind"
+                else []
+                if key in ("from_entry", "to_entry")
+                else ["passage", "trajet", "rapide"]
                 if key == "link_mode"
                 else list(self.object_choices)
                 if key == "object_choice"
@@ -994,6 +1008,9 @@ class MapEditor:
                 if key
                 in (
                     "destination",
+                    "from_map",
+                    "to_map",
+                    "combat_map",
                     "fast_destination",
                     "anchor",
                     "source_map",
@@ -1021,6 +1038,19 @@ class MapEditor:
             )
             entry.grid(row=row, column=1, padx=8, pady=5)
             entries[key] = entry
+        for endpoint in ("from", "to"):
+            map_key, entry_key = endpoint + "_map", endpoint + "_entry"
+            if map_key in entries and entry_key in entries:
+                def update_doors(event=None, map_key=map_key, entry_key=entry_key):
+                    data = self.maps.get(entries[map_key].get(), {})
+                    doors = [",".join(map(str, gate["position"])) for gate in data.get("exits", []) if not gate.get("destination")]
+                    entries[entry_key].configure(values=doors)
+                    if entries[entry_key].get() not in doors:
+                        entries[entry_key].delete(0, "end")
+                        if doors:
+                            entries[entry_key].insert(0, doors[0])
+                entries[map_key].bind("<<ComboboxSelected>>", update_doors)
+                update_doors()
         result = []
 
         def accept():
@@ -1037,7 +1067,7 @@ class MapEditor:
         return result[0] if result else None
 
     def new(self):
-        values = self.form("Nouvelle carte", {"map_id": ""})
+        values = self.form("Nouvelle carte", {"map_id": "", "zone_id": zone_of(self.maps, self.selected.get())})
         key = values["map_id"].strip() if values else None
         if not key or key in self.maps:
             return
@@ -1052,7 +1082,7 @@ class MapEditor:
             bridges=[],
             blocked=[],
             paths=[],
-            zone_id=key,
+            zone_id=values.get("zone_id") or key,
             zone_level=1,
             spawners=[],
         )
@@ -1060,6 +1090,7 @@ class MapEditor:
         self.refresh_choice()
         self.draw()
         self.properties()
+        return key
 
     def drop_object(self, event):
         selected = getattr(self, "moving_object", None)
@@ -1197,6 +1228,7 @@ class MapEditor:
         values.update(
             zone_id=data.get("zone_id", data.get("world_zone", self.selected.get())),
             level=data.get("level", ""),
+            map_kind=data.get("map_kind", "exploration"),
             dungeon_id=dungeon.get("id", ""),
             dungeon_room=dungeon.get("room", 1),
             dungeon_final=dungeon.get("final", False),

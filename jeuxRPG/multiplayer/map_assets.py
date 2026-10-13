@@ -40,6 +40,8 @@ def _validate_map_metadata(key, definition, maps):
         or any(type(n) is not int for n in definition["world_origin"])
     ):
         raise ValueError(f"{key} : origine du secteur invalide.")
+    if definition.get("map_kind", "exploration") not in ("exploration", "combat"):
+        raise ValueError(f"{key} : type de carte inconnu.")
     metres = definition.get("cell_metres", 2)
     if type(metres) not in (int, float) or not 0.1 <= metres <= 100:
         raise ValueError(f"{key} : taille de case comprise entre 0.1 et 100 m.")

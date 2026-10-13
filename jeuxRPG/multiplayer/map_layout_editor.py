@@ -127,7 +127,7 @@ def layout_places(maps):
                     point = {"id": building, "name": "Bâtiment", "type": "bâtiment"}
                     place["points"].append(point)
                 point.update(x=430 + j * 130, y=y)
-    positioned = apply_layout(places, maps)
+    positioned = apply_layout(places, {**maps, **logical})
     for key, zone in logical.items():
         position = zone.get("world_view", {}).get("position")
         if position is not None:
@@ -165,6 +165,11 @@ class LayoutEditor:
             if var is self.zone:
                 self.zone_choice = choice
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
+        actions = ttk.Frame(body)
+        actions.pack(fill="x")
+        ttk.Button(actions, text="Créer une carte dans la zone", command=self.create_map).pack(side="left", padx=4)
+        ttk.Button(actions, text="Ouvrir la carte sélectionnée", command=self.open_map).pack(side="left", padx=4)
+        ttk.Button(actions, text="Gérer les trajets et cartes de combat", command=editor.edit_world).pack(side="left", padx=4)
         ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(side="left", padx=4)
         ttk.Button(bar, text="Relier deux zones", command=self.connect_zones).pack(side="left", padx=4)
         ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(side="left", padx=4)
@@ -177,7 +182,7 @@ class LayoutEditor:
         )
         ttk.Label(
             body,
-            text="Glissez les cercles pour placer les zones ou les points. Les traits représentent les chemins et rues ; leur topologie se modifie dans Trajets / rues.",
+            text="Glissez les cercles pour placer les zones ou les points. Les traits montrent les passages réels. Ouvrez une carte pour placer ses PNJ, ennemis et portes ; gérez les voyages dans Trajets / rues.",
         ).pack(fill="x", pady=6)
         viewport = ttk.Frame(body)
         viewport.pack(fill="both", expand=True)
@@ -241,15 +246,13 @@ class LayoutEditor:
                 if layout
                 else []
             )
-            connected = {n for chain in chains for n in chain}
-            chains.extend(
-                [
-                    ["__entry__", key]
-                    for key in self.nodes
-                    if key != "__entry__" and key not in connected
-                ]
-            )
             edges = [(a, b) for chain in chains for a, b in pairwise(chain)]
+            edges.extend(
+                (key, gate["destination"])
+                for key, data in self.editor.maps.items()
+                for gate in data["exits"]
+                if key in self.nodes and gate.get("destination") in self.nodes
+            )
         for a, b in edges:
             if general:
                 from .map_building import zone_of
@@ -352,6 +355,21 @@ class LayoutEditor:
         self.editor.refresh_choice()
         self.draw()
 
+    def open_map(self):
+        if self.selected in self.editor.maps and self.mode.get() != "Carte générale":
+            self.editor.selected.set(self.selected)
+            self.editor.refresh_choice()
+            self.editor.draw()
+            self.panel.destroy()
+
+    def create_map(self):
+        key = self.editor.new()
+        if key in self.editor.maps:
+            self.editor.remember()
+            self.editor.maps[key]["zone_id"] = self.zone.get()
+            self.editor.refresh_choice()
+            self.draw()
+
     def connect_zones(self):
         import re
         import uuid
@@ -388,18 +406,32 @@ class LayoutEditor:
         except ValueError:
             self.editor.messages.showerror("Liaison", "Nom ou distance invalide.")
             return
-        def representative(zone):
-            return next((key for key in self.editor.maps if key != "clearing" and zone_of(self.editor.maps, key) == zone),
-                        next((key for key in self.editor.maps if zone_of(self.editor.maps, key) == zone), None))
-        start, end = representative(source), representative(target)
+        start = next((key for key in self.editor.maps if zone_of(self.editor.maps, key) == source), None)
+        end = next((key for key in self.editor.maps if zone_of(self.editor.maps, key) == target), None)
         if not start or not end:
-            self.editor.messages.showerror("Liaison", "Chaque zone doit contenir au moins une carte pour voyager.")
+            self.editor.messages.showerror("Liaison", "Chaque zone doit contenir au moins une carte.")
+            return
+        doors = self.editor.form("Portes et combat du trajet", {
+            "from_map": start, "from_entry": "",
+            "to_map": end, "to_entry": "", "combat_map": "",
+        })
+        if not doors:
+            return
+        start, end = doors["from_map"], doors["to_map"]
+        if start not in self.editor.maps or end not in self.editor.maps or zone_of(self.editor.maps, start) != source or zone_of(self.editor.maps, end) != target:
+            self.editor.messages.showerror("Liaison", "Les cartes doivent appartenir aux zones choisies.")
+            return
+        try:
+            entries = {endpoint + "_entry": [int(n.strip()) for n in doors[endpoint + "_entry"].split(",")]
+                       for endpoint in ("from", "to")}
+        except ValueError:
+            self.editor.messages.showerror("Liaison", "Indiquez les coordonnées x,y de chaque porte.")
             return
         candidate = deepcopy(self.editor.maps)
         routes = candidate["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
         routes.append({"id": "link_" + uuid.uuid4().hex[:16], "name": name,
                        "from": start, "to": end, "distance_km": distance,
-                       "bidirectional": True})
+                       "bidirectional": True, "combat_map": doors["combat_map"].strip(), **entries})
         try:
             world_metadata(candidate, world.VILLAGE_STREETS, routes)
         except ValueError as exc:

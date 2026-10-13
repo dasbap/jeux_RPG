@@ -396,7 +396,7 @@ def view(party, me, traveller=None):
         places.append(place)
     routes = []
     for definition in ROUTES:
-        if definition["from"] in known and definition["to"] in known:
+        if zone_of(definition["from"]) in known and zone_of(definition["to"]) in known:
             route = {**definition, "destination": None}
             if (
                 not fighting
@@ -629,6 +629,9 @@ for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {
 
 
 def zone_of(point):
+    if point in WORLD_MAP_DATA:
+        from .map_building import zone_of as map_zone
+        return map_zone(WORLD_MAP_DATA, point)
     if point in ROAD_POINTS:
         return ROAD_POINTS[point]["zone"]
     if point in PLACES:
@@ -642,6 +645,8 @@ def zone_of(point):
 def point_name(point):
     if point in ROAD_POINTS:
         return ROAD_POINTS[point]["name"]
+    if point in WORLD_MAP_DATA:
+        return WORLD_MAP_DATA[point]["name"]
     zone = zone_of(point)
     if point == zone:
         return PLACES[zone]["name"]
@@ -684,7 +689,7 @@ def graph(known):
                 graph[source].append(destination)
                 graph[destination].append(source)
     for route in ROUTES:
-        if route["from"] in known and route["to"] in known:
+        if zone_of(route["from"]) in known and zone_of(route["to"]) in known:
             middle = route["id"]
             graph[middle] = [route["to"]]
             graph[route["from"]].append(middle)

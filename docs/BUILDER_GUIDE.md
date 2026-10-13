@@ -368,3 +368,16 @@ La palette est repliable : **Décoration → Végétaux / Minéraux / Constructi
 Dans **Cartes, monde et validation → Carte générale / points**, choisissez la carte générale ou les points d’un lieu. Glissez un cercle pour modifier sa position, y compris l’entrée du lieu. Sélectionnez un point puis **Modifier le nom** ou double-cliquez pour changer son nom affiché. Les positions sont enregistrées dans `world_view` du JSON de la zone ; elles ne déplacent pas les cases physiques, les PNJ ou les TP de la carte d’exploration. Les connexions restent définies par **Trajets / rues**. Le jeu ajuste le cadre du plan aux positions choisies.
 
 Enregistrez le projet puis redémarrez le serveur pour voir ces modifications en jeu. **Annuler modification** permet de revenir sur un déplacement du plan. L’aperçu rendu final ouvre explicitement le navigateur pour utiliser le rendu du client.
+
+
+### Cartes, zones et portes de voyage
+
+Une zone regroupe plusieurs cartes sans imposer de passage entre elles. Dans « Zones / carte générale », créez une zone, puis une carte dans cette zone. Ouvrez la carte sélectionnée pour placer les PNJ, apparitions d’ennemis et passages. Le plan des points affiche les passages réellement définis entre cartes ; glisser un point modifie sa position sur le plan, sans créer de passage.
+
+Dans les propriétés d’une carte, choisissez son type : `exploration` ou `combat`. Une carte de combat utilise les mêmes outils de terrain que les autres cartes.
+
+Pour relier deux zones, choisissez « Relier deux zones », puis les cartes et leurs portes de départ et d’arrivée. Les portes proposées sont les sorties complètes de chaque carte, placées avec l’outil de passage. Plusieurs portes et plusieurs trajets sont possibles. Les coordonnées choisies doivent être praticables.
+
+Dans « Trajets / rues », chaque chemin rapide possède une carte de départ, une carte d’arrivée, leurs portes et une carte de combat facultative. Une rencontre pendant ce voyage utilise automatiquement ce terrain de combat ; le voyage reste en attente pendant le combat et reprend ensuite. Sans carte configurée, les terrains de rencontre habituels sont conservés. Pour les anciens trajets sans portes explicites, l’arrivée conserve son comportement automatique.
+
+Enregistrez le projet et redémarrez le serveur pour appliquer ces changements au jeu.

@@ -37,7 +37,7 @@ def zone_of(maps, identifier):
         parent = maps[identifier].get(
             "zone_id", maps[identifier].get("world_zone", identifier)
         )
-        if not isinstance(parent, str) or parent not in maps:
+        if not isinstance(parent, str) or (parent not in maps and parent not in maps.get("clearing", {}).get("logical_zones", {})):
             raise ValueError("Zone de rattachement invalide.")
         if parent == identifier:
             return identifier
