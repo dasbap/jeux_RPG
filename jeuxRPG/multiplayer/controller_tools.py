@@ -33,7 +33,7 @@ def catalog_rows(project, section):
             (
                 q["id"],
                 q["name"],
-                f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP",
+                f"{q.get('category', 'standard')} · {q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP",
             )
             for q in p.content[section]
         ]
