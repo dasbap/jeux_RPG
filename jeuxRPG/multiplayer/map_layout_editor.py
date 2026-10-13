@@ -166,6 +166,7 @@ class LayoutEditor:
                 self.zone_choice = choice
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
         ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(side="left", padx=4)
+        ttk.Button(bar, text="Relier deux zones", command=self.connect_zones).pack(side="left", padx=4)
         ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(side="left", padx=4)
         ttk.Button(bar, text="Propriétés zone", command=self.zone_properties).pack(side="left", padx=4)
         ttk.Button(bar, text="Modifier le nom", command=self.rename).pack(
@@ -350,6 +351,65 @@ class LayoutEditor:
             )["name"] = name
         self.editor.refresh_choice()
         self.draw()
+
+    def connect_zones(self):
+        import re
+        import uuid
+
+        from .map_building import zone_of
+        from .map_world_editor import world_metadata
+        from . import world
+
+        places = layout_places(self.editor.maps)
+        logical = self.editor.maps["clearing"].get("logical_zones", {})
+        available = [key for key in places if key in logical]
+        if len(available) < 2:
+            self.editor.messages.showerror("Liaison", "Créez au moins deux zones.")
+            return
+        source = self.selected if self.selected in available else available[0]
+        target = next((key for key in available if key != source), available[0])
+        result = self.editor.form("Relier deux zones", {
+            "name": "Nouvelle route",
+            "from_zone": source,
+            "to_zone": target,
+            "distance_km": 0.2,
+        })
+        if not result:
+            return
+        source, target = result["from_zone"].strip(), result["to_zone"].strip()
+        if source not in available or target not in available or source == target:
+            self.editor.messages.showerror("Liaison", "Choisissez deux zones distinctes et existantes.")
+            return
+        name = result["name"].strip()
+        try:
+            distance = float(result["distance_km"].replace(",", "."))
+            if not name or len(name) > 100 or not 0.0001 <= distance <= 1000:
+                raise ValueError()
+        except ValueError:
+            self.editor.messages.showerror("Liaison", "Nom ou distance invalide.")
+            return
+        def representative(zone):
+            return next((key for key in self.editor.maps if key != "clearing" and zone_of(self.editor.maps, key) == zone),
+                        next((key for key in self.editor.maps if zone_of(self.editor.maps, key) == zone), None))
+        start, end = representative(source), representative(target)
+        if not start or not end:
+            self.editor.messages.showerror("Liaison", "Chaque zone doit contenir au moins une carte pour voyager.")
+            return
+        candidate = deepcopy(self.editor.maps)
+        routes = candidate["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
+        routes.append({"id": "link_" + uuid.uuid4().hex[:16], "name": name,
+                       "from": start, "to": end, "distance_km": distance,
+                       "bidirectional": True})
+        try:
+            world_metadata(candidate, world.VILLAGE_STREETS, routes)
+        except ValueError as exc:
+            self.editor.messages.showerror("Liaison", str(exc))
+            return
+        self.editor.remember()
+        self.editor.maps["clearing"]["travel_routes"] = routes
+        self.mode.set("Carte générale")
+        self.draw()
+        self.editor.status.set("Liaison ajoutée. Enregistrez et redémarrez le serveur.")
 
     def create_zone(self):
         import re
