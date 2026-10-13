@@ -145,6 +145,7 @@ class LayoutEditor:
         from .map_building import zone_of
 
         self.zone.set(zone_of(editor.maps, editor.selected.get()))
+        self.zone_choice = None
         for var, values in (
             (self.mode, ["Carte générale", "Points du lieu"]),
             (self.zone, list(layout_places(editor.maps))),
@@ -153,6 +154,8 @@ class LayoutEditor:
                 bar, textvariable=var, values=values, state="readonly"
             )
             choice.pack(side="left", padx=4)
+            if var is self.zone:
+                self.zone_choice = choice
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
         ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(side="left", padx=4)
         ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(side="left", padx=4)
@@ -353,6 +356,7 @@ class LayoutEditor:
             return
         self.editor.remember()
         zones[key] = {"name": values["name"].strip(), "level": level, "world_view": {"position": [350, 300]}}
+        self.zone_choice["values"] = list(layout_places(self.editor.maps))
         self.zone.set(key)
         self.mode.set("Carte générale")
         self.draw()
@@ -368,6 +372,7 @@ class LayoutEditor:
         self.editor.remember()
         del zones[key]
         self.selected = None
+        self.zone_choice["values"] = list(layout_places(self.editor.maps))
         self.zone.set(next(iter(layout_places(self.editor.maps))))
         self.draw()
 
