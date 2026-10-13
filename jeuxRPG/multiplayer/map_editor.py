@@ -954,7 +954,6 @@ class MapEditor:
                 "owner": "Joueur lié (leader ou ID, vide = fixe)",
                 "merchant": "Marchand",
                 "zone_id": "Zone de rattachement (ID)",
-                "zone_level": "Niveau de zone (carte racine, 1–100)",
                 "level": "Niveau local (vide = héritage)",
                 "dungeon_id": "Donjon (ID, vide = aucun)",
                 "dungeon_room": "Numéro de salle",
@@ -1197,7 +1196,6 @@ class MapEditor:
         dungeon = data.get("dungeon") or {}
         values.update(
             zone_id=data.get("zone_id", data.get("world_zone", self.selected.get())),
-            zone_level=data.get("zone_level", 1),
             level=data.get("level", ""),
             dungeon_id=dungeon.get("id", ""),
             dungeon_room=dungeon.get("room", 1),
@@ -1213,7 +1211,6 @@ class MapEditor:
                 if not result["name"].strip():
                     raise ValueError()
                 result["zone_id"] = result.get("zone_id") or self.selected.get()
-                result["zone_level"] = int(result.get("zone_level", 1))
                 result["level"] = int(result["level"]) if result.get("level") else None
                 dungeon_id = result.pop("dungeon_id", "").strip()
                 dungeon_room = int(result.pop("dungeon_room", 1))
@@ -1235,8 +1232,7 @@ class MapEditor:
                     candidate[self.selected.get()].pop("dungeon", None)
                 zone_of(candidate, self.selected.get())
                 if (
-                    not 1 <= result["zone_level"] <= 100
-                    or result["level"] is not None
+                    result["level"] is not None
                     and not 1 <= result["level"] <= 100
                 ):
                     raise ValueError()
