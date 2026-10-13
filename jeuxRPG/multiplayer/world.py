@@ -308,6 +308,9 @@ def _known_places(visited, step):
         known.add("lisiere")
     if step in ("craft", "travel", "complete"):
         known.add("brume")
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map_id in visited and _map.get("zone_id") in PLACES:
+            known.add(_map["zone_id"])
     for route in ROUTES:
         if "bidirectional" in route:
             if route["from"] in visited:
@@ -583,6 +586,28 @@ ROAD_POINTS = {
 }
 
 LEVELS = {"clearing": 1, "rosee": 1, "lisiere": 2, "brume": 4}
+
+for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}).items():
+    _position = _zone.get("world_view", {}).get("position", [350, 300])
+    PLACES[_zone_id] = {
+        "name": _zone["name"],
+        "type": "zone",
+        "x": _position[0],
+        "y": _position[1],
+        "description": _zone.get("description", _zone["name"]),
+        "points": [],
+    }
+    LEVELS[_zone_id] = _zone.get("level", 1)
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map.get("zone_id") == _zone_id:
+            _point = _map.get("world_view", {}).get("position", [170, 175])
+            PLACES[_zone_id]["points"].append({
+                "id": _map_id,
+                "name": _map["name"],
+                "type": "rencontre",
+                "x": _point[0],
+                "y": _point[1],
+            })
 
 
 def zone_of(point):
