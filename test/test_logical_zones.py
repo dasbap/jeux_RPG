@@ -53,9 +53,8 @@ def test_packaged_world_uses_five_logical_zones():
 
     maps = deepcopy(fields.MAPS)
     expected = {
-        "foret_eveilles": {"clearing"},
+        "foret_eveilles": {"clearing", "lisiere", "hunt"},
         "zone_rosee": {"rosee", "forest"},
-        "zone_lisiere": {"lisiere", "hunt"},
         "zone_brume": {"brume"},
         "grotte_oublies": {"cave_1", "cave_2"},
     }
