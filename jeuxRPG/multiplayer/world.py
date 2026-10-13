@@ -331,6 +331,8 @@ def view(party, me, traveller=None):
     for key, definition in PLACES.items():
         if key not in known:
             continue
+        if key in WORLD_MAP_DATA and WORLD_MAP_DATA[key].get("zone_id") in PLACES and WORLD_MAP_DATA[key]["zone_id"] != key:
+            continue
         place = {
             "id": key,
             "name": definition["name"],
@@ -407,7 +409,14 @@ def view(party, me, traveller=None):
                 and route["id"] == "rosee_brume"
             ):
                 route["destination"] = "brume"
-            routes.append(route)
+            for endpoint in ("from", "to"):
+                map_id = route[endpoint]
+                if map_id in WORLD_MAP_DATA:
+                    parent = WORLD_MAP_DATA[map_id].get("zone_id")
+                    if parent in PLACES:
+                        route[endpoint] = parent
+            if route["from"] != route["to"]:
+                routes.append(route)
     bestiary = []
     if "goblin" in mobs:
         advantages = goblin_table["advantage"]
@@ -609,6 +618,11 @@ for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {
                 "x": _point[0],
                 "y": _point[1],
             })
+    for _map_id, _map in WORLD_MAP_DATA.items():
+        if _map.get("zone_id") == _zone_id and _map_id in PLACES:
+            for _point in PLACES[_map_id].get("points", []):
+                if not any(p["id"] == _point["id"] for p in PLACES[_zone_id]["points"]):
+                    PLACES[_zone_id]["points"].append(deepcopy(_point))
 
 
 def zone_of(point):
