@@ -231,6 +231,8 @@ def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
     failures = []
     try:
         screen = Controller(root, project(tmp_path))
+        root.deiconify()
+        root.update()
         values = {f'field_{index}': index for index in range(40)}
         def widgets(parent):
             for child in parent.winfo_children():
@@ -251,7 +253,8 @@ def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
                 failures.append(error)
                 dialog.destroy()
         root.after(30, apply)
-        assert screen.form('Formulaire long', values) == values
+        result = screen.form('Formulaire long', values)
         assert failures == []
+        assert result == values
     finally:
         root.destroy()
