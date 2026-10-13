@@ -41,8 +41,8 @@ def world_metadata(maps, streets, routes):
             streets[key] = deepcopy(layout)
     if "travel_routes" in maps["clearing"]:
         routes = deepcopy(maps["clearing"]["travel_routes"])
-    if not isinstance(routes, list) or not 3 <= len(routes) <= 100:
-        raise ValueError("De 3 à 100 chemins rapides requis.")
+    if not isinstance(routes, list) or not 0 <= len(routes) <= 100:
+        raise ValueError("De 0 à 100 chemins rapides autorisés.")
     seen = set()
     for route in routes:
         if (
@@ -67,8 +67,6 @@ def world_metadata(maps, streets, routes):
         ):
             raise ValueError("Distance de chemin comprise entre 0.0001 et 1000 km.")
         seen.add(route["id"])
-    if not {"clearing_rosee", "rosee_lisiere", "rosee_brume"} <= seen:
-        raise ValueError("Les trois chemins du tutoriel doivent être conservés.")
     return streets, routes
 
 
@@ -104,6 +102,7 @@ class WorldEditor:
         for label, command in (
             ("Ajouter un chemin", lambda: self.road(True)),
             ("Modifier le chemin", self.road),
+            ("Supprimer le chemin", self.delete_road),
         ):
             ttk.Button(bar, text=label, command=command).pack(side="left")
         choice = ttk.Combobox(
@@ -196,6 +195,21 @@ class WorldEditor:
             self.routes = routes
             self.refresh()
         except (ValueError, KeyError) as exc:
+            self.messagebox.showerror("Trajet", str(exc), parent=self.window)
+
+    def delete_road(self):
+        selection = self.roads.curselection()
+        if not selection:
+            return
+        routes = deepcopy(self.routes)
+        routes.pop(selection[0])
+        candidate = deepcopy(self.editor.maps)
+        candidate["clearing"]["travel_routes"] = routes
+        try:
+            world_metadata(candidate, self.streets, routes)
+            self.routes = routes
+            self.refresh()
+        except ValueError as exc:
             self.messagebox.showerror("Trajet", str(exc), parent=self.window)
 
     def layout(self):
