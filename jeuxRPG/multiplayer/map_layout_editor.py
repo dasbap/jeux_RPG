@@ -331,9 +331,11 @@ class LayoutEditor:
             data = zones[self.selected] if self.selected in zones else self.editor.maps[self.selected]
             data["name"] = name
         else:
-            self.editor.maps[self.zone.get()].setdefault("world_view", {}).setdefault(
-                "points", {}
-            ).setdefault(self.selected, {})["name"] = name
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = zones[self.zone.get()] if self.zone.get() in zones else self.editor.maps[self.zone.get()]
+            data.setdefault("world_view", {}).setdefault("points", {}).setdefault(
+                self.selected, {}
+            )["name"] = name
         self.editor.refresh_choice()
         self.draw()
 
