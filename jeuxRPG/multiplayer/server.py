@@ -50,7 +50,9 @@ class RPGServer(ThreadingHTTPServer):
         self.network_log = create_logger(log_directory)
         service.configure_chat_log(log_directory)
         self.service = service
-        self.limiter = build_rate_limiter(os.environ, fallback=RateLimiter())
+        self.limiter = build_rate_limiter(
+            os.environ, fallback=RateLimiter(clock=lambda: time.monotonic())
+        )
         self._slots = threading.BoundedSemaphore(128)
         super().__init__(address, Handler)
         port = self.server_address[1]

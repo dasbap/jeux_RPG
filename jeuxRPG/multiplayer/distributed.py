@@ -18,12 +18,13 @@ return current
 
 
 class LocalRateLimiter:
-    def __init__(self):
+    def __init__(self, clock=None):
+        self._clock = clock
         self._lock = threading.Lock()
         self._entries = {}
 
     def accept(self, key, limit):
-        now = time.monotonic()
+        now = self._clock() if self._clock is not None else time.monotonic()
         with self._lock:
             for expired in [
                 item

@@ -56,3 +56,17 @@ def test_interactive_routes_commands_and_rejects_invalid_arity(monkeypatch, caps
 @pytest.mark.parametrize("initial", [0, 1])
 def test_decimal_fields_keep_fractional_values_from_integer_defaults(key, initial):
     assert parse_field(key, "0,75", initial) == 0.75
+
+
+def test_rate_limiter_uses_injected_clock_for_expiration():
+    from jeuxRPG.multiplayer.distributed import LocalRateLimiter
+
+    now = [0.0]
+    limiter = LocalRateLimiter(clock=lambda: now[0])
+    assert limiter.accept("player", 2)
+    assert limiter.accept("player", 2)
+    assert not limiter.accept("player", 2)
+    now[0] = 59.0
+    assert not limiter.accept("player", 2)
+    now[0] = 60.0
+    assert limiter.accept("player", 2)
