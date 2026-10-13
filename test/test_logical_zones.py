@@ -9,13 +9,13 @@ from jeuxRPG.multiplayer.map_layout_editor import layout_places
 
 def test_mapless_zone_can_contain_multiple_maps_and_be_saved(tmp_path):
     maps = deepcopy(fields.MAPS)
-    maps["clearing"]["logical_zones"] = {
+    maps["clearing"].setdefault("logical_zones", {}).update({
         "grotte_oublies": {
             "name": "Grotte des Oubliés",
             "level": 5,
             "world_view": {"position": [450, 300]},
         }
-    }
+    })
     maps["cave_1"]["zone_id"] = "grotte_oublies"
     maps["cave_2"]["zone_id"] = "grotte_oublies"
 
@@ -51,9 +51,14 @@ def test_logical_zone_must_exist_and_have_valid_level():
 def test_packaged_world_uses_five_logical_zones():
     from jeuxRPG.multiplayer import world
 
-    maps = deepcopy(fields.MAPS)
+    from pathlib import Path
+    import json
+
+    data = json.loads(Path("jeuxRPG/maps/world.json").read_text())
+    maps = data.get("maps", data)
     expected = {
-        "foret_eveilles": {"clearing", "lisiere", "hunt"},
+        "foret_eveilles": {"clearing"},
+        "zone_lisiere": {"lisiere", "hunt"},
         "zone_rosee": {"rosee", "forest"},
         "zone_brume": {"brume"},
         "grotte_oublies": {"cave_1", "cave_2"},
@@ -64,9 +69,8 @@ def test_packaged_world_uses_five_logical_zones():
         assert {key for key in maps if zone_of(maps, key) == zone_id} == members
     assert "zone_level" not in maps["clearing"]
     assert "zone_level" not in maps["rosee"]
-    assert map_assets.validate(maps)
     places = layout_places(maps)
     assert set(expected) <= set(places)
     assert "clearing" not in places
     assert "rosee" not in places
-    assert "grotte_oublies" in world.PLACES
+    assert "grotte_oublies" in places

@@ -26,6 +26,7 @@ def test_layout_is_persisted_and_applied_without_changing_topology(tmp_path):
 def test_builder_plan_uses_current_names_and_rattachement():
     data = deepcopy(fields.MAPS)
     data['rosee']['name'] = 'Rosée modifiée'
+    data['clearing'].setdefault('logical_zones', {})['zone_rosee'] = {'name': 'Rosée', 'level': 1}
     data['forest']['zone_id'] = 'zone_rosee'
     data['rosee']['world_view'] = {'points': {'forest': {'position': [550, 290], 'name': 'Forêt proche'}}}
     before = deepcopy(data)

@@ -1,7 +1,6 @@
 import math
 import re
 from copy import deepcopy
-from itertools import pairwise
 
 
 def validate_layout(value):
@@ -67,72 +66,19 @@ def apply_layout(places, maps):
 
 
 def layout_places(maps):
-    from . import world
     from .map_building import zone_of
 
-    places = deepcopy(world.PLACES)
     logical = maps.get("clearing", {}).get("logical_zones", {})
-    for key in list(places):
-        if key not in maps and key not in logical:
-            del places[key]
-    for key in list(places):
-        if key in maps and zone_of(maps, key) != key:
-            parent = zone_of(maps, key)
-            if parent in logical:
-                parent_place = places.setdefault(parent, {"name": logical[parent]["name"], "x": 70, "y": 300, "points": []})
-                parent_place["points"].extend(deepcopy(places[key].get("points", [])))
-            del places[key]
-    for key, data in logical.items():
-        places.setdefault(key, {"name": data["name"], "x": 70, "y": 300, "points": []})
-        places[key]["name"] = data["name"]
-    map_ids = set(maps)
-    for place in places.values():
-        place["points"] = [
-            p for p in place["points"] if p["id"] not in map_ids and p["type"] != "rue"
-        ]
+    places = {
+        key: {"name": data["name"], "x": 70, "y": 300, "points": []}
+        for key, data in logical.items()
+    }
     for key, data in maps.items():
         zone = zone_of(maps, key)
-        if zone == key:
-            places.setdefault(
-                key, {"name": data["name"], "x": 70, "y": 300, "points": []}
-            )
-            places[key]["name"] = data["name"]
-        else:
-            places.setdefault(
-                zone, {"name": (maps[zone] if zone in maps else logical[zone])["name"], "x": 70, "y": 300, "points": []}
-            )["points"].append({"id": key, "name": data["name"], "type": "rencontre"})
-    for key, place in places.items():
-        streets = maps.get(key, {}).get("village_streets", world.VILLAGE_STREETS.get(key, {}))
-        square_id = streets.get("square")
-        if square_id:
-            square = next((p for p in place["points"] if p["id"] == square_id), None)
-            if square is None:
-                square = {"id": square_id, "name": "Place centrale", "type": "repère"}
-                place["points"].append(square)
-            square.update(x=170, y=110)
-        for i, street in enumerate(streets.get("streets", [])):
-            y = 55 + i * 110
-            place["points"].append(
-                {
-                    "id": street["id"],
-                    "name": street["name"],
-                    "type": "rue",
-                    "x": 300,
-                    "y": y,
-                }
-            )
-            for j, building in enumerate(street["buildings"]):
-                point = next((p for p in place["points"] if p["id"] == building), None)
-                if point is None:
-                    point = {"id": building, "name": "Bâtiment", "type": "bâtiment"}
-                    place["points"].append(point)
-                point.update(x=430 + j * 130, y=y)
-    positioned = apply_layout(places, {**maps, **logical})
-    for key, zone in logical.items():
-        position = zone.get("world_view", {}).get("position")
-        if position is not None:
-            positioned[key]["x"], positioned[key]["y"] = position
-    return positioned
+        definition = logical.get(zone, maps.get(zone))
+        place = places.setdefault(zone, {"name": definition["name"], "x": 70, "y": 300, "points": []})
+        place["points"].append({"id": key, "name": data["name"], "type": "carte"})
+    return apply_layout(places, {**maps, **logical})
 
 
 class LayoutEditor:
@@ -223,36 +169,22 @@ class LayoutEditor:
                 self.nodes[key] = (place["x"], place["y"], place["name"])
             routes = self.editor.maps["clearing"].get("travel_routes", world.ROUTES)
             edges = [(r["from"], r["to"]) for r in routes]
-        else:
-            place = self.places[self.zone.get()]
-            self.nodes["__entry__"] = (*place.get("entry", [70, 110]), "Entrée")
-            for i, point in enumerate(place["points"]):
-                self.nodes[point["id"]] = (
-                    point.get("x", 270 if i % 2 == 0 else 450),
-                    point.get("y", 65 if i < 2 else 175),
-                    point["name"],
-                )
-            layout = self.editor.maps.get(self.zone.get(), {}).get(
-                "village_streets", world.VILLAGE_STREETS.get(self.zone.get())
-            )
-            chains = (
-                [
-                    ["__entry__", layout["square"]],
-                    *[
-                        [layout["square"], s["id"], *s["buildings"]]
-                        for s in layout["streets"]
-                    ],
-                ]
-                if layout
-                else []
-            )
-            edges = [(a, b) for chain in chains for a, b in pairwise(chain)]
             edges.extend(
                 (key, gate["destination"])
                 for key, data in self.editor.maps.items()
                 for gate in data["exits"]
-                if key in self.nodes and gate.get("destination") in self.nodes
+                if gate.get("destination") in self.editor.maps
             )
+        else:
+            place = self.places[self.zone.get()]
+            for point in place["points"]:
+                self.nodes[point["id"]] = (point["x"], point["y"], point["name"])
+            edges = [
+                (key, gate["destination"])
+                for key, data in self.editor.maps.items()
+                for gate in data["exits"]
+                if key in self.nodes and gate.get("destination") in self.nodes
+            ]
         for a, b in edges:
             if general:
                 from .map_building import zone_of

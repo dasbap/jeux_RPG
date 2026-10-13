@@ -8753,6 +8753,16 @@
             550
           ]
         }
+      },
+      "zone_lisiere": {
+        "name": "Lisière de Rosée",
+        "level": 2,
+        "world_view": {
+          "position": [
+            450,
+            100
+          ]
+        }
       }
     }
   },
@@ -14430,7 +14440,7 @@
         "kind": "flowers"
       }
     ],
-    "zone_id": "foret_eveilles",
+    "zone_id": "zone_lisiere",
     "spawners": [],
     "world_origin": [
       201,
@@ -20460,7 +20470,7 @@
         "kind": "tree"
       }
     ],
-    "zone_id": "foret_eveilles",
+    "zone_id": "zone_lisiere",
     "spawners": [
       {
         "mob_id": "goblin",
