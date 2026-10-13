@@ -367,8 +367,11 @@ def view(party, me, traveller=None):
         for point in place["points"]:
             point["action"] = None
             point["locked_reason"] = None
+            current_zone = zone_of(party.get("position", CURRENT[step]))
+            if current_zone in WORLD_MAP_DATA:
+                current_zone = WORLD_MAP_DATA[current_zone].get("zone_id", current_zone)
             point["local"] = (
-                key == zone_of(party.get("position", CURRENT[step]))
+                key == current_zone
                 and party.get("position") not in ROAD_POINTS
             )
             point["can_interact"] = point["local"] and not fighting and not moving
