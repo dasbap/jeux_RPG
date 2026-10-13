@@ -4,6 +4,9 @@ import json
 import os
 from pathlib import Path
 import shutil
+import tempfile
+
+from jeuxRPG.catalog_paths import CATALOG_NAMES
 
 from .content import load_content, validate_content, CONDITIONS
 from .map_assets import load, validate
@@ -23,11 +26,15 @@ class Project:
     def __init__(self, directory):
         self.directory = Path(directory).resolve()
         self.directory.mkdir(parents=True, exist_ok=True)
+        from .project_storage import project_lock, recover_project
+        with project_lock(self.directory):
+            recover_project(self.directory)
         packaged = Path(__file__).resolve().parents[1] / 'maps'
         for source in packaged.glob('*.json'):
             target = self.directory/source.name
             if not target.exists():
                 shutil.copyfile(source, target)
+        original_disk = self.disk_state()
         self.content = load_content(self.directory/'content.json')
         self.mobs = validate_mobs(json.loads((self.directory/'mobs.json').read_text(encoding='utf-8'))['maps'],classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'],xp_classes=self.content['gameplay']['xp_classes'])
         from .gameplay_catalog import material_ids
@@ -43,7 +50,11 @@ class Project:
         from .map_assets import read_catalog
         self.encounters = read_catalog('encounters', self.directory)
         self.migrate_classes()
+        self.validate()
         self.snapshot = self.state()
+        self.disk_snapshot = self.disk_state()
+        if original_disk != self.disk_snapshot:
+            raise ValueError('Le projet a changé pendant son ouverture. Rechargez-le.')
 
     def migrate_classes(self):
         definitions = self.content.get('classes',[])
@@ -127,6 +138,14 @@ class Project:
         return True
 
     def validate(self):
+        before = self.state()
+        try:
+            return self._validate()
+        except Exception:
+            self.restore(before)
+            raise
+
+    def _validate(self):
         validate_mobs(self.mobs,classes=[item['id'] for item in self.content['templates']['classes'] if item['class_type'] != 'INVOCATION'],xp_classes=self.content['gameplay']['xp_classes'])
         from .skill_catalog import library, make_skill
         from jeuxRPG._class.res.character.class_models import skill_to_data
@@ -161,6 +180,8 @@ class Project:
                 raise ValueError(f"{quest['name']} : PNJ, zone ou cible introuvable.")
         from .content import validate_references
         validate_references(self.content, self.mobs, self.maps)
+        from .map_playability import validate as validate_playability
+        validate_playability(self.maps)
         return True
 
     def rename(self, section, identifier, replacement):
@@ -310,6 +331,9 @@ class Project:
                 for contract in self.content.get('endgame', []):
                     if contract.get('zone') == identifier:
                         contract['zone'] = replacement
+                start = self.content['gameplay']['rules']['start']
+                if start['map'] == identifier:
+                    start['map'] = replacement
             else:
                 raise ValueError('Ce type de définition ne possède pas d’identifiant modifiable.')
             self.validate()
@@ -321,7 +345,7 @@ class Project:
         import re
         if section not in ('mobs','quests','achievements','endgame','classes','skills','skill_models'):
             raise ValueError('Ce catalogue se duplique depuis son éditeur spécialisé.')
-        if not isinstance(replacement,str) or not re.fullmatch(r'[a-z0-9_]{1,64}',replacement):
+        if not isinstance(replacement,str) or not re.fullmatch(r'[a-zA-Z0-9_]{1,64}' if section == 'classes' else r'[a-z0-9_]{1,64}',replacement):
             raise ValueError('Identifiant : lettres minuscules, chiffres et underscores.')
         before = self.state()
         try:
@@ -352,30 +376,50 @@ class Project:
             self.maps, self.mobs, self.content, self.encounters = before
             raise
 
+    def disk_state(self):
+        return {name: (self.directory / name).read_bytes() if (self.directory / name).exists() else None for name in CATALOG_NAMES}
+
     def save(self):
-        self.validate()
-        payloads = {'world.json': self.maps, 'encounters.json': {'kind': 'encounters', 'maps': self.encounters}, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': {key:value for key,value in self.content.items() if key != 'templates'}}, 'classes.json':self.content['templates']}
-        originals, staged, replaced = {}, {}, []
+        from .project_storage import project_lock, recover_project
+        before = self.state()
         try:
-            for name, value in payloads.items():
-                target = self.directory/name
-                originals[name] = target.read_bytes() if target.exists() else None
-                temporary = self.directory/(name+'.controller.tmp')
-                temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
-                staged[name] = temporary
+            with project_lock(self.directory):
+                recover_project(self.directory)
+                if self.disk_state() != self.disk_snapshot:
+                    raise ValueError('Le projet a été modifié sur disque depuis son ouverture. Rechargez-le avant d’enregistrer.')
+                self.validate()
+                self._write_catalogs()
+                self.disk_snapshot = self.disk_state()
+        except Exception:
+            self.restore(before)
+            raise
+        self.snapshot = self.state()
+
+    def _write_catalogs(self):
+        from jeuxRPG.catalog_paths import catalog_limit
+        payloads = {'world.json': self.maps, 'encounters.json': {'kind': 'encounters', 'maps': self.encounters}, 'mobs.json': {'kind': 'mobs', 'maps': self.mobs}, 'content.json': {'kind': 'content', 'maps': {}, 'content': {key:value for key,value in self.content.items() if key != 'templates'}}, 'classes.json':self.content['templates']}
+        serialized = {name: (json.dumps(value, ensure_ascii=False, indent=2)+'\n').encode('utf-8') for name, value in payloads.items()}
+        for name, value in serialized.items():
+            if len(value) > catalog_limit(name):
+                raise ValueError(f'{name} : catalogue trop volumineux pour être rouvert ({len(value)} octets, limite {catalog_limit(name)}).')
+        from .project_storage import prepare_recovery, recover_project, finish_recovery, sync_directory
+        originals, staged = self.disk_state(), {}
+        try:
+            for name, value in serialized.items():
+                descriptor, path = tempfile.mkstemp(prefix=name+'.', suffix='.controller.tmp', dir=self.directory)
+                staged[name] = Path(path)
+                with os.fdopen(descriptor, 'wb') as output:
+                    output.write(value)
+                    output.flush()
+                    os.fsync(output.fileno())
+            prepare_recovery(self.directory, originals)
             for name, temporary in staged.items():
                 os.replace(temporary, self.directory/name)
-                replaced.append(name)
+            sync_directory(self.directory)
+            finish_recovery(self.directory)
         except Exception:
-            for name in replaced:
-                if originals[name] is None:
-                    (self.directory/name).unlink(missing_ok=True)
-                else:
-                    (self.directory/name).write_bytes(originals[name])
+            recover_project(self.directory)
             raise
         finally:
             for temporary in staged.values():
                 temporary.unlink(missing_ok=True)
-        self.snapshot = self.state()
-
-

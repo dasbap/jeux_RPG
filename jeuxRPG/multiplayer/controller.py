@@ -63,7 +63,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             ttk.Label(search, text='Rechercher').pack(side='left')
             self.filters[section] = tk.StringVar()
             ttk.Entry(search, textvariable=self.filters[section]).pack(side='left', fill='x', expand=True, padx=8)
-            self.filters[section].trace_add('write', lambda *args: self.refresh())
+            self.filters[section].trace_add('write', lambda *args, s=section: self.refresh(s))
             table_frame = ttk.Frame(page)
             table_frame.pack(fill='both', expand=True)
             table = ttk.Treeview(table_frame, columns=('name', 'details'), show='tree headings', selectmode='browse')
@@ -215,10 +215,12 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         except (ValueError,KeyError,TypeError) as exc:
             self.messagebox.showerror('Duplication',str(exc),parent=self.root)
 
-    def refresh(self):
+    def refresh(self, only=None):
         p = self.project
         from .controller_tools import catalog_rows, filter_rows
         for section, table in self.tables.items():
+            if only is not None and section != only:
+                continue
             selected = table.selection()
             query = self.filters[section].get() if hasattr(self, 'filters') else ''
             table.delete(*table.get_children())
@@ -239,8 +241,21 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'starting_gold':'Or initial', 'trade_max_quantity':'Quantité max par échange', 'trade_max_gold':'Or max par échange', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie', 'buy':'Prix d’achat au marchand', 'sell':'Prix de vente au marchand', 'merchant':'Marchand', 'min_level':'Niveau minimum', 'repeatable':'Répétable', 'pvp_enabled':'Activer le PvP optionnel'}.get(key, key)
 
     def form(self, title, values, choices=None):
-        window = self.tk.Toplevel(self.root)
-        window.title(title)
+        dialog = self.tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.geometry(f'{min(850, dialog.winfo_screenwidth()-80)}x{min(650, dialog.winfo_screenheight()-100)}')
+        frame = self.ttk.Frame(dialog)
+        frame.pack(fill='both', expand=True)
+        canvas = self.tk.Canvas(frame, highlightthickness=0)
+        scrollbar = self.ttk.Scrollbar(frame, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        canvas.pack(side='left', fill='both', expand=True)
+        window = self.ttk.Frame(canvas)
+        content_window = canvas.create_window((0, 0), window=window, anchor='nw')
+        window.bind('<Configure>', lambda event: canvas.configure(scrollregion=canvas.bbox('all')))
+        canvas.bind('<Configure>', lambda event: canvas.itemconfigure(content_window, width=event.width))
+        dialog.bind('<MouseWheel>', lambda event: canvas.yview_scroll(int(-event.delta/120), 'units'))
         fields = {}
         labels = {}
         choices = choices or {}
@@ -293,14 +308,17 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                         raise ValueError('Seuil entier requis.')
                     parsed['threshold'] = int(parsed['threshold'])
                 result.append(parsed)
-                window.destroy()
+                dialog.destroy()
             except ValueError:
-                self.messagebox.showerror('Valeur', 'Les champs numériques doivent contenir un nombre.', parent=window)
-        self.ttk.Button(window, text='Appliquer', command=accept).grid(row=len(values), column=0, pady=10)
-        self.ttk.Button(window, text='Annuler', command=window.destroy).grid(row=len(values), column=1)
-        window.transient(self.root)
-        window.grab_set()
-        self.root.wait_window(window)
+                self.messagebox.showerror('Valeur', 'Les champs numériques doivent contenir un nombre.', parent=dialog)
+        actions = self.ttk.Frame(dialog, padding=8)
+        actions.pack(fill='x')
+        self.ttk.Button(actions, text='Appliquer', command=accept).pack(side='left', padx=4)
+        self.ttk.Button(actions, text='Annuler', command=dialog.destroy).pack(side='left', padx=4)
+        dialog.bind('<Escape>', lambda event: dialog.destroy())
+        dialog.transient(self.root)
+        dialog.grab_set()
+        self.root.wait_window(dialog)
         return result[0] if result else None
 
     def edit(self, section, new=False):
@@ -565,41 +583,60 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         previous_editor_mobs = map_editor.MOBS
         map_building.MOBS = map_editor.MOBS = self.project.mobs
         before = self.project.state()
-        editor = map_editor.MapEditor(window, self.project.directory/'world.json')
-        editor.maps = deepcopy(self.project.maps)
-        editor.saved = deepcopy(editor.maps)
-        chosen = self.tables['maps'].selection()
-        if chosen:
-            editor.selected.set(chosen[0])
-        editor.refresh_choice()
-        editor.draw()
-        def sync_save(choose=False):
-            old = self.project.maps
-            self.project.maps = deepcopy(editor.maps)
-            try:
-                self.project.save()
-                editor.saved = deepcopy(editor.maps)
-                editor.status.set('Projet enregistré. Redémarrez le serveur pour appliquer.')
-            except (ValueError, OSError) as exc:
-                self.project.maps = old
-                editor.messages.showerror('Projet', str(exc), parent=window)
-        editor.on_save = sync_save
-        window.transient(self.root)
-        window.grab_set()
-        if new:
-            editor.new()
-        def close_builder():
-            if editor.maps != editor.saved:
-                answer = editor.messages.askyesnocancel('Builder', 'Garder les modifications dans le contrôleur ? Elles pourront être enregistrées depuis celui-ci.', parent=window)
-                if answer is None:
+        try:
+            editor = map_editor.MapEditor(window, self.project.directory/'world.json')
+            editor.gameplay = self.project.content['gameplay']
+            editor.maps = deepcopy(self.project.maps)
+            editor.saved = deepcopy(editor.maps)
+            chosen = self.tables['maps'].selection()
+            if chosen:
+                editor.selected.set(chosen[0])
+            editor.refresh_choice()
+            editor.draw()
+            def sync_save(choose=False):
+                if choose:
+                    destination = filedialog.askdirectory(title='Exporter le projet complet dans un autre dossier', parent=self.root)
+                    if not destination:
+                        return
+                    if Path(destination).resolve() == self.project.directory:
+                        editor.messages.showerror('Export', 'Choisissez un autre dossier ; Enregistrer conserve le projet courant.', parent=window)
+                        return
+                    try:
+                        exported = Project(destination)
+                        exported.restore(self.project.state())
+                        exported.maps = deepcopy(editor.maps)
+                        exported.save()
+                        editor.status.set('Copie du projet exportée. Le projet courant reste ouvert.')
+                    except (ValueError, OSError) as exc:
+                        editor.messages.showerror('Export', str(exc), parent=window)
                     return
-                if not answer:
-                    editor.maps = deepcopy(editor.saved)
-            window.destroy()
-        window.protocol('WM_DELETE_WINDOW', close_builder)
-        self.root.wait_window(window)
-        map_building.MOBS = previous_mobs
-        map_editor.MOBS = previous_editor_mobs
+                old = self.project.maps
+                self.project.maps = deepcopy(editor.maps)
+                try:
+                    self.project.save()
+                    editor.saved = deepcopy(editor.maps)
+                    editor.status.set('Projet enregistré. Redémarrez le serveur pour appliquer.')
+                except (ValueError, OSError) as exc:
+                    self.project.maps = old
+                    editor.messages.showerror('Projet', str(exc), parent=window)
+            editor.on_save = sync_save
+            window.transient(self.root)
+            window.grab_set()
+            if new:
+                editor.new()
+            def close_builder():
+                if editor.maps != editor.saved:
+                    answer = editor.messages.askyesnocancel('Builder', 'Garder les modifications dans le contrôleur ? Elles pourront être enregistrées depuis celui-ci.', parent=window)
+                    if answer is None:
+                        return
+                    if not answer:
+                        editor.maps = deepcopy(editor.saved)
+                window.destroy()
+            window.protocol('WM_DELETE_WINDOW', close_builder)
+            self.root.wait_window(window)
+        finally:
+            map_building.MOBS = previous_mobs
+            map_editor.MOBS = previous_editor_mobs
         self.project.maps = deepcopy(editor.maps)
         if self.project.state() != before:
             self.remember(before)

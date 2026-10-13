@@ -194,8 +194,16 @@ class ControllerEditorsMixin:
         return result[0] if result else None
 
     def edit_stats(self, definition):
-        from jeuxRPG._class.character import Character
-        actor = Character.create(definition['class_name'],'controller',definition['name'])
+        from jeuxRPG._class.character import CharacterMeta
+        from jeuxRPG._class.universal_character import register_model
+        registry = CharacterMeta._classes.copy()
+        try:
+            model = next(item for item in self.project.content['templates']['classes'] if item['id'] == definition['class_name'])
+            actor_type = register_model(model, self.project.content['templates'])
+            actor = actor_type('controller', definition['name'])
+        finally:
+            CharacterMeta._classes.clear()
+            CharacterMeta._classes.update(registry)
         bases = {stat:getattr(actor,stat).value for stat in STATS}
         actor.gain_exp(actor._required_exp_for_next_level()-actor.exp)
         values = {}

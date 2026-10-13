@@ -220,3 +220,38 @@ def test_equipment_replacement_subtracts_old_bonus_and_keeps_hp_nonnegative(monk
     assert p['characters']['p']['stats']['hp']['max'] == baseline
     assert p['characters']['p']['stats']['hp']['current'] == 0
     assert p['equipment']['p']['torso']['recipe'] == 'tunique'
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason='Formulaire Tk vérifié sous Windows')
+def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
+    import tkinter as tk
+    from tkinter import ttk
+    root = tk.Tk()
+    root.withdraw()
+    failures = []
+    try:
+        screen = Controller(root, project(tmp_path))
+        values = {f'field_{index}': index for index in range(40)}
+        def widgets(parent):
+            for child in parent.winfo_children():
+                yield child
+                yield from widgets(child)
+        def apply():
+            dialog = next(child for child in root.winfo_children() if isinstance(child, tk.Toplevel))
+            try:
+                children = list(widgets(dialog))
+                canvas = next(child for child in children if isinstance(child, tk.Canvas))
+                root.update_idletasks()
+                canvas.yview_moveto(1)
+                assert canvas.yview()[0] > 0
+                button = next(child for child in children if isinstance(child, ttk.Button) and child.cget('text') == 'Appliquer')
+                assert button.winfo_ismapped()
+                button.invoke()
+            except Exception as error:
+                failures.append(error)
+                dialog.destroy()
+        root.after(30, apply)
+        assert screen.form('Formulaire long', values) == values
+        assert failures == []
+    finally:
+        root.destroy()

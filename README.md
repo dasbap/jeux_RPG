@@ -400,7 +400,7 @@ Le builder ouvre un **Aperçu rendu final** autonome dans le navigateur, avec le
 
 ## Contrôleur du projet
 
-`python controller.py` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.
+`python -m jeuxRPG.multiplayer.controller` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.
 
 ## Alpha 0.11.0a20 — accès du builder et parcours client
 

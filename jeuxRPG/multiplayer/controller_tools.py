@@ -138,7 +138,8 @@ def report(project):
             errors.append(quest['name'] + ' : PNJ donneur introuvable.')
     from .map_playability import issues
     try:
-        warnings = issues(project.maps)
+        warnings = []
+        errors.extend(issues(project.maps))
     except (ValueError, KeyError, TypeError):
         warnings = ["Contrôle des accès impossible : corrigez les erreurs de structure des cartes."]
     for identifier, species in project.mobs.items():
@@ -149,7 +150,7 @@ def report(project):
         if not definition.get('exits'):
             warnings.append(key + ' : aucune sortie ; vérifier que cette impasse est voulue.')
     from .controller_gameplay import SECTIONS
-    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ['maps','quests','mobs','achievements','economy','npcs','classes','skills','skill_models',*[section for section, _ in SECTIONS]]}}
+    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ['maps','quests','mobs','achievements','endgame','economy','npcs','classes','skills','skill_models',*[section for section, _ in SECTIONS]]}}
 
 
 def text(value):

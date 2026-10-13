@@ -1,8 +1,6 @@
 from copy import deepcopy
 import json
 import math
-import os
-from pathlib import Path
 import re
 
 from jeuxRPG._class.res.advantage import Advantage
@@ -20,19 +18,8 @@ STAT_TYPES = {'hp':basic_stat.HP,'force':basic_stat.Force,'endurance':basic_stat
 
 
 def path_for(directory=None):
-    if directory:
-        return Path(directory)/'classes.json'
-    configured = os.environ.get('RPG_CLASSES_FILE')
-    if configured:
-        return Path(configured)
-    maps = os.environ.get('RPG_MAPS_FILE')
-    if maps:
-        source = Path(maps)
-        candidate = (source if source.is_dir() else source.parent)/'classes.json'
-        if candidate.exists():
-            return candidate
-    local = Path.cwd()/'maps'/'classes.json'
-    return local if local.exists() else Path(__file__).resolve().parents[3]/'maps'/'classes.json'
+    from jeuxRPG.catalog_paths import catalog_path
+    return catalog_path('classes.json', directory)
 
 
 def valid_number(value,low=0,high=100000):
@@ -168,7 +155,8 @@ def load(directory=None):
     path = path_for(directory)
     if not path.exists():
         path = path_for()
-    if path.stat().st_size > 2*1024*1024:
+    from jeuxRPG.catalog_paths import catalog_limit
+    if path.stat().st_size > catalog_limit('classes.json'):
         raise ValueError('Catalogue de classes trop volumineux.')
     return validate(json.loads(path.read_text(encoding='utf-8')))
 
