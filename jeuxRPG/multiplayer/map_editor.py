@@ -101,7 +101,7 @@ class MapEditor:
                 ("Supprimer carte", self.delete),
                 ("Valider", self.validate),
                 ("TP par clics", self.portal_by_click),
-                ("Carte générale / points", self.edit_layout),
+                ("Zones / carte générale", self.edit_layout),
                 ("Trajets / rues", self.edit_world),
                 ("Synchroniser les raccords", self.synchronize),
             )
