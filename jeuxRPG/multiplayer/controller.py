@@ -937,6 +937,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             {
                 "id": "",
                 "name": "Nouvelle quête",
+                "category": "side",
                 "npc": "mira",
                 "kind": "kill",
                 "target": "goblin",
@@ -964,6 +965,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             else next(item for item in p.content[section] if item["id"] == key)
         )
         choices = {
+            "category": ["main", "side", "tutorial", "standard"],
             "npc": sorted(
                 {site["id"] for data in p.maps.values() for site in data["sites"]}
             ),
@@ -975,7 +977,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         if section == "achievements":
             old = {"target": "", "zone": "", "map": "", **old}
         else:
-            old = {"map": "", **old}
+            old = {"category": "side", "map": "", **old}
         choices["zone"] = (
             ["", *p.maps]
             if section == "quests"
