@@ -989,12 +989,13 @@ class MapEditor:
                 if key == "direction"
                 else sorted({zone_of(self.maps, key) for key in self.maps})
                 if key in ("from_zone", "to_zone")
+                else ["", *self.maps, *self.maps.get("clearing", {}).get("logical_zones", {})]
+                if key == "zone_id"
                 else ["", *self.maps]
                 if key
                 in (
                     "destination",
                     "fast_destination",
-                    "zone_id",
                     "anchor",
                     "source_map",
                     "from_zone",
