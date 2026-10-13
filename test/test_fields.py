@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from jeuxRPG.multiplayer import fields, tutorial, tactics, world
+from jeuxRPG.multiplayer import content, fields, tutorial, tactics, world
 from jeuxRPG.multiplayer.service import GameError, GameService
 
 
