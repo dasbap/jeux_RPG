@@ -328,7 +328,6 @@ class Handler(BaseHTTPRequestHandler):
         self._request_id = uuid.uuid4().hex
         self._network_combat = False
         self._network_route = "unknown"
-        self._network_combat = False
         self._network_action = "none"
         try:
             self._guard()

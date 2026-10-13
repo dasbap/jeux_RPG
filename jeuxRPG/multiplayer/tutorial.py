@@ -671,12 +671,12 @@ def _execute_talk(party, params, error):
 
 
 def execute_one(party, player_id, action, params, now, error, random, resolved=False):
-    characters = {key: unpack(value) for key, value in party["characters"].items()}
-    actor = characters[player_id]
     if action in ("strike", "skill"):
         return _execute_attack(
             party, player_id, action, params, now, error, random, resolved
         )
+    characters = {key: unpack(value) for key, value in party["characters"].items()}
+    actor = characters[player_id]
     if action == "endgame_claim":
         return [content.claim_endgame(party, params["challenge"], error)], False
     if action == "talk":
