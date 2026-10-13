@@ -53,7 +53,7 @@ function renderSocial() {
   if (!$("social-view") || currentView !== "social") return;
   const data = socialState || {friends: [], requests: [], invitations: [], team: null, rallies: [], guild: null, guild_invitations: []};
   const presence = presenceState;
-  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/${presence.capacity} joueurs · équipe ${data.team?.members.length || 1}/${data.team?.capacity || presence.team_capacity || 4} · guilde ${data.guild ? data.guild.members.length + "/" + data.guild.capacity : "aucune"} · PvP désactivé` : "Choisissez votre personnage pour retrouver les autres joueurs.";
+  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/${presence.capacity} joueurs · équipe ${data.team?.members.length || 1}/${data.team?.capacity || presence.team_capacity || 4} · guilde ${data.guild ? data.guild.members.length + "/" + data.guild.capacity : "aucune"} · PvP ${presence.pvp ? "optionnel actif" : "désactivé"}` : "Choisissez votre personnage pour retrouver les autres joueurs.";
   if ($("guild-create")) $("guild-create").hidden = Boolean(data.guild);
   if ($("social-guild-invite")) $("social-guild-invite").hidden = !data.guild || data.guild.role !== "owner";
   const root = $("social-content");

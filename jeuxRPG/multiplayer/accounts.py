@@ -254,7 +254,8 @@ class AccountMixin:
             row = self.db.execute('SELECT p.id,p.name,p.class_name,c.account_id FROM players p LEFT JOIN account_characters c ON c.player_id=p.id LEFT JOIN account_status a ON a.player_id=p.id WHERE p.id=? AND COALESCE(a.suspended,0)=0', (identifier,)).fetchone()
             if row:
                 nearby.append({**dict(row), **other, 'ally': row['account_id'] in team_accounts})
-        return {'realm': realm, 'realms': self.realm_count, 'capacity': SOCIAL_RULES['realm_capacity'], 'online': sum(p['realm'] == realm for p in self.runtime_presence.values()), 'nearby': nearby, 'team_capacity': SOCIAL_RULES['team_capacity'], 'pvp': False}
+        from .content import WORLD
+        return {'realm': realm, 'realms': self.realm_count, 'capacity': SOCIAL_RULES['realm_capacity'], 'online': sum(p['realm'] == realm for p in self.runtime_presence.values()), 'nearby': nearby, 'team_capacity': SOCIAL_RULES['team_capacity'], 'pvp': bool(WORLD.get('pvp_enabled', False))}
 
     def social_view(self, token):
         with self._transaction():

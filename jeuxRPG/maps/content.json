@@ -10,6 +10,7 @@
       "merchant_stay_hours": 8,
       "player_vision": 12,
       "guild_max_members": 50,
+      "pvp_enabled": false,
       "starting_gold": 100,
       "trade_max_quantity": 999,
       "trade_max_gold": 100000

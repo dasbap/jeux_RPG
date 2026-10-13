@@ -228,6 +228,14 @@ Dans **Mobs**, l’éditeur **Phases de boss** permet d’ajouter jusqu’à dix
 Le catalogue livré fournit un exemple : `cave_1` et `cave_2` forment le donjon `grotte_gobeline`, et `gobelin_boss` possède une phase `Furie`. Tous ces paramètres restent modifiables dans le Controller.
 
 
+## PvP optionnel
+
+Le réglage **Monde → Activer le PvP optionnel** contrôle entièrement les duels entre comptes. Il est désactivé par défaut.
+
+Lorsque le PvP est désactivé, les comptes ne peuvent ni rejoindre ni démarrer un duel et l’interface masque le bouton de duel. Lorsque le réglage est activé, le système de duel reste volontaire : un joueur crée un salon, l’autre le rejoint avec l’invitation, puis le propriétaire choisit explicitement **Duel optionnel**. Le mode aventure, les rencontres PvE et la présence dans le même monde ne déclenchent jamais automatiquement un combat entre joueurs.
+
+Les personnages locaux historiques conservent les tests de compatibilité du moteur de duel, mais la disponibilité visible des comptes dépend toujours du réglage du Controller.
+
 ## Économie et échanges
 
 L’onglet **Économie** du Controller définit les matériaux échangeables et leurs prix. **Prix d’achat au marchand** est la somme payée par le joueur ; **Prix de vente au marchand** est la somme reçue par le joueur. La validation impose un prix de vente inférieur ou égal au prix d’achat.

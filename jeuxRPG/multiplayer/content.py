@@ -7,7 +7,7 @@ import re
 
 
 DEFAULTS = {
-    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50, 'starting_gold': 100, 'trade_max_quantity': 999, 'trade_max_gold': 100000},
+    'world': {'repop_seconds': 180, 'mob_xp': 50, 'xp_base': 500, 'xp_exponent': 1.8, 'merchant_stay_hours': 8, 'player_vision': 12, 'guild_max_members': 50, 'pvp_enabled': False, 'starting_gold': 100, 'trade_max_quantity': 999, 'trade_max_gold': 100000},
     'quests': [{'id': 'mira_hunt', 'name': 'Protéger la lisière', 'npc': 'mira', 'kind': 'kill', 'target': 'goblin', 'zone': 'lisiere', 'count': 3, 'reward_xp': 300, 'category': 'tutorial', 'description': 'Battez les gobelins puis rapportez la nouvelle à Mira.'}],
     'economy': [
         {'id': 'peau', 'name': 'Peau', 'buy': 8, 'sell': 4},
@@ -43,7 +43,7 @@ def validate_content(data):
     if not isinstance(data, dict) or set(data)-{'classes','skills','templates','gameplay'} != set(DEFAULTS):
         raise ValueError('Sections monde, quêtes et succès requises.')
     limits = {'repop_seconds': (1, 86400), 'mob_xp': (0, 100000), 'xp_base': (1, 100000), 'xp_exponent': (1, 5), 'merchant_stay_hours': (.1, 168), 'player_vision': (1, 64), 'guild_max_members': (2, 500), 'starting_gold': (0, 1000000000), 'trade_max_quantity': (1, 1000000), 'trade_max_gold': (0, 1000000000)}
-    if not isinstance(data['world'], dict) or set(data['world']) != set(limits):
+    if not isinstance(data['world'], dict) or set(data['world']) != set(limits) | {'pvp_enabled'} or type(data['world'].get('pvp_enabled')) is not bool:
         raise ValueError('Paramètres du monde invalides.')
     for key, (low, high) in limits.items():
         if not number(data['world'][key], low, high):

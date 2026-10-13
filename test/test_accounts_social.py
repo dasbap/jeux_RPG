@@ -170,6 +170,31 @@ def test_team_capacity_races_and_independent_tutorials(game):
     assert failure.value.code == 'pvp_disabled'
 
 
+def test_optional_pvp_is_disabled_by_default_for_accounts(game):
+    player = account(game, 'NoPvp')
+    room = start(game, player)
+    with pytest.raises(GameError) as failure:
+        game.command(player['token'], uuid.uuid4().hex, 'attack', session_id=room, revision=0)
+    assert failure.value.code == 'pvp_disabled'
+    assert game.state(player['token'])['presence']['pvp'] is False
+
+
+def test_optional_pvp_allows_invited_account_duel_when_enabled(game, monkeypatch):
+    from jeuxRPG.multiplayer import content
+    monkeypatch.setattr(content, 'WORLD', {**content.WORLD, 'pvp_enabled': True})
+    alice, bob = [account(game, name) for name in ('PvpAlice', 'PvpBob')]
+    created = game.command(alice['token'], uuid.uuid4().hex, 'create')
+    room = created['session']
+    joined = game.command(bob['token'], uuid.uuid4().hex, 'join', invite=created['invite'])['session']
+    assert joined['id'] == room['id']
+    state = game.command(alice['token'], uuid.uuid4().hex, 'start', session_id=room['id'], revision=joined['revision'])['session']
+    assert state['state'] == 'running'
+    target = next(player['id'] for player in state['players'] if player['id'] != state['me'])
+    attacked = game.command(alice['token'], uuid.uuid4().hex, 'attack', session_id=room['id'], revision=state['revision'], target=target)['session']
+    assert next(player for player in attacked['players'] if player['id'] == target)['hp'] < next(player for player in state['players'] if player['id'] == target)['hp']
+    assert game.state(alice['token'])['presence']['pvp'] is True
+
+
 def test_friends_invites_privacy_and_team_chat(game):
     alice, bob, outsider = [account(game, name) for name in ('Alice','Bob','Eve')]
     game.social_action(alice['token'], 'friend_add', {'username': 'bob'})
