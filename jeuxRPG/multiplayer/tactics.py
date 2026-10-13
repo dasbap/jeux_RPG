@@ -145,7 +145,15 @@ def begin(party, now, origin):
         else world.zone_of(party["position"])
     )
     transit = party.get("transit") or {}
-    road = next((r for r in world.ROUTES if r["id"] in (transit.get("source"), transit.get("destination"), party["position"])), None)
+    road = next(
+        (
+            r
+            for r in world.ROUTES
+            if r["id"]
+            in (transit.get("source"), transit.get("destination"), party["position"])
+        ),
+        None,
+    )
     combat_map = road.get("combat_map") if road and origin == "travel" else None
     preset = (
         PRESETS["field_" + combat_map]

@@ -7,18 +7,31 @@ def add_travel_door(maps, map_id, point, name="Porte de voyage"):
     from . import tactics
 
     data = maps.get(map_id)
-    if data is None or not isinstance(point, list) or len(point) != 2 or any(type(n) is not int for n in point):
+    if (
+        data is None
+        or not isinstance(point, list)
+        or len(point) != 2
+        or any(type(n) is not int for n in point)
+    ):
         raise ValueError("Carte ou coordonnées de porte invalides.")
-    if not tactics.walkable(data, point) or point in data.get("water", []) and point not in data.get("bridges", []):
+    if (
+        not tactics.walkable(data, point)
+        or point in data.get("water", [])
+        and point not in data.get("bridges", [])
+    ):
         raise ValueError("Choisissez une case praticable pour la porte.")
     existing = next((g for g in data["exits"] if g["position"] == point), None)
     if existing:
         if existing.get("destination"):
-            raise ValueError("Cette case contient déjà un passage vers une autre carte.")
+            raise ValueError(
+                "Cette case contient déjà un passage vers une autre carte."
+            )
         return
     if any(item["position"] == point for item in data.get("sites", [])):
         raise ValueError("Cette case contient déjà un PNJ.")
-    data["exits"].append({"position": point[:], "destination": None, "entry": None, "name": name})
+    data["exits"].append(
+        {"position": point[:], "destination": None, "entry": None, "name": name}
+    )
 
 
 def world_metadata(maps, streets, routes):
@@ -89,15 +102,22 @@ def world_metadata(maps, streets, routes):
             if point is not None:
                 data = maps[route[endpoint]]
                 if (
-                    not isinstance(point, list) or len(point) != 2
+                    not isinstance(point, list)
+                    or len(point) != 2
                     or any(type(n) is not int for n in point)
                     or not 0 <= point[0] < data["width"]
                     or not 0 <= point[1] < data["height"]
                     or point in data.get("cover", []) + data.get("blocked", [])
-                    or point in data.get("water", []) and point not in data.get("bridges", [])
-                    or not any(g["position"] == point and not g.get("destination") for g in data["exits"])
+                    or point in data.get("water", [])
+                    and point not in data.get("bridges", [])
+                    or not any(
+                        g["position"] == point and not g.get("destination")
+                        for g in data["exits"]
+                    )
                 ):
-                    raise ValueError("Choisissez une porte de sortie praticable sur chaque carte.")
+                    raise ValueError(
+                        "Choisissez une porte de sortie praticable sur chaque carte."
+                    )
         if route.get("combat_map") and route["combat_map"] not in maps:
             raise ValueError("Carte de combat inconnue.")
         seen.add(route["id"])
@@ -236,8 +256,11 @@ class WorldEditor:
                 routes[index] = item
             candidate = deepcopy(self.editor.maps)
             candidate["clearing"]["travel_routes"] = routes
-            created = [(item[endpoint], item[endpoint + "_entry"][:])
-                       for endpoint in ("from", "to") if values.get(endpoint + "_create_door")]
+            created = [
+                (item[endpoint], item[endpoint + "_entry"][:])
+                for endpoint in ("from", "to")
+                if values.get(endpoint + "_create_door")
+            ]
             for map_id, point in [*self.pending_doors, *created]:
                 add_travel_door(candidate, map_id, point)
             world_metadata(candidate, self.streets, routes)

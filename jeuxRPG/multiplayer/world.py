@@ -321,6 +321,36 @@ def _known_places(visited, step):
     return known
 
 
+def _visible_routes(known, step, fighting, moving):
+    routes = []
+    for definition in ROUTES:
+        if zone_of(definition["from"]) in known and zone_of(definition["to"]) in known:
+            route = {**definition, "destination": None}
+            if (
+                not fighting
+                and not moving
+                and step == "road"
+                and route["id"] == "clearing_rosee"
+            ):
+                route["destination"] = "rosee"
+            elif (
+                not fighting
+                and not moving
+                and step == "travel"
+                and route["id"] == "rosee_brume"
+            ):
+                route["destination"] = "brume"
+            for endpoint in ("from", "to"):
+                map_id = route[endpoint]
+                if map_id in WORLD_MAP_DATA:
+                    parent = WORLD_MAP_DATA[map_id].get("zone_id")
+                    if parent in PLACES:
+                        route[endpoint] = parent
+            if route["from"] != route["to"]:
+                routes.append(route)
+    return routes
+
+
 def view(party, me, traveller=None):
     visited, mobs = discovery(party)
     step = party["step"]
@@ -331,7 +361,11 @@ def view(party, me, traveller=None):
     for key, definition in PLACES.items():
         if key not in known:
             continue
-        if key in WORLD_MAP_DATA and WORLD_MAP_DATA[key].get("zone_id") in PLACES and WORLD_MAP_DATA[key]["zone_id"] != key:
+        if (
+            key in WORLD_MAP_DATA
+            and WORLD_MAP_DATA[key].get("zone_id") in PLACES
+            and WORLD_MAP_DATA[key]["zone_id"] != key
+        ):
             continue
         place = {
             "id": key,
@@ -371,8 +405,7 @@ def view(party, me, traveller=None):
             if current_zone in WORLD_MAP_DATA:
                 current_zone = WORLD_MAP_DATA[current_zone].get("zone_id", current_zone)
             point["local"] = (
-                key == current_zone
-                and party.get("position") not in ROAD_POINTS
+                key == current_zone and party.get("position") not in ROAD_POINTS
             )
             point["can_interact"] = point["local"] and not fighting and not moving
             if (
@@ -394,32 +427,7 @@ def view(party, me, traveller=None):
                 ):
                     point["action"] = "explore"
         places.append(place)
-    routes = []
-    for definition in ROUTES:
-        if zone_of(definition["from"]) in known and zone_of(definition["to"]) in known:
-            route = {**definition, "destination": None}
-            if (
-                not fighting
-                and not moving
-                and step == "road"
-                and route["id"] == "clearing_rosee"
-            ):
-                route["destination"] = "rosee"
-            elif (
-                not fighting
-                and not moving
-                and step == "travel"
-                and route["id"] == "rosee_brume"
-            ):
-                route["destination"] = "brume"
-            for endpoint in ("from", "to"):
-                map_id = route[endpoint]
-                if map_id in WORLD_MAP_DATA:
-                    parent = WORLD_MAP_DATA[map_id].get("zone_id")
-                    if parent in PLACES:
-                        route[endpoint] = parent
-            if route["from"] != route["to"]:
-                routes.append(route)
+    routes = _visible_routes(known, step, fighting, moving)
     bestiary = []
     if "goblin" in mobs:
         advantages = goblin_table["advantage"]
@@ -600,7 +608,9 @@ ROAD_POINTS = {
 
 LEVELS = {"clearing": 1, "rosee": 1, "lisiere": 2, "brume": 4}
 
-for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}).items():
+for _zone_id, _zone in (
+    WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {}).items()
+):
     _position = _zone.get("world_view", {}).get("position", [350, 300])
     PLACES[_zone_id] = {
         "name": _zone["name"],
@@ -614,13 +624,15 @@ for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {
     for _map_id, _map in WORLD_MAP_DATA.items():
         if _map.get("zone_id") == _zone_id:
             _point = _map.get("world_view", {}).get("position", [170, 175])
-            PLACES[_zone_id]["points"].append({
-                "id": _map_id,
-                "name": _map["name"],
-                "type": "rencontre",
-                "x": _point[0],
-                "y": _point[1],
-            })
+            PLACES[_zone_id]["points"].append(
+                {
+                    "id": _map_id,
+                    "name": _map["name"],
+                    "type": "rencontre",
+                    "x": _point[0],
+                    "y": _point[1],
+                }
+            )
     for _map_id, _map in WORLD_MAP_DATA.items():
         if _map.get("zone_id") == _zone_id and _map_id in PLACES:
             for _point in PLACES[_map_id].get("points", []):
@@ -631,6 +643,7 @@ for _zone_id, _zone in WORLD_MAP_DATA.get("clearing", {}).get("logical_zones", {
 def zone_of(point):
     if point in WORLD_MAP_DATA:
         from .map_building import zone_of as map_zone
+
         return map_zone(WORLD_MAP_DATA, point)
     if point in ROAD_POINTS:
         return ROAD_POINTS[point]["zone"]

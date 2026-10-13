@@ -314,6 +314,7 @@ def validate(maps):
     if not isinstance(logical_zones, dict) or len(logical_zones) > 100:
         raise ValueError("Zones logiques invalides (100 maximum).")
     from .map_layout_editor import validate_layout
+
     for zone_id, zone in logical_zones.items():
         if (
             not isinstance(zone_id, str)

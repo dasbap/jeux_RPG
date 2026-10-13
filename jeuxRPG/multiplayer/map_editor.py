@@ -71,7 +71,10 @@ class MapEditor:
         self.zone_choice = ttk.Combobox(
             options,
             textvariable=self.zone_filter,
-            values=["", *sorted(self.maps.get("clearing", {}).get("logical_zones", {}))],
+            values=[
+                "",
+                *sorted(self.maps.get("clearing", {}).get("logical_zones", {})),
+            ],
             width=16,
         )
         self.zone_choice.pack(side="left", padx=4)
@@ -256,7 +259,10 @@ class MapEditor:
         }
         if hasattr(self, "zone_choice"):
             self.zone_choice.configure(
-                values=["", *sorted(self.maps.get("clearing", {}).get("logical_zones", {}))]
+                values=[
+                    "",
+                    *sorted(self.maps.get("clearing", {}).get("logical_zones", {})),
+                ]
             )
         self.map_labels = labels
         self.choice.configure(values=list(labels))
@@ -299,6 +305,11 @@ class MapEditor:
             "Patrouille terminée. Recliquer un spawner avec l’outil Patrouille pour éditer son trajet."
         )
 
+    def show_map(self, key):
+        self.selected.set(key)
+        self.refresh_choice()
+        self.draw()
+
     def duplicate(self):
         values = self.form("Dupliquer", {"map_id": ""})
         key = values["map_id"].strip() if values else None
@@ -312,9 +323,7 @@ class MapEditor:
         data.pop("overlap_columns", None)
         data["zone_id"] = zone_of(self.maps, source)
         self.maps[key] = data
-        self.selected.set(key)
-        self.refresh_choice()
-        self.draw()
+        self.show_map(key)
 
     def delete(self):
         key = self.selected.get()
@@ -334,8 +343,14 @@ class MapEditor:
             )
             return
         from . import world
-        if any(key in (r["from"], r["to"], r.get("combat_map")) for r in self.maps["clearing"].get("travel_routes", world.ROUTES)):
-            self.messages.showerror("Suppression", "Retirez d’abord les trajets utilisant cette carte.")
+
+        if any(
+            key in (r["from"], r["to"], r.get("combat_map"))
+            for r in self.maps["clearing"].get("travel_routes", world.ROUTES)
+        ):
+            self.messages.showerror(
+                "Suppression", "Retirez d’abord les trajets utilisant cette carte."
+            )
             return
         if any(
             item.get("destination") == key or item.get("fast_destination") == key
@@ -1002,7 +1017,11 @@ class MapEditor:
                 if key == "direction"
                 else sorted(self.maps.get("clearing", {}).get("logical_zones", {}))
                 if key in ("from_zone", "to_zone")
-                else ["", *self.maps, *self.maps.get("clearing", {}).get("logical_zones", {})]
+                else [
+                    "",
+                    *self.maps,
+                    *self.maps.get("clearing", {}).get("logical_zones", {}),
+                ]
                 if key == "zone_id"
                 else ["", *self.maps]
                 if key
@@ -1042,26 +1061,37 @@ class MapEditor:
         for endpoint in ("from", "to"):
             map_key, entry_key = endpoint + "_map", endpoint + "_entry"
             if map_key in entries and entry_key in entries:
+
                 def update_doors(event=None, map_key=map_key, entry_key=entry_key):
                     created_doors.pop(entry_key, None)
                     data = self.maps.get(entries[map_key].get(), {})
-                    doors = [",".join(map(str, gate["position"])) for gate in data.get("exits", []) if not gate.get("destination")]
+                    doors = [
+                        ",".join(map(str, gate["position"]))
+                        for gate in data.get("exits", [])
+                        if not gate.get("destination")
+                    ]
                     entries[entry_key].configure(values=doors)
                     if event is not None or not entries[entry_key].get():
                         entries[entry_key].delete(0, "end")
                         if doors:
                             entries[entry_key].insert(0, doors[0])
+
                 entries[map_key].bind("<<ComboboxSelected>>", update_doors)
                 update_doors()
+
                 def choose_door(map_key=map_key, entry_key=entry_key):
                     from .map_objects import pick_cell
                     from .map_world_editor import add_travel_door
 
                     map_id = entries[map_key].get()
                     if map_id not in self.maps:
-                        self.messages.showerror("Porte", "Choisissez d’abord une carte existante.")
+                        self.messages.showerror(
+                            "Porte", "Choisissez d’abord une carte existante."
+                        )
                         return
-                    chosen = pick_cell(self, "Créer une porte · cliquez une case sur la carte", map_id)
+                    chosen = pick_cell(
+                        self, "Créer une porte · cliquez une case sur la carte", map_id
+                    )
                     if not chosen:
                         return
                     try:
@@ -1073,8 +1103,11 @@ class MapEditor:
                     entries[entry_key].delete(0, "end")
                     entries[entry_key].insert(0, coordinates)
                     created_doors[entry_key] = (map_id, coordinates)
+
                 row = list(values).index(entry_key)
-                ttk.Button(window, text="Créer / choisir sur la carte", command=choose_door).grid(row=row, column=2, padx=8, pady=5)
+                ttk.Button(
+                    window, text="Créer / choisir sur la carte", command=choose_door
+                ).grid(row=row, column=2, padx=8, pady=5)
         result = []
 
         def accept():
@@ -1082,7 +1115,10 @@ class MapEditor:
             for endpoint in ("from", "to"):
                 entry_key, map_key = endpoint + "_entry", endpoint + "_map"
                 if entry_key in created_doors:
-                    answer[endpoint + "_create_door"] = created_doors[entry_key] == (answer[map_key], answer[entry_key])
+                    answer[endpoint + "_create_door"] = created_doors[entry_key] == (
+                        answer[map_key],
+                        answer[entry_key],
+                    )
             result.append(answer)
             panel.destroy()
 
@@ -1096,7 +1132,10 @@ class MapEditor:
         return result[0] if result else None
 
     def new(self):
-        values = self.form("Nouvelle carte", {"map_id": "", "zone_id": zone_of(self.maps, self.selected.get())})
+        values = self.form(
+            "Nouvelle carte",
+            {"map_id": "", "zone_id": zone_of(self.maps, self.selected.get())},
+        )
         key = values["map_id"].strip() if values else None
         if not key or key in self.maps:
             return
@@ -1115,9 +1154,7 @@ class MapEditor:
             zone_level=1,
             spawners=[],
         )
-        self.selected.set(key)
-        self.refresh_choice()
-        self.draw()
+        self.show_map(key)
         self.properties()
         return key
 
@@ -1292,10 +1329,7 @@ class MapEditor:
                 if result["dungeon"] is None:
                     candidate[self.selected.get()].pop("dungeon", None)
                 zone_of(candidate, self.selected.get())
-                if (
-                    result["level"] is not None
-                    and not 1 <= result["level"] <= 100
-                ):
+                if result["level"] is not None and not 1 <= result["level"] <= 100:
                     raise ValueError()
                 self.remember()
                 result["name"] = result["name"].strip()

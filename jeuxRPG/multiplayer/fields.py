@@ -73,7 +73,9 @@ for place in world.PLACES.values():
 
 for identifier in MAPS:
     root_zone = zone_of(MAPS, identifier)
-    zone_definition = MAPS.get(root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {}))
+    zone_definition = MAPS.get(
+        root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {})
+    )
     if root_zone not in world.PLACES:
         world.PLACES[root_zone] = {
             "name": zone_definition["name"],
@@ -83,7 +85,9 @@ for identifier in MAPS:
             "description": "Zone personnalisée.",
             "points": [],
         }
-        world.LEVELS[root_zone] = zone_definition.get("level", zone_definition.get("zone_level", 1))
+        world.LEVELS[root_zone] = zone_definition.get(
+            "level", zone_definition.get("zone_level", 1)
+        )
 for identifier, definition in MAPS.items():
     zone = world.zone_of(identifier)
     parent_zone = zone_of(MAPS, identifier)
@@ -129,8 +133,12 @@ for identifier, definition in MAPS.items():
 for identifier in MAPS:
     root_zone = zone_of(MAPS, identifier)
     if root_zone in world.LEVELS:
-        definition = MAPS.get(root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {}))
-        world.LEVELS[root_zone] = definition.get("level", definition.get("zone_level", world.LEVELS[root_zone]))
+        definition = MAPS.get(
+            root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {})
+        )
+        world.LEVELS[root_zone] = definition.get(
+            "level", definition.get("zone_level", world.LEVELS[root_zone])
+        )
 
 
 apply_layout(world.PLACES, MAPS)
