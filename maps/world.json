@@ -8514,8 +8514,8 @@
       ]
     ],
     "world_origin": [
-      0,
-      0
+      -60,
+      64
     ],
     "exits": [
       {
@@ -8725,9 +8725,37 @@
         }
       },
       "position": [
-        426,
-        160
+        362,
+        159
       ]
+    },
+    "travel_routes": [
+      {
+        "id": "rosee_lisiere",
+        "from": "rosee",
+        "to": "lisiere",
+        "name": "Chemin de la lisière",
+        "distance_km": 0.2
+      },
+      {
+        "id": "rosee_brume",
+        "from": "rosee",
+        "to": "brume",
+        "name": "Route des Deux Villages",
+        "distance_km": 1.0
+      }
+    ],
+    "logical_zones": {
+      "grotte_des_oublie": {
+        "name": "Grotte des oublié",
+        "level": 5,
+        "world_view": {
+          "position": [
+            415,
+            301
+          ]
+        }
+      }
     }
   },
   "rosee": {
@@ -9608,10 +9636,14 @@
           0,
           20
         ],
-        "destination": null,
-        "entry": null,
-        "name": "Chemin rapide",
-        "fast_destination": "clearing"
+        "name": "Retour · Chemin des éveiller",
+        "destination": "forest",
+        "entry": [
+          37,
+          13
+        ],
+        "link_id": "1e24ec0787504f2a9f2609a3b552cc22",
+        "travel_minutes": 0.5
       }
     ],
     "spawns": [],
@@ -9963,10 +9995,6 @@
     ],
     "biome": "village",
     "paths": [
-      [
-        0,
-        20
-      ],
       [
         1,
         20
@@ -10377,6 +10405,10 @@
       ],
       [
         63,
+        20
+      ],
+      [
+        0,
         20
       ]
     ],
@@ -20887,15 +20919,6 @@
     "exits": [
       {
         "position": [
-          39,
-          12
-        ],
-        "destination": null,
-        "entry": null,
-        "name": "Sortie complète · chemins rapides"
-      },
-      {
-        "position": [
           0,
           13
         ],
@@ -20905,6 +20928,20 @@
           85,
           10
         ]
+      },
+      {
+        "position": [
+          39,
+          13
+        ],
+        "name": "Chemin des éveiller",
+        "destination": "rosee",
+        "entry": [
+          2,
+          20
+        ],
+        "link_id": "1e24ec0787504f2a9f2609a3b552cc22",
+        "travel_minutes": 0.5
       }
     ],
     "spawns": [
@@ -21661,15 +21698,15 @@
     ],
     "level": 1,
     "world_origin": [
-      121,
-      -13
+      65,
+      56
     ],
     "zone_level": 1,
     "bridge_rotations": []
   },
   "cave_1": {
     "id": "field_cave_1",
-    "name": "Grotte · salle 1",
+    "name": "entrer de la grotte des oublie",
     "width": 22,
     "height": 16,
     "cell_metres": 2,
@@ -21705,7 +21742,7 @@
     "biome": "cave",
     "paths": [],
     "decorations": [],
-    "zone_id": "rosee",
+    "zone_id": "cave_1",
     "spawners": [
       {
         "position": [
@@ -21730,18 +21767,25 @@
       "id": "grotte_gobeline",
       "room": 1,
       "final": false,
-      "lock_until_clear": true
+      "lock_until_clear": false
     },
     "level": 1,
     "world_origin": [
-      150,
-      123
+      -27,
+      15
     ],
-    "bridge_rotations": []
+    "bridge_rotations": [],
+    "zone_level": 1,
+    "world_view": {
+      "position": [
+        285,
+        420
+      ]
+    }
   },
   "cave_2": {
     "id": "field_cave_2",
-    "name": "Grotte · salle 2",
+    "name": "fond de la grotte des oublié",
     "width": 44,
     "height": 16,
     "cell_metres": 2,
@@ -21773,7 +21817,7 @@
     "biome": "cave",
     "paths": [],
     "decorations": [],
-    "zone_id": "rosee",
+    "zone_id": "cave_2",
     "spawners": [
       {
         "position": [
@@ -21789,14 +21833,25 @@
       "id": "grotte_gobeline",
       "room": 2,
       "final": true,
-      "lock_until_clear": true
+      "lock_until_clear": false
     },
     "level": 1,
     "world_origin": [
-      179,
-      123
+      -37,
+      -26
     ],
-    "bridge_rotations": []
+    "bridge_rotations": [],
+    "zone_level": 1,
+    "world_view": {
+      "entry": [
+        176,
+        143
+      ],
+      "position": [
+        455,
+        419
+      ]
+    }
   },
   "brume": {
     "id": "field_brume",
