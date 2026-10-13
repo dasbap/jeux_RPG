@@ -55,7 +55,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         notebook = ttk.Notebook(root)
         notebook.pack(fill='both', expand=True, padx=8, pady=8)
         self.tables = {}
-        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('economy', 'Économie'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')] + GAMEPLAY_SECTIONS:
+        for section, title in [('maps', 'Cartes / zones'), ('quests', 'Quêtes'), ('mobs', 'Mobs'), ('achievements', 'Succès et titres'), ('endgame', 'Contrats'), ('economy', 'Économie'), ('npcs', 'PNJ'), ('world', 'Monde'), ('classes','Classes / modèles'), ('skills','Compétences simples'), ('skill_models','Compétences moteur')] + GAMEPLAY_SECTIONS:
             page = ttk.Frame(notebook, padding=8)
             notebook.add(page, text=title)
             search = ttk.Frame(page)
@@ -236,7 +236,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             return key[:-5]+' · valeur au niveau 1'
         if key.endswith('_growth') and key != 'damage_growth':
             return key[:-7]+' · croissance par niveau'
-        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'starting_gold':'Or initial', 'trade_max_quantity':'Quantité max par échange', 'trade_max_gold':'Or max par échange', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie', 'buy':'Prix d’achat au marchand', 'sell':'Prix de vente au marchand', 'merchant':'Marchand', 'pvp_enabled':'Activer le PvP optionnel'}.get(key, key)
+        return {'id':'Identifiant', 'name':'Nom', 'npc':'PNJ donneur', 'kind':'Type d’objectif', 'target':'Espèce / recette cible', 'zone':'Zone requise (vide = toutes)', 'count':'Nombre requis', 'reward_xp':'Récompense XP par joueur', 'description':'Description', 'condition':'Condition', 'threshold':'Seuil', 'title':'Titre obtenu', 'class_name':'Classe de base', 'rank':'Rang', 'damage':'Dégâts', 'dialogue':'Dialogue', 'owner':'Joueur lié (vide = fixe)', 'map_id':'Carte', 'width':'Largeur', 'height':'Hauteur', 'zone_level':'Niveau de zone', 'biome':'Ambiance', 'repop_seconds':'Repop après absence (secondes en jeu)', 'mob_xp':'XP par mob', 'xp_base':'Base XP nécessaire', 'xp_exponent':'Exposant de progression XP', 'merchant_stay_hours':'Séjour du marchand (heures en jeu)', 'player_vision':'Vision joueur (cases)', 'guild_max_members':'Capacité maximale d’une guilde', 'starting_gold':'Or initial', 'trade_max_quantity':'Quantité max par échange', 'trade_max_gold':'Or max par échange', 'xp_class':'Classe de récompense XP', 'xp_multiplier':'Multiplicateur XP', 'damage_growth':'Dégâts ajoutés par niveau', 'parent':'Espèce parente', 'item':'Matériau', 'chance':'Probabilité (0–1)', 'attempts':'Nombre de tirages indépendants', 'min':'Quantité minimale par réussite', 'max':'Quantité maximale par réussite', 'rare':'Matériau rare', 'power':'Puissance de base', 'growth':'Puissance par niveau', 'cooldown':'Cooldown (secondes réelles)', 'cast':'Incantation (secondes réelles)', 'range':'Portée (cases)', 'duration':'Durée du stun (secondes réelles)', 'hp_multiplier':'Multiplicateur PV de phase', 'damage_multiplier':'Multiplicateur dégâts de phase', 'level':'Niveau de déblocage', 'concentration':'Interrompue par les dégâts', 'type':'Effet', 'base_class':'Modèle de classe humaine', 'energy_capacity':'Capacité des énergies ajoutées', 'skill_id':'Compétence existante', 'cost':'Coût d’énergie', 'buy':'Prix d’achat au marchand', 'sell':'Prix de vente au marchand', 'merchant':'Marchand', 'min_level':'Niveau minimum', 'repeatable':'Répétable', 'pvp_enabled':'Activer le PvP optionnel'}.get(key, key)
 
     def form(self, title, values, choices=None):
         window = self.tk.Toplevel(self.root)
@@ -399,6 +399,25 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                     values.pop('parent')
                 history = p.mobs.get(identifier,{}).get('previous_ids',[]) if not new else []
                 p.mobs[identifier] = {**({'previous_ids':history} if history else {}), **values, 'stats':stats, 'drops':drops, 'loot':{}, 'abilities':abilities, 'phases':phases}
+            elif section == 'endgame':
+                default = {'id':'', 'name':'Nouveau contrat', 'kind':'kill', 'target':'goblin', 'zone':'', 'count':10, 'min_level':5, 'reward_xp':500, 'repeatable':True}
+                old = default if new else next(item for item in p.content['endgame'] if item['id'] == key)
+                RECIPES = p.content['gameplay']['recipes']
+                old = {field: value for field, value in old.items() if field != 'previous_ids'}
+                choices = {'kind':['kill','craft'], 'target':list(p.mobs), 'zone':['', *p.maps]}
+                values = self.form('Contrat endgame', old, choices)
+                if values:
+                    targets = list(p.mobs) if values['kind'] == 'kill' else list(RECIPES)
+                    if values['target'] not in targets:
+                        raise ValueError('Cible endgame incompatible avec le type.')
+                    if not new and values['id'] != key:
+                        raise ValueError('Utilisez Renommer identifiant pour changer la référence.')
+                    if new and any(item['id'] == values['id'] for item in p.content['endgame']):
+                        raise ValueError('Identifiant déjà utilisé.')
+                    metadata = next((item for item in p.content['endgame'] if item['id'] == key), {}) if not new else {}
+                    if metadata.get('previous_ids'):
+                        values['previous_ids'] = metadata['previous_ids']
+                    p.content['endgame'] = [item for item in p.content['endgame'] if item['id'] != values['id']] + [values]
             elif section == 'economy':
                 old = {'id':'', 'name':'Nouveau matériau', 'buy':10, 'sell':5} if new else next(item for item in p.content['economy'] if item['id'] == key)
                 values = self.form('Prix économique', old)

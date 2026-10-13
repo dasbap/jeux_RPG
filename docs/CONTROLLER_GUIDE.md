@@ -257,3 +257,9 @@ Les valeurs numériques, les probabilités et les références sont validées av
 Enregistrer ne modifie pas le serveur déjà démarré : redémarrer le jeu ou publier les cinq fichiers de catalogue pour appliquer les nouvelles définitions. Les équipements connus sont recalculés au chargement selon leurs recettes, sans cumuler les bonus à chaque passage. Une pièce ancienne dont la recette a été retirée reste conservée dans la sauvegarde. Un changement d’emplacement de recette conserve l’emplacement des pièces déjà fabriquées.
 
 Le contrôleur couvre les contenus et les paramètres exposés du moteur. Les étapes et identifiants nécessaires au tutoriel restent protégés. Ajouter un nouveau type d’effet programmé, un nouveau mécanisme de combat ou un arbre de dialogue demande encore une modification du code Python.
+
+## Contrats après le tutoriel
+
+L’onglet **Contrats** définit les objectifs de chasse ou de fabrication, leur niveau minimum, leur lieu éventuel et la récompense XP par personnage. Un contrat peut être unique ou répétable. Les contrats se débloquent après l’arrivée finale à Brume ; l’aventure reste alors active.
+
+Le journal de quête affiche la progression et le bouton **Recevoir la récompense**. La validation exige un objectif complet et un personnage hors combat et hors trajet. Un contrat répétable repart à zéro après validation ; un contrat unique reste accompli. Les récompenses sont traitées côté serveur et un identifiant de requête rejoué ne les attribue pas deux fois. Les progrès et validations sont sauvegardés, y compris après renommage du contrat dans le Controller.

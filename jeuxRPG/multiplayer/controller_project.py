@@ -215,6 +215,12 @@ class Project:
                         for assignment in definition.get('skills',definition.get('abilities',[])):
                             if assignment.get('skill_id') == 'skill:'+identifier:
                                 assignment['skill_id'] = 'skill:'+replacement
+            elif section == 'endgame':
+                item = next(item for item in self.content['endgame'] if item['id'] == identifier)
+                if any(other['id'] == replacement for other in self.content['endgame'] if other is not item):
+                    raise ValueError('Identifiant déjà utilisé.')
+                item['previous_ids'] = list(dict.fromkeys([*item.get('previous_ids', []), identifier]))
+                item['id'] = replacement
             elif section in ('quests', 'achievements'):
                 item = next(item for item in self.content[section] if item['id'] == identifier)
                 if any(other['id'] == replacement or replacement in other.get('previous_ids', []) for other in self.content[section] if other is not item):
@@ -258,6 +264,9 @@ class Project:
                 for quest in self.content['quests']:
                     if quest['kind'] == 'kill' and quest['target'] == identifier:
                         quest['target'] = replacement
+                for contract in self.content.get('endgame', []):
+                    if contract['kind'] == 'kill' and contract['target'] == identifier:
+                        contract['target'] = replacement
             elif section == 'npcs':
                 if identifier in ('mira', 'forge'):
                     raise ValueError('Cet identifiant est une référence interne du tutoriel.')
@@ -298,6 +307,9 @@ class Project:
                     for field in ('zone', 'map'):
                         if definition.get(field) == identifier:
                             definition[field] = replacement
+                for contract in self.content.get('endgame', []):
+                    if contract.get('zone') == identifier:
+                        contract['zone'] = replacement
             else:
                 raise ValueError('Ce type de définition ne possède pas d’identifiant modifiable.')
             self.validate()
@@ -307,7 +319,7 @@ class Project:
 
     def duplicate(self, section, identifier, replacement):
         import re
-        if section not in ('mobs','quests','achievements','classes','skills','skill_models'):
+        if section not in ('mobs','quests','achievements','endgame','classes','skills','skill_models'):
             raise ValueError('Ce catalogue se duplique depuis son éditeur spécialisé.')
         if not isinstance(replacement,str) or not re.fullmatch(r'[a-z0-9_]{1,64}',replacement):
             raise ValueError('Identifiant : lettres minuscules, chiffres et underscores.')

@@ -1188,6 +1188,9 @@ def defeated(party, mob, now, random, messages):
         content.quest_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
+        content.endgame_event(
+            party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
+        )
     achievements.victory(party, now)
     messages.append(
         f"{mob['name']} vaincu : {reward} XP. Approchez-vous pour le dépecer."

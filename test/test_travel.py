@@ -73,7 +73,8 @@ def test_one_kilometre_takes_ten_game_minutes_and_random_encounter_checks(game):
     assert game.state(player["token"])["session"]["tutorial"]["position"] != "brume"
     state = finish_trip(game, player)
     assert len(draws) >= 4
-    assert state["state"] == "finished"
+    assert state["state"] == "running"
+    assert state["tutorial"]["step"] == "complete"
     assert state["tutorial"]["position"] == "brume"
     assert world.walking_seconds("rosee", "rosee_brume") + world.walking_seconds("rosee_brume", "brume") == 600
 
@@ -87,7 +88,8 @@ def test_trip_finishes_at_distance_deadline_when_server_ticks_regularly(game):
     assert game.state(player["token"])["session"]["tutorial"]["moving"]
     game.clock.value = 600
     game.tick()
-    assert game.state(player["token"])["session"]["state"] == "finished"
+    assert game.state(player["token"])["session"]["state"] == "running"
+    assert game.state(player["token"])["session"]["tutorial"]["step"] == "complete"
 
 
 def test_three_goblins_share_one_combat_and_attack_without_player_action(game):

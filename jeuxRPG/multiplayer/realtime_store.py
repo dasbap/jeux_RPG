@@ -82,6 +82,7 @@ def progress_signature(party):
             for key, value in party.get("characters", {}).items()
         },
         "quests": [party.get("quest"), quests],
+        "endgame": party.get("endgame", {}),
         "zone": zone_of(party.get("position")) or zone_of(party.get("field_map")),
         "checkpoint": party.get("autosave_checkpoint"),
     }

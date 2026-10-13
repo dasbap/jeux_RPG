@@ -124,6 +124,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
   renderHudNavigation(adventure);
+  renderEndgame(adventure);
   const quests = adventure.quest_journal || [];
   $("quest-progress").textContent = quests.length ? quests.map(quest => `${quest.name} : ${quest.progress}/${quest.count} (${quest.status === "completed" ? "accomplie" : "en cours"})`).join(" · ") : "Aucune quête acceptée.";
   $("quest-description").textContent = activeQuest?.description || "Consultez les PNJ pour obtenir des quêtes.";

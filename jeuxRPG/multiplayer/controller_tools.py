@@ -15,6 +15,8 @@ def catalog_rows(project, section):
         return [(key, mob_rules.resolve(p.mobs, key)['name'], f"{mob_rules.resolve(p.mobs, key)['class_name']} · rang {mob_rules.resolve(p.mobs, key)['rank']} · parent {item.get('parent') or 'aucun'}") for key, item in p.mobs.items()]
     if section == 'quests':
         return [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP") for q in p.content[section]]
+    if section == 'endgame':
+        return [(item['id'], item['name'], f"{item['kind']} {item['target']} ×{item['count']} · niv. {item['min_level']} · {item['reward_xp']} XP · {'répétable' if item['repeatable'] else 'unique'}") for item in p.content['endgame']]
     if section == 'economy':
         return [(item['id'], item['name'], f"achat {item['buy']} or · vente {item['sell']} or") for item in p.content['economy']]
     if section == 'achievements':

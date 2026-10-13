@@ -59,6 +59,8 @@ function hudQuestTarget(adventure) {
     const ready = active.progress >= active.count;
     return {zone: ready ? adventure.world.current : active.zone || adventure.world.current, point: ready ? active.npc : active.map || null, label: ready ? `Rendre la quête : ${active.name}` : `${active.name} · ${active.progress}/${active.count}`};
   }
+  const contract = (adventure.endgame || []).find(item => item.status === "claimable") || (adventure.endgame || []).find(item => item.status === "active");
+  if (contract) return {zone: contract.zone || adventure.world.current, point: null, label: `${contract.name} · ${contract.progress}/${contract.count}`};
   return {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
 }
 function renderHudNavigation(adventure) {
@@ -339,4 +341,27 @@ function showView(view) {
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();
   if (session && session.tutorial) renderGame(session.tutorial);
+}
+
+function renderEndgame(adventure) {
+  const contracts = adventure.endgame || [];
+  $("endgame-contracts").hidden = !contracts.length;
+  if (!sectionChanged("endgame", [session.id, contracts, busy, Boolean(adventure.battle), Boolean(adventure.transit)])) return;
+  $("endgame-list").replaceChildren();
+  for (const contract of contracts) {
+    const row = document.createElement("article");
+    row.dataset.endgameId = contract.id;
+    const description = document.createElement("p");
+    const status = {locked: `Verrouillé · tutoriel terminé et niveau ${contract.min_level} requis`, active: "En cours", claimable: "Récompense disponible", completed: "Accompli"}[contract.status];
+    description.textContent = `${contract.name} · ${contract.progress}/${contract.count} · ${contract.reward_xp} XP · ${contract.repeatable ? "Répétable" : "Unique"} · ${status}`;
+    row.append(description);
+    if (contract.status === "claimable") {
+      const claim = document.createElement("button");
+      claim.textContent = "Recevoir la récompense";
+      claim.disabled = busy || Boolean(adventure.battle) || Boolean(adventure.transit);
+      claim.onclick = () => tutorialCommand("endgame_claim", {challenge: contract.id});
+      row.append(claim);
+    }
+    $("endgame-list").append(row);
+  }
 }
