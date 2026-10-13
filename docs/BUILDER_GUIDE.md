@@ -381,3 +381,5 @@ Pour relier deux zones, choisissez « Relier deux zones », puis les cartes et l
 Dans « Trajets / rues », chaque chemin rapide possède une carte de départ, une carte d’arrivée, leurs portes et une carte de combat facultative. Une rencontre pendant ce voyage utilise automatiquement ce terrain de combat ; le voyage reste en attente pendant le combat et reprend ensuite. Sans carte configurée, les terrains de rencontre habituels sont conservés. Pour les anciens trajets sans portes explicites, l’arrivée conserve son comportement automatique.
 
 Enregistrez le projet et redémarrez le serveur pour appliquer ces changements au jeu.
+
+Dans les formulaires de trajet, le bouton « Créer / choisir sur la carte » ouvre une grille interactive pour chaque porte. Cliquez une case praticable : les coordonnées sont remplies automatiquement et une nouvelle porte sera créée à la validation du trajet (ou à « Appliquer » dans Trajets / rues). Une porte existante peut être réutilisée ; un passage ou un PNJ n’est pas remplacé. Annuler le formulaire ne crée aucune porte.

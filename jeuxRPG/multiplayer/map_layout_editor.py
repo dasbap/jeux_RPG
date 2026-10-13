@@ -307,7 +307,7 @@ class LayoutEditor:
         import uuid
 
         from .map_building import zone_of
-        from .map_world_editor import world_metadata
+        from .map_world_editor import add_travel_door, world_metadata
         from . import world
 
         places = layout_places(self.editor.maps)
@@ -365,12 +365,15 @@ class LayoutEditor:
                        "from": start, "to": end, "distance_km": distance,
                        "bidirectional": True, "combat_map": doors["combat_map"].strip(), **entries})
         try:
+            for endpoint in ("from", "to"):
+                if doors.get(endpoint + "_create_door"):
+                    add_travel_door(candidate, start if endpoint == "from" else end, entries[endpoint + "_entry"])
             world_metadata(candidate, world.VILLAGE_STREETS, routes)
         except ValueError as exc:
             self.editor.messages.showerror("Liaison", str(exc))
             return
         self.editor.remember()
-        self.editor.maps["clearing"]["travel_routes"] = routes
+        self.editor.maps = candidate
         self.mode.set("Carte générale")
         self.draw()
         self.editor.status.set("Liaison ajoutée. Enregistrez et redémarrez le serveur.")

@@ -1038,23 +1038,52 @@ class MapEditor:
             )
             entry.grid(row=row, column=1, padx=8, pady=5)
             entries[key] = entry
+        created_doors = {}
         for endpoint in ("from", "to"):
             map_key, entry_key = endpoint + "_map", endpoint + "_entry"
             if map_key in entries and entry_key in entries:
                 def update_doors(event=None, map_key=map_key, entry_key=entry_key):
+                    created_doors.pop(entry_key, None)
                     data = self.maps.get(entries[map_key].get(), {})
                     doors = [",".join(map(str, gate["position"])) for gate in data.get("exits", []) if not gate.get("destination")]
                     entries[entry_key].configure(values=doors)
-                    if entries[entry_key].get() not in doors:
+                    if event is not None or not entries[entry_key].get():
                         entries[entry_key].delete(0, "end")
                         if doors:
                             entries[entry_key].insert(0, doors[0])
                 entries[map_key].bind("<<ComboboxSelected>>", update_doors)
                 update_doors()
+                def choose_door(map_key=map_key, entry_key=entry_key):
+                    from .map_objects import pick_cell
+                    from .map_world_editor import add_travel_door
+
+                    map_id = entries[map_key].get()
+                    if map_id not in self.maps:
+                        self.messages.showerror("Porte", "Choisissez d’abord une carte existante.")
+                        return
+                    chosen = pick_cell(self, "Créer une porte · cliquez une case sur la carte", map_id)
+                    if not chosen:
+                        return
+                    try:
+                        add_travel_door(deepcopy(self.maps), map_id, chosen[1])
+                    except ValueError as exc:
+                        self.messages.showerror("Porte", str(exc))
+                        return
+                    coordinates = ",".join(map(str, chosen[1]))
+                    entries[entry_key].delete(0, "end")
+                    entries[entry_key].insert(0, coordinates)
+                    created_doors[entry_key] = (map_id, coordinates)
+                row = list(values).index(entry_key)
+                ttk.Button(window, text="Créer / choisir sur la carte", command=choose_door).grid(row=row, column=2, padx=8, pady=5)
         result = []
 
         def accept():
-            result.append({key: entry.get() for key, entry in entries.items()})
+            answer = {key: entry.get() for key, entry in entries.items()}
+            for endpoint in ("from", "to"):
+                entry_key, map_key = endpoint + "_entry", endpoint + "_map"
+                if entry_key in created_doors:
+                    answer[endpoint + "_create_door"] = created_doors[entry_key] == (answer[map_key], answer[entry_key])
+            result.append(answer)
             panel.destroy()
 
         ttk.Button(window, text="Valider", command=accept).grid(
