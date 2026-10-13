@@ -46,3 +46,28 @@ def test_logical_zone_must_exist_and_have_valid_level():
     maps["cave_1"]["zone_id"] = "missing_zone"
     with pytest.raises(ValueError):
         map_assets.validate(maps)
+
+
+def test_packaged_world_uses_five_logical_zones():
+    from jeuxRPG.multiplayer import world
+
+    maps = deepcopy(fields.MAPS)
+    expected = {
+        "foret_eveilles": {"clearing"},
+        "zone_rosee": {"rosee", "forest"},
+        "zone_lisiere": {"lisiere", "hunt"},
+        "zone_brume": {"brume"},
+        "grotte_oublies": {"cave_1", "cave_2"},
+    }
+    logical = maps["clearing"]["logical_zones"]
+    assert set(expected) <= set(logical)
+    for zone_id, members in expected.items():
+        assert {key for key in maps if zone_of(maps, key) == zone_id} == members
+    assert "zone_level" not in maps["clearing"]
+    assert "zone_level" not in maps["rosee"]
+    assert map_assets.validate(maps)
+    places = layout_places(maps)
+    assert set(expected) <= set(places)
+    assert "clearing" not in places
+    assert "rosee" not in places
+    assert "grotte_oublies" in world.PLACES
