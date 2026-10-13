@@ -27,7 +27,11 @@ MOBS = {key: resolve(MOBS, key) for key in MOBS}
 def zone_of(maps, identifier):
     seen = set()
     while True:
-        if identifier in seen or identifier not in maps:
+        if identifier in seen:
+            raise ValueError("Rattachement de zone cyclique ou inexistant.")
+        if identifier in maps.get("clearing", {}).get("logical_zones", {}):
+            return identifier
+        if identifier not in maps:
             raise ValueError("Rattachement de zone cyclique ou inexistant.")
         seen.add(identifier)
         parent = maps[identifier].get(
@@ -45,6 +49,8 @@ def map_level(maps, identifier):
     if explicit is not None:
         return explicit
     zone = zone_of(maps, identifier)
+    if zone not in maps:
+        return maps["clearing"]["logical_zones"][zone].get("level", 1)
     return maps[zone].get("zone_level", 1)
 
 
