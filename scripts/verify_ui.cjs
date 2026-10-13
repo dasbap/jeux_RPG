@@ -254,7 +254,7 @@ async function main() {
     el(first, "quest-actions").querySelector("button").click();
     assert.equal(el(first, "map-place").value, selected);
     assert(el(first, "map-details").open && !el(first, "region-view").hidden);
-    assert(el(first, "world-map").querySelector(".objective-ring"));
+    assert(!el(first, "world-map").querySelector(".objective-ring"));
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.equal(el(first, "combat-target").options.length, 0);
