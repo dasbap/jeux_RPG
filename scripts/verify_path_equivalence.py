@@ -3,10 +3,10 @@
 import argparse
 import ast
 import json
-from pathlib import Path
 import subprocess
 import time
 import tracemalloc
+from pathlib import Path
 
 from jeuxRPG.multiplayer import tactics
 

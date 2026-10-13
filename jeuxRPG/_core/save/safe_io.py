@@ -6,7 +6,9 @@ from pathlib import Path
 
 
 def valid_id(value):
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", value):
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", value
+    ):
         raise ValueError("Invalid entity ID")
     return value
 
@@ -22,7 +24,9 @@ def contained(root, path):
 def atomic_json(path, payload):
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False
+        ) as stream:
             temporary = stream.name
             json.dump(payload, stream, ensure_ascii=False, indent=2, allow_nan=False)
             stream.flush()

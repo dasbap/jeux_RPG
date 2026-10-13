@@ -8,7 +8,6 @@ customizable XP drops and level scaling.
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.character.table_stat_subclass import mob_table
 
-
 MOB_XP_REWARD_MULTIPLIER = 0.5
 
 
@@ -27,7 +26,9 @@ class Mob(Character):
     class_skills_dict = mob_table["class_skills_dict"]
     is_playable = False
 
-    def __init__(self, user_id: str, name: str, xp_drop: int = 0, is_boss: bool = False):
+    def __init__(
+        self, user_id: str, name: str, xp_drop: int = 0, is_boss: bool = False
+    ):
         """
         Initialize a new Mob.
 

@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import os
 import sqlite3
 
@@ -8,18 +9,30 @@ from .turso import TursoConnection, TursoHTTPError, TursoProtocolError
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("connexion", "schema", "integrite", "initialiser"))
+    parser.add_argument(
+        "operation", choices=("connexion", "schema", "integrite", "initialiser")
+    )
     operation = parser.parse_args().operation
     connection = None
     try:
-        missing = [name for name in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN") if not os.environ.get(name)]
+        missing = [
+            name
+            for name in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN")
+            if not os.environ.get(name)
+        ]
         if missing:
             print("Configuration GitHub Actions absente : " + ", ".join(missing))
             return 1
-        connection = TursoConnection(os.environ.get("TURSO_DATABASE_URL", ""), os.environ.get("TURSO_AUTH_TOKEN", ""), timeout=30)
+        connection = TursoConnection(
+            os.environ.get("TURSO_DATABASE_URL", ""),
+            os.environ.get("TURSO_AUTH_TOKEN", ""),
+            timeout=30,
+        )
         if operation == "initialiser":
             initialize(connection)
-            print("Tables du jeu et de l’administration initialisées, données existantes conservées.")
+            print(
+                "Tables du jeu et de l’administration initialisées, données existantes conservées."
+            )
         elif operation == "connexion":
             if connection.execute("SELECT 1").fetchone()[0] != 1:
                 raise ValueError()
@@ -29,28 +42,43 @@ def main():
                 raise ValueError()
             print("Intégrité vérifiée.")
         else:
-            for row in connection.execute("SELECT type,name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"):
+            for row in connection.execute(
+                "SELECT type,name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"
+            ):
                 print(row[0], row[1])
         return 0
     except TursoHTTPError as error:
-        print(f"Connexion Turso refusée : HTTP {error.status}. Vérifier le jeton de base, ses droits et l’URL.")
+        print(
+            f"Connexion Turso refusée : HTTP {error.status}. Vérifier le jeton de base, ses droits et l’URL."
+        )
         return 1
     except TursoProtocolError as error:
-        print(f"Requête Turso refusée : code {error.code}, étape {error.request_index + 1} du pipeline.")
+        print(
+            f"Requête Turso refusée : code {error.code}, étape {error.request_index + 1} du pipeline."
+        )
         return 1
     except ValueError:
-        print("Configuration Turso invalide : URL libSQL/HTTPS sans chemin, jeton non vide sans espaces.")
+        print(
+            "Configuration Turso invalide : URL libSQL/HTTPS sans chemin, jeton non vide sans espaces."
+        )
         return 1
     except (OSError, sqlite3.Error) as error:
-        reasons = {"Connexion Turso interrompue : timeout", "Connexion Turso interrompue : network", "Connexion Turso interrompue : response_format", "Transaction Turso non confirmée"}
-        print(str(error) if str(error) in reasons else "Échec Turso : vérifier les secrets, les permissions et la disponibilité de la base.")
+        reasons = {
+            "Connexion Turso interrompue : timeout",
+            "Connexion Turso interrompue : network",
+            "Connexion Turso interrompue : response_format",
+            "Transaction Turso non confirmée",
+        }
+        print(
+            str(error)
+            if str(error) in reasons
+            else "Échec Turso : vérifier les secrets, les permissions et la disponibilité de la base."
+        )
         return 1
     finally:
         if connection:
-            try:
+            with contextlib.suppress(sqlite3.Error):
                 connection.close()
-            except sqlite3.Error:
-                pass
 
 
 if __name__ == "__main__":

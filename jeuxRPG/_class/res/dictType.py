@@ -1,5 +1,4 @@
-
-from typing import Dict, Type, TypedDict, Union
+from typing import TypedDict
 
 from jeuxRPG._class.res.advantage import Advantage
 from jeuxRPG._class.res.character.stats import basic_stat as stat_module
@@ -13,13 +12,15 @@ class BaseStats(TypedDict):
     endurance: int
     intelligence: int
     sagesse: int
-    energie: Dict[int, Dict[str, Union[Type[stat_module.Energie], int, float]]]
+    energie: dict[int, dict[str, type[stat_module.Energie] | int | float]]
+
 
 # Typage des améliorations par niveau
 class EnergieUpgrade(TypedDict):
-    type: Type[stat_module.Energie]
+    type: type[stat_module.Energie]
     value: int
     regen_rate: float
+
 
 class StatUpgrade(TypedDict):
     HP: int
@@ -27,15 +28,17 @@ class StatUpgrade(TypedDict):
     Endurance: int
     Intelligence: int
     Sagesse: int
-    Energie: Dict[Type[stat_module.Energie], int]
-    new: Dict[str, Dict[Type[stat_module.Energie], int]]
+    Energie: dict[type[stat_module.Energie], int]
+    new: dict[str, dict[type[stat_module.Energie], int]]
 
-UpgradeStats = Dict[int, StatUpgrade]
+
+UpgradeStats = dict[int, StatUpgrade]
 
 
 # Typage des compétences par niveau
-SkillLevel = Dict[str, Skill]
-ClassSkills = Dict[str, SkillLevel]
+SkillLevel = dict[str, Skill]
+ClassSkills = dict[str, SkillLevel]
+
 
 # Structure finale du Knight
 class ClassTable(TypedDict):

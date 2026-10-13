@@ -1,7 +1,6 @@
-from copy import deepcopy
 import math
 import re
-
+from copy import deepcopy
 
 STATS = ("hp", "endurance", "force", "intelligence", "sagesse")
 DEFAULTS = {

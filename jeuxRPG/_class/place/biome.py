@@ -4,14 +4,14 @@ Biome system for the world map.
 Defines different terrain types that can exist on the world map.
 """
 
-from enum import Enum, auto
-from typing import Dict, Any
+from enum import Enum
 
 from jeuxRPG.i18n import t
 
 
 class Biome(Enum):
     """Types of terrain/biome on the world map."""
+
     PLAIN = "plain"
     FOREST = "forest"
     MOUNTAIN = "mountain"
@@ -69,14 +69,14 @@ class Biome(Enum):
             Biome.VOLCANO: 3.0,
             Biome.DESERT: 2.0,
             Biome.SWAMP: 2.0,
-            Biome.OCEAN: float('inf'),
+            Biome.OCEAN: float("inf"),
             Biome.SNOW: 1.8,
         }
         return costs.get(self, 1.0)
 
 
 # Default biome distribution weights for procedural generation
-BIOME_WEIGHTS: Dict[Biome, float] = {
+BIOME_WEIGHTS: dict[Biome, float] = {
     Biome.PLAIN: 0.35,
     Biome.FOREST: 0.25,
     Biome.MOUNTAIN: 0.15,

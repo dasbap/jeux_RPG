@@ -1,28 +1,28 @@
 import asyncio
-import json
 import hashlib
-from pathlib import Path
-from urllib.parse import urlsplit
+import json
 import logging
 import os
 import time
 import uuid
 from collections import OrderedDict, defaultdict
 from contextlib import asynccontextmanager, suppress
+from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
-from .json_protocol import object_json
 from .distributed import build_rate_limiter
+from .json_protocol import object_json
+from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .realtime_store import RuntimeStore
-from .protocol_types import RuntimeMessage, RuntimeResponse, PendingBatch
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
-
 
 LEASE = """
 local current = redis.call('GET', KEYS[1])
@@ -557,207 +557,228 @@ class Coordinator:
             self.store = None
 
 
+def _socket_origin_allowed(websocket, environment):
+    host = websocket.headers.get("host", "")
+    origin = websocket.headers.get("origin")
+    scheme = "https" if environment.get("VERCEL") else "http"
+    allowed = {
+        value
+        for value in (
+            environment.get("VERCEL_URL"),
+            environment.get("VERCEL_PROJECT_PRODUCTION_URL"),
+            environment.get("VERCEL_BRANCH_URL"),
+            environment.get("RPG_PUBLIC_ORIGIN", "").removeprefix("https://"),
+        )
+        if value
+    }
+    if not environment.get("VERCEL"):
+        allowed.add(
+            host
+            if host.startswith(("localhost:", "127.0.0.1:"))
+            or host in ("testserver", "localhost", "127.0.0.1")
+            else ""
+        )
+    return host in allowed and origin == scheme + "://" + host
+
+
+async def _authenticate_socket(websocket, coordinator, trusted):
+    raw = await asyncio.wait_for(websocket.receive_text(), 10)
+    if len(raw.encode()) > 4096:
+        await websocket.close(code=1009)
+        return
+    item = object_json(raw)
+    headers = item.get("headers", {})
+    if (
+        item.get("type") != "authenticate"
+        or not isinstance(headers, dict)
+        or set(headers) != {"Authorization"}
+        or not isinstance(headers["Authorization"], str)
+    ):
+        await websocket.close(code=1008)
+        return
+    identity = await coordinator.rpc(
+        trusted(websocket, "/api/account/me", "GET", headers=headers)
+    )
+    if identity["status"] != 200:
+        await websocket.close(code=1008)
+        return
+    authenticated = headers["Authorization"]
+    await websocket.send_json({"type": "authenticated"})
+    return authenticated
+
+
+@dataclass
+class SubscriptionState:
+    subscription: dict | None = None
+    paused: bool = False
+    hidden_refresh_at: float = field(
+        default_factory=lambda: time.monotonic() + HIDDEN_REFRESH_SECONDS
+    )
+
+
+async def _push_socket_state(state, websocket, coordinator, send):
+    while True:
+        fast = (
+            coordinator.owner()
+            and len(coordinator.store.service.runtime_presence) <= 16
+        )
+        small = fast and len(coordinator.store.service.runtime_presence) <= 4
+        await asyncio.sleep(0.15 if small else 0.5 if fast else 1)
+        if state.subscription is not None and (
+            not state.paused or time.monotonic() >= state.hidden_refresh_at
+        ):
+            try:
+                result = await coordinator.rpc(state.subscription)
+            except (TimeoutError, RuntimeError, OSError):
+                with suppress(RuntimeError, WebSocketDisconnect):
+                    await websocket.close(code=1012)
+                return
+            if result["status"] in (401, 403):
+                await websocket.close(code=1008)
+                return
+            if state.paused:
+                state.hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
+                continue
+            await send(
+                {
+                    "type": "state",
+                    "subscription": state.subscription["subscription"],
+                    "result": result,
+                }
+            )
+            if result["body"].get("bundle_protocol") == 1:
+                state.subscription["headers"]["x-rpg-bundle-hashes"] = json.dumps(
+                    result["body"]["hashes"]
+                )
+
+
+async def _socket_connection(websocket, coordinator, environment, trusted):
+    if not _socket_origin_allowed(websocket, environment):
+        await websocket.close(code=1008)
+        return
+    if (
+        coordinator.connections >= RuntimeStore.runtime_capacity()
+        or coordinator.handshakes >= 16
+    ):
+        await websocket.close(code=1013)
+        return
+    coordinator.handshakes += 1
+    authenticated = None
+    try:
+        await websocket.accept()
+        if environment.get("VERCEL"):
+            authenticated = await _authenticate_socket(websocket, coordinator, trusted)
+            if authenticated is None:
+                return
+        if coordinator.connections >= RuntimeStore.runtime_capacity():
+            await websocket.close(code=1013)
+            return
+    except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):
+        with suppress(RuntimeError, WebSocketDisconnect):
+            await websocket.close(code=1008)
+        return
+    finally:
+        coordinator.handshakes -= 1
+    coordinator.connections += 1
+    send_lock = asyncio.Lock()
+    state = SubscriptionState()
+
+    async def send(value):
+        async with send_lock:
+            await websocket.send_json(value)
+
+    pusher = asyncio.create_task(
+        _push_socket_state(state, websocket, coordinator, send)
+    )
+    started = time.monotonic()
+    window, count = started, 0
+    try:
+        while time.monotonic() - started < 280:
+            raw = await asyncio.wait_for(websocket.receive_text(), 30)
+            if len(raw.encode()) > 65536:
+                await websocket.close(code=1009)
+                return
+            if time.monotonic() - window > 1:
+                window, count = time.monotonic(), 0
+            count += 1
+            if count > 20:
+                await websocket.close(code=1008)
+                return
+            item = object_json(raw)
+            if item.get("type") == "visibility" and type(item.get("active")) is bool:
+                state.paused = not item["active"]
+                state.hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
+                await send({"type": "visibility", "active": not state.paused})
+                continue
+            if item.get("type") == "ping":
+                await send({"type": "pong"})
+                continue
+            path = item.get("path", "")
+            headers = item.get("headers", {})
+            if (
+                not isinstance(path, str)
+                or len(path) > 256
+                or not path.startswith("/api/")
+                or path.startswith("/api/admin/")
+                or path == "/api/ws"
+                or not isinstance(headers, dict)
+                or any(
+                    not isinstance(k, str)
+                    or len(k) > 64
+                    or not isinstance(v, str)
+                    or len(v) > 8192
+                    for k, v in headers.items()
+                )
+            ):
+                await websocket.close(code=1008)
+                return
+            if (
+                item.get("method", "GET") not in ("GET", "POST")
+                or authenticated
+                and headers.get("Authorization", headers.get("authorization"))
+                != authenticated
+            ):
+                await websocket.close(code=1008)
+                return
+            request = trusted(
+                websocket,
+                path,
+                item.get("method", "GET"),
+                item.get("body"),
+                headers,
+            )
+            result = await coordinator.rpc(request)
+            await send({"id": item.get("id"), "result": result})
+            if path == "/api/state" and result["status"] == 200:
+                state.subscription = {
+                    **request,
+                    "subscription": item.get("id"),
+                    "headers": {
+                        **request["headers"],
+                        "x-rpg-bundles": "1",
+                        "x-rpg-bundle-hashes": "",
+                    },
+                }
+    except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):
+        pass
+    finally:
+        pusher.cancel()
+        with suppress(
+            asyncio.CancelledError, WebSocketDisconnect, RuntimeError, TimeoutError
+        ):
+            await pusher
+        coordinator.connections -= 1
+        if coordinator.connections == 0:
+            await coordinator.flush()
+            await coordinator.release()
+        with suppress(RuntimeError, WebSocketDisconnect):
+            await websocket.close(code=1012)
+
+
 def _register_socket(app, coordinator, environment, trusted):
     @app.websocket("/api/ws")
     async def socket(websocket: WebSocket):
-        host = websocket.headers.get("host", "")
-        origin = websocket.headers.get("origin")
-        scheme = "https" if environment.get("VERCEL") else "http"
-        allowed = {
-            value
-            for value in (
-                environment.get("VERCEL_URL"),
-                environment.get("VERCEL_PROJECT_PRODUCTION_URL"),
-                environment.get("VERCEL_BRANCH_URL"),
-                environment.get("RPG_PUBLIC_ORIGIN", "").removeprefix("https://"),
-            )
-            if value
-        }
-        if not environment.get("VERCEL"):
-            allowed.add(
-                host
-                if host.startswith(("localhost:", "127.0.0.1:"))
-                or host in ("testserver", "localhost", "127.0.0.1")
-                else ""
-            )
-        if host not in allowed or origin != scheme + "://" + host:
-            await websocket.close(code=1008)
-            return
-        if (
-            coordinator.connections >= RuntimeStore.runtime_capacity()
-            or coordinator.handshakes >= 16
-        ):
-            await websocket.close(code=1013)
-            return
-        coordinator.handshakes += 1
-        authenticated = None
-        try:
-            await websocket.accept()
-            if environment.get("VERCEL"):
-                raw = await asyncio.wait_for(websocket.receive_text(), 10)
-                if len(raw.encode()) > 4096:
-                    await websocket.close(code=1009)
-                    return
-                item = object_json(raw)
-                headers = item.get("headers", {})
-                if (
-                    item.get("type") != "authenticate"
-                    or not isinstance(headers, dict)
-                    or set(headers) != {"Authorization"}
-                    or not isinstance(headers["Authorization"], str)
-                ):
-                    await websocket.close(code=1008)
-                    return
-                identity = await coordinator.rpc(
-                    trusted(websocket, "/api/account/me", "GET", headers=headers)
-                )
-                if identity["status"] != 200:
-                    await websocket.close(code=1008)
-                    return
-                authenticated = headers["Authorization"]
-                await websocket.send_json({"type": "authenticated"})
-            if coordinator.connections >= RuntimeStore.runtime_capacity():
-                await websocket.close(code=1013)
-                return
-        except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):
-            with suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.close(code=1008)
-            return
-        finally:
-            coordinator.handshakes -= 1
-        coordinator.connections += 1
-        send_lock = asyncio.Lock()
-        subscription = None
-        paused = False
-        hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
-
-        async def send(value):
-            async with send_lock:
-                await websocket.send_json(value)
-
-        async def push():
-            nonlocal hidden_refresh_at
-            while True:
-                fast = (
-                    coordinator.owner()
-                    and len(coordinator.store.service.runtime_presence) <= 16
-                )
-                small = fast and len(coordinator.store.service.runtime_presence) <= 4
-                await asyncio.sleep(0.15 if small else 0.5 if fast else 1)
-                if subscription is not None and (
-                    not paused or time.monotonic() >= hidden_refresh_at
-                ):
-                    try:
-                        result = await coordinator.rpc(subscription)
-                    except (TimeoutError, RuntimeError, OSError):
-                        with suppress(RuntimeError, WebSocketDisconnect):
-                            await websocket.close(code=1012)
-                        return
-                    if result["status"] in (401, 403):
-                        await websocket.close(code=1008)
-                        return
-                    if paused:
-                        hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
-                        continue
-                    await send(
-                        {
-                            "type": "state",
-                            "subscription": subscription["subscription"],
-                            "result": result,
-                        }
-                    )
-                    if result["body"].get("bundle_protocol") == 1:
-                        subscription["headers"]["x-rpg-bundle-hashes"] = json.dumps(
-                            result["body"]["hashes"]
-                        )
-
-        pusher = asyncio.create_task(push())
-        started = time.monotonic()
-        window, count = started, 0
-        try:
-            while time.monotonic() - started < 280:
-                raw = await asyncio.wait_for(websocket.receive_text(), 30)
-                if len(raw.encode()) > 65536:
-                    await websocket.close(code=1009)
-                    return
-                if time.monotonic() - window > 1:
-                    window, count = time.monotonic(), 0
-                count += 1
-                if count > 20:
-                    await websocket.close(code=1008)
-                    return
-                item = object_json(raw)
-                if (
-                    item.get("type") == "visibility"
-                    and type(item.get("active")) is bool
-                ):
-                    paused = not item["active"]
-                    hidden_refresh_at = time.monotonic() + HIDDEN_REFRESH_SECONDS
-                    await send({"type": "visibility", "active": not paused})
-                    continue
-                if item.get("type") == "ping":
-                    await send({"type": "pong"})
-                    continue
-                path = item.get("path", "")
-                headers = item.get("headers", {})
-                if (
-                    not isinstance(path, str)
-                    or len(path) > 256
-                    or not path.startswith("/api/")
-                    or path.startswith("/api/admin/")
-                    or path == "/api/ws"
-                    or not isinstance(headers, dict)
-                    or any(
-                        not isinstance(k, str)
-                        or len(k) > 64
-                        or not isinstance(v, str)
-                        or len(v) > 8192
-                        for k, v in headers.items()
-                    )
-                ):
-                    await websocket.close(code=1008)
-                    return
-                if (
-                    item.get("method", "GET") not in ("GET", "POST")
-                    or authenticated
-                    and headers.get("Authorization", headers.get("authorization"))
-                    != authenticated
-                ):
-                    await websocket.close(code=1008)
-                    return
-                request = trusted(
-                    websocket,
-                    path,
-                    item.get("method", "GET"),
-                    item.get("body"),
-                    headers,
-                )
-                result = await coordinator.rpc(request)
-                await send({"id": item.get("id"), "result": result})
-                if path == "/api/state" and result["status"] == 200:
-                    subscription = {
-                        **request,
-                        "subscription": item.get("id"),
-                        "headers": {
-                            **request["headers"],
-                            "x-rpg-bundles": "1",
-                            "x-rpg-bundle-hashes": "",
-                        },
-                    }
-        except (WebSocketDisconnect, TimeoutError, ValueError, RuntimeError):
-            pass
-        finally:
-            pusher.cancel()
-            with suppress(
-                asyncio.CancelledError, WebSocketDisconnect, RuntimeError, TimeoutError
-            ):
-                await pusher
-            coordinator.connections -= 1
-            if coordinator.connections == 0:
-                await coordinator.flush()
-                await coordinator.release()
-            with suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.close(code=1012)
+        await _socket_connection(websocket, coordinator, environment, trusted)
 
 
 def relay_request_origin(environment, host, headers):
@@ -781,6 +802,69 @@ async def request_origin_error(request, error):
     return JSONResponse(
         {"error": error.code, "message": str(error)}, status_code=error.status
     )
+
+
+def _trusted_request(connection, path, method, body, headers, environment):
+    incoming = dict(connection.headers)
+    forwarded = {
+        key.lower(): value
+        for key, value in (headers or incoming).items()
+        if key.lower()
+        in (
+            "authorization",
+            "x-rpg-chat-connection",
+            "x-rpg-command-ack",
+            "x-rpg-bundles",
+            "x-rpg-bundle-hashes",
+        )
+    }
+    for key in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"):
+        if key in incoming:
+            forwarded[key] = incoming[key]
+    host, forwarded = relay_request_origin(
+        environment, incoming.get("host", ""), forwarded
+    )
+    return {
+        "path": path,
+        "method": method,
+        "body": body,
+        "headers": forwarded,
+        "host": host,
+        "peer": connection.client.host if connection.client else "unknown",
+        "scheme": "https" if environment.get("VERCEL") else "http",
+    }
+
+
+def _static_response(request, path, result, content):
+    if result["status"] == 200:
+        web = Path(__file__).parent / "web"
+        if path in ("", "admin"):
+            assets = {
+                value[0]
+                for value in CLIENT_STATIC.values()
+                if value[0].endswith((".js", ".css"))
+            }
+            assets.update({"admin.js", "admin.css"})
+            for asset in sorted(assets):
+                digest = hashlib.sha256((web / asset).read_bytes()).hexdigest()[:16]
+                content = content.replace(
+                    ('"/' + asset + '"').encode(),
+                    ('"/' + asset + "?v=" + digest + '"').encode(),
+                )
+            result["headers"]["Content-Length"] = str(len(content))
+            result["headers"]["Cache-Control"] = "no-cache"
+        else:
+            digest = hashlib.sha256(content).hexdigest()[:16]
+            result["headers"]["Cache-Control"] = (
+                "public, max-age=31536000, immutable"
+                if request.query_params.get("v") == digest
+                else "public, max-age=0, must-revalidate"
+            )
+            result["headers"]["ETag"] = '"' + digest + '"'
+            if request.headers.get("if-none-match") == result["headers"]["ETag"]:
+                result["headers"].pop("Content-Length", None)
+                return Response(status_code=304, headers=result["headers"])
+    return Response(content, status_code=result["status"], headers=result["headers"])
 
 
 def create_app(environment=None, coordinator=None):
@@ -813,34 +897,7 @@ def create_app(environment=None, coordinator=None):
         return response
 
     def trusted(connection, path, method, body=None, headers=None):
-        incoming = dict(connection.headers)
-        forwarded = {
-            key.lower(): value
-            for key, value in (headers or incoming).items()
-            if key.lower()
-            in (
-                "authorization",
-                "x-rpg-chat-connection",
-                "x-rpg-command-ack",
-                "x-rpg-bundles",
-                "x-rpg-bundle-hashes",
-            )
-        }
-        for key in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"):
-            if key in incoming:
-                forwarded[key] = incoming[key]
-        host, forwarded = relay_request_origin(
-            environment, incoming.get("host", ""), forwarded
-        )
-        return {
-            "path": path,
-            "method": method,
-            "body": body,
-            "headers": forwarded,
-            "host": host,
-            "peer": connection.client.host if connection.client else "unknown",
-            "scheme": "https" if environment.get("VERCEL") else "http",
-        }
+        return _trusted_request(connection, path, method, body, headers, environment)
 
     @app.get("/health")
     async def healthcheck():
@@ -929,36 +986,6 @@ def create_app(environment=None, coordinator=None):
         for key, value in request.headers.items():
             environment_wsgi["HTTP_" + key.upper().replace("-", "_")] = value
         content = b"".join(static(environment_wsgi, start))
-        if result["status"] == 200:
-            web = Path(__file__).parent / "web"
-            if path in ("", "admin"):
-                assets = {
-                    value[0]
-                    for value in CLIENT_STATIC.values()
-                    if value[0].endswith((".js", ".css"))
-                }
-                assets.update({"admin.js", "admin.css"})
-                for asset in sorted(assets):
-                    digest = hashlib.sha256((web / asset).read_bytes()).hexdigest()[:16]
-                    content = content.replace(
-                        ('"/' + asset + '"').encode(),
-                        ('"/' + asset + "?v=" + digest + '"').encode(),
-                    )
-                result["headers"]["Content-Length"] = str(len(content))
-                result["headers"]["Cache-Control"] = "no-cache"
-            else:
-                digest = hashlib.sha256(content).hexdigest()[:16]
-                result["headers"]["Cache-Control"] = (
-                    "public, max-age=31536000, immutable"
-                    if request.query_params.get("v") == digest
-                    else "public, max-age=0, must-revalidate"
-                )
-                result["headers"]["ETag"] = '"' + digest + '"'
-                if request.headers.get("if-none-match") == result["headers"]["ETag"]:
-                    result["headers"].pop("Content-Length", None)
-                    return Response(status_code=304, headers=result["headers"])
-        return Response(
-            content, status_code=result["status"], headers=result["headers"]
-        )
+        return _static_response(request, path, result, content)
 
     return app

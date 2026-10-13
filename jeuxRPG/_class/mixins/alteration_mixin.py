@@ -4,7 +4,7 @@ Alteration management mixin for Character class.
 Handles buffs, debuffs, stuns, status effects, and damage over time.
 """
 
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Literal
 
 from jeuxRPG._class.res.character.alteration import alteration as alteration_file
 from jeuxRPG._class.res.character.stats.stat import DefaultStat
@@ -28,10 +28,8 @@ class AlterationMixin:
     """
 
     def add_alteration(
-        self: 'Character',
-        origin: 'Character',
-        skill_effect: 'SkillEffect'
-    ) -> Tuple[bool, str, alteration_file.Alteration]:
+        self: "Character", origin: "Character", skill_effect: "SkillEffect"
+    ) -> tuple[bool, str, alteration_file.Alteration]:
         """
         Add an alteration (buff/debuff/...) to the character.
 
@@ -44,24 +42,27 @@ class AlterationMixin:
         """
         if skill_effect.alterationtype == alteration_file.AlterationType.BUFFSTAT:
             return self.buff_stat(
-                origin, skill_effect.name, skill_effect.stat_target,
-                skill_effect.value, skill_effect.duration
+                origin,
+                skill_effect.name,
+                skill_effect.stat_target,
+                skill_effect.value,
+                skill_effect.duration,
             )
         elif skill_effect.alterationtype == alteration_file.AlterationType.DEBUFFSTAT:
             return self.debuff_stat(
-                origin, skill_effect.name, skill_effect.stat_target,
-                skill_effect.value, skill_effect.duration
+                origin,
+                skill_effect.name,
+                skill_effect.stat_target,
+                skill_effect.value,
+                skill_effect.duration,
             )
         elif skill_effect.alterationtype == alteration_file.AlterationType.STUN:
             return self.add_stun(origin, skill_effect.name, skill_effect.duration)
         raise NotImplementedError("Unsupported alteration type")
 
     def add_stun(
-        self: 'Character',
-        origin: 'Character',
-        stun_name: str,
-        duration: int
-    ) -> Tuple[bool, str, Optional[alteration_file.Stun]]:
+        self: "Character", origin: "Character", stun_name: str, duration: int
+    ) -> tuple[bool, str, alteration_file.Stun | None]:
         """
         Apply a stun effect to this character.
 
@@ -74,17 +75,21 @@ class AlterationMixin:
             Tuple of (success, message, Stun or None)
         """
         if duration <= 0:
-            return False, f"Stun duration must be positive", None
+            return False, "Stun duration must be positive", None
 
         try:
             stun = alteration_file.Stun(stun_name, origin, duration, self)
             self.status["alteration"]["stun"].append(stun)
             plural = "s" if duration > 1 else ""
-            return True, f"💫 {self.name} was stunned by {origin.name} for {duration} round{plural}!", stun
+            return (
+                True,
+                f"💫 {self.name} was stunned by {origin.name} for {duration} round{plural}!",
+                stun,
+            )
         except Exception as e:
             return False, f"Failed to apply stun: {e}", None
 
-    def remove_stun(self: 'Character', stun: alteration_file.Stun) -> bool:
+    def remove_stun(self: "Character", stun: alteration_file.Stun) -> bool:
         """
         Remove a specific stun effect.
 
@@ -100,7 +105,7 @@ class AlterationMixin:
             return True
         return False
 
-    def clear_stuns(self: 'Character') -> int:
+    def clear_stuns(self: "Character") -> int:
         """
         Remove all stun effects from this character.
 
@@ -112,7 +117,7 @@ class AlterationMixin:
         stun_list.clear()
         return count
 
-    def get_stuns(self: 'Character') -> List[alteration_file.Stun]:
+    def get_stuns(self: "Character") -> list[alteration_file.Stun]:
         """
         Get all active stun effects.
 
@@ -121,7 +126,7 @@ class AlterationMixin:
         """
         return self.status["alteration"].get("stun", []).copy()
 
-    def get_stun_duration(self: 'Character') -> int:
+    def get_stun_duration(self: "Character") -> int:
         """
         Get the remaining duration of the longest stun.
 
@@ -134,13 +139,13 @@ class AlterationMixin:
         return max(stun.get_duration() for stun in stuns)
 
     def debuff_stat(
-        self: 'Character',
-        origin: 'Character',
+        self: "Character",
+        origin: "Character",
         debuff_name: str,
-        stat_target: Type[DefaultStat],
+        stat_target: type[DefaultStat],
         value: int,
-        duration: int
-    ) -> Tuple[bool, str, alteration_file.DeBuff]:
+        duration: int,
+    ) -> tuple[bool, str, alteration_file.DeBuff]:
         """
         Apply a debuff to a character stat.
 
@@ -156,21 +161,27 @@ class AlterationMixin:
         """
         try:
             stat = self.get_stat(stat_target.__name__)
-            debuff = alteration_file.DeBuff(debuff_name, origin, value, duration, self, stat_target)
+            debuff = alteration_file.DeBuff(
+                debuff_name, origin, value, duration, self, stat_target
+            )
             stat.add_debuff(debuff)
             self.status["alteration"]["debuff"].append(debuff)
-            return True, f"{self.name} was debuffed with {debuff_name}, the stat {stat_target.__name__} gets -{value} for {duration} rounds", debuff
+            return (
+                True,
+                f"{self.name} was debuffed with {debuff_name}, the stat {stat_target.__name__} gets -{value} for {duration} rounds",
+                debuff,
+            )
         except Exception as e:
             return False, f"Error in debuff_stat: {e}", None
 
     def buff_stat(
-        self: 'Character',
-        origin: 'Character',
+        self: "Character",
+        origin: "Character",
         buff_name: str,
-        stat_target: Type[DefaultStat],
+        stat_target: type[DefaultStat],
         value: int,
-        duration: int
-    ) -> Tuple[bool, str, alteration_file.Buff]:
+        duration: int,
+    ) -> tuple[bool, str, alteration_file.Buff]:
         """
         Apply a buff to a character stat.
 
@@ -186,14 +197,20 @@ class AlterationMixin:
         """
         try:
             stat = self.get_stat(stat_target.__name__)
-            buff = alteration_file.Buff(buff_name, origin, value, duration, self, stat_target)
+            buff = alteration_file.Buff(
+                buff_name, origin, value, duration, self, stat_target
+            )
             stat.add_buff(buff)
             self.status["alteration"]["buff"].append(buff)
-            return True, f"{self.name} was buffed with {buff_name}, the stat {stat_target.__name__} gets +{value} for {duration} rounds", buff
+            return (
+                True,
+                f"{self.name} was buffed with {buff_name}, the stat {stat_target.__name__} gets +{value} for {duration} rounds",
+                buff,
+            )
         except Exception as e:
             return False, f"Error in buff_stat: {e}", None
 
-    def is_stun(self: 'Character') -> bool:
+    def is_stun(self: "Character") -> bool:
         """
         Check if character is currently stunned.
 
@@ -205,24 +222,26 @@ class AlterationMixin:
         active_stuns = [s for s in stuns if not s.is_over()]
         return len(active_stuns) > 0
 
-    def is_stunned(self: 'Character') -> bool:
+    def is_stunned(self: "Character") -> bool:
         """Alias for is_stun() for better readability."""
         return self.is_stun()
 
-    def will_be_hit(self: 'Character') -> bool:
+    def will_be_hit(self: "Character") -> bool:
         """Check if character has incoming damage effects."""
         return bool(self.status["alteration"]["Damage"].get("Incoming", []))
 
-    def is_invulnerable(self: 'Character') -> bool:
+    def is_invulnerable(self: "Character") -> bool:
         """Check if character is invulnerable."""
         return bool(self.status["alteration"].get("invulnerability", []))
 
-    def have_reduction(self: 'Character') -> bool:
+    def have_reduction(self: "Character") -> bool:
         """Check if character has any damage reduction effects."""
-        r = self.status["alteration"]["Damage"].get("Reduction", {"-": [], "+": [], "%": []})
+        r = self.status["alteration"]["Damage"].get(
+            "Reduction", {"-": [], "+": [], "%": []}
+        )
         return any(r["-"]) or any(r["+"]) or any(r["%"])
 
-    def check_state(self: 'Character') -> List[Tuple[str, bool]]:
+    def check_state(self: "Character") -> list[tuple[str, bool]]:
         """
         Check all character status conditions.
 
@@ -234,24 +253,26 @@ class AlterationMixin:
             ("stun", self.is_stun()),
             ("dot", self.will_be_hit()),
             ("invulnerability", self.is_invulnerable()),
-            ("reduction", self.have_reduction())
+            ("reduction", self.have_reduction()),
         ]
 
-    def _update_status(self: 'Character') -> List[Tuple[str, alteration_file.Alteration]]:
+    def _update_status(
+        self: "Character",
+    ) -> list[tuple[str, alteration_file.Alteration]]:
         """
         Update all status effects at end of round.
 
         Returns:
             List of (message, alteration) for expired effects
         """
-        stats_dict: Dict[str, DefaultStat] = self.status["stats"]
+        stats_dict: dict[str, DefaultStat] = self.status["stats"]
         for stat in stats_dict.values():
             if isinstance(stat, DefaultStat):
                 stat.end_round()
 
         # Update and remove expired alterations
         alterations_dict = self.status["alteration"]
-        alteration_remove: List[Tuple[str, alteration_file.Alteration]] = []
+        alteration_remove: list[tuple[str, alteration_file.Alteration]] = []
 
         for alterations_type in ["stun", "invulnerability"]:
             alterations_type: Literal["stun", "invulnerability"]
@@ -260,10 +281,12 @@ class AlterationMixin:
                 a.decrease()
                 if a.is_over():
                     alterations.remove(a)
-                    alteration_remove.append((f"{self.name} is not longuer affected by {a.name}", a))
+                    alteration_remove.append(
+                        (f"{self.name} is not longuer affected by {a.name}", a)
+                    )
 
         dot_list = alterations_dict["Damage"]["Incoming"]
-        dot_list: List[alteration_file.Dot]
+        dot_list: list[alteration_file.Dot]
         for dot in dot_list[:]:
             if not isinstance(dot, alteration_file.Dot):
                 raise TypeError("a dot is not a Dot")
@@ -271,7 +294,9 @@ class AlterationMixin:
             dot.decrease()
             if dot.is_over():
                 dot_list.remove(dot)
-                alteration_remove.append((f"{self.name} is no longer affected by {dot.name}", dot))
+                alteration_remove.append(
+                    (f"{self.name} is no longer affected by {dot.name}", dot)
+                )
 
         reduction = alterations_dict["Damage"]["Reduction"]
         for type_key in reduction:
@@ -279,8 +304,12 @@ class AlterationMixin:
                 res.decrease()
                 if res.is_over():
                     reduction[type_key].remove(res)
-                    alteration_remove.append((f"{self.name} is not longuer affected by {res.name}", res))
+                    alteration_remove.append(
+                        (f"{self.name} is not longuer affected by {res.name}", res)
+                    )
 
-        alteration_remove = [("", None)] if alteration_remove == [] else alteration_remove
+        alteration_remove = (
+            [("", None)] if alteration_remove == [] else alteration_remove
+        )
 
         return alteration_remove

@@ -13,26 +13,31 @@ The Character class uses mixins to separate responsibilities:
 - CombatMixin: Attack and heal actions
 """
 
-
-from abc import ABC, ABCMeta
-from copy import deepcopy
 import json
 import os
-from typing import Dict, List, Optional, Type, Union
+from abc import ABC, ABCMeta
+from copy import deepcopy
 
 from jeuxRPG._class.mixins import (
-    HealthMixin,
-    EnergyMixin,
     AlterationMixin,
-    SkillMixin,
-    ProgressionMixin,
     CombatMixin,
+    EnergyMixin,
+    HealthMixin,
     NavigationMixin,
+    ProgressionMixin,
+    SkillMixin,
 )
 from jeuxRPG._class.res.character.alteration import alteration as alteration_file
 from jeuxRPG._class.res.character.invocation.invocation_pocket import InvocationPocket
 from jeuxRPG._class.res.character.stats.basic_stat import (
-    HP, AttributeStat, Endurance, Energie, Force, Intelligence, Sagesse, VitalStat
+    HP,
+    AttributeStat,
+    Endurance,
+    Energie,
+    Force,
+    Intelligence,
+    Sagesse,
+    VitalStat,
 )
 from jeuxRPG._class.res.character.stats.stat import DefaultStat
 from jeuxRPG._class.res.classType import ClassType
@@ -42,7 +47,7 @@ from jeuxRPG._class.stats.status_dict_type import Status_Dict_type
 
 json_path = os.path.join(os.path.dirname(alteration_file.__file__), "alteration.json")
 
-with open(json_path, "r", encoding="utf-8") as f:
+with open(json_path, encoding="utf-8") as f:
     status_dict: Status_Dict_type = json.load(f)
 
 
@@ -53,7 +58,7 @@ class CharacterMeta(ABCMeta):
     Maintains a registry of all character classes for dynamic creation.
     """
 
-    _classes: Dict[str, Type['Character']] = {}
+    _classes: dict[str, type["Character"]] = {}
 
     def __new__(cls, name, bases, namespace):
         """
@@ -68,7 +73,7 @@ class CharacterMeta(ABCMeta):
             Newly created class
         """
         new_class = super().__new__(cls, name, bases, namespace)
-        if name != 'Character':
+        if name != "Character":
             cls._classes[name.lower()] = new_class
         return new_class
 
@@ -82,7 +87,7 @@ class Character(
     CombatMixin,
     NavigationMixin,
     ABC,
-    metaclass=CharacterMeta
+    metaclass=CharacterMeta,
 ):
     """
     Base abstract class representing a game character.
@@ -117,10 +122,10 @@ class Character(
     """
 
     is_playable: bool = False
-    class_skills_dict: Dict[str, Dict[str, Skill]] = {}
+    class_skills_dict: dict[str, dict[str, Skill]] = {}
 
     @classmethod
-    def create(cls, class_name: str, *args, **kwargs) -> 'Character':
+    def create(cls, class_name: str, *args, **kwargs) -> "Character":
         """
         Factory method to create character instances by class name.
 
@@ -150,11 +155,11 @@ class Character(
         user_id: str,
         name: str,
         class_table: ClassTable,
-        skills: Optional[Dict[str, Skill]],
-        char_class: Optional[str],
+        skills: dict[str, Skill] | None,
+        char_class: str | None,
         level: int,
-        exp: int
-    ) -> 'Character':
+        exp: int,
+    ) -> "Character":
         """
         Restore a character from saved data.
 
@@ -185,8 +190,8 @@ class Character(
         user_id: str,
         name: str,
         class_table: ClassTable,
-        skills: Optional[Dict[str, Skill]] = None,
-        char_class: Optional[str] = None
+        skills: dict[str, Skill] | None = None,
+        char_class: str | None = None,
     ):
         """
         Initialize a new character instance.
@@ -216,25 +221,33 @@ class Character(
         self.intelligence = Intelligence(base_stats["intelligence"])
         self.sagesse = Sagesse(base_stats["sagesse"])
         self.class_table = deepcopy(class_table)
-        self.combat_profile = deepcopy(class_table.get("combat",{}))
+        self.combat_profile = deepcopy(class_table.get("combat", {}))
 
         # Initialize energy systems
-        self.energie: List[Energie] = []
-        for num in base_stats["energie"].keys():
+        self.energie: list[Energie] = []
+        for num in base_stats["energie"]:
             energie_info = base_stats["energie"][num]
-            self.add_energie(energie_info["type"](energie_info["value"], energie_info["regen_rate"]))
+            self.add_energie(
+                energie_info["type"](energie_info["value"], energie_info["regen_rate"])
+            )
 
         self._class_type: ClassType = class_table["class_type"]
         try:
             if self.class_type == ClassType.INVOCATION:
-                class_skills: ClassSkills = class_table["class_skills_dict"][self.level].copy()
+                class_skills: ClassSkills = class_table["class_skills_dict"][
+                    self.level
+                ].copy()
             else:
-                class_skills: Dict[str, Skill] = class_table["class_skills_dict"]["level 1"].copy()
-        except:
+                class_skills: dict[str, Skill] = class_table["class_skills_dict"][
+                    "level 1"
+                ].copy()
+        except KeyError:
             class_skills = {}
 
         self.skills = deepcopy(skills) if skills else deepcopy(class_skills)
-        self.status = deepcopy(status_dict)  # Deep copy to avoid shared state between instances
+        self.status = deepcopy(
+            status_dict
+        )  # Deep copy to avoid shared state between instances
 
         # Initialize status effects and stats references
         self._init_status_stats()
@@ -244,11 +257,7 @@ class Character(
         self.team = None
         self.invocations = InvocationPocket(self)
         # Initialize navigation/location fields
-        try:
-            self._init_navigation()
-        except Exception:
-            # Be resilient if navigation subsystem is not available
-            pass
+        self._init_navigation()
 
     def _init_status_stats(self) -> None:
         """Initialize the status dictionary with references to character stats."""
@@ -258,9 +267,7 @@ class Character(
             self.endurance.name: self.endurance,
             self.intelligence.name: self.intelligence,
             self.sagesse.name: self.sagesse,
-            "energie": {
-                energie.name: energie for energie in self.energie
-            }
+            "energie": {energie.name: energie for energie in self.energie},
         }
 
     def __str__(self) -> str:
@@ -296,7 +303,7 @@ class Character(
             name=self.name,
             level=self.level,
             hp=hp_str,
-            energie=energie_str
+            energie=energie_str,
         )
 
     @property
@@ -327,7 +334,7 @@ class Character(
         """Check if character has active summons."""
         return self.invocations.get_all() != []
 
-    def get_stat(self, stat_name: str) -> Union[DefaultStat, AttributeStat, VitalStat]:
+    def get_stat(self, stat_name: str) -> DefaultStat | AttributeStat | VitalStat:
         """
         Get a stat by its name.
 
@@ -340,7 +347,9 @@ class Character(
         Raises:
             TypeError: If stat doesn't exist
         """
-        stat_dict: Dict[str, Union[DefaultStat, AttributeStat, VitalStat]] = self.status["stats"]
+        stat_dict: dict[str, DefaultStat | AttributeStat | VitalStat] = self.status[
+            "stats"
+        ]
 
         # Check main stats
         if stat_name in stat_dict:
@@ -352,6 +361,6 @@ class Character(
 
         raise TypeError(f"{stat_name} not found in character stats")
 
-    def get_invocation(self) -> List['Character']:
+    def get_invocation(self) -> list["Character"]:
         """Get list of all active summons."""
         return self.invocations.get_all()

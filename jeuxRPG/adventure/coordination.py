@@ -1,14 +1,14 @@
-from contextlib import contextmanager
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 
 @contextmanager
 def world_lock(path):
-    lock_path = Path(str(path) + '.lock')
+    lock_path = Path(str(path) + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with lock_path.open('a+b') as stream:
-        if os.name == 'nt':
+    with lock_path.open("a+b") as stream:
+        if os.name == "nt":
             import msvcrt
 
             stream.seek(0)

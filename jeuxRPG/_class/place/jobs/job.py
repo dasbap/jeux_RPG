@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from jeuxRPG._class.place.jobs.job_types import JobType, ServiceType
 
 if TYPE_CHECKING:
@@ -31,7 +33,7 @@ class Job:
         exp: int = 0,
         services: list[ServiceType] | None = None,
         recipes: list[str] | None = None,
-        workplace: Building | None = None
+        workplace: Building | None = None,
     ):
         self.name = name
         self.job_type = job_type
@@ -44,7 +46,12 @@ class Job:
     def _default_services(self) -> list[ServiceType]:
         """Retourne les services par défaut selon le type de métier."""
         defaults = {
-            JobType.BLACKSMITH: [ServiceType.SELL, ServiceType.BUY, ServiceType.CRAFT, ServiceType.REPAIR],
+            JobType.BLACKSMITH: [
+                ServiceType.SELL,
+                ServiceType.BUY,
+                ServiceType.CRAFT,
+                ServiceType.REPAIR,
+            ],
             JobType.ALCHEMIST: [ServiceType.SELL, ServiceType.BUY, ServiceType.CRAFT],
             JobType.ENCHANTER: [ServiceType.UPGRADE, ServiceType.CRAFT],
             JobType.MERCHANT: [ServiceType.BUY, ServiceType.SELL],
@@ -91,10 +98,12 @@ class Job:
             "type": self.job_type.name,
             "level": self.level,
             "exp": self.exp,
-            "exp_to_next": self.EXP_PER_LEVEL - self.exp if self.level < self.MAX_LEVEL else 0,
+            "exp_to_next": self.EXP_PER_LEVEL - self.exp
+            if self.level < self.MAX_LEVEL
+            else 0,
             "services": [s.name for s in self.services],
             "recipes_count": len(self.recipes),
-            "workplace": self.workplace.name if self.workplace else None
+            "workplace": self.workplace.name if self.workplace else None,
         }
 
     def __repr__(self) -> str:

@@ -1,13 +1,15 @@
 import json
-import os
 import logging
+import os
+from pathlib import Path
+
 from .factory.Character_factory import Character_factory
 from .factory.factory import Factory
 from .object_creation import ObjectCreation
-from pathlib import Path
-from .save.safe_io import valid_id, contained, atomic_json
+from .save.safe_io import atomic_json, contained, valid_id
 
 logger = logging.getLogger(__name__)
+
 
 class GameController:
     allinstance = []
@@ -16,15 +18,13 @@ class GameController:
         self.id = len(GameController.allinstance) + 1
         self.factory = Factory()
         self.save_path = ""
-        self.memory : dict[str, object | list] = {"creation": [], "last creation": None}
+        self.memory: dict[str, object | list] = {"creation": [], "last creation": None}
 
         self.__init_factory()
         GameController.allinstance.append(self)
 
     def __init_factory(self):
         self.add_factory(Character_factory())
-
-
 
     def set_save_path(self, path: str) -> bool:
         self.save_path = path
@@ -33,7 +33,9 @@ class GameController:
     def create_save(self, id, **data) -> bool:
         if not self.save_path:
             return False
-        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
+        filename = contained(
+            self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json"
+        )
         save = {"id": id, "data": data}
         try:
             atomic_json(filename, save)
@@ -47,11 +49,13 @@ class GameController:
     def load_save(self, id) -> dict | None:
         if not self.save_path:
             return None
-        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
+        filename = contained(
+            self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json"
+        )
         if not os.path.isfile(filename):
             return None
         try:
-            with open(filename, "r", encoding="utf-8") as f:
+            with open(filename, encoding="utf-8") as f:
                 save = json.load(f)
             return save
         except Exception as e:
@@ -61,12 +65,19 @@ class GameController:
     def del_save(self, id) -> bool:
         if not self.save_path:
             return False
-        filename = contained(self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json")
+        filename = contained(
+            self.save_path, Path(self.save_path) / f"id_{valid_id(str(id))}.json"
+        )
         if os.path.isfile(filename):
             try:
                 os.remove(filename)
-                self.memory["creation"] = [s for s in self.memory["creation"] if s["id"] != id]
-                if self.memory["last creation"] and self.memory["last creation"]["id"] == id:
+                self.memory["creation"] = [
+                    s for s in self.memory["creation"] if s["id"] != id
+                ]
+                if (
+                    self.memory["last creation"]
+                    and self.memory["last creation"]["id"] == id
+                ):
                     self.memory["last creation"] = None
                 return True
             except Exception as e:
@@ -75,19 +86,19 @@ class GameController:
         else:
             return False
 
-    def add_factory(self, factory : ObjectCreation):
+    def add_factory(self, factory: ObjectCreation):
         self.factory.add(factory)
 
-    def get_factory(self, type : ObjectCreation):
+    def get_factory(self, type: ObjectCreation):
         return self.factory.get(type)
 
     def clear_memory(self):
-        self.memory = {"creation":[],"last creation":None}
+        self.memory = {"creation": [], "last creation": None}
 
-    def set_factory_target(self,type : ObjectCreation, new_target : object):
+    def set_factory_target(self, type: ObjectCreation, new_target: object):
         self.factory.get(type).set_object_target(new_target)
 
-    def update_factory_target(self,type : ObjectCreation, new_target : object):
+    def update_factory_target(self, type: ObjectCreation, new_target: object):
         # `ObjectCreation` définit `set_object_target`, not `update_object_target`.
         # Use `set_object_target` to change the target class/type for the factory.
         factory = self.factory.get(type)
@@ -95,20 +106,20 @@ class GameController:
             raise ValueError("Factory not found for given type")
         return factory.set_object_target(new_target)
 
-    def update_factory_attribute(self, type : ObjectCreation, attribute : dict):
+    def update_factory_attribute(self, type: ObjectCreation, attribute: dict):
         self.factory.get(type).update_attribute_required(**attribute)
 
-    def set_factory_attribute(self, type : ObjectCreation, attribute : dict):
+    def set_factory_attribute(self, type: ObjectCreation, attribute: dict):
         self.factory.get(type).set_attribute_required(**attribute)
 
-    def factory_create(self, type : ObjectCreation | str, **arg) -> object:
+    def factory_create(self, type: ObjectCreation | str, **arg) -> object:
         if isinstance(type, str):
             type = self.factory.get_by_name(type)
         if type is None:
             raise ValueError("a unknow str for a reach factory")
 
         # Extract to_level if provided, otherwise use default
-        to_level = arg.pop('to_level', {'to_level': 0})
+        to_level = arg.pop("to_level", {"to_level": 0})
 
         # Set the required attributes before creating
         factory_instance = self.factory.get(type)
@@ -119,5 +130,6 @@ class GameController:
         self.memory["last creation"] = last_create
         self.memory["creation"].append(last_create)
         return last_create
+
 
 gameController = GameController()

@@ -2,22 +2,11 @@
 
 import argparse
 import ast
-from collections import Counter, defaultdict
 import json
-from pathlib import Path
-import re
 import subprocess
 import sys
-
-BUDGETS = {
-    "jeuxRPG/multiplayer/realtime.py": {
-        "create_app": 24,
-        "_register_socket": 30,
-        "socket": 29,
-    },
-    "jeuxRPG/multiplayer/server.py": {"_dispatch": 43, "_dispatch_get": 11},
-    "jeuxRPG/multiplayer/tactics.py": {"advance": 19, "_advance_mob": 30},
-}
+from collections import defaultdict
+from pathlib import Path
 
 
 def duplicate_windows(baseline=None):
@@ -78,22 +67,8 @@ def main():
     parser.add_argument("--baseline")
     args = parser.parse_args()
     issues = []
-    baseline_lint = json.loads(
-        Path("docs/audit-20261011-followup/ruff-before.json").read_text()
-    )
     process = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "ruff",
-            "check",
-            "--isolated",
-            "--select",
-            "E4,E7,E9,F,B,UP,SIM,C4",
-            "--output-format",
-            "json",
-            "jeuxRPG",
-        ],
+        [sys.executable, "-m", "ruff", "check", "--output-format", "json", "jeuxRPG"],
         capture_output=True,
         text=True,
         check=False,
@@ -101,62 +76,15 @@ def main():
     if process.returncode not in (0, 1):
         raise RuntimeError(process.stderr)
     current_lint = json.loads(process.stdout)
-
-    def lint_counts(items):
-        return Counter(
-            (
-                str(Path(item["filename"]).resolve().relative_to(Path.cwd())),
-                item["code"],
-            )
-            for item in items
-        )
-
-    old_counts, new_counts = lint_counts(baseline_lint), lint_counts(current_lint)
-    for (path, code), count in new_counts.items():
-        if count > old_counts[path, code]:
-            issues.append(
-                f"Lint legacy: {path} {code}: {count} > {old_counts[path, code]}"
-            )
-    print(
-        f"Lint legacy: {len(baseline_lint)} -> {len(current_lint)} alerts (caps per file/rule)."
-    )
-    for path, budgets in BUDGETS.items():
-        process = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "ruff",
-                "check",
-                "--isolated",
-                "--select",
-                "C901",
-                "--config",
-                "lint.mccabe.max-complexity=0",
-                "--output-format",
-                "json",
-                path,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if process.returncode not in (0, 1):
-            raise RuntimeError(process.stderr)
-        measures = {}
-        for item in json.loads(process.stdout):
-            match = re.fullmatch(
-                r"`([^`]+)` is too complex \((\d+) > 0\)", item["message"]
-            )
-            if match:
-                measures[match[1]] = int(match[2])
-        for name, budget in budgets.items():
-            actual = measures.get(name)
-            if actual is None or actual > budget:
-                issues.append(f"{path}:{name}: {actual}, budget {budget}")
-    duplicates = duplicate_windows()
-    if duplicates["groups"] > 43 or duplicates["extra_occurrences"] > 48:
+    if current_lint:
         issues.append(
-            "Duplication exacte supérieure au budget courant (43 groupes / 48 occurrences supplémentaires)."
+            f"Lint: {len(current_lint)} diagnostics ; aucun diagnostic autorisé."
+        )
+    print(f"Lint: {len(current_lint)} diagnostics.")
+    duplicates = duplicate_windows()
+    if duplicates["groups"] > 22 or duplicates["extra_occurrences"] > 24:
+        issues.append(
+            "Duplication exacte supérieure au budget courant (22 groupes / 24 occurrences supplémentaires)."
         )
     if args.coverage:
         data = json.loads(Path(args.coverage).read_text())["totals"]

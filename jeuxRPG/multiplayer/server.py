@@ -6,19 +6,18 @@ import socket
 import threading
 import time
 import uuid
-from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from time import perf_counter
 from urllib.parse import urlsplit
 
 from .command_queue import CommandQueue
-from .state_bundles import encode
-from .network_log import create_logger, write
-from .service import GameService, GameError, digest
+from .distributed import LocalRateLimiter as RateLimiter
 from .distributed import build_rate_limiter
-from .observability import health, ready, metrics
-
+from .network_log import create_logger, write
+from .observability import health, metrics, ready
+from .service import GameError, GameService, digest
+from .state_bundles import encode
 
 CLIENT_MODULES = (
     "app_core.js",
@@ -40,29 +39,6 @@ CLIENT_STATIC = {
     "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"),
     **{f"/{name}": (name, "text/javascript; charset=utf-8") for name in CLIENT_MODULES},
 }
-
-
-class RateLimiter:
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._entries = {}
-
-    def accept(self, key, limit):
-        now = time.monotonic()
-        with self._lock:
-            for expired in [
-                k for k, v in self._entries.items() if not v or v[-1] <= now - 60
-            ]:
-                del self._entries[expired]
-            if key not in self._entries and len(self._entries) >= 4096:
-                return False
-            queue = self._entries.setdefault(key, deque())
-            while queue and queue[0] <= now - 60:
-                queue.popleft()
-            if len(queue) >= limit:
-                return False
-            queue.append(now)
-            return True
 
 
 class RPGServer(ThreadingHTTPServer):
@@ -282,6 +258,7 @@ class Handler(BaseHTTPRequestHandler):
             payload = (Path(__file__).parent / "web" / name).read_bytes()
             if name == "index.html":
                 from html import escape
+
                 from .content import DATA
 
                 labels = {
@@ -347,13 +324,12 @@ class Handler(BaseHTTPRequestHandler):
             raise GameError("not_found", "Ressource introuvable.", 404)
 
     def _dispatch(self, post):
-        started = time.monotonic()
-        self._network_started = started
+        self._network_started = time.monotonic()
         self._request_id = uuid.uuid4().hex
         self._network_combat = False
         self._network_route = "unknown"
-        combat = False
-        action = "none"
+        self._network_combat = False
+        self._network_action = "none"
         try:
             self._guard()
             parsed = urlsplit(self.path)
@@ -374,7 +350,7 @@ class Handler(BaseHTTPRequestHandler):
                 and self.headers.get("X-RPG-Command-Ack") == "1"
             )
             if deferred_command:
-                combat = True
+                self._network_combat = True
             if (
                 path.startswith("/api/")
                 and path not in ("/api/register", "/api/classes")
@@ -390,11 +366,11 @@ class Handler(BaseHTTPRequestHandler):
                             "SELECT data FROM tutorials WHERE session_id=?",
                             (session["id"],),
                         ).fetchone()
-                        combat = bool(row and json.loads(row[0]).get("battle")) or bool(
-                            not row and session["state"] == "running"
-                        )
-            self._network_combat = combat
-            if not combat:
+                        self._network_combat = bool(
+                            row and json.loads(row[0]).get("battle")
+                        ) or bool(not row and session["state"] == "running")
+            self._network_combat = self._network_combat
+            if not self._network_combat:
                 write(
                     self.server.network_log,
                     "CONNECTION",
@@ -421,220 +397,36 @@ class Handler(BaseHTTPRequestHandler):
                 self._dispatch_get(path)
                 return
             body = self._body()
-            if path in ("/api/account/signup", "/api/account/login"):
-                if set(body) != {"username", "password"}:
-                    raise GameError(
-                        "invalid_command", "Paramètres de connexion invalides."
-                    )
-                if not self.server.limiter.accept(
-                    ("login", self.client_address[0]), 10
-                ):
-                    raise GameError(
-                        "rate_limit",
-                        "Trop de tentatives. Réessayez dans une minute.",
-                        429,
-                    )
-                self._respond(
-                    201 if path.endswith("signup") else 200,
-                    self.server.service.account_login(
-                        body["username"],
-                        body["password"],
-                        signup=path.endswith("signup"),
-                        _prepared=getattr(self, "prepared_login", None),
-                    ),
-                )
-            elif path == "/api/account/character":
-                if "action" not in body:
-                    raise GameError("invalid_command", "Action requise.")
-                self._respond(
-                    200, self.server.service.account_character(self._token(), **body)
-                )
-            elif path == "/api/account/logout":
-                if body:
-                    raise GameError("invalid_command", "Paramètres invalides.")
-                self._respond(200, self.server.service.account_logout(self._token()))
-            elif path == "/api/account/password":
-                if set(body) != {"current_password", "new_password"}:
-                    raise GameError(
-                        "invalid_command", "Paramètres de mot de passe invalides."
-                    )
-                token = self._token()
-                if not self.server.limiter.accept(
-                    ("account-security", digest(token)), 10
-                ):
-                    raise GameError(
-                        "rate_limit",
-                        "Trop de tentatives. Réessayez dans une minute.",
-                        429,
-                    )
-                self._respond(
-                    200,
-                    self.server.service.account_change_password(
-                        token, body["current_password"], body["new_password"]
-                    ),
-                )
-            elif path == "/api/account/logout-all":
-                if body:
-                    raise GameError("invalid_command", "Paramètres invalides.")
-                self._respond(
-                    200, self.server.service.account_logout_all(self._token())
-                )
-            elif path == "/api/social":
-                if set(body) != {"action", "params"} or not self.server.limiter.accept(
-                    ("social", digest(self._token())), 30
-                ):
-                    raise GameError("rate_limit", "Trop d’actions sociales.", 429)
-                self._respond(
-                    200,
-                    self.server.service.social_action(
-                        self._token(), body["action"], body["params"]
-                    ),
-                )
-            elif path == "/api/register":
-                if not self.server.service.legacy_auth:
-                    raise GameError(
-                        "account_required", "Créez un compte avec un mot de passe.", 410
-                    )
-                if set(body) != {"name", "class_name"}:
-                    raise GameError("invalid_command", "Paramètres invalides.")
-                if not self.server.limiter.accept(
-                    ("register", self.client_address[0]), 10
-                ):
-                    raise GameError(
-                        "rate_limit", "Trop de créations de personnages.", 429
-                    )
-                self._respond(
-                    201, self.server.service.register(body["name"], body["class_name"])
-                )
-            elif path == "/api/chat":
-                if set(body) != {"channel", "message", "session_id"}:
-                    raise GameError("invalid_chat", "Paramètres de chat invalides.")
-                self._respond(
-                    200,
-                    self.server.service.send_chat(
-                        self._token(),
-                        body["channel"],
-                        body["message"],
-                        body["session_id"],
-                        self.headers.get("X-RPG-Chat-Connection"),
-                    ),
-                )
-            elif path == "/api/commands":
-                token = self._token()
-                if not self.server.limiter.accept(("command", digest(token)), 60):
-                    raise GameError("rate_limit", "Trop de commandes.", 429)
-                if (
-                    set(body) != {"request_id", "action", "params"}
-                    or not isinstance(body["params"], dict)
-                    or set(body["params"])
-                    & {"token", "request_id", "action", "_compact"}
-                ):
-                    raise GameError("invalid_command", "Paramètres invalides.")
-                action = (
-                    body["action"] if isinstance(body["action"], str) else "invalid"
-                )
-                tactical = action in (
-                    "strike",
-                    "skill",
-                    "battle_move",
-                    "hide",
-                    "harvest",
-                    "leave_battle",
-                    "control_units",
-                    "unit_order",
-                    "unit_skill",
-                    "attack",
-                )
-                if deferred_command and not tactical:
-                    with self.server.service._lock:
-                        player = self.server.service._authenticate(token)
-                        session = self.server.service._active(player["id"])
-                        row = (
-                            self.server.service.db.execute(
-                                "SELECT data FROM tutorials WHERE session_id=?",
-                                (session["id"],),
-                            ).fetchone()
-                            if session
-                            else None
-                        )
-                        combat = bool(row and json.loads(row[0]).get("battle")) or bool(
-                            session and not row and session["state"] == "running"
-                        )
-                combat = combat or tactical
-                self._network_combat = combat
-                if not combat:
-                    write(
-                        self.server.network_log,
-                        "ACTION_REQUESTED",
-                        action=action,
-                        peer=self.client_address[0],
-                    )
-                compact = self.headers.get("X-RPG-Command-Ack") == "1" and action in {
-                    "explore",
-                    "strike",
-                    "skill",
-                    "rest",
-                    "travel",
-                    "move",
-                    "talk",
-                    "craft",
-                    "upgrade",
-                    "battle_move",
-                    "hide",
-                    "harvest",
-                    "leave_battle",
-                    "control_units",
-                    "unit_order",
-                    "unit_skill",
-                }
-                result = self.server.commands.execute(
-                    token,
-                    body["request_id"],
-                    body["action"],
-                    body["params"],
-                    compact=compact,
-                )
-                if self.headers.get("X-RPG-Bundles") == "1" and not compact:
-                    result = encode(result, self.headers.get("X-RPG-Bundle-Hashes", ""))
-                self._respond(200, result)
-                if not combat:
-                    write(
-                        self.server.network_log,
-                        "ACTION_COMPLETED",
-                        action=action,
-                        milliseconds=int((time.monotonic() - started) * 1000),
-                    )
-            else:
-                raise GameError("not_found", "Ressource introuvable.", 404)
+            self._dispatch_post(path, body, deferred_command)
         except GameError as error:
             self.close_connection = True
-            if not combat or error.status in (401, 403):
+            if not self._network_combat or error.status in (401, 403):
                 write(
                     self.server.network_log,
                     "REQUEST_REJECTED",
                     reason=error.code,
                     status=error.status,
-                    action=action,
+                    action=self._network_action,
                     peer=self.client_address[0],
                 )
             self._respond(error.status, {"error": error.code, "message": str(error)})
         except (ConnectionError, TimeoutError):
-            if not combat:
+            if not self._network_combat:
                 write(
                     self.server.network_log,
                     "CONNECTION_FAILED",
                     reason="disconnected_or_timeout",
-                    action=action,
+                    action=self._network_action,
                     peer=self.client_address[0],
                 )
             self.close_connection = True
         except Exception:
-            if not combat:
+            if not self._network_combat:
                 write(
                     self.server.network_log,
                     "REQUEST_FAILED",
                     reason="internal_error",
-                    action=action,
+                    action=self._network_action,
                     peer=self.client_address[0],
                 )
             self._respond(
@@ -643,6 +435,188 @@ class Handler(BaseHTTPRequestHandler):
                     "error": "internal_error",
                     "message": "Erreur interne. La commande n'a pas été confirmée.",
                 },
+            )
+
+    def _dispatch_post(self, path, body, deferred_command):
+        if path in ("/api/account/signup", "/api/account/login"):
+            self._dispatch_account_login(path, body)
+        elif path == "/api/account/character":
+            if "action" not in body:
+                raise GameError("invalid_command", "Action requise.")
+            self._respond(
+                200, self.server.service.account_character(self._token(), **body)
+            )
+        elif path == "/api/account/logout":
+            if body:
+                raise GameError("invalid_command", "Paramètres invalides.")
+            self._respond(200, self.server.service.account_logout(self._token()))
+        elif path == "/api/account/password":
+            if set(body) != {"current_password", "new_password"}:
+                raise GameError(
+                    "invalid_command", "Paramètres de mot de passe invalides."
+                )
+            token = self._token()
+            if not self.server.limiter.accept(("account-security", digest(token)), 10):
+                raise GameError(
+                    "rate_limit",
+                    "Trop de tentatives. Réessayez dans une minute.",
+                    429,
+                )
+            self._respond(
+                200,
+                self.server.service.account_change_password(
+                    token, body["current_password"], body["new_password"]
+                ),
+            )
+        elif path == "/api/account/logout-all":
+            if body:
+                raise GameError("invalid_command", "Paramètres invalides.")
+            self._respond(200, self.server.service.account_logout_all(self._token()))
+        elif path == "/api/social":
+            if set(body) != {"action", "params"} or not self.server.limiter.accept(
+                ("social", digest(self._token())), 30
+            ):
+                raise GameError("rate_limit", "Trop d’actions sociales.", 429)
+            self._respond(
+                200,
+                self.server.service.social_action(
+                    self._token(), body["action"], body["params"]
+                ),
+            )
+        elif path == "/api/register":
+            if not self.server.service.legacy_auth:
+                raise GameError(
+                    "account_required", "Créez un compte avec un mot de passe.", 410
+                )
+            if set(body) != {"name", "class_name"}:
+                raise GameError("invalid_command", "Paramètres invalides.")
+            if not self.server.limiter.accept(("register", self.client_address[0]), 10):
+                raise GameError("rate_limit", "Trop de créations de personnages.", 429)
+            self._respond(
+                201, self.server.service.register(body["name"], body["class_name"])
+            )
+        elif path == "/api/chat":
+            if set(body) != {"channel", "message", "session_id"}:
+                raise GameError("invalid_chat", "Paramètres de chat invalides.")
+            self._respond(
+                200,
+                self.server.service.send_chat(
+                    self._token(),
+                    body["channel"],
+                    body["message"],
+                    body["session_id"],
+                    self.headers.get("X-RPG-Chat-Connection"),
+                ),
+            )
+        elif path == "/api/commands":
+            self._dispatch_commands(body, deferred_command)
+        else:
+            raise GameError("not_found", "Ressource introuvable.", 404)
+
+    def _dispatch_account_login(self, path, body):
+        if set(body) != {"username", "password"}:
+            raise GameError("invalid_command", "Paramètres de connexion invalides.")
+        if not self.server.limiter.accept(("login", self.client_address[0]), 10):
+            raise GameError(
+                "rate_limit",
+                "Trop de tentatives. Réessayez dans une minute.",
+                429,
+            )
+        self._respond(
+            201 if path.endswith("signup") else 200,
+            self.server.service.account_login(
+                body["username"],
+                body["password"],
+                signup=path.endswith("signup"),
+                _prepared=getattr(self, "prepared_login", None),
+            ),
+        )
+
+    def _dispatch_commands(self, body, deferred_command):
+        token = self._token()
+        if not self.server.limiter.accept(("command", digest(token)), 60):
+            raise GameError("rate_limit", "Trop de commandes.", 429)
+        if (
+            set(body) != {"request_id", "action", "params"}
+            or not isinstance(body["params"], dict)
+            or set(body["params"]) & {"token", "request_id", "action", "_compact"}
+        ):
+            raise GameError("invalid_command", "Paramètres invalides.")
+        self._network_action = (
+            body["action"] if isinstance(body["action"], str) else "invalid"
+        )
+        tactical = self._network_action in (
+            "strike",
+            "skill",
+            "battle_move",
+            "hide",
+            "harvest",
+            "leave_battle",
+            "control_units",
+            "unit_order",
+            "unit_skill",
+            "attack",
+        )
+        if deferred_command and not tactical:
+            with self.server.service._lock:
+                player = self.server.service._authenticate(token)
+                session = self.server.service._active(player["id"])
+                row = (
+                    self.server.service.db.execute(
+                        "SELECT data FROM tutorials WHERE session_id=?",
+                        (session["id"],),
+                    ).fetchone()
+                    if session
+                    else None
+                )
+                self._network_combat = bool(
+                    row and json.loads(row[0]).get("battle")
+                ) or bool(session and not row and session["state"] == "running")
+        self._network_combat = self._network_combat or tactical
+        self._network_combat = self._network_combat
+        if not self._network_combat:
+            write(
+                self.server.network_log,
+                "ACTION_REQUESTED",
+                action=self._network_action,
+                peer=self.client_address[0],
+            )
+        compact = self.headers.get(
+            "X-RPG-Command-Ack"
+        ) == "1" and self._network_action in {
+            "explore",
+            "strike",
+            "skill",
+            "rest",
+            "travel",
+            "move",
+            "talk",
+            "craft",
+            "upgrade",
+            "battle_move",
+            "hide",
+            "harvest",
+            "leave_battle",
+            "control_units",
+            "unit_order",
+            "unit_skill",
+        }
+        result = self.server.commands.execute(
+            token,
+            body["request_id"],
+            body["action"],
+            body["params"],
+            compact=compact,
+        )
+        if self.headers.get("X-RPG-Bundles") == "1" and not compact:
+            result = encode(result, self.headers.get("X-RPG-Bundle-Hashes", ""))
+        self._respond(200, result)
+        if not self._network_combat:
+            write(
+                self.server.network_log,
+                "ACTION_COMPLETED",
+                action=self._network_action,
+                milliseconds=int((time.monotonic() - self._network_started) * 1000),
             )
 
 
