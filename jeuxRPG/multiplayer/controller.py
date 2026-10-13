@@ -354,6 +354,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         return {
             "id": "Identifiant",
             "name": "Nom",
+            "category": "Type de quête (main / side / tutorial)",
             "npc": "PNJ donneur",
             "kind": "Type d’objectif",
             "target": "Espèce / recette cible",
