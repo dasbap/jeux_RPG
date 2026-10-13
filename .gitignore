@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+*.keys/
 
 # Local agent instructions
 AGENTS.md
