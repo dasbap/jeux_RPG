@@ -345,10 +345,25 @@ class LayoutEditor:
         values = self.editor.form("Nouvelle zone sans carte", {"id": "", "name": "Nouvelle zone", "level": 1})
         if not values:
             return
-        key = values["id"].strip()
+        key = values["id"].strip().lower()
+        if not key:
+            import unicodedata
+
+            name = unicodedata.normalize("NFKD", values["name"])
+            name = "".join(char for char in name if not unicodedata.combining(char))
+            key = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
         zones = self.editor.maps["clearing"].setdefault("logical_zones", {})
-        if not re.fullmatch(r"[a-z0-9_]{1,64}", key) or key in zones or key in self.editor.maps:
-            self.editor.messages.showerror("Zone", "Identifiant invalide ou déjà utilisé.")
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", key):
+            self.editor.messages.showerror(
+                "Zone",
+                f"Identifiant '{key}' invalide : utilisez 1 à 64 lettres minuscules, chiffres ou underscores.",
+            )
+            return
+        if key in zones:
+            self.editor.messages.showerror("Zone", f"La zone '{key}' existe déjà.")
+            return
+        if key in self.editor.maps:
+            self.editor.messages.showerror("Zone", f"'{key}' est déjà utilisé comme identifiant de carte.")
             return
         try:
             level = int(values["level"])
