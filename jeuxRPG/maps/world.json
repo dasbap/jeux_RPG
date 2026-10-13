@@ -8734,16 +8734,6 @@
           ]
         }
       },
-      "zone_lisiere": {
-        "name": "Lisière",
-        "level": 2,
-        "world_view": {
-          "position": [
-            750,
-            300
-          ]
-        }
-      },
       "zone_brume": {
         "name": "Brume",
         "level": 4,
@@ -14440,7 +14430,7 @@
         "kind": "flowers"
       }
     ],
-    "zone_id": "zone_lisiere",
+    "zone_id": "foret_eveilles",
     "spawners": [],
     "world_origin": [
       201,
@@ -20470,7 +20460,7 @@
         "kind": "tree"
       }
     ],
-    "zone_id": "zone_lisiere",
+    "zone_id": "foret_eveilles",
     "spawners": [
       {
         "mob_id": "goblin",
