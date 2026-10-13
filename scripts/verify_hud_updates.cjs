@@ -9,7 +9,7 @@ dom.window.setInterval = () => 0;
 dom.window.fetch = () => new Promise(() => {});
 dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artwork.js'),'utf8'));
 dom.window.eval(require('./client_source.cjs')() + `
-window.mountHud = adventure => {session={id:'hud',me:'p0',tutorial:adventure,events:[]};renderTutorial(adventure);};
+window.mountHud = adventure => {session={id:'hud',me:'p0',tutorial:adventure,events:[]};renderGame(adventure);};
 window.hudCalls=[];tutorialCommand=async (action,params)=>window.hudCalls.push({action,params});
 `);
 const el = id => dom.window.document.getElementById(id);

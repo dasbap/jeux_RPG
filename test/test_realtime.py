@@ -191,8 +191,9 @@ def test_mira_accepts_stale_revision_then_revalidates_changed_quest():
     assert accepted['status'] == 200
     assert accepted['body']['session']['tutorial']['quest'] == 'active'
     stale = talk()
-    assert stale['status'] == 409
-    assert stale['body']['error'] == 'quest_incomplete'
+    assert stale['status'] == 200
+    assert stale['body']['session']['tutorial']['quest'] == 'active'
+    assert stale['body']['session']['tutorial']['quest_journal'] == accepted['body']['session']['tutorial']['quest_journal']
     store.close()
 
 

@@ -71,7 +71,7 @@ def test_save_rolls_back_on_partial_replace_failure(tmp_path, monkeypatch):
     assert not list(p.directory.glob('*.controller.tmp'))
 
 
-@pytest.mark.parametrize('change', ['duplicate','condition','nonfinite','vision','hunt'])
+@pytest.mark.parametrize('change', ['duplicate','condition','nonfinite','vision'])
 def test_invalid_content_is_rejected(change):
     data = deepcopy(content.DEFAULTS)
     if change == 'duplicate':
@@ -82,8 +82,6 @@ def test_invalid_content_is_rejected(change):
         data['world']['xp_exponent'] = float('nan')
     elif change == 'vision':
         data['world']['player_vision'] = 2.5
-    else:
-        data['quests'] = []
     with pytest.raises(ValueError):
         content.validate_content(data)
 
@@ -169,7 +167,7 @@ def test_tutorial_quest_can_be_renamed_with_number_suffix_and_reloaded(tmp_path)
     loaded = controller.Project(p.directory)
     hunt = next(q for q in loaded.content['quests'] if content.is_hunt(q))
     assert hunt['id'] == 'mira_hunt_2'
-    assert hunt['role'] == 'tutorial_hunt'
+    assert hunt['category'] == 'tutorial'
     assert hunt['previous_ids'] == ['mira_hunt']
     assert hunt['npc'] == 'mira'
 
@@ -207,10 +205,11 @@ def test_quest_rename_migrates_completed_progress_without_second_reward(tmp_path
     party = tutorial.new_party([{'id':'p','name':'Test','class_name':'Knight'}])
     party['custom_quests'] = {'quest_2':{'status':'completed','progress':1}, 'quest_4':{'status':'active','progress':0}}
     xp = party['characters']['p']['exp']
-    assert content.quest_dialogue(party, 'mira') == []
+    messages = content.quest_dialogue(party, 'mira')
+    assert not any('Quête terminée : Chasse' in message for message in messages)
     assert party['characters']['p']['exp'] == xp
-    assert party['custom_quests'] == {'quest_4':{'status':'completed','progress':1}}
-    assert content.quest_journal(party)[0]['id'] == 'quest_4'
+    assert party['custom_quests']['quest_4'] == {'status':'completed','progress':1}
+    assert any(quest['id'] == 'quest_4' for quest in content.quest_journal(party))
 
 
 @pytest.mark.parametrize('replacement', ['mira_hunt','invalid id','BadID',''])
@@ -247,7 +246,7 @@ def test_installed_game_starts_with_renamed_tutorial_quest(tmp_path):
     p = project(tmp_path)
     p.rename('quests', 'mira_hunt', 'mira_hunt_2')
     p.save()
-    code = 'from jeuxRPG.multiplayer import content, tutorial; assert content.HUNT["id"] == "mira_hunt_2"; party = tutorial.new_party([{"id":"p","name":"Test","class_name":"Knight"}]); assert content.quest_dialogue(party, "mira") == []; assert content.quest_journal(party) == []'
+    code = 'from jeuxRPG.multiplayer import content, tutorial; assert content.HUNT["id"] == "mira_hunt_2"; party = tutorial.new_party([{"id":"p","name":"Test","class_name":"Knight"}]); assert any("Quête acceptée" in text for text in content.quest_dialogue(party, "mira")); assert any(quest["id"] == "mira_hunt_2" for quest in content.quest_journal(party))'
     result = subprocess.run([sys.executable, '-c', code], env={**os.environ, 'RPG_MAPS_FILE':str(p.directory)}, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 

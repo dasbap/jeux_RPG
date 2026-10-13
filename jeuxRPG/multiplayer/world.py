@@ -154,16 +154,12 @@ def view(party, me, traveller=None):
             point["locked_reason"] = None
             point["local"] = key == zone_of(party.get("position", CURRENT[step])) and party.get("position") not in ROAD_POINTS
             point["can_interact"] = point["local"] and not fighting and not moving
-            if point["id"] == "forge" and party["quest"] != "completed":
-                point["locked_reason"] = "Forge verrouillée : terminez la quête de Mira et rendez-la sur la place du village."
-            elif point["id"] == "mira" and step == "hunt" and party["kills"] < content.HUNT["count"]:
-                point["locked_reason"] = f"Mira attend encore {content.HUNT['count'] - party['kills']} gobelin(s) vaincu(s)."
             if not fighting and not moving and party.get("position", CURRENT[step]) == point["id"]:
-                if point["id"] == "mira" and (step == "village" or step == "hunt" and party["kills"] == content.HUNT["count"]):
+                if point["id"] == "mira":
                     point["action"] = "dialogue"
-                elif point["id"] == "forge" and party["quest"] == "completed":
+                elif point["id"] == "forge":
                     point["action"] = "forge"
-                elif point["id"] == "clearing_fight" and step == "clearing" or point["id"] == "hunt" and step == "hunt" and party["kills"] < content.HUNT["count"] or point["id"] == "training" and step in ("craft", "travel"):
+                elif point["id"] == "clearing_fight" and step == "clearing" or point["id"] == "hunt" and step == "hunt" or point["id"] == "training" and step in ("craft", "travel"):
                     point["action"] = "explore"
         places.append(place)
     routes = []

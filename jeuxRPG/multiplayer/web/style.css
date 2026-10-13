@@ -409,3 +409,5 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 }
 
 #craft-view{box-sizing:border-box;width:min(960px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;border:1px solid #70608d;border-radius:18px;background:#171c26;color:#eceef3;box-shadow:0 24px 80px #0009}#craft-view::backdrop{background:#080c14bf}.forge-header{display:flex;justify-content:space-between;align-items:center;gap:16px}.forge-header h2,.forge-header p{margin:0 0 8px}.forge-header button{flex:none}#craft-materials{padding:12px;background:#293044;border-radius:10px}#forge-feedback{color:#ffd67a}#forge-catalogue .quest-recipe{border:2px solid #ffd67a}@media(max-width:600px){#craft-view{padding:16px}#forge-catalogue{grid-template-columns:1fr}.forge-header h2{font-size:1.3rem}}
+
+.combat-active.hud-menu-open .combat-mode .consultation:has(#social-view:not([hidden])){display:block!important}

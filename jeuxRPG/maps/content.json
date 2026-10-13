@@ -9,7 +9,10 @@
       "xp_exponent": 1.8,
       "merchant_stay_hours": 8,
       "player_vision": 12,
-      "guild_max_members": 50
+      "guild_max_members": 50,
+      "starting_gold": 100,
+      "trade_max_quantity": 999,
+      "trade_max_gold": 100000
     },
     "quests": [
       {
@@ -22,10 +25,10 @@
         "count": 10,
         "reward_xp": 750,
         "description": "Battez les gobelins puis rapportez la nouvelle à Mira.",
-        "role": "tutorial_hunt",
         "previous_ids": [
           "mira_hunt"
-        ]
+        ],
+        "category": "tutorial"
       },
       {
         "id": "mira_hunt_2",
@@ -130,6 +133,44 @@
         "condition": "kills",
         "threshold": 100,
         "title": "Gardien des chemins"
+      }
+    ],
+    "economy": [
+      {
+        "id": "peau",
+        "name": "Peau",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc",
+        "name": "Croc",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "peau_gobelin",
+        "name": "Peau de gobelin",
+        "buy": 8,
+        "sell": 4
+      },
+      {
+        "id": "croc_gobelin",
+        "name": "Croc de gobelin",
+        "buy": 10,
+        "sell": 5
+      },
+      {
+        "id": "cristal_gobelin",
+        "name": "Cristal gobelin",
+        "buy": 80,
+        "sell": 40
+      },
+      {
+        "id": "noyau_gobelin",
+        "name": "Noyau gobelin",
+        "buy": 200,
+        "sell": 100
       }
     ]
   }

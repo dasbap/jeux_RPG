@@ -227,6 +227,17 @@ Dans **Mobs**, l’éditeur **Phases de boss** permet d’ajouter jusqu’à dix
 
 Le catalogue livré fournit un exemple : `cave_1` et `cave_2` forment le donjon `grotte_gobeline`, et `gobelin_boss` possède une phase `Furie`. Tous ces paramètres restent modifiables dans le Controller.
 
+
+## Économie et échanges
+
+L’onglet **Économie** du Controller définit les matériaux échangeables et leurs prix. **Prix d’achat au marchand** est la somme payée par le joueur ; **Prix de vente au marchand** est la somme reçue par le joueur. La validation impose un prix de vente inférieur ou égal au prix d’achat.
+
+Les paramètres **Or initial**, **Quantité max par échange** et **Or max par échange** sont modifiables dans **Monde**. Les anciennes sauvegardes sans monnaie reçoivent le solde initial lors de leur migration.
+
+Un PNJ devient marchand via **Cartes / builder → PNJ → Marchand**. Le catalogue livré marque Garrik comme marchand. Un joueur proche peut acheter ou vendre les matériaux définis dans l’onglet Économie.
+
+Les échanges directs entre joueurs sont autoritaires côté serveur. Les deux personnages doivent appartenir à la même équipe et se trouver au même lieu ; en exploration détaillée ils doivent être à portée immédiate. Les deux sauvegardes et leurs révisions sont modifiées dans la même transaction. Le même identifiant de requête rejoué après une perte réseau ne peut donc pas dupliquer l’or ou les matériaux.
+
 ## Réglages et projet complet
 
 Le sélecteur **Catalogue** permet d’accéder à tous les onglets, même sur un petit écran. Les réglages sont enregistrés dans `content.json`, sous `gameplay`. Les anciens projets reçoivent automatiquement les valeurs historiques. Aucune modification de l’équilibrage n’est appliquée par défaut.

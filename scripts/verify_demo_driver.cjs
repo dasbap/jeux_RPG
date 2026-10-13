@@ -16,7 +16,7 @@ dom.window.eval(require('./client_source.cjs')() + `
 window.demoSnapshot = () => session;
 window.demoReady = () => !busy;
 window.demoPath = gridPath;
-window.driverRender = adventure => {session = {id:'demo',me:'p0',tutorial:adventure,events:[]};renderTutorial(adventure);};
+window.driverRender = adventure => {session = {id:'demo',me:'p0',tutorial:adventure,events:[]};renderGame(adventure);};
 window.driverCalls = [];
 tutorialCommand = async (action,params) => window.driverCalls.push({action,params});
 `);

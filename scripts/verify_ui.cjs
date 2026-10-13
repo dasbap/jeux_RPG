@@ -254,7 +254,7 @@ async function main() {
     el(first, "quest-actions").querySelector("button").click();
     assert.equal(el(first, "map-place").value, selected);
     assert(el(first, "map-details").open && !el(first, "region-view").hidden);
-    assert(el(first, "world-map").querySelector(".objective-ring"));
+    assert(!el(first, "world-map").querySelector(".objective-ring"));
     assert(!el(first, "standby-view").hidden);
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.equal(el(first, "combat-target").options.length, 0);
@@ -319,11 +319,17 @@ async function main() {
     await waitFor(() => !el(first, "npc-view").hidden && /Garrik/.test(el(first, "npc-title").textContent), "arrivée rapide à la forge");
     assert.match(el(first, "npc-title").textContent, /Garrik/);
     assert.match(el(first, "npc-actions").textContent, /Parler/);
+    el(first, "show-inventory").click();
+    assert(!el(first, "inventory-view").hidden);
+    assert.match(el(first, "gold-balance").textContent, /Or : \d+/);
+    assert.equal(el(first, "market-panel").hidden, false);
+    assert(el(first, "market-details").querySelector("button"), "Catalogue marchand disponible");
+    el(first, "back-view").click();
     el(first, "npc-actions").querySelector("button").click();
     await waitFor(() => /forge de Rosée/.test(el(first, "message").textContent), "dialogue Garrik");
     assert.equal(el(first, "craft-view").open, true);
-    assert(el(first, "forge-status").textContent.includes("Forge verrouillée"));
-    assert([...el(first, "forge-catalogue").querySelectorAll("button")].every(b => b.disabled));
+    assert(!el(first, "forge-status").textContent.includes("Forge verrouillée"));
+    assert(el(first, "forge-catalogue").querySelectorAll("button").length > 0);
     await move(first, "hunt");
     while ((await request(first, "/api/state")).session.tutorial.kills < 3) {
       await command(first, "explore");
@@ -338,9 +344,9 @@ async function main() {
     assert(el(first, "forge-catalogue").textContent.includes("+2 force"));
     assert(el(first, "forge-catalogue").textContent.includes("+2 sagesse"));
     await command(first, "craft", {recipe: "veste"});
-    await waitFor(() => el(first, "quest-description").textContent.includes("Veste fabriquée et équipée") && el(first, "quest-description").textContent.includes("compagnon"), "fabrication personnelle validée dans la quête");
+    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.players.some(player => player.gear.some(piece => piece.slot === "torso")), "fabrication personnelle validée");
     await command(second, "craft", {recipe: "veste"});
-    await waitFor(() => el(first, "quest-description").textContent.includes("Prochaine étape") && el(first, "craft-actions").textContent.includes("Brume"), "objectif Brume après fabrication du groupe");
+    await waitFor(async () => (await request(first, "/api/state")).session.tutorial.step === "travel" && el(first, "craft-actions").textContent.includes("Brume"), "destination Brume après fabrication du groupe");
     await move(first, "brume");
     await waitFor(() => el(first, "battle-title").textContent === "Aventure accomplie" && el(second, "battle-title").textContent === "Aventure accomplie", "fin coopérative");
     assert(el(first, "combat-layout").hidden);

@@ -15,6 +15,8 @@ def catalog_rows(project, section):
         return [(key, mob_rules.resolve(p.mobs, key)['name'], f"{mob_rules.resolve(p.mobs, key)['class_name']} · rang {mob_rules.resolve(p.mobs, key)['rank']} · parent {item.get('parent') or 'aucun'}") for key, item in p.mobs.items()]
     if section == 'quests':
         return [(q['id'], q['name'], f"{q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP") for q in p.content[section]]
+    if section == 'economy':
+        return [(item['id'], item['name'], f"achat {item['buy']} or · vente {item['sell']} or") for item in p.content['economy']]
     if section == 'achievements':
         return [(a['id'], a['name'], f"{a['condition']} · {a['threshold']} · cible {a.get('target') or 'toutes'} · zone {a.get('zone') or 'toutes'} · carte {a.get('map') or 'toutes'} → {a['title']}") for a in p.content[section]]
     if section == 'npcs':
@@ -145,7 +147,7 @@ def report(project):
         if not definition.get('exits'):
             warnings.append(key + ' : aucune sortie ; vérifier que cette impasse est voulue.')
     from .controller_gameplay import SECTIONS
-    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ['maps','quests','mobs','achievements','npcs','classes','skills','skill_models',*[section for section, _ in SECTIONS]]}}
+    return {'erreurs': errors, 'avertissements': warnings, 'catalogues': {key: len(catalog_rows(project, key)) for key in ['maps','quests','mobs','achievements','economy','npcs','classes','skills','skill_models',*[section for section, _ in SECTIONS]]}}
 
 
 def text(value):

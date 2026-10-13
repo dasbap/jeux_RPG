@@ -55,7 +55,7 @@ async function command(action, params = {}) {
   if (busy) return;
   stateEpoch++;
   busy = true;
-  if (session?.tutorial) renderTutorial(session.tutorial);
+  if (session?.tutorial) renderGame(session.tutorial);
   message("");
   $("attack").disabled = true;
   try {
@@ -109,7 +109,7 @@ async function command(action, params = {}) {
   } finally {
     busy = false;
     if (lastPlayer && $("characters").hidden) render({player: lastPlayer});
-    else if (session?.tutorial) renderTutorial(session.tutorial);
+    else if (session?.tutorial) renderGame(session.tutorial);
     const pending = pendingBattleMove;
     pendingBattleMove = null;
     if (pending && session?.id === pending.sessionId && session.tutorial?.battle && session.tutorial.encounter_number === pending.encounter) {
@@ -156,12 +156,12 @@ for (const view of ["social", "options", "stats", "equipment", "inventory", "que
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
 $("game-menu-toggle").addEventListener("click", () => toggleGameMenu());
 document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial || $("craft-view").open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
-$("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderTutorial(session.tutorial);});
+$("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderGame(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
   focusedMob = combatTarget;
   focusedEnemy = session?.tutorial?.mobs?.some(mob => mob.combat_id === focusedMob && mob.stats.hp.current > 0) ? focusedMob : "";
-  if (session?.tutorial) renderTutorial(session.tutorial);
+  if (session?.tutorial) renderGame(session.tutorial);
 });
 $("chat-form").addEventListener("submit", async event => {
   event.preventDefault();

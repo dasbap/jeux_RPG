@@ -9616,7 +9616,8 @@
           44,
           12
         ],
-        "dialogue": "Bienvenue à la forge de Rosée. Apporte-moi tes matériaux et je pourrai fabriquer ou améliorer ton équipement."
+        "dialogue": "Bienvenue à la forge de Rosée. Apporte-moi tes matériaux et je pourrai fabriquer ou améliorer ton équipement.",
+        "merchant": true
       }
     ],
     "water": [
