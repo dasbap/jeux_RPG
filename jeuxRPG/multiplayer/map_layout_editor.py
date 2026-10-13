@@ -75,8 +75,16 @@ def layout_places(maps):
     for key in list(places):
         if key not in maps and key not in logical:
             del places[key]
+    for key in list(places):
+        if key in maps and zone_of(maps, key) != key:
+            parent = zone_of(maps, key)
+            if parent in logical:
+                parent_place = places.setdefault(parent, {"name": logical[parent]["name"], "x": 70, "y": 300, "points": []})
+                parent_place["points"].extend(deepcopy(places[key].get("points", [])))
+            del places[key]
     for key, data in logical.items():
-        places[key] = {"name": data["name"], "x": 70, "y": 300, "points": []}
+        places.setdefault(key, {"name": data["name"], "x": 70, "y": 300, "points": []})
+        places[key]["name"] = data["name"]
     map_ids = set(maps)
     for place in places.values():
         place["points"] = [
@@ -242,7 +250,11 @@ class LayoutEditor:
             )
             edges = [(a, b) for chain in chains for a, b in pairwise(chain)]
         for a, b in edges:
-            if a in self.nodes and b in self.nodes:
+            if general:
+                from .map_building import zone_of
+                a = zone_of(self.editor.maps, a) if a in self.editor.maps else a
+                b = zone_of(self.editor.maps, b) if b in self.editor.maps else b
+            if a in self.nodes and b in self.nodes and a != b:
                 self.canvas.create_line(
                     *self.nodes[a][:2], *self.nodes[b][:2], fill="#657385", width=3
                 )
