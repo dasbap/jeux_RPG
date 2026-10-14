@@ -74,6 +74,7 @@ class GameService(AccountMixin):
         log_directory=None,
         connection=None,
         initialize_schema=True,
+        presence_registry=None,
     ):
         from .content import DATA, validate_references
         from .fields import MAPS
@@ -96,7 +97,11 @@ class GameService(AccountMixin):
         self._chat_connections = {}
         self._chat_sent = {}
         self._chat_cleanup_at = 0
-        self.runtime_presence = PresenceRegistry.from_environment(os.environ)
+        self.runtime_presence = (
+            presence_registry
+            if presence_registry is not None
+            else PresenceRegistry.from_environment(os.environ)
+        )
         self.rallies = {}
         self.location_cache = {}
         self.dirty_sessions = set()
