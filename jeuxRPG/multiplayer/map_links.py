@@ -77,9 +77,9 @@ def connect_maps(
         from . import world
         from .map_building import zone_of
 
-        if zone_of(maps, source) != source or zone_of(maps, destination) != destination:
+        if zone_of(maps, source) == zone_of(maps, destination):
             raise ValueError(
-                "Les chemins rapides relient des zones racines. Pour les secteurs, choisissez un trajet."
+                "Les chemins rapides relient deux zones différentes. Pour une même zone, choisissez un passage ou un trajet."
             )
         result = deepcopy(maps)
         routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
@@ -157,8 +157,6 @@ def remove_link(maps, source, kind, index, both=False):
     elif kind == "route":
         routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
         route = routes[index]
-        if route["id"] in {"clearing_rosee", "rosee_lisiere", "rosee_brume"}:
-            raise ValueError("Ce chemin est nécessaire au tutoriel.")
         if both or not route.get("bidirectional", True):
             routes.pop(index)
         else:

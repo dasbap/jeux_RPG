@@ -144,11 +144,30 @@ def begin(party, now, origin):
         if party["position"] in world.ROAD_POINTS
         else world.zone_of(party["position"])
     )
-    preset = (
-        PRESETS["field_" + party["field_map"]]
-        if party.get("field_map")
-        else PRESETS[f"{zone}_" + str(1 + (party.get("encounter_number", 1) - 1) % 3)]
+    transit = party.get("transit") or {}
+    road = next(
+        (
+            r
+            for r in world.ROUTES
+            if r["id"]
+            in (transit.get("source"), transit.get("destination"), party["position"])
+        ),
+        None,
     )
+    combat_map = road.get("combat_map") if road and origin == "travel" else None
+    variant = str(1 + (party.get("encounter_number", 1) - 1) % 3)
+    map_id = combat_map or party.get("field_map")
+    if map_id:
+        preset = PRESETS["field_" + map_id]
+    elif zone + "_" + variant in PRESETS:
+        preset = PRESETS[zone + "_" + variant]
+    else:
+        map_id = party["position"]
+        if "field_" + map_id not in PRESETS:
+            map_id = next(
+                key for key in world.WORLD_MAP_DATA if world.zone_of(key) == zone
+            )
+        preset = PRESETS["field_" + map_id]
     players = {
         key: {
             "position": [1, 6 + index],
@@ -158,6 +177,10 @@ def begin(party, now, origin):
         }
         for index, key in enumerate(party["characters"])
     }
+    occupied = []
+    for unit in players.values():
+        unit["position"] = free_position(preset, unit["position"], occupied)
+        occupied.append(unit["position"])
     party["battle"] = {
         "preset": preset["id"],
         "players": players,

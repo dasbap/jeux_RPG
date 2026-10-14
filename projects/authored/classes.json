@@ -1,0 +1,1997 @@
+{
+  "kind": "classes",
+  "maps": {},
+  "version": 1,
+  "classes": [
+    {
+      "id": "Knight",
+      "table_id": "knight_table",
+      "name": "Chevalier",
+      "playable": true,
+      "class_type": "SHIELD",
+      "base_stats": {
+        "hp": 25,
+        "force": 5,
+        "endurance": 9,
+        "intelligence": 2,
+        "sagesse": 6
+      },
+      "energies": [
+        {
+          "type": "Aura",
+          "value": 14,
+          "regen_rate": 0.3
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 15,
+            "Force": 3,
+            "Endurance": 5,
+            "Intelligence": 1,
+            "Sagesse": 2
+          },
+          "energies": {
+            "Aura": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 15,
+          "stats": {
+            "HP": 3,
+            "Force": 1,
+            "Endurance": 1,
+            "Sagesse": 6
+          },
+          "energies": {
+            "Aura": 1
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 20,
+          "stats": {
+            "Endurance": 2,
+            "Sagesse": 4
+          },
+          "energies": {
+            "Aura": 25
+          },
+          "unlock_energies": {
+            "Foie": 90
+          }
+        },
+        {
+          "level": 21,
+          "stats": {
+            "HP": 2,
+            "Endurance": 1,
+            "Sagesse": 1
+          },
+          "energies": {
+            "Aura": 1,
+            "Foie": 10
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Knight:Sword Slash"
+        },
+        {
+          "level": "level 5",
+          "skill_id": "native:Knight:Shield Bash"
+        },
+        {
+          "level": "level 10",
+          "skill_id": "native:Knight:Charge"
+        },
+        {
+          "level": "level 20",
+          "skill_id": "native:Knight:Holy Strike"
+        }
+      ],
+      "weaknesses": [
+        "MAGIC"
+      ],
+      "resistances": [
+        "PHYSICAL"
+      ],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 3,
+        "attack_factor": 0.3,
+        "attack_min": 3,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "object"
+    },
+    {
+      "id": "Mage",
+      "table_id": "mage_table",
+      "name": "Mage",
+      "playable": true,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 18,
+        "force": 3,
+        "endurance": 2,
+        "intelligence": 16,
+        "sagesse": 8
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 35,
+          "regen_rate": 0.4
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 3,
+            "Force": 1,
+            "Endurance": 1,
+            "Intelligence": 5,
+            "Sagesse": 2
+          },
+          "energies": {
+            "Mana": 6
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 15,
+          "stats": {
+            "HP": 1,
+            "Intelligence": 3,
+            "Sagesse": 2
+          },
+          "energies": {
+            "Mana": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 20,
+          "stats": {
+            "Intelligence": 2
+          },
+          "energies": {
+            "Mana": 4
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Mage:Fire Ball"
+        },
+        {
+          "level": "level 5",
+          "skill_id": "native:Mage:Thunder"
+        },
+        {
+          "level": "level 20",
+          "skill_id": "native:Mage:Arcane Blast"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "intelligence",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 6,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "object"
+    },
+    {
+      "id": "Archer",
+      "table_id": "archer_table",
+      "name": "Archer",
+      "playable": true,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 22,
+        "force": 10,
+        "endurance": 6,
+        "intelligence": 4,
+        "sagesse": 7
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 15,
+          "regen_rate": 0.25
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 4,
+            "Force": 3,
+            "Endurance": 2,
+            "Intelligence": 1,
+            "Sagesse": 2
+          },
+          "energies": {
+            "Mana": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 15,
+          "stats": {
+            "HP": 2,
+            "Force": 2,
+            "Intelligence": 1
+          },
+          "energies": {
+            "Mana": 2
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 20,
+          "stats": {
+            "Endurance": 2,
+            "Force": 2
+          },
+          "energies": {
+            "Mana": 2
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Archer:Arrow Rain"
+        },
+        {
+          "level": "level 5",
+          "skill_id": "native:Archer:Piercing Shot"
+        },
+        {
+          "level": "level 10",
+          "skill_id": "native:Archer:Camouflage"
+        },
+        {
+          "level": "level 20",
+          "skill_id": "native:Archer:Explosive Arrow"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 6,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "object"
+    },
+    {
+      "id": "Priest",
+      "table_id": "priest_table",
+      "name": "Prêtre",
+      "playable": true,
+      "class_type": "HEAL",
+      "base_stats": {
+        "hp": 20,
+        "force": 3,
+        "endurance": 4,
+        "intelligence": 10,
+        "sagesse": 14
+      },
+      "energies": [
+        {
+          "type": "Foie",
+          "value": 30,
+          "regen_rate": 0.3
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 5,
+            "Force": 1,
+            "Endurance": 2,
+            "Intelligence": 3,
+            "Sagesse": 5
+          },
+          "energies": {
+            "Foie": 5
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 15,
+          "stats": {
+            "HP": 2,
+            "Sagesse": 3,
+            "Intelligence": 2
+          },
+          "energies": {
+            "Foie": 2
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 20,
+          "stats": {
+            "Endurance": 3,
+            "Sagesse": 4
+          },
+          "energies": {
+            "Foie": 3
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Priest:Heal"
+        },
+        {
+          "level": "level 5",
+          "skill_id": "native:Priest:Blessing"
+        },
+        {
+          "level": "level 10",
+          "skill_id": "native:Priest:Divine Shield"
+        },
+        {
+          "level": "level 20",
+          "skill_id": "native:Priest:Resurrection"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "intelligence",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 6,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "object"
+    },
+    {
+      "id": "Necromancien",
+      "table_id": "necromancien_table",
+      "name": "Nécromancien",
+      "playable": true,
+      "class_type": "SUMMONER",
+      "base_stats": {
+        "hp": 15,
+        "force": 3,
+        "endurance": 2,
+        "intelligence": 16,
+        "sagesse": 4
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 21,
+          "regen_rate": 0.4
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 2,
+            "Force": 2,
+            "Endurance": 1,
+            "Intelligence": 3,
+            "Sagesse": 1
+          },
+          "energies": {
+            "Mana": 4
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 15,
+          "stats": {
+            "HP": 2,
+            "Sagesse": 6,
+            "Intelligence": 2
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 20,
+          "stats": {
+            "Endurance": 2,
+            "Sagesse": 4
+          },
+          "energies": {
+            "Mana": 9
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 21,
+          "stats": {
+            "HP": 4,
+            "Endurance": 1,
+            "Intelligence": 2
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Necromancien:Low Skull"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "intelligence",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 6,
+        "summoner": true,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "Goblin",
+      "table_id": "goblin_table",
+      "name": "Gobelin",
+      "playable": false,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 14,
+        "force": 6,
+        "endurance": 2,
+        "intelligence": 2,
+        "sagesse": 1
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 10,
+          "regen_rate": 0.2
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 2,
+            "Force": 1
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 5,
+          "stats": {
+            "HP": 1,
+            "Force": 1
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Goblin:Stab"
+        },
+        {
+          "level": "level 1",
+          "skill_id": "native:Goblin:Dirty Tricks"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping",
+      "rank": "D"
+    },
+    {
+      "id": "Orc",
+      "table_id": "orc_table",
+      "name": "Orc",
+      "playable": false,
+      "class_type": "SHIELD",
+      "base_stats": {
+        "hp": 28,
+        "force": 10,
+        "endurance": 6,
+        "intelligence": 1,
+        "sagesse": 2
+      },
+      "energies": [
+        {
+          "type": "Aura",
+          "value": 12,
+          "regen_rate": 0.3
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 6,
+            "Force": 3,
+            "Endurance": 2
+          },
+          "energies": {
+            "Aura": 2
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "HP": 3,
+            "Force": 2
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Orc:Cleave"
+        },
+        {
+          "level": "level 1",
+          "skill_id": "native:Orc:Rally"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1.6
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "DragonWhelp",
+      "table_id": "dragon_whelp_table",
+      "name": "Dragonnet",
+      "playable": false,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 22,
+        "force": 4,
+        "endurance": 4,
+        "intelligence": 9,
+        "sagesse": 6
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 24,
+          "regen_rate": 0.4
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 3,
+            "Intelligence": 2,
+            "Sagesse": 1
+          },
+          "energies": {
+            "Mana": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "HP": 2,
+            "Intelligence": 2
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:DragonWhelp:Small Breath"
+        },
+        {
+          "level": "level 1",
+          "skill_id": "native:DragonWhelp:Wing Buffet"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 2.5
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "PhysicalResistantMob",
+      "table_id": "physical_resistant_mob_table",
+      "name": "Résistant physique",
+      "playable": false,
+      "class_type": "SHIELD",
+      "base_stats": {
+        "hp": 24,
+        "force": 8,
+        "endurance": 8,
+        "intelligence": 2,
+        "sagesse": 3
+      },
+      "energies": [
+        {
+          "type": "Aura",
+          "value": 14,
+          "regen_rate": 0.25
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 5,
+            "Force": 2,
+            "Endurance": 3
+          },
+          "energies": {
+            "Aura": 2
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "HP": 3,
+            "Endurance": 2
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:PhysicalResistantMob:Crushing Blow"
+        }
+      ],
+      "weaknesses": [
+        "MAGIC"
+      ],
+      "resistances": [
+        "PHYSICAL"
+      ],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "MagicResistantMob",
+      "table_id": "magic_resistant_mob_table",
+      "name": "Résistant magique",
+      "playable": false,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 18,
+        "force": 3,
+        "endurance": 4,
+        "intelligence": 10,
+        "sagesse": 5
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 22,
+          "regen_rate": 0.35
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 3,
+            "Intelligence": 3,
+            "Sagesse": 1
+          },
+          "energies": {
+            "Mana": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "HP": 2,
+            "Intelligence": 2
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:MagicResistantMob:Arcane Spark"
+        }
+      ],
+      "weaknesses": [
+        "SACRED"
+      ],
+      "resistances": [
+        "MAGIC"
+      ],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "SacredResistantMob",
+      "table_id": "sacred_resistant_mob_table",
+      "name": "Résistant sacré",
+      "playable": false,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 20,
+        "force": 4,
+        "endurance": 5,
+        "intelligence": 4,
+        "sagesse": 10
+      },
+      "energies": [
+        {
+          "type": "Foie",
+          "value": 20,
+          "regen_rate": 0.3
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 3,
+            "Endurance": 1,
+            "Sagesse": 3
+          },
+          "energies": {
+            "Foie": 3
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "HP": 2,
+            "Sagesse": 2
+          },
+          "energies": {},
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:SacredResistantMob:Radiant Smite"
+        }
+      ],
+      "weaknesses": [
+        "PHYSICAL"
+      ],
+      "resistances": [
+        "SACRED"
+      ],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "Squelette",
+      "table_id": "squelette_table",
+      "name": "Squelette",
+      "playable": false,
+      "class_type": "INVOCATION",
+      "base_stats": {
+        "hp": 15,
+        "force": 10,
+        "endurance": 3,
+        "intelligence": 1,
+        "sagesse": 1
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 24,
+          "regen_rate": 0.4
+        }
+      ],
+      "growth": [],
+      "skills": [
+        {
+          "level": "BL",
+          "skill_id": "native:Squelette:Sword Slash"
+        },
+        {
+          "level": "NL",
+          "skill_id": "native:Squelette:headbutt"
+        },
+        {
+          "level": "HL",
+          "skill_id": "native:Squelette:Charge"
+        },
+        {
+          "level": "HL",
+          "skill_id": "native:Squelette:Sword Slash"
+        },
+        {
+          "level": "THL",
+          "skill_id": "native:Squelette:Strike"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "mapping"
+    },
+    {
+      "id": "Mob",
+      "table_id": "mob_table",
+      "name": "Créature",
+      "playable": false,
+      "class_type": "DAMAGE",
+      "base_stats": {
+        "hp": 15,
+        "force": 5,
+        "endurance": 3,
+        "intelligence": 3,
+        "sagesse": 2
+      },
+      "energies": [
+        {
+          "type": "Mana",
+          "value": 10,
+          "regen_rate": 0.2
+        }
+      ],
+      "growth": [
+        {
+          "level": 1,
+          "stats": {
+            "HP": 2,
+            "Force": 1,
+            "Endurance": 1
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 5,
+          "stats": {
+            "HP": 1,
+            "Force": 1
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        },
+        {
+          "level": 10,
+          "stats": {
+            "Force": 1,
+            "Endurance": 1
+          },
+          "energies": {
+            "Mana": 1
+          },
+          "unlock_energies": {}
+        }
+      ],
+      "skills": [
+        {
+          "level": "level 1",
+          "skill_id": "native:Mob:Attack"
+        },
+        {
+          "level": "level 5",
+          "skill_id": "native:Mob:Pack de sang"
+        },
+        {
+          "level": "level 10",
+          "skill_id": "native:Mob:Bite"
+        }
+      ],
+      "weaknesses": [],
+      "resistances": [],
+      "combat": {
+        "attack_stat": "force",
+        "attack_base": 2,
+        "attack_factor": 0.2,
+        "attack_min": 2,
+        "attack_range": 1.5,
+        "summoner": false,
+        "xp_factor": 1
+      },
+      "advantage_format": "object"
+    }
+  ],
+  "skills": {
+    "native:Knight:Sword Slash": {
+      "name": "Sword Slash",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 8,
+      "energy": "Aura",
+      "cooldown": 0,
+      "description": "Coup d'épée de base",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 11,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": 10,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.8,
+        "stat_factor": 0.45,
+        "bleeding": true
+      }
+    },
+    "native:Knight:Shield Bash": {
+      "name": "Shield Bash",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 6,
+      "energy": "Aura",
+      "cooldown": 2,
+      "description": "Coup de bouclier",
+      "handler": "damage_stun",
+      "effects": {
+        "damage": {
+          "value": 4,
+          "name": "Shield Bash",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        },
+        "Stun": {
+          "value": null,
+          "name": "Shield Bash",
+          "duration": 1,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": "STUN"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Knight:Charge": {
+      "name": "Charge",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": false,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Aura",
+      "cooldown": 3,
+      "description": "Augmente l'attaque mais réduit la défense temporairement",
+      "handler": "default",
+      "effects": {
+        "Buff": {
+          "value": 10,
+          "name": "Charge",
+          "duration": 3,
+          "stat_target": "Force",
+          "invocation": null,
+          "alteration": "BUFFSTAT"
+        },
+        "Debuff": {
+          "value": 5,
+          "name": "Charge Side effect",
+          "duration": 3,
+          "stat_target": "Endurance",
+          "invocation": null,
+          "alteration": "DEBUFFSTAT"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Knight:Holy Strike": {
+      "name": "Holy Strike",
+      "type": "DAMAGE",
+      "damage_type": "SACRED",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 12,
+      "energy": "Foie",
+      "cooldown": 4,
+      "description": "Coup sacré infligeant des dégâts importants",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 40,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mage:Fire Ball": {
+      "name": "Fire Ball",
+      "type": "DAMAGE",
+      "damage_type": "MAGIC",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 10,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Boule de feu élémentaire",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 15,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mage:Thunder": {
+      "name": "Thunder",
+      "type": "DAMAGE",
+      "damage_type": "MAGIC",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 12,
+      "energy": "Mana",
+      "cooldown": 1,
+      "description": "Décharge électrique frappant l'ennemi",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 20,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mage:Arcane Blast": {
+      "name": "Arcane Blast",
+      "type": "DAMAGE",
+      "damage_type": "MAGIC",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 30,
+      "energy": "Mana",
+      "cooldown": 5,
+      "description": "Explosion arcanique puissante",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 40,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Archer:Arrow Rain": {
+      "name": "Arrow Rain",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 12,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Pluie de flèches infligeant des dégâts à zone",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 20,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Archer:Piercing Shot": {
+      "name": "Piercing Shot",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 15,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Tir perforant traversant les défenses",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 30,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Archer:Camouflage": {
+      "name": "Camouflage",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 8,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Augmente l'évasion et le taux critique pendant 3 tours",
+      "handler": "default",
+      "effects": {
+        "evasion": {
+          "value": 15,
+          "name": "",
+          "duration": 3,
+          "stat_target": "Force",
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Archer:Explosive Arrow": {
+      "name": "Explosive Arrow",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 25,
+      "energy": "Mana",
+      "cooldown": 3,
+      "description": "Flèche explosive causant des dégâts massifs",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 50,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Priest:Heal": {
+      "name": "Heal",
+      "type": "HEAL",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 10,
+      "energy": "Foie",
+      "cooldown": 0,
+      "description": "Soigne un allié",
+      "handler": "default",
+      "effects": {
+        "heal": {
+          "value": 30,
+          "name": "",
+          "duration": 0,
+          "stat_target": "HP",
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Priest:Blessing": {
+      "name": "Blessing",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Foie",
+      "cooldown": 2,
+      "description": "Augmente la défense et résistance magique",
+      "handler": "default",
+      "effects": {
+        "defense": {
+          "value": 10,
+          "name": "Blessing Defense",
+          "duration": 3,
+          "stat_target": "Endurance",
+          "invocation": null,
+          "alteration": "BUFFSTAT"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Priest:Divine Shield": {
+      "name": "Divine Shield",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 8,
+      "energy": "Foie",
+      "cooldown": 3,
+      "description": "Protège un allié avec un bouclier divin",
+      "handler": "default",
+      "effects": {
+        "shield": {
+          "value": 15,
+          "name": "",
+          "duration": 2,
+          "stat_target": "HP",
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Priest:Resurrection": {
+      "name": "Resurrection",
+      "type": "RESURRECT",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 50,
+      "energy": "Foie",
+      "cooldown": 10,
+      "description": "Ressuscite un allié mort",
+      "handler": "default",
+      "effects": {
+        "resurrect": {
+          "value": 1,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Necromancien:Low Skull": {
+      "name": "Low Skull",
+      "type": "INVOCATION",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 15,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "invoque un faible squelette",
+      "handler": "default",
+      "effects": {
+        "invocation": {
+          "value": 1,
+          "name": "",
+          "duration": 4,
+          "stat_target": 0,
+          "invocation": {
+            "class": "Squelette",
+            "level": "BL",
+            "id": "-1"
+          },
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Goblin:Stab": {
+      "name": "Stab",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 2,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Coupe rapide de gobelin",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 6,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Goblin:Dirty Tricks": {
+      "name": "Dirty Tricks",
+      "type": "DEBUFF",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 3,
+      "energy": "Mana",
+      "cooldown": 1,
+      "description": "Fourberie: affaiblit l'endurance",
+      "handler": "default",
+      "effects": {
+        "Debuff": {
+          "value": 2,
+          "name": "Dirty Tricks",
+          "duration": 2,
+          "stat_target": "Endurance",
+          "invocation": null,
+          "alteration": "DEBUFFSTAT"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Orc:Cleave": {
+      "name": "Cleave",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Aura",
+      "cooldown": 1,
+      "description": "Frappe lourde orque",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 12,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Orc:Rally": {
+      "name": "Rally",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": false,
+      "can_target_others": true,
+      "cost": 4,
+      "energy": "Aura",
+      "cooldown": 2,
+      "description": "Cri de guerre: renforce la force",
+      "handler": "default",
+      "effects": {
+        "Buff": {
+          "value": 3,
+          "name": "Rally",
+          "duration": 2,
+          "stat_target": "Force",
+          "invocation": null,
+          "alteration": "BUFFSTAT"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:DragonWhelp:Small Breath": {
+      "name": "Small Breath",
+      "type": "DAMAGE",
+      "damage_type": "MAGIC",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 6,
+      "energy": "Mana",
+      "cooldown": 1,
+      "description": "Petit souffle draconique",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 11,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:DragonWhelp:Wing Buffet": {
+      "name": "Wing Buffet",
+      "type": "DAMAGE",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Mana",
+      "cooldown": 2,
+      "description": "Coup d'aile étourdissant",
+      "handler": "damage_stun",
+      "effects": {
+        "damage": {
+          "value": 3,
+          "name": "Wing Buffet",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        },
+        "Stun": {
+          "value": null,
+          "name": "Wing Buffet",
+          "duration": 1,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": "STUN"
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:PhysicalResistantMob:Crushing Blow": {
+      "name": "Crushing Blow",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 4,
+      "energy": "Aura",
+      "cooldown": 1,
+      "description": "Frappe lourde d'un gardien cuirasse",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 9,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:MagicResistantMob:Arcane Spark": {
+      "name": "Arcane Spark",
+      "type": "DAMAGE",
+      "damage_type": "MAGIC",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Mana",
+      "cooldown": 1,
+      "description": "Eclat magique concentre",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 10,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:SacredResistantMob:Radiant Smite": {
+      "name": "Radiant Smite",
+      "type": "DAMAGE",
+      "damage_type": "SACRED",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Foie",
+      "cooldown": 1,
+      "description": "Impact sacre focalise",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 10,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Squelette:Sword Slash": {
+      "name": "Sword Slash",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 8,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Coup d'épée de base",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 12,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Squelette:headbutt": {
+      "name": "headbutt",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 6,
+      "energy": "Mana",
+      "cooldown": 2,
+      "description": "Coup de tête",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 20,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Squelette:Charge": {
+      "name": "Charge",
+      "type": "BUFF",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Mana",
+      "cooldown": 3,
+      "description": "Augmente l'attaque temporairement",
+      "handler": "default",
+      "effects": {
+        "attack": {
+          "value": 15,
+          "name": "",
+          "duration": 2,
+          "stat_target": "Force",
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Squelette:Strike": {
+      "name": "Strike",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 12,
+      "energy": "Mana",
+      "cooldown": 4,
+      "description": "Coup infligeant des dégâts importants",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 40,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mob:Attack": {
+      "name": "Attack",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 2,
+      "energy": "Mana",
+      "cooldown": 0,
+      "description": "Attaque basique",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 5,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mob:Pack de sang": {
+      "name": "Pack de sang",
+      "type": "HEAL",
+      "damage_type": null,
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 5,
+      "energy": "Mana",
+      "cooldown": 2,
+      "description": "Régénère de la santé",
+      "handler": "default",
+      "effects": {
+        "heal": {
+          "value": 20,
+          "name": "",
+          "duration": 0,
+          "stat_target": "HP",
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    },
+    "native:Mob:Bite": {
+      "name": "Bite",
+      "type": "DAMAGE",
+      "damage_type": "PHYSICAL",
+      "requires_target": true,
+      "can_target_others": true,
+      "cost": 10,
+      "energy": "Mana",
+      "cooldown": 3,
+      "description": "Morsure féroce",
+      "handler": "default",
+      "effects": {
+        "damage": {
+          "value": 40,
+          "name": "",
+          "duration": 0,
+          "stat_target": 0,
+          "invocation": null,
+          "alteration": null
+        }
+      },
+      "balance": {
+        "cost_fixed": null,
+        "cost_factor": 1.5,
+        "cost_min": 5,
+        "effect_factor": 0.55,
+        "stat_factor": 0.25,
+        "bleeding": false
+      }
+    }
+  }
+}

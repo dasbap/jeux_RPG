@@ -354,6 +354,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         return {
             "id": "Identifiant",
             "name": "Nom",
+            "category": "Type de quête (main / side / tutorial)",
             "npc": "PNJ donneur",
             "kind": "Type d’objectif",
             "target": "Espèce / recette cible",
@@ -553,7 +554,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 )
 
         actions = self.ttk.Frame(dialog, padding=8)
-        actions.pack(fill="x")
+        actions.pack(side="bottom", fill="x", before=frame)
         self.ttk.Button(actions, text="Appliquer", command=accept).pack(
             side="left", padx=4
         )
@@ -937,6 +938,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             {
                 "id": "",
                 "name": "Nouvelle quête",
+                "category": "side",
                 "npc": "mira",
                 "kind": "kill",
                 "target": "goblin",
@@ -964,6 +966,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             else next(item for item in p.content[section] if item["id"] == key)
         )
         choices = {
+            "category": ["main", "side", "tutorial", "standard"],
             "npc": sorted(
                 {site["id"] for data in p.maps.values() for site in data["sites"]}
             ),
@@ -975,7 +978,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         if section == "achievements":
             old = {"target": "", "zone": "", "map": "", **old}
         else:
-            old = {"map": "", **old}
+            old = {"category": "side", "map": "", **old}
         choices["zone"] = (
             ["", *p.maps]
             if section == "quests"
@@ -1304,7 +1307,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
 
 def main():
     parser = argparse.ArgumentParser(description="Contrôleur graphique du contenu RPG")
-    parser.add_argument("directory", nargs="?", default="maps")
+    parser.add_argument("directory", nargs="?", default="projects/authored")
     args = parser.parse_args()
     import tkinter as tk
 

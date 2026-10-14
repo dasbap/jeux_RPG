@@ -1,7 +1,6 @@
 import math
 import re
 from copy import deepcopy
-from itertools import pairwise
 
 
 def validate_layout(value):
@@ -67,56 +66,28 @@ def apply_layout(places, maps):
 
 
 def layout_places(maps):
-    from . import world
     from .map_building import zone_of
 
-    places = deepcopy(world.PLACES)
-    for key in list(places):
-        if key not in maps:
-            del places[key]
-    map_ids = set(maps)
-    for place in places.values():
-        place["points"] = [
-            p for p in place["points"] if p["id"] not in map_ids and p["type"] != "rue"
-        ]
+    logical = maps.get("clearing", {}).get("logical_zones", {})
+    places = {
+        key: {"name": data["name"], "x": 70, "y": 300, "points": []}
+        for key, data in logical.items()
+    }
     for key, data in maps.items():
         zone = zone_of(maps, key)
-        if zone == key:
-            places.setdefault(
-                key, {"name": data["name"], "x": 70, "y": 300, "points": []}
-            )
-            places[key]["name"] = data["name"]
-        else:
-            places.setdefault(
-                zone, {"name": maps[zone]["name"], "x": 70, "y": 300, "points": []}
-            )["points"].append({"id": key, "name": data["name"], "type": "rencontre"})
-    for key, place in places.items():
-        streets = maps[key].get("village_streets", world.VILLAGE_STREETS.get(key, {}))
-        square_id = streets.get("square")
-        if square_id:
-            square = next((p for p in place["points"] if p["id"] == square_id), None)
-            if square is None:
-                square = {"id": square_id, "name": "Place centrale", "type": "repère"}
-                place["points"].append(square)
-            square.update(x=170, y=110)
-        for i, street in enumerate(streets.get("streets", [])):
-            y = 55 + i * 110
-            place["points"].append(
-                {
-                    "id": street["id"],
-                    "name": street["name"],
-                    "type": "rue",
-                    "x": 300,
-                    "y": y,
-                }
-            )
-            for j, building in enumerate(street["buildings"]):
-                point = next((p for p in place["points"] if p["id"] == building), None)
-                if point is None:
-                    point = {"id": building, "name": "Bâtiment", "type": "bâtiment"}
-                    place["points"].append(point)
-                point.update(x=430 + j * 130, y=y)
-    return apply_layout(places, maps)
+        definition = logical.get(zone, maps.get(zone))
+        place = places.setdefault(
+            zone, {"name": definition["name"], "x": 70, "y": 300, "points": []}
+        )
+        place["points"].append({"id": key, "name": data["name"], "type": "carte"})
+    return apply_layout(places, {**maps, **logical})
+
+
+def zone_level_value(values):
+    level = int(values["level"])
+    if not 1 <= level <= 100 or not 1 <= len(values["name"].strip()) <= 100:
+        raise ValueError("Nom ou niveau invalide.")
+    return level
 
 
 class LayoutEditor:
@@ -137,6 +108,7 @@ class LayoutEditor:
         from .map_building import zone_of
 
         self.zone.set(zone_of(editor.maps, editor.selected.get()))
+        self.zone_choice = None
         for var, values in (
             (self.mode, ["Carte générale", "Points du lieu"]),
             (self.zone, list(layout_places(editor.maps))),
@@ -145,7 +117,34 @@ class LayoutEditor:
                 bar, textvariable=var, values=values, state="readonly"
             )
             choice.pack(side="left", padx=4)
+            if var is self.zone:
+                self.zone_choice = choice
             choice.bind("<<ComboboxSelected>>", lambda e: self.draw())
+        actions = ttk.Frame(body)
+        actions.pack(fill="x")
+        ttk.Button(
+            actions, text="Créer une carte dans la zone", command=self.create_map
+        ).pack(side="left", padx=4)
+        ttk.Button(
+            actions, text="Ouvrir la carte sélectionnée", command=self.open_map
+        ).pack(side="left", padx=4)
+        ttk.Button(
+            actions,
+            text="Gérer les trajets et cartes de combat",
+            command=editor.edit_world,
+        ).pack(side="left", padx=4)
+        ttk.Button(bar, text="Créer une zone", command=self.create_zone).pack(
+            side="left", padx=4
+        )
+        ttk.Button(bar, text="Relier deux zones", command=self.connect_zones).pack(
+            side="left", padx=4
+        )
+        ttk.Button(bar, text="Supprimer la zone", command=self.delete_zone).pack(
+            side="left", padx=4
+        )
+        ttk.Button(bar, text="Propriétés zone", command=self.zone_properties).pack(
+            side="left", padx=4
+        )
         ttk.Button(bar, text="Modifier le nom", command=self.rename).pack(
             side="left", padx=4
         )
@@ -154,7 +153,7 @@ class LayoutEditor:
         )
         ttk.Label(
             body,
-            text="Glissez les cercles pour placer les zones ou les points. Les traits représentent les chemins et rues ; leur topologie se modifie dans Trajets / rues.",
+            text="Glissez les cercles pour placer les zones ou les points. Les traits montrent les passages réels. Ouvrez une carte pour placer ses PNJ, ennemis et portes ; gérez les voyages dans Trajets / rues.",
         ).pack(fill="x", pady=6)
         viewport = ttk.Frame(body)
         viewport.pack(fill="both", expand=True)
@@ -195,40 +194,29 @@ class LayoutEditor:
                 self.nodes[key] = (place["x"], place["y"], place["name"])
             routes = self.editor.maps["clearing"].get("travel_routes", world.ROUTES)
             edges = [(r["from"], r["to"]) for r in routes]
+            edges.extend(
+                (key, gate["destination"])
+                for key, data in self.editor.maps.items()
+                for gate in data["exits"]
+                if gate.get("destination") in self.editor.maps
+            )
         else:
             place = self.places[self.zone.get()]
-            self.nodes["__entry__"] = (*place.get("entry", [70, 110]), "Entrée")
-            for i, point in enumerate(place["points"]):
-                self.nodes[point["id"]] = (
-                    point.get("x", 270 if i % 2 == 0 else 450),
-                    point.get("y", 65 if i < 2 else 175),
-                    point["name"],
-                )
-            layout = self.editor.maps[self.zone.get()].get(
-                "village_streets", world.VILLAGE_STREETS.get(self.zone.get())
-            )
-            chains = (
-                [
-                    ["__entry__", layout["square"]],
-                    *[
-                        [layout["square"], s["id"], *s["buildings"]]
-                        for s in layout["streets"]
-                    ],
-                ]
-                if layout
-                else []
-            )
-            connected = {n for chain in chains for n in chain}
-            chains.extend(
-                [
-                    ["__entry__", key]
-                    for key in self.nodes
-                    if key != "__entry__" and key not in connected
-                ]
-            )
-            edges = [(a, b) for chain in chains for a, b in pairwise(chain)]
+            for point in place["points"]:
+                self.nodes[point["id"]] = (point["x"], point["y"], point["name"])
+            edges = [
+                (key, gate["destination"])
+                for key, data in self.editor.maps.items()
+                for gate in data["exits"]
+                if key in self.nodes and gate.get("destination") in self.nodes
+            ]
         for a, b in edges:
-            if a in self.nodes and b in self.nodes:
+            if general:
+                from .map_building import zone_of
+
+                a = zone_of(self.editor.maps, a) if a in self.editor.maps else a
+                b = zone_of(self.editor.maps, b) if b in self.editor.maps else b
+            if a in self.nodes and b in self.nodes and a != b:
                 self.canvas.create_line(
                     *self.nodes[a][:2], *self.nodes[b][:2], fill="#657385", width=3
                 )
@@ -281,9 +269,17 @@ class LayoutEditor:
         ]
         key = self.dragging
         if self.mode.get() == "Carte générale":
-            self.editor.maps[key].setdefault("world_view", {})["position"] = point
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = zones[key] if key in zones else self.editor.maps[key]
+            data.setdefault("world_view", {})["position"] = point
         else:
-            view = self.editor.maps[self.zone.get()].setdefault("world_view", {})
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = (
+                zones[self.zone.get()]
+                if self.zone.get() in zones
+                else self.editor.maps[self.zone.get()]
+            )
+            view = data.setdefault("world_view", {})
             if key == "__entry__":
                 view["entry"] = point
             else:
@@ -309,12 +305,259 @@ class LayoutEditor:
             return
         self.editor.remember()
         if self.mode.get() == "Carte générale":
-            self.editor.maps[self.selected]["name"] = name
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = (
+                zones[self.selected]
+                if self.selected in zones
+                else self.editor.maps[self.selected]
+            )
+            data["name"] = name
         else:
-            self.editor.maps[self.zone.get()].setdefault("world_view", {}).setdefault(
-                "points", {}
-            ).setdefault(self.selected, {})["name"] = name
+            zones = self.editor.maps["clearing"].get("logical_zones", {})
+            data = (
+                zones[self.zone.get()]
+                if self.zone.get() in zones
+                else self.editor.maps[self.zone.get()]
+            )
+            data.setdefault("world_view", {}).setdefault("points", {}).setdefault(
+                self.selected, {}
+            )["name"] = name
         self.editor.refresh_choice()
+        self.draw()
+
+    def open_map(self):
+        if self.selected in self.editor.maps and self.mode.get() != "Carte générale":
+            self.editor.show_map(self.selected)
+            self.panel.destroy()
+
+    def create_map(self):
+        key = self.editor.new()
+        if key in self.editor.maps:
+            self.editor.remember()
+            self.editor.maps[key]["zone_id"] = self.zone.get()
+            self.editor.refresh_choice()
+            self.draw()
+
+    def connect_zones(self):
+        import uuid
+
+        from . import world
+        from .map_building import zone_of
+        from .map_world_editor import add_travel_door, world_metadata
+
+        places = layout_places(self.editor.maps)
+        logical = self.editor.maps["clearing"].get("logical_zones", {})
+        available = [key for key in places if key in logical]
+        if len(available) < 2:
+            self.editor.messages.showerror("Liaison", "Créez au moins deux zones.")
+            return
+        source = self.selected if self.selected in available else available[0]
+        target = next((key for key in available if key != source), available[0])
+        result = self.editor.form(
+            "Relier deux zones",
+            {
+                "name": "Nouvelle route",
+                "from_zone": source,
+                "to_zone": target,
+                "distance_km": 0.2,
+            },
+        )
+        if not result:
+            return
+        source, target = result["from_zone"].strip(), result["to_zone"].strip()
+        if source not in available or target not in available or source == target:
+            self.editor.messages.showerror(
+                "Liaison", "Choisissez deux zones distinctes et existantes."
+            )
+            return
+        name = result["name"].strip()
+        try:
+            distance = float(result["distance_km"].replace(",", "."))
+            if not name or len(name) > 100 or not 0.0001 <= distance <= 1000:
+                raise ValueError()
+        except ValueError:
+            self.editor.messages.showerror("Liaison", "Nom ou distance invalide.")
+            return
+        start = next(
+            (
+                key
+                for key in self.editor.maps
+                if zone_of(self.editor.maps, key) == source
+            ),
+            None,
+        )
+        end = next(
+            (
+                key
+                for key in self.editor.maps
+                if zone_of(self.editor.maps, key) == target
+            ),
+            None,
+        )
+        if not start or not end:
+            self.editor.messages.showerror(
+                "Liaison", "Chaque zone doit contenir au moins une carte."
+            )
+            return
+        doors = self.editor.form(
+            "Portes et combat du trajet",
+            {
+                "from_map": start,
+                "from_entry": "",
+                "to_map": end,
+                "to_entry": "",
+                "combat_map": "",
+            },
+        )
+        if not doors:
+            return
+        start, end = doors["from_map"], doors["to_map"]
+        if (
+            start not in self.editor.maps
+            or end not in self.editor.maps
+            or zone_of(self.editor.maps, start) != source
+            or zone_of(self.editor.maps, end) != target
+        ):
+            self.editor.messages.showerror(
+                "Liaison", "Les cartes doivent appartenir aux zones choisies."
+            )
+            return
+        try:
+            entries = {
+                endpoint + "_entry": [
+                    int(n.strip()) for n in doors[endpoint + "_entry"].split(",")
+                ]
+                for endpoint in ("from", "to")
+            }
+        except ValueError:
+            self.editor.messages.showerror(
+                "Liaison", "Indiquez les coordonnées x,y de chaque porte."
+            )
+            return
+        candidate = deepcopy(self.editor.maps)
+        routes = candidate["clearing"].setdefault(
+            "travel_routes", deepcopy(world.ROUTES)
+        )
+        routes.append(
+            {
+                "id": "link_" + uuid.uuid4().hex[:16],
+                "name": name,
+                "from": start,
+                "to": end,
+                "distance_km": distance,
+                "bidirectional": True,
+                "combat_map": doors["combat_map"].strip(),
+                **entries,
+            }
+        )
+        try:
+            for endpoint in ("from", "to"):
+                if doors.get(endpoint + "_create_door"):
+                    add_travel_door(
+                        candidate,
+                        start if endpoint == "from" else end,
+                        entries[endpoint + "_entry"],
+                    )
+            world_metadata(candidate, world.VILLAGE_STREETS, routes)
+        except ValueError as exc:
+            self.editor.messages.showerror("Liaison", str(exc))
+            return
+        self.editor.remember()
+        self.editor.maps = candidate
+        self.mode.set("Carte générale")
+        self.draw()
+        self.editor.status.set("Liaison ajoutée. Enregistrez et redémarrez le serveur.")
+
+    def create_zone(self):
+        import re
+
+        values = self.editor.form(
+            "Nouvelle zone sans carte", {"id": "", "name": "Nouvelle zone", "level": 1}
+        )
+        if not values:
+            return
+        key = values["id"].strip().lower()
+        if not key:
+            import unicodedata
+
+            name = unicodedata.normalize("NFKD", values["name"])
+            name = "".join(char for char in name if not unicodedata.combining(char))
+            key = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+        zones = self.editor.maps["clearing"].setdefault("logical_zones", {})
+        if not re.fullmatch(r"[a-z0-9_]{1,64}", key):
+            self.editor.messages.showerror(
+                "Zone",
+                f"Identifiant '{key}' invalide : utilisez 1 à 64 lettres minuscules, chiffres ou underscores.",
+            )
+            return
+        if key in zones:
+            self.editor.messages.showerror("Zone", f"La zone '{key}' existe déjà.")
+            return
+        if key in self.editor.maps:
+            self.editor.messages.showerror(
+                "Zone", f"'{key}' est déjà utilisé comme identifiant de carte."
+            )
+            return
+        try:
+            level = zone_level_value(values)
+        except ValueError:
+            self.editor.messages.showerror("Zone", "Nom ou niveau invalide.")
+            return
+        self.editor.remember()
+        zones[key] = {
+            "name": values["name"].strip(),
+            "level": level,
+            "world_view": {"position": [350, 300]},
+        }
+        self.zone_choice["values"] = list(layout_places(self.editor.maps))
+        self.zone.set(key)
+        self.mode.set("Carte générale")
+        self.draw()
+
+    def zone_properties(self):
+        key = self.selected if self.mode.get() == "Carte générale" else self.zone.get()
+        zones = self.editor.maps["clearing"].get("logical_zones", {})
+        if key not in zones:
+            return
+        zone = zones[key]
+        values = self.editor.form(
+            "Propriétés de la zone",
+            {
+                "name": zone["name"],
+                "level": zone.get("level", 1),
+                "description": zone.get("description", ""),
+            },
+        )
+        if not values:
+            return
+        try:
+            level = zone_level_value(values)
+        except ValueError:
+            self.editor.messages.showerror("Zone", "Nom ou niveau invalide.")
+            return
+        self.editor.remember()
+        zone.update(
+            name=values["name"].strip(),
+            level=level,
+            description=values["description"].strip(),
+        )
+        self.draw()
+
+    def delete_zone(self):
+        key = self.selected if self.mode.get() == "Carte générale" else self.zone.get()
+        zones = self.editor.maps["clearing"].get("logical_zones", {})
+        if key not in zones:
+            return
+        if any(data.get("zone_id") == key for data in self.editor.maps.values()):
+            self.editor.messages.showerror(
+                "Zone", "Détachez d'abord les cartes de cette zone."
+            )
+            return
+        self.editor.remember()
+        del zones[key]
+        self.selected = None
+        self.zone_choice["values"] = list(layout_places(self.editor.maps))
+        self.zone.set(next(iter(layout_places(self.editor.maps))))
         self.draw()
 
     def undo(self):
