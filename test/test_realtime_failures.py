@@ -213,3 +213,36 @@ def test_simultaneous_owner_loss_does_not_close_store_twice():
         assert coordinator.store is None
         assert coordinator.owner_pending_drops == count
     asyncio.run(run())
+
+
+def test_close_waits_for_request_capture_to_finish():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    store = RuntimeStore(ENV)
+    capturing, release, closing, closed = Event(), Event(), Event(), Event()
+    original_capture = store.capture
+
+    def delayed_capture(*args, **kwargs):
+        capturing.set()
+        assert release.wait(5)
+        return original_capture(*args, **kwargs)
+
+    def close():
+        closing.set()
+        store.close()
+        closed.set()
+
+    store.capture = delayed_capture
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        request = pool.submit(store.request, message('/api/register', {'name':'Alice', 'class_name':'Knight'}))
+        assert capturing.wait(5)
+        shutdown = pool.submit(close)
+        try:
+            assert closing.wait(5)
+            assert not closed.wait(.1)
+        finally:
+            release.set()
+        assert request.result(timeout=5)['status'] == 201
+        shutdown.result(timeout=5)
+    assert closed.is_set()
