@@ -121,8 +121,9 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
       $("market-details").append(row);
     }
   }
-  const world = adventure.world;
-  const places = world.places;
+  const places = adventure.world.places;
+  const visiblePlaces = new Set(places.map(place => place.id));
+  const world = {...adventure.world, routes: adventure.world.routes.filter(route => visiblePlaces.has(route.from) && visiblePlaces.has(route.to))};
   const locked = busy || Boolean(adventure.battle && (!adventure.field_map || adventure.battle.hostiles_alive));
   function keepMapOpen() {
     currentView = "map";
@@ -142,7 +143,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     if (point.action === "explore") return tutorialCommand("explore");
     choosePoint(point);
   }
-  if (!places.some(p => p.id === mapPlace)) mapPlace = world.current;
+  if (!places.some(p => p.id === mapPlace)) mapPlace = places.find(p => p.id === world.current)?.id || places[0]?.id;
   const place = places.find(p => p.id === mapPlace);
   $("map-place").replaceChildren();
   for (const p of places) {

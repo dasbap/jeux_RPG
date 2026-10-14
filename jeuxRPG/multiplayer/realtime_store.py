@@ -299,56 +299,57 @@ class RuntimeStore:
         return DATA["gameplay"]["rules"]["social"]["realm_capacity"]
 
     def request(self, message: RuntimeMessage, prepared_login=None) -> RuntimeResponse:
-        if (
-            self.db.total_changes != self.observed_changes
-            and not self.service.dirty_sessions
-            and not self.service.persistent_social_changed
-        ):
-            self.capture()
-        raw = (
-            json.dumps(message.get("body")).encode()
-            if message.get("body") is not None
-            else b""
-        )
-        path, _, query = message["path"].partition("?")
-        environment = {
-            "PATH_INFO": path,
-            "QUERY_STRING": query,
-            "REQUEST_METHOD": message.get("method", "GET"),
-            "HTTP_HOST": message["host"],
-            "REMOTE_ADDR": message["peer"],
-            "wsgi.url_scheme": message.get("scheme", "https"),
-            "wsgi.input": io.BytesIO(raw),
-            "CONTENT_TYPE": "application/json",
-            "CONTENT_LENGTH": str(len(raw)),
-        }
-        for key, value in message.get("headers", {}).items():
-            environment["HTTP_" + key.upper().replace("-", "_")] = value
-        environment["rpg.prepared_login"] = prepared_login
-        result = {}
+        with self.service._lock:
+            if (
+                self.db.total_changes != self.observed_changes
+                and not self.service.dirty_sessions
+                and not self.service.persistent_social_changed
+            ):
+                self.capture()
+            raw = (
+                json.dumps(message.get("body")).encode()
+                if message.get("body") is not None
+                else b""
+            )
+            path, _, query = message["path"].partition("?")
+            environment = {
+                "PATH_INFO": path,
+                "QUERY_STRING": query,
+                "REQUEST_METHOD": message.get("method", "GET"),
+                "HTTP_HOST": message["host"],
+                "REMOTE_ADDR": message["peer"],
+                "wsgi.url_scheme": message.get("scheme", "https"),
+                "wsgi.input": io.BytesIO(raw),
+                "CONTENT_TYPE": "application/json",
+                "CONTENT_LENGTH": str(len(raw)),
+            }
+            for key, value in message.get("headers", {}).items():
+                environment["HTTP_" + key.upper().replace("-", "_")] = value
+            environment["rpg.prepared_login"] = prepared_login
+            result = {}
 
-        def start(status, headers):
-            result.update(status=int(status.split()[0]), headers=dict(headers))
+            def start(status, headers):
+                result.update(status=int(status.split()[0]), headers=dict(headers))
 
-        body = b"".join(self.app(environment, start))
-        result["body"] = (
-            json.loads(body)
-            if result["headers"]["Content-Type"].startswith("application/json")
-            else body.decode()
-        )
-        result["headers"]["X-RPG-Runtime"] = "memory"
-        if (
-            self.environment.get("RPG_RESET_TEST_PLAYERS") == "1"
-            and self.db.execute(
-                "SELECT 1 FROM meta WHERE key='test_players_reset_accounts_v1' AND value='done'"
-            ).fetchone()
-        ):
-            result["headers"]["X-RPG-Legacy-Tests-Reset"] = "1"
-        self.capture(dirty_only=True)
-        if path == "/api/state" and result["status"] == 200:
-            result["headers"]["X-RPG-Save-Pending"] = "1" if self.pending else "0"
-            result["headers"]["X-RPG-Save-Count"] = str(self.save_count)
-        return result
+            body = b"".join(self.app(environment, start))
+            result["body"] = (
+                json.loads(body)
+                if result["headers"]["Content-Type"].startswith("application/json")
+                else body.decode()
+            )
+            result["headers"]["X-RPG-Runtime"] = "memory"
+            if (
+                self.environment.get("RPG_RESET_TEST_PLAYERS") == "1"
+                and self.db.execute(
+                    "SELECT 1 FROM meta WHERE key='test_players_reset_accounts_v1' AND value='done'"
+                ).fetchone()
+            ):
+                result["headers"]["X-RPG-Legacy-Tests-Reset"] = "1"
+            self.capture(dirty_only=True)
+            if path == "/api/state" and result["status"] == 200:
+                result["headers"]["X-RPG-Save-Pending"] = "1" if self.pending else "0"
+                result["headers"]["X-RPG-Save-Count"] = str(self.save_count)
+            return result
 
     def tick(self):
         if (

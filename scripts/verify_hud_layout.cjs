@@ -185,7 +185,10 @@ const fixture=fixtures.combat;
     for(const box of [explorationMenu,outing,camera]) assert(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height,'HUD hors combat dans les limites de l’écran');
     for(const card of await page.locator('#outing-vitals .vitals-card').all()){
      const nameBox=await card.locator('.vitals-name').boundingBox(),resourceBox=await card.locator('.vitals-resources').boundingBox(),statusBox=await card.locator('.vitals-statuses').boundingBox();
-     assert(!overlaps(nameBox,resourceBox)&&!overlaps(resourceBox,statusBox),'Nom, ressources et statuts lisibles sans collision');
+     assert(nameBox&&resourceBox,'Nom et ressources visibles');
+     assert(!overlaps(nameBox,resourceBox),'Nom et ressources lisibles sans collision');
+     if(statusBox) assert(!overlaps(resourceBox,statusBox),'Statuts actifs lisibles sans collision');
+     else assert.equal(await card.locator('.vitals-statuses').evaluate(node=>node.childElementCount),0,'Statuts vides masqués');
      for(const row of await card.locator('.vitals-row').all()) assert(!overlaps(await row.locator('progress').boundingBox(),await row.locator('span').boundingBox()),'Valeurs et jauges sans chevauchement');
     }
     await page.screenshot({path:path.join(root,`hud-captures/${name}-${width}x${height}.png`)});

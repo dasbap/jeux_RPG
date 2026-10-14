@@ -47,7 +47,7 @@ let tacticalInteractionUntil = 0;
 let inspectedCell = null;
 const classes = Object.create(null);
 function message(text, error = false) {
-  $("message").textContent = text;
+  $("message").textContent = !error && session?.tutorial?.battle && /^(Contrôle des alliés|Ordre .* transmis)/.test(text) ? "" : text;
   $("message").classList.toggle("error", error);
 }
 function requestId() {

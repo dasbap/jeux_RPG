@@ -589,6 +589,23 @@ def repop(party, identifier, now, pursuers=()):
         )
 
 
+def reachable_terrain(definition):
+    from collections import deque
+
+    anchors = [gate["position"] for gate in definition.get("exits", [])]
+    queue = deque(
+        tuple(point) for point in anchors if tactics.walkable(definition, point)
+    )
+    reachable = set(queue)
+    while queue:
+        x, y = queue.popleft()
+        for point in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]:
+            if point not in reachable and tactics.walkable(definition, point):
+                reachable.add(point)
+                queue.append(point)
+    return reachable
+
+
 def migrate_terrain(party):
     battle = party.get("battle")
     if not battle:
@@ -614,8 +631,34 @@ def migrate_terrain(party):
         return
     definition = tactics.PRESETS[battle["preset"]]
     version = definition.get("terrain_version", 1)
-    if battle.get("terrain_version") == version:
+    if not party.get("field_map") and battle.get("terrain_version") == version:
         return
+
+    import hashlib
+    import json
+
+    signature = hashlib.sha256(
+        json.dumps(
+            [
+                definition["width"],
+                definition["height"],
+                definition["cover"],
+                definition.get("blocked", []),
+                definition.get("exits", []),
+            ],
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()
+    if (
+        battle.get("terrain_version") == version
+        and battle.get("terrain_signature") == signature
+        and all(
+            tactics.walkable(definition, unit["position"])
+            for unit in battle["players"].values()
+        )
+    ):
+        return
+    reachable = reachable_terrain(definition) if party.get("field_map") else set()
     occupied = []
     for unit in [
         *battle["players"].values(),
@@ -623,7 +666,16 @@ def migrate_terrain(party):
         *battle.get("companions", {}).values(),
         *party["mobs"],
     ]:
-        unit["position"] = tactics.free_position(definition, unit["position"], occupied)
+        wanted = unit["position"]
+        if (
+            unit in battle["players"].values()
+            and reachable
+            and tuple(wanted) not in reachable
+        ):
+            wanted = min(
+                reachable, key=lambda point: tactics.distance(point, unit["position"])
+            )
+        unit["position"] = tactics.free_position(definition, wanted, occupied)
         occupied.append(unit["position"])
         if "route" in unit:
             unit["route"] = []
@@ -635,3 +687,4 @@ def migrate_terrain(party):
                 for point in unit["patrol_route"]
             ]
     battle["terrain_version"] = version
+    battle["terrain_signature"] = signature
