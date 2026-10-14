@@ -22,11 +22,15 @@ def redis_url(environment):
                 raise ValueError
             _ = parsed.port
     except (ValueError, TypeError):
-        raise RedisConfigurationError("REDIS_URLS doit contenir une liste JSON d'URL Redis valides.") from None
+        raise RedisConfigurationError(
+            "REDIS_URLS doit contenir une liste JSON d'URL Redis valides."
+        ) from None
     try:
         index = int(environment.get("RPG_REDIS_ACTIVE_INDEX", "0"))
         if not 0 <= index < len(urls):
             raise ValueError
     except (ValueError, TypeError):
-        raise RedisConfigurationError("RPG_REDIS_ACTIVE_INDEX doit désigner une URL de REDIS_URLS, à partir de 0.") from None
+        raise RedisConfigurationError(
+            "RPG_REDIS_ACTIVE_INDEX doit désigner une URL de REDIS_URLS, à partir de 0."
+        ) from None
     return urls[index]
