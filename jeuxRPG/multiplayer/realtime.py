@@ -19,7 +19,7 @@ from redis.exceptions import RedisError
 from .distributed import build_rate_limiter
 from .json_protocol import object_json
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
-from .realtime_store import RuntimeStore
+from .realtime_store import KEYS, RuntimeStore
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
@@ -39,22 +39,16 @@ if string.sub(current, 1, string.len(ARGV[1]) + 1) == ARGV[1] .. ':' then
 end
 return false
 """
-SNAPSHOT = """
+OWNER = """
 if redis.call('GET', KEYS[1]) == ARGV[1] then
-  redis.call('SET', KEYS[2], ARGV[2])
   return 1
 end
 return 0
 """
-ACK = """
-local data = redis.call('GET', KEYS[1])
-if data then
-  local checkpoint = cjson.decode(data)
-  if checkpoint.save_id == ARGV[1] then
-    checkpoint.pending = {}
-    redis.call('SET', KEYS[1], cjson.encode(checkpoint))
-    return 1
-  end
+RETIRE_CHECKPOINT = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  redis.call('DEL', KEYS[2])
+  return 1
 end
 return 0
 """
@@ -167,60 +161,67 @@ class Coordinator:
             self.owner_recoveries += 1
             self.seen.clear()
             saved = await self.redis.get(self.prefix + "checkpoint")
-            if saved:
-                checkpoint = json.loads(saved)
-                self.store = RuntimeStore(
-                    self.environment, checkpoint.get("durable", checkpoint)
-                )
-                from .realtime_store import KEYS
-
-                for item in checkpoint.get("pending", []):
-                    table, row = item["table"], item["row"]
-                    self.store.pending[
-                        (
-                            table,
-                            tuple(item.get("key", ()))
-                            if row is None
-                            else tuple(row[key] for key in KEYS[table]),
-                        )
-                    ] = row
-                self.store.due = time.monotonic() + 5 if self.store.pending else None
-            else:
-                loaded = await asyncio.to_thread(RuntimeStore.load, self.environment)
-                try:
-                    if getattr(loaded, "reset_performed", False):
-                        await self.redis.set(
-                            "jeux-rpg:runtime:v1:lease",
-                            "retired-accounts-v1",
-                            px=600000,
-                        )
-                        await self.redis.delete(
-                            "jeux-rpg:runtime:v1:checkpoint",
-                            "jeux-rpg:runtime:v1:fence",
-                        )
-                except BaseException:
-                    loaded.close()
-                    raise
-                self.store = loaded
-                checkpoint = json.dumps(
-                    {
-                        "durable": json.loads(self.store.snapshot()),
-                        "pending": [],
-                        "save_id": "",
-                    }
-                )
-                await self.redis.eval(
-                    SNAPSHOT,
-                    2,
-                    self.prefix + "lease",
-                    self.prefix + "checkpoint",
-                    self.uid + ":" + str(self.fence),
-                    checkpoint,
-                )
+            if saved and not await self.restore_legacy_checkpoint(saved):
+                self.deadline = 0
+                return
+            loaded = await asyncio.to_thread(
+                RuntimeStore.load, self.environment, self.fence
+            )
+            try:
+                if getattr(loaded, "reset_performed", False):
+                    await self.redis.set(
+                        "jeux-rpg:runtime:v1:lease",
+                        "retired-accounts-v1",
+                        px=600000,
+                    )
+                    await self.redis.delete(
+                        "jeux-rpg:runtime:v1:checkpoint",
+                        "jeux-rpg:runtime:v1:fence",
+                    )
+            except BaseException:
+                loaded.close()
+                raise
+            self.store = loaded
             for identifier, message in list(self.messages.items()):
                 future = self.pending.get(identifier)
                 if future is not None and not future.done():
                     future.set_result(await self.execute(message))
+
+    async def restore_legacy_checkpoint(self, saved):
+        checkpoint = json.loads(saved)
+        pending = checkpoint.get("pending", [])
+        if pending:
+            legacy = RuntimeStore(
+                self.environment, checkpoint.get("durable", checkpoint)
+            )
+            try:
+                for item in pending:
+                    table, row = item["table"], item["row"]
+                    key = (
+                        tuple(item.get("key", ()))
+                        if row is None
+                        else tuple(row[column] for column in KEYS[table])
+                    )
+                    legacy.pending[(table, key)] = row
+                accepted = await self.redis.eval(
+                    OWNER, 1, self.prefix + "lease", self.uid + ":" + str(self.fence)
+                )
+                if not accepted:
+                    return False
+                await asyncio.to_thread(
+                    legacy.persist, self.fence, legacy.pending_batch()
+                )
+            finally:
+                legacy.close()
+        return bool(
+            await self.redis.eval(
+                RETIRE_CHECKPOINT,
+                2,
+                self.prefix + "lease",
+                self.prefix + "checkpoint",
+                self.uid + ":" + str(self.fence),
+            )
+        )
 
     async def leases(self):
         while True:
@@ -417,38 +418,23 @@ class Coordinator:
             self.pending.pop(identifier, None)
             self.messages.pop(identifier, None)
 
-    async def save(self, store, batch, snapshot, fence):
+    async def save(self, store, fence):
         async with self.save_lock:
             batch = store.pending_batch()
             if not batch:
                 return
-            snapshot = store.snapshot()
-            await self.write_checkpoint(store, batch, snapshot, fence)
+            await self.write_checkpoint(store, batch, fence)
 
     async def write_checkpoint(
-        self, store: RuntimeStore, batch: PendingBatch, snapshot: str, fence: int
+        self, store: RuntimeStore, batch: PendingBatch, fence: int
     ) -> None:
         try:
-            save_id = uuid.uuid4().hex
             if not self.local:
-                checkpoint = json.dumps(
-                    {
-                        "durable": json.loads(snapshot),
-                        "pending": [
-                            {"table": table, "key": key, "row": row}
-                            for (table, key), row in batch.items()
-                        ],
-                        "save_id": save_id,
-                    },
-                    separators=(",", ":"),
-                )
                 accepted = await self.redis.eval(
-                    SNAPSHOT,
-                    2,
+                    OWNER,
+                    1,
                     self.prefix + "lease",
-                    self.prefix + "checkpoint",
                     self.uid + ":" + str(fence),
-                    checkpoint,
                 )
                 if not accepted:
                     self.checkpoint_rejections += 1
@@ -460,8 +446,6 @@ class Coordinator:
                     return
             await asyncio.to_thread(store.persist, fence, batch)
             store.saved(batch)
-            if not self.local:
-                await self.redis.eval(ACK, 1, self.prefix + "checkpoint", save_id)
         except Exception:
             self.save_failures += 1
             store.last_save_error = bool(store.pending)
@@ -486,12 +470,7 @@ class Coordinator:
                         and (self.saving is None or self.saving.done())
                     ):
                         self.saving = asyncio.create_task(
-                            self.save(
-                                self.store,
-                                self.store.pending_batch(),
-                                self.store.snapshot(),
-                                self.fence,
-                            )
+                            self.save(self.store, self.fence)
                         )
             except Exception:
                 logging.getLogger(__name__).warning(
@@ -527,13 +506,8 @@ class Coordinator:
         async with self.lock:
             if not self.owner() or not self.store.pending:
                 return
-            store, batch, snapshot, fence = (
-                self.store,
-                self.store.pending_batch(),
-                self.store.snapshot(),
-                self.fence,
-            )
-        await self.save(store, batch, snapshot, fence)
+            store, fence = self.store, self.fence
+        await self.save(store, fence)
 
     async def release(self):
         if self.local or not self.owner() or self.connections:

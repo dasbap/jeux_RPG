@@ -120,7 +120,7 @@ def test_checkpoint_rejection_never_acknowledges_or_persists(monkeypatch):
             raise AssertionError('Rejected lease must not persist')
         monkeypatch.setattr(store, 'persist', forbidden)
         batch = store.pending_batch()
-        await coordinator.save(store, batch, store.snapshot(), 1)
+        await coordinator.save(store, 1)
         assert store.pending == batch and store.last_save_error
         assert coordinator.checkpoint_rejections == 1
         assert store.due is not None and store.save_count == 0
@@ -148,9 +148,9 @@ def test_combined_redis_turso_failures_then_retry_preserves_mutations(monkeypatc
         monkeypatch.setattr(store, 'persist', persist)
         original = store.pending_batch()
         for _ in range(2):
-            await coordinator.save(store, original, store.snapshot(), 1)
+            await coordinator.save(store, 1)
             assert store.pending == original and store.last_save_error
-        await coordinator.save(store, original, store.snapshot(), 1)
+        await coordinator.save(store, 1)
         assert not store.pending and store.save_count == 1
         assert coordinator.save_failures == 2 and calls[1] == original
         store.close()
@@ -167,7 +167,7 @@ def test_save_does_not_remove_mutation_that_arrives_during_persistence(monkeypat
         def persist(fence, batch):
             store.pending[key] = {**batch[key], 'name': 'Later'}
         monkeypatch.setattr(store, 'persist', persist)
-        await coordinator.save(store, original, store.snapshot(), 1)
+        await coordinator.save(store, 1)
         assert store.pending[key]['name'] == 'Later'
         assert store.save_count == 1
         store.close()

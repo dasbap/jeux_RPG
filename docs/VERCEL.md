@@ -10,7 +10,7 @@ L’application déployée expose `app:app`, une application FastAPI/ASGI créé
 - `TURSO_AUTH_TOKEN` : secret de cette base avec lecture et écriture.
 - `RPG_ADMIN_TOKEN` : secret aléatoire distinct, au moins 32 caractères, pour le panneau administrateur.
 - `RPG_PUBLIC_ORIGIN` : origine HTTPS sans chemin si un domaine personnalisé est utilisé.
-- `REDIS_URL` ou `KV_URL` : Redis partagé pour coordination temps réel, présence et rate limiting distribué.
+- `REDIS_URL` ou `KV_URL` : Redis partagé pour coordination temps réel, relais entre instances et limites de connexion. La présence et l'état du moteur autoritaire restent en RAM ; les sauvegardes vont dans Turso.
 - `REDIS_URLS` : liste JSON facultative d'URL Redis ; a priorité sur les deux variables précédentes.
 - `RPG_REDIS_ACTIVE_INDEX` : index de l'instance active dans cette liste, à partir de 0. Le moteur et les autres services Redis utilisent tous cet index.
 
