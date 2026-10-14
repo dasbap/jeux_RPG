@@ -185,9 +185,9 @@ async function main() {
     await waitFor(async () => {
       const state = (await request(necromancer, "/api/state")).session;
       const me = state.tutorial.players.find(p => p.id === state.me);
-      return me.energies.some(e => e.type === "Mana" && e.current >= 8) && el(necromancer, "unit-control-list").querySelector("input:not(:disabled)");
+      return me.energies.some(e => e.type === "Mana" && e.current >= 8) && me.cooldown_real_seconds <= 0 && !me.casting && !me.stunned && me.hp > 0 && el(necromancer, "combat-resources").querySelector(".companion-segment");
     }, "énergie disponible pour le contrôle du squelette");
-    el(necromancer, "unit-control-list").querySelector("input").click();
+    el(necromancer, "combat-resources").querySelector(".companion-segment").click();
     await waitFor(async () => Object.values((await request(necromancer, "/api/state")).session.tutorial.battle.summons).some(u => u.controlled), "contrôle effectif du squelette");
     const controlledState = (await request(necromancer, "/api/state")).session;
     const controlledId = Object.keys(controlledState.tutorial.battle.summons)[0];
