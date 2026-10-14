@@ -1,6 +1,6 @@
 "use strict";
 async function refresh(force = false) {
-  if (globalThis.navigator?.onLine === false) return;
+  if (gameMode !== "solo" && globalThis.navigator?.onLine === false) return;
   if (!$("characters").hidden) return;
   if (!token) {
     $("connection").textContent = "Prêt · connectez-vous à votre compte";
@@ -30,6 +30,7 @@ async function refresh(force = false) {
     nextRefreshAt = 0;
     render(state);
   } catch (error) {
+    if (epoch !== stateEpoch) return;
     refreshFailures++;
     nextRefreshAt = Date.now() + Math.round(Math.min(30000, 1000 * 2 ** Math.min(5, refreshFailures - 1)) * (.9 + Math.random() * .2));
     $("connection").textContent = "Reconnexion automatique · " + (error.code === "timeout" ? "tunnel lent" : "serveur indisponible");
@@ -185,6 +186,7 @@ for (const action of ["start", "attack", "leave"]) $(action).addEventListener("c
 });
 $("new-room").addEventListener("click", () => command("create"));
 async function logout() {
+  if (gameMode === "solo") { await switchGameMode("online"); return; }
   try { await api("/api/account/logout", {}); }
   catch (error) {
     if (!["unauthorized", "account_suspended"].includes(error.code)) {
@@ -216,7 +218,7 @@ const invite = sessionStorage.getItem("rpg-invite");
 if (invite) { $("invite-code").textContent = invite; $("invite-link").value = invitationLink(invite); $("invitation").hidden = false; }
 let refreshTimer = null;
 function refreshInterval() {
-  if (!token || !$("characters").hidden || globalThis.navigator?.onLine === false) return 30000;
+  if (!token || !$("characters").hidden || gameMode !== "solo" && globalThis.navigator?.onLine === false) return 30000;
   if (document.hidden || globalThis.rpgRealtime?.connected) return 20000;
   const tutorial = session?.tutorial;
   const activeBattle = tutorial?.battle && (!tutorial.field_map || tutorial.mobs?.some(mob => mob.alerted && mob.stats?.hp?.current > 0) || [...Object.values(tutorial.battle.players || {}), ...Object.values(tutorial.battle.summons || {})].some(unit => unit.route?.length || unit.casting));
@@ -239,10 +241,12 @@ async function resumeRefresh() {
 window.addEventListener("online", resumeRefresh);
 window.addEventListener("pageshow", resumeRefresh);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) return resumeRefresh(); scheduleRefresh(); });
-if (globalThis.rpgRealtime) {
+function bindTransport() {
+  if (!globalThis.rpgRealtime) return;
+  const boundTransport = globalThis.rpgRealtime;
   globalThis.rpgRealtime.onConnection = scheduleRefresh;
   globalThis.rpgRealtime.onState = result => {
-    if (!token || result.status !== 200 || !$("characters").hidden) return;
+    if (boundTransport !== globalThis.rpgRealtime || !token || result.status !== 200 || !$("characters").hidden) return;
     const state = result.body;
     if (lastPlayer && state.player?.id !== lastPlayer.id) return;
     if (state.session && session && state.session.id === session.id && state.session.revision < session.revision) return;
@@ -254,4 +258,5 @@ if (globalThis.rpgRealtime) {
     render(state);
   };
 }
+bindTransport();
 resumeRefresh();

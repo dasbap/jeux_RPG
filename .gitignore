@@ -64,3 +64,5 @@ Thumbs.db
 .vercel
 
 .runtime-deps/
+
+.solo-test/

@@ -77,6 +77,11 @@ jobs:
         run: node scripts/verify_touch_controls.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - run: npm install --prefix .solo-test pyodide@314.0.7 fake-indexeddb@6.2.4
+      - run: node scripts/verify_browser_solo.cjs
+      - run: node scripts/verify_solo_menu.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Installer le chiffrement de sauvegarde
         run: sudo apt-get update && sudo apt-get install --yes age
       - name: Exporter et restaurer Turso avant migration
@@ -155,6 +160,9 @@ jobs:
           REDIS_URLS: ${{ secrets.REDIS_URLS }}
           RPG_REDIS_ACTIVE_INDEX: ${{ vars.RPG_REDIS_ACTIVE_INDEX }}
       - name: Verifier le stockage du moteur de production
+        id: runtime
+        env:
+          RPG_ALLOW_SOLO_RELEASE: '1'
         run: python -m scripts.verify_runtime_storage
       - name: Construire l'artefact de production en CI
         env:
@@ -169,6 +177,7 @@ jobs:
       - name: Verifier les routes et la connexion admin en ligne
         run: python scripts/verify_deployment.py
         env:
+          RPG_RELEASE_MODE: ${{ steps.runtime.outputs.mode }}
           RPG_EXPECTED_RELEASE: ${{ github.sha }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promouvoir la version verifiee

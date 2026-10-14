@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
 from . import admin
+from .browser_solo_assets import client_csp, engine_archive
 from .clock import GameClock
 from .distributed import RedisRateLimiter
 from .network_log import create_logger
@@ -343,7 +344,9 @@ class Application:
                 name, mime = static[path]
                 status, payload = (
                     200,
-                    (Path(__file__).parent / "web" / name).read_bytes(),
+                    engine_archive()
+                    if name == "solo-engine.zip"
+                    else (Path(__file__).parent / "web" / name).read_bytes(),
                 )
                 if name == "index.html":
                     payload = self._render_class_options(payload)
@@ -411,7 +414,7 @@ class Application:
             ("Referrer-Policy", "no-referrer"),
             (
                 "Content-Security-Policy",
-                "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+                client_csp(environ.get("PATH_INFO", "/")),
             ),
         ]
         if status == 429:

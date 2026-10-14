@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
+from .browser_solo_assets import client_csp
 from .distributed import build_rate_limiter
 from .json_protocol import object_json
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
@@ -864,7 +865,7 @@ def create_app(environment=None, coordinator=None):
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+            client_csp(request.url.path),
         )
         if environment.get("VERCEL"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")

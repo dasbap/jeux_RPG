@@ -11,6 +11,7 @@ from pathlib import Path
 from time import perf_counter
 from urllib.parse import urlsplit
 
+from .browser_solo_assets import client_csp, engine_archive
 from .command_queue import CommandQueue
 from .distributed import LocalRateLimiter as RateLimiter
 from .distributed import build_rate_limiter
@@ -30,6 +31,7 @@ CLIENT_MODULES = (
     "app.js",
     "app_bootstrap.js",
     "app_session.js",
+    "app_modes.js",
 )
 CLIENT_STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -37,6 +39,9 @@ CLIENT_STATIC = {
     "/map_artwork.js": ("map_artwork.js", "text/javascript; charset=utf-8"),
     "/mobile_controls.js": ("mobile_controls.js", "text/javascript; charset=utf-8"),
     "/realtime.js": ("realtime.js", "text/javascript; charset=utf-8"),
+    "/solo_transport.js": ("solo_transport.js", "text/javascript; charset=utf-8"),
+    "/solo_worker.js": ("solo_worker.js", "text/javascript; charset=utf-8"),
+    "/solo-engine.zip": ("solo-engine.zip", "application/zip"),
     **{f"/{name}": (name, "text/javascript; charset=utf-8") for name in CLIENT_MODULES},
 }
 
@@ -178,7 +183,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "DENY")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+            client_csp(self.path),
         )
         if status == 429:
             self.send_header("Retry-After", "60")
@@ -257,7 +262,11 @@ class Handler(BaseHTTPRequestHandler):
         static = CLIENT_STATIC
         if path in static:
             name, mime = static[path]
-            payload = (Path(__file__).parent / "web" / name).read_bytes()
+            payload = (
+                engine_archive()
+                if name == "solo-engine.zip"
+                else (Path(__file__).parent / "web" / name).read_bytes()
+            )
             if name == "index.html":
                 from html import escape
 

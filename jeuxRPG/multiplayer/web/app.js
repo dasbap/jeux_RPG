@@ -1,6 +1,6 @@
 "use strict";
 function renderChat(chat) {
-  $("chat-panel").hidden = !token;
+  $("chat-panel").hidden = gameMode === "solo" || !token;
   if (!chat) return;
   $("online-players").textContent = `En ligne : ${chat.online.map(player => player.name).join(", ") || "personne"}`;
   $("chat-channel").querySelector('[value="group"]').disabled = !session && !socialState?.team;
@@ -40,7 +40,7 @@ function render(state) {
   $("registration").hidden = Boolean(token);
   $("lobby").hidden = !token || !$("characters").hidden;
   $("player-name").textContent = `${state.player.name} · ${classes[state.player.class_name] || state.player.class_name}`;
-  $("connection").textContent = "Connecté · état partagé";
+  $("connection").textContent = gameMode === "solo" ? "Solo · sauvegarde locale" : "Connecté · état partagé";
   $("room-controls").hidden = Boolean(session && session.state !== "finished");
   $("battle").hidden = !session;
   $("invitation").hidden = !(session && session.state === "lobby" && session.owner === session.me && sessionStorage.getItem("rpg-invite-session") === session.id);

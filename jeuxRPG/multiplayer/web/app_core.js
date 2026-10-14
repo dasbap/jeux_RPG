@@ -1,5 +1,8 @@
 "use strict";
 const $ = id => document.getElementById(id);
+let gameMode = "online";
+const onlineTransport = globalThis.rpgRealtime;
+let soloTransport = null;
 let token = sessionStorage.getItem("rpg-token") || "";
 let chatToken = token;
 let chatConnection = requestId();
@@ -126,6 +129,7 @@ async function api(path, body, authenticated = true) {
 }
 
 function remember() {
+  if (gameMode === "solo") return;
   sessionStorage.setItem("rpg-token", token);
   sessionStorage.setItem("rpg-session", sessionId);
 }
