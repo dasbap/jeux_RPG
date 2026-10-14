@@ -4,6 +4,7 @@ import sqlite3
 import time
 from copy import deepcopy
 
+from .distributed import PresenceRegistry
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .schema import initialize
 from .serverless import Application, RemoteGameService
@@ -126,7 +127,12 @@ class RuntimeStore:
         self.db.execute(
             "INSERT OR IGNORE INTO receipt_expiry SELECT player_id,request_id,strftime('%s','now')+900 FROM receipts"
         )
-        self.service = MemoryService(connection=self.db, log_directory="-", clock=clock)
+        self.service = MemoryService(
+            connection=self.db,
+            log_directory="-",
+            clock=clock,
+            presence_registry=PresenceRegistry(),
+        )
         self.service.legacy_auth = not bool(environment.get("VERCEL"))
         self.service.realm_count = max(
             1, min(3, int(environment.get("RPG_RUNTIME_REALMS", "1")))
