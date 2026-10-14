@@ -396,8 +396,11 @@ def save(path, maps):
 
 
 def read_catalog(kind, directory=None):
-    from jeuxRPG.catalog_paths import catalog_path, project_directory
+    from jeuxRPG.catalog_paths import PACKAGED, catalog_path, project_directory
 
+    packaged_default = (
+        directory is None and project_directory().resolve() == PACKAGED.resolve()
+    )
     if directory is None:
         name = {
             "fields": "world.json",
@@ -407,7 +410,17 @@ def read_catalog(kind, directory=None):
         directory = catalog_path(name).parent if name else project_directory()
     directory = Path(directory)
     result = {}
-    for path in sorted(directory.glob("*.json")):
+    paths = sorted(directory.glob("*.json"))
+    if packaged_default:
+        paths = [
+            directory
+            / {
+                "fields": "world.json",
+                "mobs": "mobs.json",
+                "encounters": "encounters.json",
+            }[kind]
+        ]
+    for path in paths:
         if path.stat().st_size > 8 * 1024 * 1024:
             raise ValueError(f"Fichier trop volumineux : {path.name}")
         data = json.loads(path.read_text(encoding="utf-8"))

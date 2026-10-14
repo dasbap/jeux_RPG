@@ -5,7 +5,7 @@ function renderCombatFeedback(adventure) {
   const notice = $("combat-notice");
   if (notice.dataset.event !== String(latest?.id || "")) {
     notice.dataset.event = String(latest?.id || "");
-    notice.textContent = latest?.message || "Choisissez une cible ou déplacez-vous sur la carte.";
+    notice.textContent = latest && /PV perdus|repéré|vaincu|mort|interromp|insuffisant/i.test(latest.message) ? latest.message : "";
     notice.classList.toggle("damage-notice", /PV perdus/.test(latest?.message || ""));
     notice.classList.toggle("detection-notice", /repéré/.test(latest?.message || ""));
   }
@@ -44,6 +44,10 @@ function renderGame(adventure, preserveBattle = false) {
   }
   let autoTarget = $("combat-auto-target");
   if (!autoTarget) {autoTarget = document.createElement("button"); autoTarget.id = "combat-auto-target"; autoTarget.textContent = "Ciblage auto"; autoTarget.onclick = () => {focusedMob=""; focusedEnemy=""; combatTarget=""; renderGame(session.tutorial);}; $("field-camera").append(autoTarget);}
+  let returnField = $("return-field");
+  if (!returnField) {returnField = document.createElement("button");returnField.id = "return-field";returnField.textContent = "↩";returnField.title = "Reprendre l’exploration à pied";returnField.setAttribute("aria-label", returnField.title);returnField.onclick = () => tutorialCommand("enter_zone");$("field-camera").append(returnField);}
+  returnField.hidden = fighting;
+  returnField.disabled = busy || adventure.moving;
   autoTarget.hidden = true;
   touchMove.hidden = !fighting;
   $("field-location").textContent = fighting ? adventure.battle.map.name : "Cliquez sur une carte pour choisir celle à zoomer";
@@ -232,7 +236,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("combat-target").value = possibleTargets.length ? combatTarget : "";
   $("target-controls").hidden = true;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
-  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "La zone est calme. Vous pouvez explorer, dépecer les corps proches ou rejoindre une sortie." : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? `Cible ${focusedMob ? "choisie" : "automatique"} : ${selected.name}. Choisissez une attaque ou une compétence.` : "Aucune action disponible sur une cible.";
+  $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "" : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? selected.name : "";
   if (fighting) {
     renderCombatFeedback(adventure);
     const playerUnit = adventure.battle.players[me.id];
@@ -246,7 +250,7 @@ function renderGame(adventure, preserveBattle = false) {
     if (controlled.length) {
       const single = controlled.length === 1 ? controlled[0][1] : null;
       $("combat-action-title").textContent = single ? `Actions · ${unitName({...single,id:controlled[0][0]})}` : "Actions · groupe d’alliés";
-      action("combat-actions", single ? "Attaque simple · invocation" : "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected?.id, paths: {}}, !selected?.enemy || me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0 || controlled.some(([,unit]) => unit.casting));
+      action("combat-actions", single ? "Attaque simple · invocation" : "Attaquer avec les alliés contrôlés", "unit_order", {units: controlled.map(([id]) => id), order: "attack", target: selected?.id, paths: {}}, !selected?.enemy || controlled.some(([,unit]) => unit.index === undefined) || me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0 || controlled.some(([,unit]) => unit.casting));
       for (const skill of single?.skills || []) {
         const targetAllowed = selected?.enemy && Math.hypot(single.position[0] - selected.position[0], single.position[1] - selected.position[1]) <= skill.range && gridSight(adventure.battle.map, single.position, selected.position);
         action("skills", `${skill.name} · ${skill.cost} ${skill.energy} · ${skill.cast_seconds} s`, "unit_skill", {units: [controlled[0][0]], skill_name: skill.name, target: selected?.id}, !targetAllowed || !skill.available || Boolean(single.casting) || me.casting || me.cooldown_real_seconds > 0 || me.stunned || me.hp <= 0);

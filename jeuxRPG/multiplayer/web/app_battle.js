@@ -20,7 +20,7 @@ function selectEntity(id) {
   focusedEnemy = session.tutorial.mobs?.some(mob => mob.combat_id === focusedMob && mob.stats.hp.current > 0) ? focusedMob : "";
   const adventure = session.tutorial, position = entityPosition(adventure, id);
   inspectedCell = position ? [...position] : null;
-  const summon = adventure.battle?.summons?.[id], actor = adventure.players.find(p => p.id === session.me);
+  const summon = alliedUnits(adventure)[id], actor = adventure.players.find(p => p.id === session.me);
   if (focusedMob && summon?.owner === session.me && !summon.controlled && !busy && actor.hp > 0 && !actor.stunned && !actor.casting && actor.cooldown_real_seconds <= 0 && canPayControl(adventure, actor, summon)) tutorialCommand("control_units", {units: [id]});
   if (focusedMob === session.me && controlledUnits(adventure, session.me).length && !busy) tutorialCommand("control_units", {units: []});
   renderGame(session.tutorial, true);
@@ -47,10 +47,13 @@ function approachEntity(position) {
   moveControlled(adventure, me, [x, y]);
 }
 function entityPosition(adventure, id) {
-  return adventure.battle.players[id]?.position || adventure.battle.summons?.[id]?.position || adventure.mobs.find(m => m.combat_id === id)?.position || adventure.battle.corpses.find(c => c.id === id)?.position;
+  return adventure.battle.players[id]?.position || alliedUnits(adventure)[id]?.position || adventure.mobs.find(m => m.combat_id === id)?.position || adventure.battle.corpses.find(c => c.id === id)?.position;
+}
+function alliedUnits(adventure) {
+  return {...adventure.battle?.summons, ...adventure.battle?.companions};
 }
 function controlledUnits(adventure, owner) {
-  return Object.entries(adventure.battle?.summons || {}).filter(([,unit]) => unit.owner === owner && unit.controlled && unit.hp > 0);
+  return Object.entries(alliedUnits(adventure)).filter(([,unit]) => unit.owner === owner && unit.controlled && unit.hp > 0);
 }
 function unitName(unit) {
   const number = unit.id?.match(/:summon:(\d+)$/);
@@ -91,14 +94,15 @@ function renderVitals(container, units) {
     while (rows.children.length > resources.length) rows.lastChild.remove();
     const statuses = card.querySelector(".vitals-statuses");
     statuses.replaceChildren();
-    const heading = document.createElement("span"); heading.className = "vitals-status-label"; heading.textContent = "Statuts :"; statuses.append(heading);
+
     if (unit.hidden || unit.detected) { const visibility = document.createElement("span"); visibility.className = "status-badge"; visibility.textContent = unit.hidden ? "Dissimulé" : "Repéré"; statuses.append(visibility); }
     for (const effect of unit.effects || []) {
       const badge = document.createElement("span"); badge.className = "status-badge";
       const seconds = effect.remaining_seconds ?? effect.duration * 1.2;
       badge.textContent = `${effect.name || effect.type} (${Math.max(0, seconds).toFixed(1)} s)`; statuses.append(badge);
     }
-    if (!(unit.effects || []).length) { const empty = document.createElement("span"); empty.textContent = unit.stunned ? "Étourdi" : "aucun"; statuses.append(empty); }
+    if (unit.stunned) {const badge = document.createElement("span");badge.className = "status-badge";badge.textContent = "Étourdi";statuses.append(badge);}
+    statuses.hidden = !statuses.childElementCount;
   }
   for (const card of [...parent.children]) if (!kept.has(card)) card.remove();
 }
@@ -136,29 +140,72 @@ function canPayControl(adventure, me, unit) {
   const cost = unit.control_cost;
   return !cost?.per_second || me.energies.some(e => e.type === cost.energy && e.current > 0) || (adventure.control_credit?.[me.id]?.[cost.energy] || 0) > 0;
 }
+let companionPress = null;
+function selectCompanion(id, event = {}) {
+  const adventure = session.tutorial, me = adventure.players.find(player => player.id === session.me);
+  const units = Object.entries(alliedUnits(adventure)).filter(([,unit]) => unit.owner === me.id && unit.hp > 0);
+  const unit = alliedUnits(adventure)[id];
+  if (!unit || unit.owner !== me.id || busy) return;
+  let ids = event.shiftKey ? units.map(([key]) => key) : event.ctrlKey || event.metaKey ? controlledUnits(adventure, me.id).map(([key]) => key) : [];
+  if (!event.shiftKey) ids = ids.includes(id) ? ids.filter(key => key !== id) : [...ids,id];
+  if (ids.length && (me.hp <= 0 || me.stunned || me.casting || me.cooldown_real_seconds > 0 || ids.some(key => !canPayControl(adventure, me, alliedUnits(adventure)[key])))) return;
+  focusedMob = ids.length === 1 ? ids[0] : "";
+  tutorialCommand("control_units", {units: ids});
+}
+function stopCompanionPress() {
+  if (companionPress) clearTimeout(companionPress.timer);
+  companionPress = null;
+  const detail = $("companion-detail");
+  if (detail) detail.hidden = true;
+}
 function renderUnitControls(adventure, me, action) {
-  const units = Object.entries(adventure.battle.summons || {}).filter(([,unit]) => unit.owner === me.id);
-  $("unit-controls").hidden = !units.length;
-  const controlled = controlledUnits(adventure, me.id);
-  $("control-status").textContent = `${controlled.length} allié(s) contrôlé(s). Un double clic donne un ordre de déplacement ; sélectionnez un ennemi pour ordonner l’attaque.`;
-  const retained = new Set();
-  for (const [id,unit] of units) {
-    let row = [...$("unit-control-list").children].find(child => child.dataset.unit === id);
-    if (!row) { row = document.createElement("label"); row.dataset.unit = id; row.append(document.createElement("input"), document.createElement("span")); $("unit-control-list").append(row); }
-    retained.add(row);
-    const checkbox = row.querySelector("input"); checkbox.type = "checkbox"; checkbox.checked = Boolean(unit.controlled); checkbox.disabled = busy || !unit.controlled && (!canPayControl(adventure, me, unit) || me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0);
-    checkbox.onchange = () => { const ids = controlled.map(([key]) => key).filter(key => key !== id); if (checkbox.checked) ids.push(id); tutorialCommand("control_units", {units: ids}); };
-    row.querySelector("span").textContent = `${unitName({...unit,id})} · ${unit.hp}/${unit.max_hp} PV · ${unit.control_cost?.per_second || 0} ${unit.control_cost?.energy || "énergie"}/s`;
+  $("unit-controls").hidden = true;
+  $("control-status").textContent = "";
+  $("unit-control-list").replaceChildren();
+  $("unit-control-actions").replaceChildren();
+  const all = alliedUnits(adventure);
+  for (const player of adventure.players) {
+    const master = [...$("combat-resources").children].find(card => card.dataset.vitals === player.id);
+    if (!master) continue;
+    let list = master.querySelector(".companion-list");
+    if (!list) {list = document.createElement("div");list.className = "companion-list";master.append(list);}
+    const units = Object.entries(all).filter(([,unit]) => unit.owner === player.id);
+    renderVitals(list, units.map(([id,unit]) => ({...unit,id,energies: unit.index !== undefined ? unit.energies : []})));
+    for (const row of list.children) {
+      const id = row.dataset.vitals, unit = all[id];
+      row.classList.add("companion-segment");row.classList.toggle("selected", Boolean(unit.controlled));
+      row.tabIndex = 0;row.setAttribute("role", "button");row.setAttribute("aria-pressed", String(Boolean(unit.controlled)));
+      row.setAttribute("aria-label", unitName({...unit,id}));
+      row.title = player.id === me.id ? "Ctrl + clic : sélection multiple · Maj + clic : tout contrôler · appui long : détails" : "Appui long : détails";
+      row.onclick = event => {if (row.suppressCompanionClick) {row.suppressCompanionClick = false;return;}selectCompanion(id,event);};
+      row.onkeydown = event => {if (["Enter"," "].includes(event.key)) {event.preventDefault();selectCompanion(id,event);}};
+      row.onpointerdown = event => {
+        if (event.button !== 0) return;
+        stopCompanionPress();row.suppressCompanionClick = false;
+        const press = {id, timer: setTimeout(() => {
+          if (companionPress !== press) return;
+          row.suppressCompanionClick = true;
+          let detail = $("companion-detail");
+          if (!detail) {detail = document.createElement("aside");detail.id = "companion-detail";detail.setAttribute("role","tooltip");document.body.append(detail);}
+          const current = alliedUnits(session.tutorial)[id];
+          if (!current) return;
+          detail.textContent = `${current.index !== undefined ? statsText({...current,id}) : `${unitName({...current,id})} · ${current.hp}/${current.max_hp} PV · Suiveur`} · ${statusText(current)}${current.control_cost?.per_second ? ` · ${current.control_cost.per_second} ${current.control_cost.energy}/s` : ""}`;
+          detail.hidden = false;
+        }, 400)};
+        companionPress = press;
+        row.setPointerCapture?.(event.pointerId);
+      };
+      row.onpointerup = stopCompanionPress;row.onpointercancel = stopCompanionPress;row.onlostpointercapture = stopCompanionPress;
+    }
   }
-  for (const row of [...$("unit-control-list").children]) if (!retained.has(row)) row.remove();
-  if (!units.length) return;
-  action("unit-control-actions", "Tout contrôler", "control_units", {units: units.map(([id]) => id)}, me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0 || units.some(([,unit]) => !canPayControl(adventure, me, unit)));
-  action("unit-control-actions", "Rendre autonomes", "control_units", {units: []}, !controlled.length);
-  if (controlled.length) action("unit-control-actions", "Maintenir la position", "unit_order", {units: controlled.map(([id]) => id), order: "hold", target: null, paths: {}}, me.hp <= 0 || me.stunned || Boolean(me.casting) || me.cooldown_real_seconds > 0);
+  document.addEventListener("pointerup", stopCompanionPress, {once:true});
+  window.addEventListener("blur", stopCompanionPress, {once:true});
+  const controlled = controlledUnits(adventure, me.id);
+  if (controlled.length) action("unit-control-actions", "Rendre autonomes", "control_units", {units: []});
 }
 function renderSelection(adventure, me) {
   const battle = adventure.battle;
-  const entries = [...adventure.players.map(player => ({...player, position: battle.players[player.id].position})), ...Object.entries(battle.summons || {}).map(([id,unit]) => ({...unit,id})), ...adventure.mobs.map(mob => ({id: mob.combat_id, name: mob.name, position: mob.position})), ...battle.corpses.map(c => ({...c,name: c.name + " · corps"}))];
+  const entries = [...adventure.players.map(player => ({...player, position: battle.players[player.id].position})), ...Object.entries(alliedUnits(adventure)).map(([id,unit]) => ({...unit,id})), ...adventure.mobs.map(mob => ({id: mob.combat_id, name: mob.name, position: mob.position})), ...battle.corpses.map(c => ({...c,name: c.name + " · corps"}))];
   const visible = inspectedCell ? entries.filter(e => e.position[0] === inspectedCell[0] && e.position[1] === inspectedCell[1]) : [];
   $("cell-selection-status").textContent = !inspectedCell ? "Cliquez sur une case ou une entité de la carte." : visible.length ? `Case ${inspectedCell.join(",")} · ${visible.length} entité(s) visible(s)` : "Aucune entité visible sur cette case.";
   const retained = new Set();
@@ -168,7 +215,7 @@ function renderSelection(adventure, me) {
     retained.add(button); button.textContent = unitName(entity); button.setAttribute("aria-pressed", String(focusedMob === entity.id)); button.onclick = () => selectEntity(entity.id);
   }
   for (const button of [...$("cell-entities").children]) if (!retained.has(button)) button.remove();
-  const selected = battle.summons?.[focusedMob];
+  const selected = alliedUnits(adventure)[focusedMob];
   paragraphs("selected-unit-stats", selected ? [selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
@@ -314,9 +361,9 @@ function renderBattle(adventure, me) {
     svg.append(group);
   }
   for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit"); }
-  for (const [id, summon] of Object.entries(battle.summons || {})) {
+  for (const [id, summon] of Object.entries(alliedUnits(adventure))) {
     const number = id.match(/:summon:(\d+)$/);
-    const label = number ? `S${Number(number[1]) + 1}` : "S";
+    const label = battle.companions?.[id] ? "F" : number ? `S${Number(number[1]) + 1}` : "S";
     const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
     summonNode?.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
@@ -396,7 +443,7 @@ function renderBattle(adventure, me) {
     if (card.parentElement !== $("mob-cards")) $("mob-cards").append(card);
   }
   for (const card of [...$("mob-cards").children]) if (!retainedCards.has(card)) card.remove();
-  renderVitals("combat-stats-details", adventure.players.flatMap(player => player.invocations));
+  $("combat-stats-details").replaceChildren();
   renderVitals("combat-resources", adventure.players.map(player => ({...player, hidden: battle.players[player.id].hidden, detected: battle.players[player.id].detected})));
   if (sectionChanged("intents", battle.intents)) {
   const table = document.createElement("table");

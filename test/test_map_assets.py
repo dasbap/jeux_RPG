@@ -263,3 +263,18 @@ def test_json_directory_combines_field_files_and_excludes_encounters(tmp_path):
     (tmp_path / "duplicate.json").write_text(json.dumps(forest))
     with pytest.raises(ValueError, match="dupliquée"):
         map_assets.load(tmp_path)
+
+
+def test_installed_default_catalog_ignores_leftover_export_copies(tmp_path, monkeypatch):
+    from jeuxRPG import catalog_paths
+
+    directory = tmp_path / 'installed' / 'maps'
+    directory.mkdir(parents=True)
+    data = maps()
+    (directory / 'world.json').write_text(json.dumps(data), encoding='utf-8')
+    (directory / 'world_1.json').write_text(json.dumps(data), encoding='utf-8')
+    monkeypatch.setattr(catalog_paths, 'PACKAGED', directory)
+    monkeypatch.setattr(catalog_paths, 'project_directory', lambda:directory)
+    assert map_assets.read_catalog('fields') == data
+    with pytest.raises(ValueError, match='dupliquée'):
+        map_assets.read_catalog('fields', directory)
