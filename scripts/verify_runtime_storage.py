@@ -33,9 +33,15 @@ def verify(environment):
     url = environment.get("REDIS_URL") or environment.get("KV_URL")
     if not url:
         raise RuntimeError("missing_configuration")
+    print("Vérification de la connexion Redis.", flush=True)
     with Redis.from_url(url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5) as redis:
         redis.ping()
+        redis.eval("return 1", 0)
+        with redis.pubsub() as pubsub:
+            pubsub.subscribe("jeux-rpg:runtime:v2:accounts:diagnostic")
+            pubsub.get_message(timeout=5)
         saved = redis.get("jeux-rpg:runtime:v2:accounts:checkpoint")
+    print("Vérification de la restauration du checkpoint Redis." if saved else "Vérification de la restauration depuis Turso.", flush=True)
     if saved:
         checkpoint = json.loads(saved)
         store = RuntimeStore(environment, checkpoint.get("durable", checkpoint))
