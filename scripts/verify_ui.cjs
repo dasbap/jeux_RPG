@@ -105,7 +105,7 @@ async function finishCombat(dom) {
       if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
       else await pause(50);
     } else {
-      await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.includes("La zone est calme"), "interface après mort du dernier mob");
+      await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.trim() === "", "interface après mort du dernier mob");
       assert.equal(el(dom, "enemy-intents").querySelectorAll("tr").length, 0);
       assert.equal(el(dom, "combat-target").options.length, 0);
       assert.equal(el(dom, "mob-hp").textContent, "");
