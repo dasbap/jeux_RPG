@@ -1,14 +1,14 @@
-from copy import deepcopy
 import json
 import os
 import subprocess
 import sys
+from copy import deepcopy
 
 import pytest
+from test_controller import project
 
 from jeuxRPG.multiplayer import controller_gameplay, gameplay_catalog
 from jeuxRPG.multiplayer.controller import Controller, Project
-from test_controller import project
 
 
 @pytest.mark.parametrize('path,value', [
@@ -224,6 +224,7 @@ def test_equipment_replacement_subtracts_old_bonus_and_keeps_hp_nonnegative(monk
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Formulaire Tk vérifié sous Windows')
 def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
+    import time
     import tkinter as tk
     from tkinter import ttk
     root = tk.Tk()
@@ -234,6 +235,7 @@ def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
         root.deiconify()
         root.update()
         values = {f'field_{index}': index for index in range(40)}
+        deadline = time.monotonic() + 5
         def widgets(parent):
             for child in parent.winfo_children():
                 yield child
@@ -247,6 +249,9 @@ def test_controller_large_form_scrolls_and_keeps_apply_visible(tmp_path):
                 canvas.yview_moveto(1)
                 assert canvas.yview()[0] > 0
                 button = next(child for child in children if isinstance(child, ttk.Button) and child.cget('text') == 'Appliquer')
+                if not button.winfo_ismapped() and time.monotonic() < deadline:
+                    root.after(20, apply)
+                    return
                 assert button.winfo_ismapped()
                 button.invoke()
             except Exception as error:
