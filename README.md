@@ -11,8 +11,24 @@ Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou
 ```bash
 git clone https://github.com/dasbap/jeux_RPG.git
 cd jeux_RPG
+python -m pip install .
 python main.py
 ```
+
+### Windows avec PowerShell
+
+Depuis le dossier du dépôt :
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install .
+python main.py
+```
+
+Si le venv est déjà créé et activé, reprendre à `python -m pip install .`.
+
+`python -m pip install -r requirements.txt` installe également le projet et toutes ses dépendances. L’option `-r` est en minuscule ; `-R` n’existe pas. Le paquet Python `redis` est requis ; aucun serveur Redis externe n’est nécessaire pour le mode local.
 
 Ouvrir **http://127.0.0.1:8080**.
 
