@@ -287,7 +287,9 @@ class Application:
         self.factory = service_factory
         self.initialized = False
         self.lock = threading.Lock()
-        url = self.environment.get("REDIS_URL") or self.environment.get("KV_URL")
+        from .redis_configuration import redis_url
+
+        url = redis_url(self.environment)
         self.redis_limiter = RedisRateLimiter(url) if url else None
 
     def service(self):

@@ -8,6 +8,8 @@ from collections import deque
 from redis import Redis
 from redis.exceptions import RedisError
 
+from .redis_configuration import redis_url
+
 RATE_SCRIPT = """
 local current = redis.call('INCR', KEYS[1])
 if current == 1 then
@@ -73,7 +75,7 @@ class RedisRateLimiter:
 
 
 def build_rate_limiter(environment, fallback=None):
-    url = environment.get("REDIS_URL") or environment.get("KV_URL")
+    url = redis_url(environment)
     if url:
         return RedisRateLimiter(url, fallback=fallback)
     return fallback or LocalRateLimiter()
@@ -93,7 +95,7 @@ class PresenceRegistry:
 
     @classmethod
     def from_environment(cls, environment):
-        return cls(environment.get("REDIS_URL") or environment.get("KV_URL"))
+        return cls(redis_url(environment))
 
     @property
     def _hash(self):
