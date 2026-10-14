@@ -6,7 +6,7 @@ Depuis le dépôt :
 
 ```powershell
 python -m pip install --upgrade .
-python controller.py
+python -m jeuxRPG.multiplayer.controller
 ```
 
 Après installation, le raccourci fonctionne aussi :
@@ -18,7 +18,7 @@ jeux-rpg-controller
 Le contrôleur utilise le dossier `maps` du répertoire courant. Pour un projet séparé :
 
 ```powershell
-python controller.py D:\RPG\mon_monde\maps
+python -m jeuxRPG.multiplayer.controller D:\RPG\mon_monde\maps
 ```
 
 Un dossier neuf est initialisé avec les catalogues fournis. Tkinter doit être présent dans Python ; il est normalement inclus avec l’installation Windows.
@@ -227,6 +227,25 @@ Dans **Mobs**, l’éditeur **Phases de boss** permet d’ajouter jusqu’à dix
 
 Le catalogue livré fournit un exemple : `cave_1` et `cave_2` forment le donjon `grotte_gobeline`, et `gobelin_boss` possède une phase `Furie`. Tous ces paramètres restent modifiables dans le Controller.
 
+
+## PvP optionnel
+
+Le réglage **Monde → Activer le PvP optionnel** contrôle entièrement les duels entre comptes. Il est désactivé par défaut.
+
+Lorsque le PvP est désactivé, les comptes ne peuvent ni rejoindre ni démarrer un duel et l’interface masque le bouton de duel. Lorsque le réglage est activé, le système de duel reste volontaire : un joueur crée un salon, l’autre le rejoint avec l’invitation, puis le propriétaire choisit explicitement **Duel optionnel**. Le mode aventure, les rencontres PvE et la présence dans le même monde ne déclenchent jamais automatiquement un combat entre joueurs.
+
+Les personnages locaux historiques conservent les tests de compatibilité du moteur de duel, mais la disponibilité visible des comptes dépend toujours du réglage du Controller.
+
+## Économie et échanges
+
+L’onglet **Économie** du Controller définit les matériaux échangeables et leurs prix. **Prix d’achat au marchand** est la somme payée par le joueur ; **Prix de vente au marchand** est la somme reçue par le joueur. La validation impose un prix de vente inférieur ou égal au prix d’achat.
+
+Les paramètres **Or initial**, **Quantité max par échange** et **Or max par échange** sont modifiables dans **Monde**. Les anciennes sauvegardes sans monnaie reçoivent le solde initial lors de leur migration.
+
+Un PNJ devient marchand via **Cartes / builder → PNJ → Marchand**. Le catalogue livré marque Garrik comme marchand. Un joueur proche peut acheter ou vendre les matériaux définis dans l’onglet Économie.
+
+Les échanges directs entre joueurs sont autoritaires côté serveur. Les deux personnages doivent appartenir à la même équipe et se trouver au même lieu ; en exploration détaillée ils doivent être à portée immédiate. Les deux sauvegardes et leurs révisions sont modifiées dans la même transaction. Le même identifiant de requête rejoué après une perte réseau ne peut donc pas dupliquer l’or ou les matériaux.
+
 ## Réglages et projet complet
 
 Le sélecteur **Catalogue** permet d’accéder à tous les onglets, même sur un petit écran. Les réglages sont enregistrés dans `content.json`, sous `gameplay`. Les anciens projets reçoivent automatiquement les valeurs historiques. Aucune modification de l’équilibrage n’est appliquée par défaut.
@@ -238,3 +257,20 @@ Les valeurs numériques, les probabilités et les références sont validées av
 Enregistrer ne modifie pas le serveur déjà démarré : redémarrer le jeu ou publier les cinq fichiers de catalogue pour appliquer les nouvelles définitions. Les équipements connus sont recalculés au chargement selon leurs recettes, sans cumuler les bonus à chaque passage. Une pièce ancienne dont la recette a été retirée reste conservée dans la sauvegarde. Un changement d’emplacement de recette conserve l’emplacement des pièces déjà fabriquées.
 
 Le contrôleur couvre les contenus et les paramètres exposés du moteur. Les étapes et identifiants nécessaires au tutoriel restent protégés. Ajouter un nouveau type d’effet programmé, un nouveau mécanisme de combat ou un arbre de dialogue demande encore une modification du code Python.
+
+## Contrats après le tutoriel
+
+L’onglet **Contrats** définit les objectifs de chasse ou de fabrication, leur niveau minimum, leur lieu éventuel et la récompense XP par personnage. Un contrat peut être unique ou répétable. Les contrats se débloquent après l’arrivée finale à Brume ; l’aventure reste alors active.
+
+Le journal de quête affiche la progression et le bouton **Recevoir la récompense**. La validation exige un objectif complet et un personnage hors combat et hors trajet. Un contrat répétable repart à zéro après validation ; un contrat unique reste accompli. Les récompenses sont traitées côté serveur et un identifiant de requête rejoué ne les attribue pas deux fois. Les progrès et validations sont sauvegardés, y compris après renommage du contrat dans le Controller.
+
+
+## Fiabilité du projet et lancement du moteur
+
+Le Controller et le moteur utilisent les catalogues du même dossier `maps` du répertoire courant lorsqu’il existe. Pour un dossier distinct, définissez `RPG_MAPS_FILE` vers ce dossier complet avant de démarrer le serveur. Les surcharges explicites `RPG_CONTENT_FILE` et `RPG_CLASSES_FILE` restent possibles ; elles doivent correspondre au projet choisi. Le redémarrage reste nécessaire pour appliquer les modifications.
+
+L’ouverture valide les références et la jouabilité. Les identifiants de PNJ doivent être uniques dans tout le projet. Une carte utilisée comme apparition initiale peut être renommée : sa règle de départ est mise à jour avec les autres références.
+
+Une sauvegarde contrôle les tailles compatibles avec la relecture, détecte les modifications externes et verrouille le projet pendant l’écriture. Si une autre instance a enregistré, rechargez le projet avant de continuer. Les fichiers précédents sont conservés pendant le remplacement ; une écriture interrompue est restaurée à la prochaine ouverture. Cette récupération ne remplace pas une sauvegarde externe du dossier, notamment en cas de défaillance du disque.
+
+Dans le Builder intégré, **Enregistrer sous** exporte une copie complète dans le dossier choisi. Le projet original reste ouvert et ses modifications en mémoire restent à enregistrer. Les durées des trajets utilisent la vitesse et le ratio réglés dans le projet. Les formulaires longs disposent d’un défilement et de boutons de validation fixes.

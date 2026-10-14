@@ -1,17 +1,16 @@
 import asyncio
 import math
 import threading
-from typing import List, Set
 
 from jeuxRPG._class._event.confrontation.encounter.fight import Fight
 
 
 class GameEngine:
     def __init__(self):
-        self._active_characters: Set[str] = set()
+        self._active_characters: set[str] = set()
         self._lock = threading.Lock()
 
-    def _participants_ids(self, fight: Fight) -> Set[str]:
+    def _participants_ids(self, fight: Fight) -> set[str]:
         ids = [c.get_id() for c in fight.get_all_individuals()]
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicate participant identity")
@@ -59,7 +58,7 @@ class GameEngine:
         finally:
             await self._thread(fight.end)
 
-    async def run_fights_async(self, fights: List[Fight], timeout: float | None = None):
+    async def run_fights_async(self, fights: list[Fight], timeout: float | None = None):
         if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
             raise ValueError("timeout must be positive and finite")
         if not fights:
@@ -74,9 +73,11 @@ class GameEngine:
             with self._lock:
                 self._active_characters.difference_update(participants)
 
-    def run_fights(self, fights: List[Fight], timeout: float | None = None):
+    def run_fights(self, fights: list[Fight], timeout: float | None = None):
         try:
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self.run_fights_async(fights, timeout))
-        raise RuntimeError("Use await run_fights_async from an asynchronous application")
+        raise RuntimeError(
+            "Use await run_fights_async from an asynchronous application"
+        )

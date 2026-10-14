@@ -7,6 +7,7 @@ Provides translation functionality with lazy loading of language files.
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +47,7 @@ def _load_language(lang: str) -> dict[str, str]:
             return _load_language(DEFAULT_LANGUAGE)
         return {}
 
-    with open(translations_path, "r", encoding="utf-8") as f:
+    with open(translations_path, encoding="utf-8") as f:
         _translations[lang] = json.load(f)
 
     return _translations[lang]
@@ -82,11 +83,8 @@ def t(key: str, lang: str = DEFAULT_LANGUAGE, **kwargs: Any) -> str:
 
     # Format with provided variables
     if kwargs:
-        try:
+        with suppress(KeyError):
             text = text.format(**kwargs)
-        except KeyError:
-            # If format fails, return unformatted text
-            pass
 
     return text
 
@@ -106,8 +104,10 @@ def get_translator(lang: str = DEFAULT_LANGUAGE):
         >>> tr("nav.enter_building", building_name="Forge")
         "You enter Forge."
     """
+
     def translator(key: str, **kwargs: Any) -> str:
         return t(key, lang, **kwargs)
+
     return translator
 
 
@@ -136,6 +136,7 @@ def get_player_language(user_id: str) -> str:
     """
     try:
         from bot.game.storage import get_player_language as storage_get_lang
+
         return storage_get_lang(user_id)
     except ImportError:
         return DEFAULT_LANGUAGE
@@ -189,7 +190,9 @@ def translate_class_name_player(class_name: str, user_id: str) -> str:
     return translate_class_name(class_name, lang)
 
 
-def translate_class_list(class_names: list[str], lang: str = DEFAULT_LANGUAGE) -> list[str]:
+def translate_class_list(
+    class_names: list[str], lang: str = DEFAULT_LANGUAGE
+) -> list[str]:
     """
     Translate a list of class names.
 
@@ -218,7 +221,9 @@ def translate_class_list_player(class_names: list[str], user_id: str) -> list[st
     return translate_class_list(class_names, lang)
 
 
-def get_internal_class_name(translated_name: str, available_classes: list[str]) -> str | None:
+def get_internal_class_name(
+    translated_name: str, available_classes: list[str]
+) -> str | None:
     """
     Find the internal class name from a translated name.
 

@@ -1,5 +1,4 @@
 from enum import Enum
-from platform import node
 
 from jeuxRPG.i18n import t
 
@@ -13,16 +12,29 @@ class AlterationType(Enum):
     RESISTENCE = 5
     WEAKNESS = 6
 
-alteration_value_less = [AlterationType.STUN,AlterationType.INVINCIBILYTY]
 
-class Alteration():
-    def __init__(self, name : str,caster, value : int, time : int, target, stat_target = None,alterationType : AlterationType = None):
-        if name == "": raise ValueError("name cn't be an empty str")
-        if value <= 0:
-            if not alterationType in alteration_value_less :
-                raise ValueError("error in Alteration.value must be positif")
-        if time <= 0: raise ValueError("time can't be negative or null")
-        if caster == None: raise TypeError("caster must be a Character")
+alteration_value_less = [AlterationType.STUN, AlterationType.INVINCIBILYTY]
+
+
+class Alteration:
+    def __init__(
+        self,
+        name: str,
+        caster,
+        value: int,
+        time: int,
+        target,
+        stat_target=None,
+        alterationType: AlterationType = None,
+    ):
+        if name == "":
+            raise ValueError("name cn't be an empty str")
+        if value <= 0 and alterationType not in alteration_value_less:
+            raise ValueError("error in Alteration.value must be positif")
+        if time <= 0:
+            raise ValueError("time can't be negative or null")
+        if caster is None:
+            raise TypeError("caster must be a Character")
 
         self.name = name
         self.caster = caster
@@ -51,33 +63,57 @@ class Alteration():
         return self.caster
 
     def is_over(self) -> bool:
-        if self.duration < 0 : raise RuntimeError("invalide Alteration.duration")
+        if self.duration < 0:
+            raise RuntimeError("invalide Alteration.duration")
         return self.duration == 0
 
     def __str__(self) -> str:
-        return t("alteration.str", name=self.name, type=self.type.name,
-                 stat=self.stat_target.__name__, target=self.target.name,
-                 value=self.value, duration=self.duration)
+        return t(
+            "alteration.str",
+            name=self.name,
+            type=self.type.name,
+            stat=self.stat_target.__name__,
+            target=self.target.name,
+            value=self.value,
+            duration=self.duration,
+        )
 
     def __repr__(self) -> str:
         return self.__str__()
 
+
 class Buff(Alteration):
     def __init__(self, name, caster, value, time, target, stat_target):
-        super().__init__(name, caster, value, time, target, stat_target, AlterationType.BUFFSTAT)
+        super().__init__(
+            name, caster, value, time, target, stat_target, AlterationType.BUFFSTAT
+        )
+
 
 class DeBuff(Alteration):
     def __init__(self, name, caster, value, time, target, stat_target):
-        super().__init__(name, caster, value, time, target, stat_target, AlterationType.DEBUFFSTAT)
+        super().__init__(
+            name, caster, value, time, target, stat_target, AlterationType.DEBUFFSTAT
+        )
+
 
 class Dot(Alteration):
     def __init__(self, name, caster, value, time, target):
         super().__init__(name, caster, value, time, target, None, AlterationType.DOT)
 
+
 class Stun(Alteration):
     def __init__(self, name, caster, time, target):
-        super().__init__(name, caster, 0, time, target,None, AlterationType.STUN)
+        super().__init__(name, caster, 0, time, target, None, AlterationType.STUN)
+
 
 class Resistance(Alteration):
-    def __init__(self, name, caster, value, time, target, alterationType : AlterationType.RESISTENCE):
+    def __init__(
+        self,
+        name,
+        caster,
+        value,
+        time,
+        target,
+        alterationType: AlterationType.RESISTENCE,
+    ):
         super().__init__(name, caster, value, time, target, alterationType)

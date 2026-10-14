@@ -8,7 +8,6 @@ from collections import deque
 from redis import Redis
 from redis.exceptions import RedisError
 
-
 RATE_SCRIPT = """
 local current = redis.call('INCR', KEYS[1])
 if current == 1 then
@@ -19,14 +18,19 @@ return current
 
 
 class LocalRateLimiter:
-    def __init__(self):
+    def __init__(self, clock=None):
+        self._clock = clock
         self._lock = threading.Lock()
         self._entries = {}
 
     def accept(self, key, limit):
-        now = time.monotonic()
+        now = self._clock() if self._clock is not None else time.monotonic()
         with self._lock:
-            for expired in [item for item, values in self._entries.items() if not values or values[-1] <= now - 60]:
+            for expired in [
+                item
+                for item, values in self._entries.items()
+                if not values or values[-1] <= now - 60
+            ]:
                 del self._entries[expired]
             if key not in self._entries and len(self._entries) >= 4096:
                 return False
@@ -41,20 +45,26 @@ class LocalRateLimiter:
 
 class RedisRateLimiter:
     def __init__(self, url, prefix="jeux-rpg:rate:v1:", fallback=None):
-        self.redis = Redis.from_url(url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2)
+        self.redis = Redis.from_url(
+            url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+        )
         self.prefix = prefix
         self.fallback = fallback or LocalRateLimiter()
         self._warned_at = 0.0
 
     def accept(self, key, limit):
-        digest = hashlib.sha256(json.dumps(key, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        digest = hashlib.sha256(
+            json.dumps(key, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
         try:
             count = int(self.redis.eval(RATE_SCRIPT, 1, self.prefix + digest, "60"))
             return count <= limit
         except RedisError:
             now = time.monotonic()
             if now - self._warned_at >= 60:
-                logging.getLogger(__name__).warning("Rate limiting Redis indisponible ; fallback local actif")
+                logging.getLogger(__name__).warning(
+                    "Rate limiting Redis indisponible ; fallback local actif"
+                )
                 self._warned_at = now
             return self.fallback.accept(key, limit)
 
@@ -72,7 +82,13 @@ def build_rate_limiter(environment, fallback=None):
 class PresenceRegistry:
     def __init__(self, url=None, prefix="jeux-rpg:presence:v1:"):
         self.prefix = prefix
-        self.redis = Redis.from_url(url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2) if url else None
+        self.redis = (
+            Redis.from_url(
+                url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
+            )
+            if url
+            else None
+        )
         self.local = {}
 
     @classmethod
@@ -143,14 +159,21 @@ class PresenceRegistry:
     def items(self):
         if self.redis is None:
             return [(key, dict(value)) for key, value in self.local.items()]
-        return [(key, json.loads(value)) for key, value in self.redis.hgetall(self._hash).items()]
+        return [
+            (key, json.loads(value))
+            for key, value in self.redis.hgetall(self._hash).items()
+        ]
 
     def values(self):
         return [value for _, value in self.items()]
 
     def prune(self, cutoff):
         if self.redis is None:
-            self.local = {key: value for key, value in self.local.items() if value["seen"] > cutoff}
+            self.local = {
+                key: value
+                for key, value in self.local.items()
+                if value["seen"] > cutoff
+            }
             return
         expired = self.redis.zrangebyscore(self._seen, "-inf", cutoff)
         if not expired:

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 MIGRATIONS = Path(__file__).with_name("migrations")
 REQUIRED_TABLES = {
     "accounts",
@@ -39,7 +38,9 @@ def available_migrations():
         raise RuntimeError("Aucune migration de base de données disponible.")
     versions = [version for version, _ in result]
     if versions != list(range(1, versions[-1] + 1)):
-        raise RuntimeError("La suite de migrations doit être continue à partir de 0001.")
+        raise RuntimeError(
+            "La suite de migrations doit être continue à partir de 0001."
+        )
     return result
 
 
@@ -60,7 +61,9 @@ def validate_schema(connection, expected_version=None):
     expected = latest if expected_version is None else expected_version
     version = current_version(connection)
     if version != expected:
-        raise RuntimeError(f"Version de schéma invalide : {version}, attendu {expected}.")
+        raise RuntimeError(
+            f"Version de schéma invalide : {version}, attendu {expected}."
+        )
     tables = {
         row[0]
         for row in connection.execute(

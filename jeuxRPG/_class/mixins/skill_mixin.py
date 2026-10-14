@@ -4,7 +4,7 @@ Skill management mixin for Character class.
 Handles skill acquisition, usage, and availability.
 """
 
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from jeuxRPG._class.res.classType import SkillType
 from jeuxRPG._class.skills.skill import Skill
@@ -23,7 +23,7 @@ class SkillMixin:
     - Available skills listing
     """
 
-    def get_skill(self: 'Character', skill_name: str) -> Skill:
+    def get_skill(self: "Character", skill_name: str) -> Skill:
         """
         Get skill by name.
 
@@ -41,10 +41,8 @@ class SkillMixin:
         raise KeyError(f"Skill '{skill_name}' not found for {self.name}")
 
     def use_skill(
-        self: 'Character',
-        skill_name: str,
-        target: Optional['Character'] = None
-    ) -> Tuple[bool, str]:
+        self: "Character", skill_name: str, target: "Character | None" = None
+    ) -> tuple[bool, str]:
         """
         Attempt to use a skill, with comprehensive checks and execution.
 
@@ -75,7 +73,10 @@ class SkillMixin:
             # Check cooldown status
             if not skill.is_ready():
                 remaining = skill.current_cooldown
-                return False, f"{skill.name} is on cooldown ({remaining} rounds remaining)"
+                return (
+                    False,
+                    f"{skill.name} is on cooldown ({remaining} rounds remaining)",
+                )
 
             # Validate target if skill requires one
             if skill.requires_target and target is None:
@@ -87,7 +88,11 @@ class SkillMixin:
                     return False, f"Cannot target defeated {target.name}"
                 if skill.skill_type == SkillType.DAMAGE and target is self:
                     return False, "Cannot damage yourself"
-                if skill.skill_type == SkillType.HEAL and target is not self and not skill.can_target_others:
+                if (
+                    skill.skill_type == SkillType.HEAL
+                    and target is not self
+                    and not skill.can_target_others
+                ):
                     return False, f"{skill.name} can only target self"
 
             # Execute the skill
@@ -98,11 +103,11 @@ class SkillMixin:
         except Exception as e:
             return False, f"Skill failed: {str(e)}"
 
-    def get_available_skills(self: 'Character') -> Dict[str, Skill]:
+    def get_available_skills(self: "Character") -> dict[str, Skill]:
         """Get dictionary of all available skills."""
         return self.skills.copy()
 
-    def rest(self: 'Character') -> str:
+    def rest(self: "Character") -> str:
         """Restore energy and reduce skill cooldowns."""
         # Regenerate energy
         for energie in self.energie:

@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import json
 import random
-from contextlib import contextmanager, nullcontext
+from collections.abc import Iterable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Iterable
+from typing import Any
 
 from jeuxRPG._class._event.confrontation.encounter.fight import Fight
 from jeuxRPG._class.character import Character
-from jeuxRPG._class.sub_character import __all__ as CLASS_NAMES
 from jeuxRPG._class.res.classType import SkillType
+from jeuxRPG._class.sub_character import __all__ as CLASS_NAMES
 from jeuxRPG.game_engine import GameEngine
 from jeuxRPG.game_engine.tower import TowerRun, normalize_tower_difficulty
 
@@ -21,8 +22,8 @@ class SideStats:
     rounds: int = 0
     damage_dealt: int = 0
     hp_lost: int = 0
-    energy_spent: Dict[str, int] = field(default_factory=dict)
-    skill_usage: Dict[str, int] = field(default_factory=dict)
+    energy_spent: dict[str, int] = field(default_factory=dict)
+    skill_usage: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -34,7 +35,7 @@ class DuelStats:
     side_a: SideStats = field(default_factory=SideStats)
     side_b: SideStats = field(default_factory=SideStats)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "class_a": self.class_a,
             "class_b": self.class_b,
@@ -63,11 +64,11 @@ class _ActionTracker:
     """Monkey-patch Character methods to track energy spend and damage."""
 
     def __init__(self) -> None:
-        self.side_by_obj: Dict[Character, str] = {}
-        self.energy_spent: Dict[str, Dict[str, int]] = {"A": {}, "B": {}}
-        self.skill_usage: Dict[str, Dict[str, int]] = {"A": {}, "B": {}}
-        self.damage_dealt: Dict[str, int] = {"A": 0, "B": 0}
-        self.hp_lost: Dict[str, int] = {"A": 0, "B": 0}
+        self.side_by_obj: dict[Character, str] = {}
+        self.energy_spent: dict[str, dict[str, int]] = {"A": {}, "B": {}}
+        self.skill_usage: dict[str, dict[str, int]] = {"A": {}, "B": {}}
+        self.damage_dealt: dict[str, int] = {"A": 0, "B": 0}
+        self.hp_lost: dict[str, int] = {"A": 0, "B": 0}
         self._orig_use_skill = None
         self._orig_lose_hp = None
 
@@ -84,7 +85,9 @@ class _ActionTracker:
                 skill = obj.get_skill(skill_name)
                 energie_cost = getattr(skill, "energie_cost", 0) or 0
                 energie_target = getattr(skill, "energie_target", None)
-                energie_name = getattr(energie_target, "__name__", "?") if energie_target else "?"
+                energie_name = (
+                    getattr(energie_target, "__name__", "?") if energie_target else "?"
+                )
             except Exception:
                 energie_cost, energie_name = 0, "?"
 
@@ -92,8 +95,12 @@ class _ActionTracker:
             if ok:
                 side = tracker.side_by_obj.get(obj)
                 if side:
-                    tracker.energy_spent[side][energie_name] = tracker.energy_spent[side].get(energie_name, 0) + int(energie_cost)
-                    tracker.skill_usage[side][skill_name] = tracker.skill_usage[side].get(skill_name, 0) + 1
+                    tracker.energy_spent[side][energie_name] = tracker.energy_spent[
+                        side
+                    ].get(energie_name, 0) + int(energie_cost)
+                    tracker.skill_usage[side][skill_name] = (
+                        tracker.skill_usage[side].get(skill_name, 0) + 1
+                    )
             return ok, msg
 
         return wrapped
@@ -132,7 +139,13 @@ class _ActionTracker:
             Character.lose_hp = self._orig_lose_hp
 
 
-def simulate_duel(class_a: str, class_b: str, matches: int = 25, seed: int | None = None, max_rounds: int = 100) -> DuelStats:
+def simulate_duel(
+    class_a: str,
+    class_b: str,
+    matches: int = 25,
+    seed: int | None = None,
+    max_rounds: int = 100,
+) -> DuelStats:
     if seed is not None:
         random.seed(seed)
 
@@ -204,7 +217,7 @@ def simulate_tower(
     enemies_per_floor: int = 1,
     seed: int | None = 42,
     resolution: str = "combat",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a reproducible tower balance simulation."""
     if seed is not None:
         random.seed(seed)
@@ -214,9 +227,15 @@ def simulate_tower(
     start_floor = max(1, int(start_floor))
     enemies_per_floor = max(1, int(enemies_per_floor))
     resolution = str(resolution or "combat").strip().lower()
-    engine = _TowerRewardCurveEngine() if resolution in {"reward_curve", "xp_curve", "forced"} else GameEngine()
+    engine = (
+        _TowerRewardCurveEngine()
+        if resolution in {"reward_curve", "xp_curve", "forced"}
+        else GameEngine()
+    )
 
-    player = Character.create(class_name, user_id=f"tower_balance_{class_name}_{difficulty}", name=class_name)
+    player = Character.create(
+        class_name, user_id=f"tower_balance_{class_name}_{difficulty}", name=class_name
+    )
     start_level = player.level
     target_floor = start_floor + floors - 1
     reached_floor = TowerRun(engine).run_tour(
@@ -245,11 +264,25 @@ def simulate_tower(
     }
 
 
-def simulate_matrix(class_names: List[str] | None = None, matches_per_pair: int = 25, seed: int | None = 42) -> Dict[str, Any]:
+def simulate_matrix(
+    class_names: list[str] | None = None,
+    matches_per_pair: int = 25,
+    seed: int | None = 42,
+) -> dict[str, Any]:
     classes = class_names or list(CLASS_NAMES)
-    results: Dict[str, Any] = {"pairs": [], "summary": {}}
+    results: dict[str, Any] = {"pairs": [], "summary": {}}
 
-    per_class = {c: {"wins": 0, "losses": 0, "draws": 0, "damage_dealt": 0, "energy_spent": {}, "rounds": 0} for c in classes}
+    per_class = {
+        c: {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "damage_dealt": 0,
+            "energy_spent": {},
+            "rounds": 0,
+        }
+        for c in classes
+    }
 
     for ca in classes:
         for cb in classes:
@@ -277,7 +310,7 @@ def simulate_matrix(class_names: List[str] | None = None, matches_per_pair: int 
                 B["energy_spent"][k] = B["energy_spent"].get(k, 0) + v
 
     # Build summary with efficiency indicators
-    summary: Dict[str, Any] = {}
+    summary: dict[str, Any] = {}
     for cls, agg in per_class.items():
         total = agg["wins"] + agg["losses"] + agg["draws"]
         win_rate = (agg["wins"] / total) if total else 0.0
@@ -300,9 +333,9 @@ def simulate_matrix(class_names: List[str] | None = None, matches_per_pair: int 
     return results
 
 
-def analyze_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
+def analyze_summary(summary: dict[str, Any]) -> dict[str, Any]:
     """Produce balancing hints based on simple thresholds."""
-    hints: List[str] = []
+    hints: list[str] = []
     # Thresholds (tweakable)
     WINRATE_HIGH = 0.60
     WINRATE_LOW = 0.40
@@ -312,23 +345,31 @@ def analyze_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
         wr = s.get("win_rate", 0.0)
         dpe = s.get("damage_per_energy", 0.0)
         if wr > WINRATE_HIGH:
-            hints.append(f"{cls}: win_rate {wr:.0%} is high → consider nerfing damage or increasing costs")
+            hints.append(
+                f"{cls}: win_rate {wr:.0%} is high → consider nerfing damage or increasing costs"
+            )
         elif wr < WINRATE_LOW:
-            hints.append(f"{cls}: win_rate {wr:.0%} is low → consider buffing survivability or damage")
+            hints.append(
+                f"{cls}: win_rate {wr:.0%} is low → consider buffing survivability or damage"
+            )
         if dpe > DMG_PER_ENERGY_HIGH:
-            hints.append(f"{cls}: damage/energy {dpe:.2f} is high → increase energy cost or reduce damage")
+            hints.append(
+                f"{cls}: damage/energy {dpe:.2f} is high → increase energy cost or reduce damage"
+            )
 
     return {"hints": hints}
 
 
-def write_report(report: Dict[str, Any], path: str | Path) -> None:
+def write_report(report: dict[str, Any], path: str | Path) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
 
-def run_matrix_to_file(matches_per_pair: int = 10, out_path: str | Path = ".data/balance/report.json") -> Path:
+def run_matrix_to_file(
+    matches_per_pair: int = 10, out_path: str | Path = ".data/balance/report.json"
+) -> Path:
     res = simulate_matrix(matches_per_pair=matches_per_pair)
     hints = analyze_summary(res["summary"])
     res["analysis"] = hints
@@ -338,6 +379,7 @@ def run_matrix_to_file(matches_per_pair: int = 10, out_path: str | Path = ".data
 
 
 # ------------------------- Advanced modes -----------------------------------
+
 
 class _ForceSkill:
     """Force characters in `forced_objs` to use `skill_name` when attacking."""
@@ -378,9 +420,37 @@ def _set_advantage_for_mode(defender: Character, damage_type: Any, mode: str) ->
     if mode == "neutral":
         defender.class_table["advantage"] = {"weakness": [], "resilience": []}
     elif mode == "weak":
-        defender.class_table["advantage"] = {"weakness": [damage_type], "resilience": []}
+        defender.class_table["advantage"] = {
+            "weakness": [damage_type],
+            "resilience": [],
+        }
     elif mode in {"resist", "resilience"}:
-        defender.class_table["advantage"] = {"weakness": [], "resilience": [damage_type]}
+        defender.class_table["advantage"] = {
+            "weakness": [],
+            "resilience": [damage_type],
+        }
+
+
+def _duel_damage_type(a, skill_name):
+    dmg_type = None
+    if skill_name:
+        try:
+            sk = a.get_skill(skill_name)
+            # Skill stores damage type as `DamageType` (capital D)
+            dmg_type = getattr(sk, "DamageType", None)
+        except Exception:
+            dmg_type = None
+    else:
+        # Infer the natural attack damage type from the first usable damage skill
+        try:
+            for sk in reversed(list(a.get_available_skills().values())):
+                if getattr(sk, "skill_type", None) == SkillType.DAMAGE:
+                    dmg_type = getattr(sk, "DamageType", None)
+                    if dmg_type is not None:
+                        break
+        except Exception:
+            dmg_type = None
+    return dmg_type
 
 
 def simulate_skill_duel(
@@ -392,12 +462,17 @@ def simulate_skill_duel(
     max_rounds: int = 100,
     force_side: str = "none",
     advantage_mode: str = "neutral",  # neutral | weak | resist | all
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     modes = [advantage_mode]
     if advantage_mode.lower() == "all":
         modes = ["neutral", "weak", "resist"]
 
-    out: Dict[str, Any] = {"class_a": class_a, "class_b": class_b, "skill": skill_name, "modes": {}}
+    out: dict[str, Any] = {
+        "class_a": class_a,
+        "class_b": class_b,
+        "skill": skill_name,
+        "modes": {},
+    }
     for mode in modes:
         if seed is not None:
             random.seed(seed)
@@ -414,24 +489,7 @@ def simulate_skill_duel(
                 pass
 
             # Determine damage type for advantage setup
-            dmg_type = None
-            if skill_name:
-                try:
-                    sk = a.get_skill(skill_name)
-                    # Skill stores damage type as `DamageType` (capital D)
-                    dmg_type = getattr(sk, "DamageType", None)
-                except Exception:
-                    dmg_type = None
-            else:
-                # Infer the natural attack damage type from the first usable damage skill
-                try:
-                    for sk in reversed(list(a.get_available_skills().values())):
-                        if getattr(sk, "skill_type", None) == SkillType.DAMAGE:
-                            dmg_type = getattr(sk, "DamageType", None)
-                            if dmg_type is not None:
-                                break
-                except Exception:
-                    dmg_type = None
+            dmg_type = _duel_damage_type(a, skill_name)
 
             # Apply requested advantage mode (impact on defender against the forced skill)
             if dmg_type is not None:
@@ -448,7 +506,11 @@ def simulate_skill_duel(
             else:
                 forced_objs = {a}
 
-            skill_ctx = _ForceSkill(skill_name, forced_objs) if (force_skill and skill_name) else nullcontext()
+            skill_ctx = (
+                _ForceSkill(skill_name, forced_objs)
+                if (force_skill and skill_name)
+                else nullcontext()
+            )
             with _ActionTracker() as t, skill_ctx:
                 t.set_sides(a, b)
                 label = f" (skill {skill_name})" if skill_name else ""
@@ -469,13 +531,21 @@ def simulate_skill_duel(
                     duel_stats.draws += 1
 
                 for k, v in t.energy_spent["A"].items():
-                    duel_stats.side_a.energy_spent[k] = duel_stats.side_a.energy_spent.get(k, 0) + v
+                    duel_stats.side_a.energy_spent[k] = (
+                        duel_stats.side_a.energy_spent.get(k, 0) + v
+                    )
                 for k, v in t.energy_spent["B"].items():
-                    duel_stats.side_b.energy_spent[k] = duel_stats.side_b.energy_spent.get(k, 0) + v
+                    duel_stats.side_b.energy_spent[k] = (
+                        duel_stats.side_b.energy_spent.get(k, 0) + v
+                    )
                 for k, v in t.skill_usage["A"].items():
-                    duel_stats.side_a.skill_usage[k] = duel_stats.side_a.skill_usage.get(k, 0) + v
+                    duel_stats.side_a.skill_usage[k] = (
+                        duel_stats.side_a.skill_usage.get(k, 0) + v
+                    )
                 for k, v in t.skill_usage["B"].items():
-                    duel_stats.side_b.skill_usage[k] = duel_stats.side_b.skill_usage.get(k, 0) + v
+                    duel_stats.side_b.skill_usage[k] = (
+                        duel_stats.side_b.skill_usage.get(k, 0) + v
+                    )
                 duel_stats.side_a.damage_dealt += t.damage_dealt["A"]
                 duel_stats.side_b.damage_dealt += t.damage_dealt["B"]
                 duel_stats.side_a.hp_lost += t.hp_lost["A"]
@@ -485,9 +555,13 @@ def simulate_skill_duel(
     return out
 
 
-def simulate_one_vs_all(class_name: str, matches: int = 25, seed: int | None = 42) -> Dict[str, Any]:
+def simulate_one_vs_all(
+    class_name: str, matches: int = 25, seed: int | None = 42
+) -> dict[str, Any]:
     classes = [c for c in CLASS_NAMES if c != class_name]
-    results: Dict[str, Any] = {"class": class_name, "vs": []}
+    results: dict[str, Any] = {"class": class_name, "vs": []}
     for other in classes:
-        results["vs"].append(simulate_duel(class_name, other, matches=matches, seed=seed).to_dict())
+        results["vs"].append(
+            simulate_duel(class_name, other, matches=matches, seed=seed).to_dict()
+        )
     return results

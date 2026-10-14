@@ -1,15 +1,25 @@
 import math
 import time
+
 from .content import DATA
 
 
 class GameClock:
-    ratio = DATA['gameplay']['rules']['time']['game_ratio']
+    ratio = DATA["gameplay"]["rules"]["time"]["game_ratio"]
 
-    def __init__(self, epoch_wall, epoch_game=0.0, monotonic=time.monotonic, wall=time.time, minimum_game=0.0):
+    def __init__(
+        self,
+        epoch_wall,
+        epoch_game=0.0,
+        monotonic=time.monotonic,
+        wall=time.time,
+        minimum_game=0.0,
+    ):
         self._monotonic = monotonic
         self._origin = monotonic()
-        self._game = max(minimum_game, epoch_game + max(0.0, wall() - epoch_wall) * self.ratio)
+        self._game = max(
+            minimum_game, epoch_game + max(0.0, wall() - epoch_wall) * self.ratio
+        )
 
     def now(self):
         return self._game + max(0.0, self._monotonic() - self._origin) * self.ratio

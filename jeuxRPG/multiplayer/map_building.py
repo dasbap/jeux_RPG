@@ -1,27 +1,46 @@
+import os
 from copy import deepcopy
 from functools import lru_cache
-import os
 from pathlib import Path
 
 from .map_assets import read_catalog
-from .mob_rules import resolve, validate_mobs, drop_rules
+from .mob_rules import drop_rules, resolve, validate_mobs
 
 source = os.environ.get("RPG_MAPS_FILE")
-catalog_directory = Path(source) if source and Path(source).is_dir() else Path(source).parent if source else None
-MOBS = read_catalog("mobs", catalog_directory) if catalog_directory and (catalog_directory / "mobs.json").is_file() else read_catalog("mobs")
+catalog_directory = (
+    Path(source)
+    if source and Path(source).is_dir()
+    else Path(source).parent
+    if source
+    else None
+)
+MOBS = (
+    read_catalog("mobs", catalog_directory)
+    if catalog_directory and (catalog_directory / "mobs.json").is_file()
+    else read_catalog("mobs")
+)
 
 MOBS = validate_mobs(MOBS)
-MOBS = {key:resolve(MOBS,key) for key in MOBS}
+MOBS = {key: resolve(MOBS, key) for key in MOBS}
 
 
 def zone_of(maps, identifier):
     seen = set()
     while True:
-        if identifier in seen or identifier not in maps:
+        if identifier in seen:
+            raise ValueError("Rattachement de zone cyclique ou inexistant.")
+        if identifier in maps.get("clearing", {}).get("logical_zones", {}):
+            return identifier
+        if identifier not in maps:
             raise ValueError("Rattachement de zone cyclique ou inexistant.")
         seen.add(identifier)
-        parent = maps[identifier].get("zone_id", maps[identifier].get("world_zone", identifier))
-        if not isinstance(parent, str) or parent not in maps:
+        parent = maps[identifier].get(
+            "zone_id", maps[identifier].get("world_zone", identifier)
+        )
+        if not isinstance(parent, str) or (
+            parent not in maps
+            and parent not in maps.get("clearing", {}).get("logical_zones", {})
+        ):
             raise ValueError("Zone de rattachement invalide.")
         if parent == identifier:
             return identifier
@@ -33,6 +52,8 @@ def map_level(maps, identifier):
     if explicit is not None:
         return explicit
     zone = zone_of(maps, identifier)
+    if zone not in maps:
+        return maps["clearing"]["logical_zones"][zone].get("level", 1)
     return maps[zone].get("zone_level", 1)
 
 
@@ -40,7 +61,13 @@ def spawners(definition):
     custom = {tuple(item["position"]): item for item in definition.get("spawners", [])}
     result = []
     for position in definition.get("spawns", []):
-        config = {"position": position[:], "mob_id": "goblin", "level": None, "count": 1, **deepcopy(custom.get(tuple(position), {}))}
+        config = {
+            "position": position[:],
+            "mob_id": "goblin",
+            "level": None,
+            "count": 1,
+            **deepcopy(custom.get(tuple(position), {})),
+        }
         for _ in range(config.get("count", 1)):
             result.append(deepcopy(config))
     return result
@@ -48,37 +75,80 @@ def spawners(definition):
 
 def create_mob(maps, identifier, config, index, first=False):
     from jeuxRPG._class.character import Character
+
     from . import tutorial, world
+
     definition = resolve(MOBS, config["mob_id"])
-    from .skill_catalog import library, mob_ability
     from .content import DATA
-    available = library(DATA,MOBS)
-    abilities = [mob_ability(available[item['skill_id']],item) if 'skill_id' in item else deepcopy(item) for item in definition.get('abilities',[])]
-    actor = Character.create(definition["class_name"], "tutorial-mob", config.get("name") or f"{definition['name']} {index + 1}")
+    from .skill_catalog import library, mob_ability
+
+    available = library(DATA, MOBS)
+    abilities = [
+        mob_ability(available[item["skill_id"]], item)
+        if "skill_id" in item
+        else deepcopy(item)
+        for item in definition.get("abilities", [])
+    ]
+    actor = Character.create(
+        definition["class_name"],
+        "tutorial-mob",
+        config.get("name") or f"{definition['name']} {index + 1}",
+    )
     from .mob_abilities import native_skill
+
     for ability in abilities:
-        if ability.get('native'):
+        if ability.get("native"):
             skill = native_skill(ability)
-            if not any(isinstance(energy,skill.energie_target) for energy in actor.energie):
-                actor.add_energie(skill.energie_target(max(30,skill.energie_cost),.3))
+            if not any(
+                isinstance(energy, skill.energie_target) for energy in actor.energie
+            ):
+                actor.add_energie(
+                    skill.energie_target(max(30, skill.energie_cost), 0.3)
+                )
     base_hp = actor.hp.value
-    level = config.get("level") or map_level(maps, identifier)
+    level = (
+        config.get("level") or definition.get("level") or map_level(maps, identifier)
+    )
     while actor.level < level:
         actor.gain_exp(actor._required_exp_for_next_level() - actor.exp)
     if config["mob_id"] == "goblin":
-        actor.hp.value = (world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]) + max(0, actor.hp.value - base_hp)
-    for key, formula in definition.get('stats', {}).items():
+        actor.hp.value = (
+            world.GOBLIN["hp_first"] if first else world.GOBLIN["hp_hunt"]
+        ) + max(0, actor.hp.value - base_hp)
+    for key, formula in definition.get("stats", {}).items():
         stat = getattr(actor, key)
-        stat.value = max(1 if key == 'hp' else 0, round(formula['base']+formula['growth']*(level-1)))
+        stat.value = max(
+            1 if key == "hp" else 0,
+            round(formula["base"] + formula["growth"] * (level - 1)),
+        )
         stat.current_value = stat.value
     actor.hp.current_value = actor.hp.value
-    return {**tutorial.pack(actor), "mob_id": config["mob_id"], "rank": definition["rank"], "attack_damage": round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
-            "loot": deepcopy(definition.get("loot", {})), 'drops':drop_rules(definition, tutorial.forge.RARE_DROPS),
-            'abilities':[deepcopy(ability) for ability in abilities if ability['level'] <= level],
-            'phases':deepcopy(definition.get('phases', [])), 'phase_index':0, 'phase_base_hp':actor.hp.value,
-            'phase_base_damage':round(definition["damage"] + (level - 1)*definition['damage_growth']) if 'damage_growth' in definition else definition['damage']+(level-1)//2,
-            'base_name':actor.name,
-            'xp_multiplier':definition.get('xp_multiplier',1), **({'xp_class':definition['xp_class']} if 'xp_class' in definition else {})}
+    return {
+        **tutorial.pack(actor),
+        "mob_id": config["mob_id"],
+        "rank": definition["rank"],
+        "attack_damage": round(
+            definition["damage"] + (level - 1) * definition["damage_growth"]
+        )
+        if "damage_growth" in definition
+        else definition["damage"] + (level - 1) // 2,
+        "loot": deepcopy(definition.get("loot", {})),
+        "drops": drop_rules(definition, tutorial.forge.RARE_DROPS),
+        "abilities": [
+            deepcopy(ability) for ability in abilities if ability["level"] <= level
+        ],
+        "phases": deepcopy(definition.get("phases", [])),
+        "phase_index": 0,
+        "phase_base_hp": actor.hp.value,
+        "phase_base_damage": round(
+            definition["damage"] + (level - 1) * definition["damage_growth"]
+        )
+        if "damage_growth" in definition
+        else definition["damage"] + (level - 1) // 2,
+        "base_name": actor.name,
+        "xp_multiplier": definition.get("xp_multiplier", 1),
+        **({"xp_class": definition["xp_class"]} if "xp_class" in definition else {}),
+    }
 
 
 def sync_overlap(maps, identifier):
@@ -88,16 +158,60 @@ def sync_overlap(maps, identifier):
     count = 0
     sx, sy = source["world_origin"]
     for key, target in maps.items():
-        if key == identifier or "world_origin" not in target or zone_of(maps, key) != zone_of(maps, identifier):
+        if (
+            key == identifier
+            or "world_origin" not in target
+            or zone_of(maps, key) != zone_of(maps, identifier)
+        ):
             continue
         tx, ty = target["world_origin"]
-        common = {(x, y) for y in range(target["height"]) for x in range(target["width"]) if 0 <= x + tx - sx < source["width"] and 0 <= y + ty - sy < source["height"]}
+        common = {
+            (x, y)
+            for y in range(target["height"])
+            for x in range(target["width"])
+            if 0 <= x + tx - sx < source["width"]
+            and 0 <= y + ty - sy < source["height"]
+        }
         if not common:
             continue
         for field in ("cover", "blocked", "water", "bridges", "paths"):
-            target[field] = [point for point in target.get(field, []) if tuple(point) not in common] + [[x + sx - tx, y + sy - ty] for x, y in source.get(field, []) if (x + sx - tx, y + sy - ty) in common]
-        target["bridge_rotations"] = [item for item in target.get("bridge_rotations", []) if tuple(item["position"]) not in common] + [{**deepcopy(item), "position": [item["position"][0] + sx - tx, item["position"][1] + sy - ty]} for item in source.get("bridge_rotations", []) if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common]
-        target["decorations"] = [item for item in target.get("decorations", []) if tuple(item["position"]) not in common] + [{**deepcopy(item), "position": [item["position"][0] + sx - tx, item["position"][1] + sy - ty]} for item in source.get("decorations", []) if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common]
+            target[field] = [
+                point for point in target.get(field, []) if tuple(point) not in common
+            ] + [
+                [x + sx - tx, y + sy - ty]
+                for x, y in source.get(field, [])
+                if (x + sx - tx, y + sy - ty) in common
+            ]
+        target["bridge_rotations"] = [
+            item
+            for item in target.get("bridge_rotations", [])
+            if tuple(item["position"]) not in common
+        ] + [
+            {
+                **deepcopy(item),
+                "position": [
+                    item["position"][0] + sx - tx,
+                    item["position"][1] + sy - ty,
+                ],
+            }
+            for item in source.get("bridge_rotations", [])
+            if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common
+        ]
+        target["decorations"] = [
+            item
+            for item in target.get("decorations", [])
+            if tuple(item["position"]) not in common
+        ] + [
+            {
+                **deepcopy(item),
+                "position": [
+                    item["position"][0] + sx - tx,
+                    item["position"][1] + sy - ty,
+                ],
+            }
+            for item in source.get("decorations", [])
+            if (item["position"][0] + sx - tx, item["position"][1] + sy - ty) in common
+        ]
         count += 1
     return count
 
@@ -105,14 +219,36 @@ def sync_overlap(maps, identifier):
 @lru_cache(maxsize=32)
 def species_details(identifier):
     from jeuxRPG._class.character import Character
+
     definition = resolve(MOBS, identifier)
     actor = Character.create(definition["class_name"], "bestiary", definition["name"])
-    for key, formula in definition.get('stats', {}).items():
-        getattr(actor,key).value = formula['base']
-        getattr(actor,key).current_value = formula['base']
+    for key, formula in definition.get("stats", {}).items():
+        getattr(actor, key).value = formula["base"]
+        getattr(actor, key).current_value = formula["base"]
     advantages = actor.class_table["advantage"]
-    return {"hp": actor.hp.value, "stats": {key: getattr(actor, key).current_value for key in ("force", "endurance", "intelligence", "sagesse")},
-            "weaknesses": [value.name for value in (advantages['weakness'] if isinstance(advantages,dict) else advantages.weakness)], "resistances": [value.name for value in (advantages['resilience'] if isinstance(advantages,dict) else advantages.resilience)]}
+    return {
+        "hp": actor.hp.value,
+        "stats": {
+            key: getattr(actor, key).current_value
+            for key in ("force", "endurance", "intelligence", "sagesse")
+        },
+        "weaknesses": [
+            value.name
+            for value in (
+                advantages["weakness"]
+                if isinstance(advantages, dict)
+                else advantages.weakness
+            )
+        ],
+        "resistances": [
+            value.name
+            for value in (
+                advantages["resilience"]
+                if isinstance(advantages, dict)
+                else advantages.resilience
+            )
+        ],
+    }
 
 
 def linked_sector(maps, source_id, identifier, direction, overlap=4):
@@ -125,16 +261,50 @@ def linked_sector(maps, source_id, identifier, direction, overlap=4):
     candidate = deepcopy(maps)
     source = candidate[source_id]
     sx, sy = source.setdefault("world_origin", [0, 0])
-    dx, dy = {"est": (w-overlap, 0), "ouest": (overlap-w, 0), "sud": (0, h-overlap), "nord": (0, overlap-h)}[direction]
-    target = {"id": "field_" + identifier, "name": identifier, "width": w, "height": h, "cell_metres": source.get("cell_metres", 2), "biome": source.get("biome", "forest"), "zone_id": zone_of(candidate, source_id), "world_origin": [sx+dx, sy+dy], "overlap_columns": overlap, "spawners": [], "spawns": [], "sites": [], "exits": [], "cover": [], "blocked": [], "water": [], "bridges": [], "paths": [], "decorations": []}
+    dx, dy = {
+        "est": (w - overlap, 0),
+        "ouest": (overlap - w, 0),
+        "sud": (0, h - overlap),
+        "nord": (0, overlap - h),
+    }[direction]
+    target = {
+        "id": "field_" + identifier,
+        "name": identifier,
+        "width": w,
+        "height": h,
+        "cell_metres": source.get("cell_metres", 2),
+        "biome": source.get("biome", "forest"),
+        "zone_id": zone_of(candidate, source_id),
+        "world_origin": [sx + dx, sy + dy],
+        "overlap_columns": overlap,
+        "spawners": [],
+        "spawns": [],
+        "sites": [],
+        "exits": [],
+        "cover": [],
+        "blocked": [],
+        "water": [],
+        "bridges": [],
+        "paths": [],
+        "decorations": [],
+    }
     candidate[identifier] = target
     sync_overlap(candidate, source_id)
     if direction in ("est", "ouest"):
-        y = h//2
-        forward, arrival, back, returning = ([w-1,y], [overlap,y], [0,y], [w-overlap-1,y]) if direction == "est" else ([0,y], [w-overlap-1,y], [w-1,y], [overlap,y])
+        y = h // 2
+        forward, arrival, back, returning = (
+            ([w - 1, y], [overlap, y], [0, y], [w - overlap - 1, y])
+            if direction == "est"
+            else ([0, y], [w - overlap - 1, y], [w - 1, y], [overlap, y])
+        )
     else:
-        x = w//2
-        forward, arrival, back, returning = ([x,h-1], [x,overlap], [x,0], [x,h-overlap-1]) if direction == "sud" else ([x,0], [x,h-overlap-1], [x,h-1], [x,overlap])
+        x = w // 2
+        forward, arrival, back, returning = (
+            ([x, h - 1], [x, overlap], [x, 0], [x, h - overlap - 1])
+            if direction == "sud"
+            else ([x, 0], [x, h - overlap - 1], [x, h - 1], [x, overlap])
+        )
+
     def corridor(start, end):
         x, y = start
         points = [[x, y]]
@@ -145,16 +315,41 @@ def linked_sector(maps, source_id, identifier, direction, overlap=4):
             y += 1 if end[1] > y else -1
             points.append([x, y])
         return points
+
     anchor = source["exits"][0]["position"]
-    for data, points in ((source, corridor(forward, anchor) + corridor(returning, anchor)), (target, corridor(back, arrival))):
+    for data, points in (
+        (source, corridor(forward, anchor) + corridor(returning, anchor)),
+        (target, corridor(back, arrival)),
+    ):
         for field in ("cover", "blocked", "water", "bridges"):
             data[field] = [p for p in data.get(field, []) if p not in points]
-        data["bridge_rotations"] = [item for item in data.get("bridge_rotations", []) if item["position"] not in points]
-        data["decorations"] = [d for d in data.get("decorations", []) if d["position"] not in points]
+        data["bridge_rotations"] = [
+            item
+            for item in data.get("bridge_rotations", [])
+            if item["position"] not in points
+        ]
+        data["decorations"] = [
+            d for d in data.get("decorations", []) if d["position"] not in points
+        ]
         for point in points:
             if point not in data["paths"]:
                 data["paths"].append(point)
-    source["exits"] = [g for g in source["exits"] if g["position"] != forward] + [{"position": forward, "destination": identifier, "entry": arrival, "name": "Vers " + identifier}]
-    target["exits"] = [{"position": back, "destination": source_id, "entry": returning, "name": "Vers " + source["name"]}]
+    source["exits"] = [g for g in source["exits"] if g["position"] != forward] + [
+        {
+            "position": forward,
+            "destination": identifier,
+            "entry": arrival,
+            "name": "Vers " + identifier,
+        }
+    ]
+    target["exits"] = [
+        {
+            "position": back,
+            "destination": source_id,
+            "entry": returning,
+            "name": "Vers " + source["name"],
+        }
+    ]
     from .map_assets import validate
+
     return validate(candidate)

@@ -1,6 +1,7 @@
 from jeuxRPG._class.character import Character
 
-def level_up_f(target : Character, level_target) -> None:
+
+def level_up_f(target: Character, level_target) -> None:
     """_summary_
 
     Role:

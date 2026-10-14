@@ -1,0 +1,3617 @@
+{
+  "kind": "mobs",
+  "maps": {
+    "goblin": {
+      "class_name": "Goblin",
+      "name": "Gobelin des bois",
+      "rank": "D",
+      "damage": 3,
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_goblin",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_goblin",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_goblin",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        },
+        {
+          "item": "peau",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ]
+    },
+    "orc": {
+      "class_name": "Orc",
+      "name": "Orc",
+      "rank": "C",
+      "damage": 5,
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_orc",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_orc",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_orc",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ]
+    },
+    "dragon_whelp": {
+      "class_name": "DragonWhelp",
+      "name": "Dragonnet",
+      "rank": "B",
+      "damage": 8,
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_dragon_whelp",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_dragon_whelp",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_dragon_whelp",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ]
+    },
+    "gobelin_boss": {
+      "name": "chef gobelin",
+      "class_name": "Goblin",
+      "rank": "B",
+      "damage": 5,
+      "damage_growth": 0.8,
+      "xp_class": "boss",
+      "xp_multiplier": 1.5,
+      "parent": "goblin",
+      "stats": {
+        "hp": {
+          "base": 30.0,
+          "growth": 4.0
+        },
+        "force": {
+          "base": 6.0,
+          "growth": 1.2
+        },
+        "endurance": {
+          "base": 5.0,
+          "growth": 1.1
+        },
+        "intelligence": {
+          "base": 2.0,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 1.0,
+          "growth": 0.1
+        }
+      },
+      "drops": [
+        {
+          "item": "peau_gobelin_boss",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_gobelin_boss",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_boss",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "loot": {},
+      "abilities": [
+        {
+          "name": "Frappe",
+          "type": "damage",
+          "level": 1,
+          "power": 3.0,
+          "growth": 0.5,
+          "cooldown": 5.0,
+          "cast": 0.6,
+          "range": 1.5,
+          "duration": 2.0,
+          "concentration": true
+        },
+        {
+          "name": "brochette d'humain",
+          "type": "heal",
+          "level": 5,
+          "power": 12.0,
+          "growth": 2.3,
+          "cooldown": 30.0,
+          "cast": 8.5,
+          "range": 1.0,
+          "duration": 2.0,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.75,
+          "damage_multiplier": 1.5
+        }
+      ],
+      "level": 3
+    },
+    "rat_des_champs": {
+      "name": "Rat des champs",
+      "class_name": "Goblin",
+      "level": 1,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "fourrure_rat_des_champs",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "incisive_rat_des_champs",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_rat_des_champs",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "slime_vert": {
+      "name": "Slime vert",
+      "class_name": "Goblin",
+      "level": 1,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "gel_slime_vert",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_slime_vert",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_slime_vert",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "scarabee_des_pres": {
+      "name": "Scarabée des prés",
+      "class_name": "PhysicalResistantMob",
+      "level": 1,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "carapace_scarabee_des_pres",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "mandibule_scarabee_des_pres",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_scarabee_des_pres",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "corbeau_des_bois": {
+      "name": "Corbeau des bois",
+      "class_name": "Goblin",
+      "level": 1,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "plume_corbeau_des_bois",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "bec_corbeau_des_bois",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_corbeau_des_bois",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "gobelin_eclaireur": {
+      "name": "Gobelin éclaireur",
+      "class_name": "Goblin",
+      "level": 1,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_gobelin_eclaireur",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "oreille_gobelin_eclaireur",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_eclaireur",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "garde_gobelin": {
+      "name": "Garde gobelin",
+      "class_name": "Goblin",
+      "level": 2,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_garde_gobelin",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_garde_gobelin",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_garde_gobelin",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "araignee_des_bois": {
+      "name": "Araignée des bois",
+      "class_name": "Goblin",
+      "level": 2,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "soie_araignee_des_bois",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "venin_araignee_des_bois",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_araignee_des_bois",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "chauve_souris": {
+      "name": "Chauve-souris",
+      "class_name": "Goblin",
+      "level": 2,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "membrane_chauve_souris",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_chauve_souris",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_chauve_souris",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "slime_bleu": {
+      "name": "Slime bleu",
+      "class_name": "MagicResistantMob",
+      "level": 2,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "gel_slime_bleu",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_slime_bleu",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_slime_bleu",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "gobelin_apprenti": {
+      "name": "Gobelin apprenti",
+      "class_name": "Goblin",
+      "level": 2,
+      "rank": "E",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "etoffe_gobelin_apprenti",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "cristal_gobelin_apprenti",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_apprenti",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "loup_gris": {
+      "name": "Loup gris",
+      "class_name": "Goblin",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "fourrure_loup_gris",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_loup_gris",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_loup_gris",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "sanglier_des_bois": {
+      "name": "Sanglier des bois",
+      "class_name": "Orc",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_sanglier_des_bois",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_sanglier_des_bois",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_sanglier_des_bois",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "gobelin_archer": {
+      "name": "Gobelin archer",
+      "class_name": "Goblin",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_gobelin_archer",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "tendon_gobelin_archer",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_archer",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "squelette_errant": {
+      "name": "Squelette errant",
+      "class_name": "Goblin",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "os_squelette_errant",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "phalange_squelette_errant",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_squelette_errant",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "champignon_anime": {
+      "name": "Champignon animé",
+      "class_name": "MagicResistantMob",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "spore_champignon_anime",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "mycelium_champignon_anime",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_champignon_anime",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "gobelin_chamane": {
+      "name": "Gobelin chamane",
+      "class_name": "Goblin",
+      "level": 4,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "etoffe_gobelin_chamane",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "cristal_gobelin_chamane",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_chamane",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "kobold_mineur": {
+      "name": "Kobold mineur",
+      "class_name": "Goblin",
+      "level": 4,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_kobold_mineur",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_kobold_mineur",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_kobold_mineur",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "scorpion_des_roches": {
+      "name": "Scorpion des roches",
+      "class_name": "PhysicalResistantMob",
+      "level": 4,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "carapace_scorpion_des_roches",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "venin_scorpion_des_roches",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_scorpion_des_roches",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "ronce_vivante": {
+      "name": "Ronce vivante",
+      "class_name": "PhysicalResistantMob",
+      "level": 4,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "fibre_ronce_vivante",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "epine_ronce_vivante",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_ronce_vivante",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "chef_des_rats": {
+      "name": "Chef des rats",
+      "class_name": "Goblin",
+      "level": 4,
+      "rank": "D",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "fourrure_chef_des_rats",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "incisive_chef_des_rats",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_chef_des_rats",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "gobelin_berserker": {
+      "name": "Gobelin berserker",
+      "class_name": "Goblin",
+      "level": 5,
+      "rank": "D",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_gobelin_berserker",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_gobelin_berserker",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gobelin_berserker",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "orc_eclaireur": {
+      "name": "Orc éclaireur",
+      "class_name": "Orc",
+      "level": 5,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_orc_eclaireur",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_orc_eclaireur",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_orc_eclaireur",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "golem_d_argile": {
+      "name": "Golem d’argile",
+      "class_name": "PhysicalResistantMob",
+      "level": 5,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "argile_golem_d_argile",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_golem_d_argile",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_golem_d_argile",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "spectre_des_brumes": {
+      "name": "Spectre des brumes",
+      "class_name": "MagicResistantMob",
+      "level": 5,
+      "rank": "D",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ectoplasme_spectre_des_brumes",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_spectre_des_brumes",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_spectre_des_brumes",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "matriarche_araignee": {
+      "name": "Matriarche araignée",
+      "class_name": "Goblin",
+      "level": 5,
+      "rank": "D",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "soie_matriarche_araignee",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "venin_matriarche_araignee",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_matriarche_araignee",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "orc_guerrier": {
+      "name": "Orc guerrier",
+      "class_name": "Orc",
+      "level": 6,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_orc_guerrier",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_orc_guerrier",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_orc_guerrier",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "loup_alpha": {
+      "name": "Loup alpha",
+      "class_name": "Goblin",
+      "level": 6,
+      "rank": "C",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "fourrure_loup_alpha",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_loup_alpha",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_loup_alpha",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "squelette_archer": {
+      "name": "Squelette archer",
+      "class_name": "Goblin",
+      "level": 6,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "os_squelette_archer",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "phalange_squelette_archer",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_squelette_archer",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "feu_follet": {
+      "name": "Feu follet",
+      "class_name": "MagicResistantMob",
+      "level": 6,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "poussiere_feu_follet",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_feu_follet",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_feu_follet",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "roi_des_slimes": {
+      "name": "Roi des slimes",
+      "class_name": "MagicResistantMob",
+      "level": 6,
+      "rank": "C",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "gel_roi_des_slimes",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_roi_des_slimes",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_roi_des_slimes",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "orc_chamane": {
+      "name": "Orc chamane",
+      "class_name": "Orc",
+      "level": 7,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "etoffe_orc_chamane",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "cristal_orc_chamane",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_orc_chamane",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "golem_de_pierre": {
+      "name": "Golem de pierre",
+      "class_name": "PhysicalResistantMob",
+      "level": 7,
+      "rank": "C",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "pierre_golem_de_pierre",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_golem_de_pierre",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_golem_de_pierre",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "harpie_des_collines": {
+      "name": "Harpie des collines",
+      "class_name": "Goblin",
+      "level": 7,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "plume_harpie_des_collines",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_harpie_des_collines",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_harpie_des_collines",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "salamandre_de_braise": {
+      "name": "Salamandre de braise",
+      "class_name": "DragonWhelp",
+      "level": 7,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_salamandre_de_braise",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_salamandre_de_braise",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_salamandre_de_braise",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "chef_kobold": {
+      "name": "Chef kobold",
+      "class_name": "Goblin",
+      "level": 7,
+      "rank": "C",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_chef_kobold",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_chef_kobold",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_chef_kobold",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "troll_des_marais": {
+      "name": "Troll des marais",
+      "class_name": "Orc",
+      "level": 8,
+      "rank": "C",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_troll_des_marais",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_troll_des_marais",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_troll_des_marais",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "necromancien_errant": {
+      "name": "Nécromancien errant",
+      "class_name": "MagicResistantMob",
+      "level": 8,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "etoffe_necromancien_errant",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_necromancien_errant",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_necromancien_errant",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "garde_orc": {
+      "name": "Garde orc",
+      "class_name": "Orc",
+      "level": 8,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_garde_orc",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_garde_orc",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_garde_orc",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "basilic_juvenile": {
+      "name": "Basilic juvénile",
+      "class_name": "DragonWhelp",
+      "level": 8,
+      "rank": "C",
+      "damage": 2,
+      "damage_growth": 0.4,
+      "xp_class": "normal",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 12,
+          "growth": 3
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_basilic_juvenile",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "venin_basilic_juvenile",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_basilic_juvenile",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "reine_scorpion": {
+      "name": "Reine scorpion",
+      "class_name": "PhysicalResistantMob",
+      "level": 8,
+      "rank": "C",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "carapace_reine_scorpion",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "venin_reine_scorpion",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_reine_scorpion",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "ogre_des_collines": {
+      "name": "Ogre des collines",
+      "class_name": "Orc",
+      "level": 9,
+      "rank": "B",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_ogre_des_collines",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_ogre_des_collines",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_ogre_des_collines",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "chevalier_squelette": {
+      "name": "Chevalier squelette",
+      "class_name": "PhysicalResistantMob",
+      "level": 9,
+      "rank": "B",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "os_chevalier_squelette",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "phalange_chevalier_squelette",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_chevalier_squelette",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "elementaire_de_braise": {
+      "name": "Élémentaire de braise",
+      "class_name": "MagicResistantMob",
+      "level": 9,
+      "rank": "B",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "cendre_elementaire_de_braise",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_elementaire_de_braise",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_elementaire_de_braise",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "griffon_juvenile": {
+      "name": "Griffon juvénile",
+      "class_name": "SacredResistantMob",
+      "level": 9,
+      "rank": "B",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "plume_griffon_juvenile",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_griffon_juvenile",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_griffon_juvenile",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "chef_orc": {
+      "name": "Chef orc",
+      "class_name": "Orc",
+      "level": 9,
+      "rank": "B",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_chef_orc",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "defense_chef_orc",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_chef_orc",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    },
+    "dragonnet_rouge": {
+      "name": "Dragonnet rouge",
+      "class_name": "DragonWhelp",
+      "level": 10,
+      "rank": "B",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecaille_dragonnet_rouge",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "griffe_dragonnet_rouge",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_dragonnet_rouge",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "golem_runique": {
+      "name": "Golem runique",
+      "class_name": "PhysicalResistantMob",
+      "level": 10,
+      "rank": "B",
+      "damage": 3,
+      "damage_growth": 0.6,
+      "xp_class": "elite",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 4.5
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 3,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "pierre_golem_runique",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "noyau_golem_runique",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_golem_runique",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "liche_apprentie": {
+      "name": "Liche apprentie",
+      "class_name": "MagicResistantMob",
+      "level": 10,
+      "rank": "B",
+      "damage": 2,
+      "damage_growth": 0.36,
+      "xp_class": "caster",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 11,
+          "growth": 2.7
+        },
+        "force": {
+          "base": 3,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 5,
+          "growth": 0.8
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "os_liche_apprentie",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_liche_apprentie",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_liche_apprentie",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Trait arcanique",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "gardien_du_bosquet": {
+      "name": "Gardien du bosquet",
+      "class_name": "SacredResistantMob",
+      "level": 10,
+      "rank": "B",
+      "damage": 2,
+      "damage_growth": 0.48,
+      "xp_class": "warrior",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3.6
+        },
+        "force": {
+          "base": 4,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 2,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "ecorce_gardien_du_bosquet",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "seve_gardien_du_bosquet",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_gardien_du_bosquet",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [],
+      "phases": []
+    },
+    "seigneur_gobelin": {
+      "name": "Seigneur gobelin",
+      "class_name": "Goblin",
+      "level": 10,
+      "rank": "B",
+      "damage": 4,
+      "damage_growth": 0.72,
+      "xp_class": "boss",
+      "xp_multiplier": 1,
+      "stats": {
+        "hp": {
+          "base": 22,
+          "growth": 5.4
+        },
+        "force": {
+          "base": 5,
+          "growth": 0.6
+        },
+        "endurance": {
+          "base": 4,
+          "growth": 0.4
+        },
+        "intelligence": {
+          "base": 1,
+          "growth": 0.2
+        },
+        "sagesse": {
+          "base": 2,
+          "growth": 0.3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "peau_seigneur_gobelin",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "croc_seigneur_gobelin",
+          "chance": 0.65,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "relique_seigneur_gobelin",
+          "chance": 0.03,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": true
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Frappe puissante",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.6,
+          "cooldown": 8,
+          "cast": 1,
+          "range": 1.5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": [
+        {
+          "name": "Furie",
+          "hp_multiplier": 0.5,
+          "damage_multiplier": 1.3
+        }
+      ]
+    }
+  }
+}

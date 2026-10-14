@@ -7,20 +7,24 @@ class EditorPanel:
         if cls is EditorPanel:
             import tkinter as tk
             from tkinter import ttk
+
             if _panel_type is None:
                 _panel_type = type("TkEditorPanel", (EditorPanel, ttk.Frame), {})
             return object.__new__(_panel_type)
         return object.__new__(cls)
+
     def __init__(self, parent, title=""):
         self.host = parent
         self.previous = [(child, child.pack_info()) for child in parent.pack_slaves()]
-        for child, options in self.previous:
+        for child, _options in self.previous:
             child.pack_forget()
         super().__init__(parent, padding=8)
         self.pack(fill="both", expand=True)
         self.heading = ttk.Frame(self)
         self.heading.pack(fill="x", pady=(0, 8))
-        ttk.Button(self.heading, text="← Retour", command=self.destroy).pack(side="left")
+        ttk.Button(self.heading, text="← Retour", command=self.destroy).pack(
+            side="left"
+        )
         self.caption = ttk.Label(self.heading, text=title, font=("Arial", 12, "bold"))
         self.caption.pack(side="left", padx=12)
         self.content = ttk.Frame(self)
@@ -65,15 +69,21 @@ class InlineMessages:
 
     def prompt(self, title, message, choices):
         panel = EditorPanel(self.parent, title)
-        ttk.Label(panel.content, text=message, wraplength=760, justify="left").pack(fill="x", pady=16)
+        ttk.Label(panel.content, text=message, wraplength=760, justify="left").pack(
+            fill="x", pady=16
+        )
         answer = [None]
+
         def choose(value):
             answer[0] = value
             panel.destroy()
+
         bar = ttk.Frame(panel.content)
         bar.pack(fill="x")
         for label, value in choices:
-            ttk.Button(bar, text=label, command=lambda v=value: choose(v)).pack(side="left", padx=4)
+            ttk.Button(bar, text=label, command=lambda v=value: choose(v)).pack(
+                side="left", padx=4
+            )
         self.parent.wait_window(panel)
         return answer[0]
 
@@ -87,26 +97,32 @@ class InlineMessages:
         return bool(self.prompt(title, message, [("Oui", True), ("Non", False)]))
 
     def askyesnocancel(self, title, message, **kwargs):
-        return self.prompt(title, message, [("Garder", True), ("Abandonner", False), ("Annuler", None)])
+        return self.prompt(
+            title, message, [("Garder", True), ("Abandonner", False), ("Annuler", None)]
+        )
 
 
 def fold(parent, title, opened=False):
     from tkinter import ttk
+
     outer = ttk.Frame(parent)
     outer.pack(fill="x", pady=2)
     body = ttk.Frame(outer, padding=(12, 3))
     button = ttk.Button(outer)
     button.pack(fill="x")
     active = [opened]
+
     def refresh():
         button.configure(text=("▾ " if active[0] else "▸ ") + title)
         if active[0]:
             body.pack(fill="x")
         else:
             body.pack_forget()
+
     def toggle():
         active[0] = not active[0]
         refresh()
+
     button.configure(command=toggle)
     refresh()
     return body

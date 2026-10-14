@@ -4,12 +4,11 @@ import sqlite3
 import time
 from copy import deepcopy
 
+from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .schema import initialize
-from .protocol_types import RuntimeMessage, RuntimeResponse, PendingBatch
 from .serverless import Application, RemoteGameService
 from .turso import TursoConnection
 from .world import zone_of
-
 
 SOCIAL_TABLES = (
     "accounts",
@@ -82,6 +81,7 @@ def progress_signature(party):
             for key, value in party.get("characters", {}).items()
         },
         "quests": [party.get("quest"), quests],
+        "endgame": party.get("endgame", {}),
         "zone": zone_of(party.get("position")) or zone_of(party.get("field_map")),
         "checkpoint": party.get("autosave_checkpoint"),
     }

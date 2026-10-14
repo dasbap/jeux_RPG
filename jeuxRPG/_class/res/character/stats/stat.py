@@ -1,7 +1,5 @@
-from typing import List
-
-from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.alteration.alteration import Buff, DeBuff
+from jeuxRPG.i18n import t
 
 
 class DefaultStat:
@@ -26,17 +24,17 @@ class DefaultStat:
             ValueError: If value is not a positive integer
         """
         if not isinstance(value, int) or value < 0:
-            raise ValueError(f"Stat value must be a positive integer {type(value), value}")
+            raise ValueError(
+                f"Stat value must be a positive integer {type(value), value}"
+            )
 
         self.value = value
         self._current_value = value
-        self.buffs: List[Buff] = []
-        self.debuffs: List[DeBuff] = []
+        self.buffs: list[Buff] = []
+        self.debuffs: list[DeBuff] = []
         self.name = self.__class__.__name__
 
     # Magic methods ###########################################################
-
-
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, (int, DefaultStat)):
@@ -71,7 +69,7 @@ class DefaultStat:
         compare_val = other if isinstance(other, int) else other.current_value
         return self.current_value <= compare_val
 
-    def __iadd__(self, other: int) -> 'DefaultStat':
+    def __iadd__(self, other: int) -> "DefaultStat":
         """Add to current value with += operator."""
         if not isinstance(other, int):
             raise TypeError("Can only add integers to stats")
@@ -79,7 +77,7 @@ class DefaultStat:
         self._clamp_current_value()
         return self
 
-    def __add__(self, other: int) -> 'DefaultStat':
+    def __add__(self, other: int) -> "DefaultStat":
         """Create new stat with added base value using + operator."""
         if not isinstance(other, int):
             raise TypeError("Can only add integers to stats")
@@ -89,14 +87,14 @@ class DefaultStat:
         self._recalculate()
         return self
 
-    def __isub__(self, other: int) -> 'DefaultStat':
+    def __isub__(self, other: int) -> "DefaultStat":
         """Subtract from current value with -= operator."""
         if not isinstance(other, int):
             raise TypeError("Can only subtract integers from stats")
         self._current_value = max(0, self._current_value - other)
         return self
 
-    def __sub__(self, other: int) -> 'DefaultStat':
+    def __sub__(self, other: int) -> "DefaultStat":
         """Create new stat with subtracted base value using - operator."""
         if not isinstance(other, int):
             raise TypeError("Can only subtract integers from stats")
@@ -116,7 +114,13 @@ class DefaultStat:
         # If no translation found, use original name
         if translated_name == f"stat.{self.name}":
             translated_name = self.name
-        return t("stat.str", lang, name=translated_name, current=self.current_value, max=self.value)
+        return t(
+            "stat.str",
+            lang,
+            name=translated_name,
+            current=self.current_value,
+            max=self.value,
+        )
 
     def __repr__(self) -> str:
         """Developer-friendly string representation."""
@@ -245,8 +249,9 @@ class DefaultStat:
         self.value = new_value
         self._recalculate()
 
-    def upgrade_base_value(self, value : int) -> None:
-        if value <= 0 : raise ValueError("value must be positive")
+    def upgrade_base_value(self, value: int) -> None:
+        if value <= 0:
+            raise ValueError("value must be positive")
         self.value += value
         self._recalculate()
 
@@ -261,9 +266,13 @@ class DefaultStat:
 
         self.buffs = [buff for buff in self.buffs if not buff.is_over()]
         self.debuffs = [debuff for debuff in self.debuffs if not debuff.is_over()]
-        if had_effects and self.name in ("Force", "Endurance", "Intelligence", "Sagesse"):
+        if had_effects and self.name in (
+            "Force",
+            "Endurance",
+            "Intelligence",
+            "Sagesse",
+        ):
             self._recalculate()
-
 
     # Private methods #########################################################
 

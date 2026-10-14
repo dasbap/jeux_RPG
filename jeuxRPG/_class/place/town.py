@@ -1,7 +1,8 @@
 from __future__ import annotations
-from jeuxRPG._class.place.district import District
+
 from jeuxRPG._class.place.building import Building
-from jeuxRPG._class.res.classType import Build_type, Build_state
+from jeuxRPG._class.place.district import District
+from jeuxRPG._class.res.classType import Build_state, Build_type
 
 
 class Town:
@@ -19,11 +20,7 @@ class Town:
     """
 
     def __init__(
-        self,
-        name: str,
-        population: int = 0,
-        wealth: int = 0,
-        reputation: int = 0
+        self, name: str, population: int = 0, wealth: int = 0, reputation: int = 0
     ):
         self.name = name
         self.population = population
@@ -115,7 +112,7 @@ class Town:
         building_name: str,
         building_type: Build_type,
         level: int = 1,
-        status: Build_state = Build_state.OPERATIONAL
+        status: Build_state = Build_state.OPERATIONAL,
     ) -> Building | None:
         """Crée un bâtiment dans un quartier. Retourne le bâtiment ou None."""
         district = self.districts.get(district_name)
@@ -132,7 +129,9 @@ class Town:
 
     # === Ressources ===
 
-    def add_resource(self, district_name: str, resource_name: str, quantity: int) -> bool:
+    def add_resource(
+        self, district_name: str, resource_name: str, quantity: int
+    ) -> bool:
         """Ajoute une ressource à un quartier. Retourne True si réussi."""
         district = self.districts.get(district_name)
         if district:
@@ -140,7 +139,9 @@ class Town:
             return True
         return False
 
-    def spend_resource(self, district_name: str, resource_name: str, quantity: int) -> bool:
+    def spend_resource(
+        self, district_name: str, resource_name: str, quantity: int
+    ) -> bool:
         """Dépense une ressource d'un quartier. Retourne True si réussi."""
         district = self.districts.get(district_name)
         if district:
@@ -201,7 +202,7 @@ class Town:
             "total_buildings": len(self.get_all_buildings()),
             "total_npcs": len(self.get_all_npcs()),
             "travel_destinations": self.get_travel_destinations(),
-            "entry_district": self.entry_district.name if self.entry_district else None
+            "entry_district": self.entry_district.name if self.entry_district else None,
         }
 
     def __repr__(self) -> str:

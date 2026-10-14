@@ -1,6 +1,4 @@
-
 from random import choice, shuffle
-from typing import List, Optional, Union
 
 from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.classType import SkillType
@@ -18,28 +16,31 @@ class Fight:
 
     def __init__(
         self,
-        attackers: Union[List[Union[Character, Team]], Character, Team],
-        defenders: Union[List[Union[Character, Team]], Character, Team],
-        name: str = ""
+        attackers: list[Character | Team] | Character | Team,
+        defenders: list[Character | Team] | Character | Team,
+        name: str = "",
     ) -> None:
         """Initialize a fight with participants grouped into Alliances."""
-        self.attackers = Alliance(f"{name} Attackers", self._normalize_participants(attackers))
-        self.defenders = Alliance(f"{name} Defenders", self._normalize_participants(defenders))
+        self.attackers = Alliance(
+            f"{name} Attackers", self._normalize_participants(attackers)
+        )
+        self.defenders = Alliance(
+            f"{name} Defenders", self._normalize_participants(defenders)
+        )
         self.attackers.add_enemy(self.defenders, mutual=True)
-        self._winner: Optional[Alliance] = None
+        self._winner: Alliance | None = None
         self._validate_participants()
-        self.round : int = 0
-        self.can_play : List[Character]
-        self.log_message : list[str] = []
+        self.round: int = 0
+        self.can_play: list[Character]
+        self.log_message: list[str] = []
         self._new_round()
 
     def clear_log(self) -> None:
         self.log_message = []
 
     def _normalize_participants(
-        self,
-        participants: Union[List[Union[Character, Team]], Character, Team]
-    ) -> List[Union[Character, Team]]:
+        self, participants: list[Character | Team] | Character | Team
+    ) -> list[Character | Team]:
         """Normalize input into a list of Characters or Teams."""
         if participants is None:
             return []
@@ -62,22 +63,24 @@ class Fight:
             names = ", ".join(c.name for c in common)
             raise ValueError(f"Characters cannot be on both sides: {names}")
 
-    def add_attacker(self, participant: Union[Character, Team]) -> None:
+    def add_attacker(self, participant: Character | Team) -> None:
         """Add a participant to the attackers alliance."""
         self._add_participant(participant, self.attackers)
 
-    def add_defender(self, participant: Union[Character, Team]) -> None:
+    def add_defender(self, participant: Character | Team) -> None:
         """Add a participant to the defenders alliance."""
         self._add_participant(participant, self.defenders)
 
     def _add_participant(
-        self,
-        participant: Union[Character, Team],
-        alliance: Alliance
+        self, participant: Character | Team, alliance: Alliance
     ) -> None:
         """Internal method to add participants to an alliance."""
         if isinstance(participant, (Character, Team)):
-            members = participant.get_fighters() if isinstance(participant, Team) else [participant]
+            members = (
+                participant.get_fighters()
+                if isinstance(participant, Team)
+                else [participant]
+            )
             opposite = self.defenders if alliance is self.attackers else self.attackers
             if any(member in opposite.fighters for member in members):
                 raise ValueError("Characters cannot be on both sides")
@@ -96,12 +99,13 @@ class Fight:
     def who_next(self) -> Character:
         can_play = self.can_play
         can_play = [player for player in can_play if player.is_alive()]
-        if can_play == [] : return None
+        if can_play == []:
+            return None
         return choice(can_play)
 
-    def get_all_individuals(self) -> List[Character]:
+    def get_all_individuals(self) -> list[Character]:
         """Get all unique characters involved in the fight."""
-        individuals: List[Character] = []
+        individuals: list[Character] = []
         seen: set[int] = set()
         for fighter in self.attackers.fighters + self.defenders.fighters:
             marker = id(fighter)
@@ -111,7 +115,7 @@ class Fight:
             individuals.append(fighter)
         return individuals
 
-    def get_original_teams(self) -> List[Team]:
+    def get_original_teams(self) -> list[Team]:
         """Get all original teams of participants (excluding alliances)."""
         teams = set()
 
@@ -121,7 +125,7 @@ class Fight:
 
         return list(teams)
 
-    def _merge_and_shuffle_fighters(self) -> List[Character]:
+    def _merge_and_shuffle_fighters(self) -> list[Character]:
         """Fusionne et mélange les combattants des deux alliances sans modifier les équipes d'origine.
 
         Returns:
@@ -136,6 +140,7 @@ class Fight:
 
         # 2. Mélange aléatoire
         import random
+
         random.shuffle(all_fighters)
 
         return all_fighters
@@ -153,22 +158,14 @@ class Fight:
 
             if not who_play.is_alive():
                 self.can_play.remove(who_play)
-                self.log_message.append(f"{who_play.name} est mort et ne peut pas jouer.")
+                self.log_message.append(
+                    f"{who_play.name} est mort et ne peut pas jouer."
+                )
                 continue
 
             # Skip turn if stunned, but still tick status so stun can expire
             if who_play.is_stun():
-                try:
-                    updates = who_play._update_status()
-                    if isinstance(updates, list):
-                        extra_msgs = [m for m, _ in updates if m]
-                        if extra_msgs:
-                            self.log_message.append(" ".join(extra_msgs))
-                except Exception:
-                    pass
-                self.log_message.append(f"{who_play.name} est étourdi et saute son tour.")
-                if who_play in self.can_play:
-                    self.can_play.remove(who_play)
+                self._skip_stunned_turn(who_play)
                 continue
 
             if who_play in self.attackers:
@@ -188,38 +185,66 @@ class Fight:
                     self.can_play.remove(who_play)
                     break
                 else:
-                    self.log_message.append(f"{who_play.name} a raté son attaque sur {enemy.name}")
+                    self.log_message.append(
+                        f"{who_play.name} a raté son attaque sur {enemy.name}"
+                    )
             else:
                 action_done = False
                 shuffle(allies)
                 for ally in allies:
                     for skill_name, skill in who_play.skills.items():
-                        if skill.skill_type == SkillType.RESURRECT and not ally.is_alive():
+                        if (
+                            skill.skill_type == SkillType.RESURRECT
+                            and not ally.is_alive()
+                        ):
                             if self.play(who_play, ally, skill_name):
-                                self.log_message.append(f"{who_play.name} ressuscite {ally.name}")
+                                self.log_message.append(
+                                    f"{who_play.name} ressuscite {ally.name}"
+                                )
                                 if who_play in self.can_play:
                                     self.can_play.remove(who_play)
                                 action_done = True
                                 break
-                        elif skill.skill_type in (SkillType.HEAL, SkillType.BUFF) and ally.is_alive():
-                            if self.play(who_play, ally, skill_name):
-                                self.log_message.append(f"{who_play.name} utilise {skill_name} sur {ally.name}")
-                                if who_play in self.can_play:
-                                    self.can_play.remove(who_play)
-                                action_done = True
-                                break
+                        elif (
+                            skill.skill_type in (SkillType.HEAL, SkillType.BUFF)
+                            and ally.is_alive()
+                        ) and self.play(who_play, ally, skill_name):
+                            self.log_message.append(
+                                f"{who_play.name} utilise {skill_name} sur {ally.name}"
+                            )
+                            if who_play in self.can_play:
+                                self.can_play.remove(who_play)
+                            action_done = True
+                            break
                     if action_done:
                         break
 
                 if not action_done:
-                    self.log_message.append(f"{who_play.name} ne peut rien faire ce tour-ci.")
+                    self.log_message.append(
+                        f"{who_play.name} ne peut rien faire ce tour-ci."
+                    )
                     if who_play in self.can_play:
                         self.can_play.remove(who_play)
 
         self.end_round(rest)
 
-    def end_round(self, rest : bool) ->None:
-        if not rest: return self._new_round()
+    def _skip_stunned_turn(self, who_play):
+        try:
+            updates = who_play._update_status()
+            if isinstance(updates, list):
+                extra_msgs = [m for m, _ in updates if m]
+                if extra_msgs:
+                    self.log_message.append(" ".join(extra_msgs))
+        except Exception:
+            pass
+        self.log_message.append(f"{who_play.name} est étourdi et saute son tour.")
+        if who_play in self.can_play:
+            self.can_play.remove(who_play)
+        return
+
+    def end_round(self, rest: bool) -> None:
+        if not rest:
+            return self._new_round()
         self.rest()
         self._new_round()
 
@@ -228,8 +253,7 @@ class Fight:
             if fighter.is_alive():
                 fighter.rest()
 
-
-    def play(self, who_play : Character, target : Character, skill_name : str) -> bool:
+    def play(self, who_play: Character, target: Character, skill_name: str) -> bool:
         if self.is_over() or not who_play.is_alive():
             return False
         if target is not None and target not in self.get_all_individuals():
@@ -241,7 +265,11 @@ class Fight:
             same_side = (who_play in self.attackers) == (target in self.attackers)
             if skill.skill_type in (SkillType.DAMAGE, SkillType.DEBUFF) and same_side:
                 return False
-            if skill.skill_type in (SkillType.HEAL, SkillType.BUFF, SkillType.RESURRECT) and not same_side:
+            if (
+                skill.skill_type
+                in (SkillType.HEAL, SkillType.BUFF, SkillType.RESURRECT)
+                and not same_side
+            ):
                 return False
         # If the actor already played this round, treat as no-op (avoid raising during auto-battle loops)
         if who_play not in self.can_play:
@@ -252,14 +280,14 @@ class Fight:
 
         success, message = who_play.use_skill(skill_name, target)
         self.log_message.append(message)
-        if message == '':
+        if message == "":
             # Debug hook left from older flow; keep safe but non-blocking
             pass
         if success:
             self.can_play.remove(who_play)
         return success
 
-    def get_winner(self) -> Optional[Alliance]:
+    def get_winner(self) -> Alliance | None:
         """Get the winning alliance."""
         return self._winner
 
@@ -269,8 +297,12 @@ class Fight:
         def_count = len(self.defenders.fighters)
 
         if self._winner:
-            return t("fight.str_completed", att_count=att_count, def_count=def_count,
-                     winner=self._winner.name)
+            return t(
+                "fight.str_completed",
+                att_count=att_count,
+                def_count=def_count,
+                winner=self._winner.name,
+            )
         else:
             return t("fight.str_ongoing", att_count=att_count, def_count=def_count)
 

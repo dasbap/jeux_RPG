@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from jeuxRPG.i18n import t
 from jeuxRPG._class.place.jobs.job import Job
 from jeuxRPG._class.place.jobs.job_types import JobType, ServiceType
+from jeuxRPG.i18n import t
 
 if TYPE_CHECKING:
     from jeuxRPG._class.place.building import Building
@@ -34,7 +35,7 @@ class NPC:
         dialogues: dict[str, list[str]] | None = None,
         inventory: list | None = None,
         gold: int = 100,
-        quests: list[str] | None = None
+        quests: list[str] | None = None,
     ):
         self.name = name
         self.job = job
@@ -62,12 +63,13 @@ class NPC:
             "greeting": greetings if isinstance(greetings, list) else [greetings],
             "farewell": t("npc.farewell"),
             "busy": t("npc.busy"),
-            "no_gold": t("npc.no_gold")
+            "no_gold": t("npc.no_gold"),
         }
 
     def get_dialogue(self, context: str = "greeting") -> str:
         """Retourne un dialogue aléatoire selon le contexte."""
         import random
+
         dialogues = self.dialogues.get(context, self.dialogues.get("greeting", ["..."]))
         return random.choice(dialogues)
 
@@ -104,7 +106,7 @@ class NPC:
             "gold": self.gold,
             "inventory_count": len(self.inventory),
             "quests_available": len(self.quests),
-            "services": [s.name for s in self.job.services]
+            "services": [s.name for s in self.job.services],
         }
 
     def __repr__(self) -> str:
@@ -112,6 +114,7 @@ class NPC:
 
 
 # === Factory functions pour créer des PNJ courants ===
+
 
 def create_blacksmith(name: str = "Forgeron", location: Building | None = None) -> NPC:
     """Crée un PNJ forgeron."""

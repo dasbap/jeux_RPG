@@ -20,7 +20,7 @@ function adjustFieldCamera(action) {
   const map = session.tutorial.battle.map;
   fieldCamera.x = Math.max(0, Math.min(map.width - 1, fieldCamera.x));
   fieldCamera.y = Math.max(0, Math.min(map.height - 1, fieldCamera.y));
-  renderTutorial(session.tutorial);
+  renderGame(session.tutorial);
 }
 for (const action of ["in", "out", "center"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
 
@@ -46,7 +46,7 @@ function returnCameraToPlayer() {
   cameraReturnTimer = null;
   if (fieldCamera && session?.tutorial?.battle?.map.id === fieldCamera.map) {
     fieldCamera.follow = true;
-    renderTutorial(session.tutorial);
+    renderGame(session.tutorial);
   }
 }
 const cameraSurface = $("world-map");
@@ -91,4 +91,4 @@ for (const name of ["click", "dblclick"]) cameraSurface.addEventListener(name, e
   if (Date.now() < suppressMapClickUntil) { event.preventDefault(); event.stopImmediatePropagation(); }
 }, true);
 window.addEventListener("blur", () => releaseCamera());
-window.addEventListener("resize", () => { if (session?.tutorial?.battle) renderTutorial(session.tutorial); });
+window.addEventListener("resize", () => { if (session?.tutorial?.battle) renderGame(session.tutorial); });

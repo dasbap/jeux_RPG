@@ -1,21 +1,23 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal
+
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from jeuxRPG.i18n import t
 
 if TYPE_CHECKING:
-    from jeuxRPG._class.place.town import Town
-    from jeuxRPG._class.place.district import District
     from jeuxRPG._class.place.building import Building
+    from jeuxRPG._class.place.district import District
+    from jeuxRPG._class.place.town import Town
 
 
 class LocationType(Enum):
     """Type de lieu où peut se trouver un personnage."""
-    TOWN = auto()       # Dans une ville (pas de quartier précis)
-    DISTRICT = auto()   # Dans un quartier
-    BUILDING = auto()   # Dans un bâtiment
-    WILDERNESS = auto() # En pleine nature (entre deux villes)
+
+    TOWN = auto()  # Dans une ville (pas de quartier précis)
+    DISTRICT = auto()  # Dans un quartier
+    BUILDING = auto()  # Dans un bâtiment
+    WILDERNESS = auto()  # En pleine nature (entre deux villes)
 
 
 class Location:
@@ -30,7 +32,7 @@ class Location:
         self,
         town: Town | None = None,
         district: District | None = None,
-        building: Building | None = None
+        building: Building | None = None,
     ):
         self.town = town
         self.district = district
@@ -91,6 +93,7 @@ class Navigator:
     def get_current_town(self) -> Town | None:
         """Retourne la ville actuelle."""
         return self.location.town
+
     def get_current_district(self) -> District | None:
         """Retourne le quartier actuel."""
         return self.location.district
@@ -108,11 +111,7 @@ class Navigator:
         Returns:
             Dict avec clés: 'buildings', 'districts', 'towns'
         """
-        options = {
-            "buildings": [],
-            "districts": [],
-            "towns": []
-        }
+        options = {"buildings": [], "districts": [], "towns": []}
 
         # Si dans un bâtiment, on peut sortir dans le quartier
         if self.location.building and self.location.district:
@@ -167,10 +166,13 @@ class Navigator:
             return False, t("nav.building_not_exists", building_name=building_name)
 
         from jeuxRPG._class.res.classType import Build_state
+
         if building.status == Build_state.DESTROY:
             return False, t("nav.building_destroyed", building_name=building_name)
         if building.status == Build_state.UNDER_CONSTRUCTION:
-            return False, t("nav.building_under_construction", building_name=building_name)
+            return False, t(
+                "nav.building_under_construction", building_name=building_name
+            )
 
         self.location.building = building
         self._add_history(t("nav.entered_building", building_name=building_name))
@@ -208,9 +210,19 @@ class Navigator:
         if not district:
             return False, t("nav.district_not_exists", district_name=district_name)
 
-        old_district = self.location.district.name if self.location.district else t("nav.from_entrance")
+        old_district = (
+            self.location.district.name
+            if self.location.district
+            else t("nav.from_entrance")
+        )
         self.location.district = district
-        self._add_history(t("nav.district_change", from_district=old_district, to_district=district_name))
+        self._add_history(
+            t(
+                "nav.district_change",
+                from_district=old_district,
+                to_district=district_name,
+            )
+        )
         return True, t("nav.go_to_district", district_name=district_name)
 
     def travel_to(self, town_name: str) -> tuple[bool, str]:
@@ -237,9 +249,15 @@ class Navigator:
         self.location.district = destination.entry_district
         self.location.town = destination
 
-        self._add_history(t("nav.travel_history", from_town=old_town, to_town=town_name))
+        self._add_history(
+            t("nav.travel_history", from_town=old_town, to_town=town_name)
+        )
 
-        entry = destination.entry_district.name if destination.entry_district else t("nav.from_entrance")
+        entry = (
+            destination.entry_district.name
+            if destination.entry_district
+            else t("nav.from_entrance")
+        )
         return True, t("nav.travel_to", town_name=town_name, entry=entry)
 
     def spawn_at(self, town: Town) -> None:
@@ -270,7 +288,7 @@ class Navigator:
             "current_location": self.where_am_i(),
             "location_type": self.location.location_type.name,
             "options": self.get_movement_options(),
-            "recent_history": self.get_history(5)
+            "recent_history": self.get_history(5),
         }
 
     def __repr__(self) -> str:

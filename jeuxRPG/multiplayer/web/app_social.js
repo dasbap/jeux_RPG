@@ -53,9 +53,9 @@ function renderSocial() {
   if (!$("social-view") || currentView !== "social") return;
   const data = socialState || {friends: [], requests: [], invitations: [], team: null, rallies: [], guild: null, guild_invitations: []};
   const presence = presenceState;
-  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/${presence.capacity} joueurs · équipe ${data.team?.members.length || 1}/${data.team?.capacity || presence.team_capacity || 4} · guilde ${data.guild ? data.guild.members.length + "/" + data.guild.capacity : "aucune"} · PvP désactivé` : "Choisissez votre personnage pour retrouver les autres joueurs.";
-  $("guild-create").hidden = Boolean(data.guild);
-  $("social-guild-invite").hidden = !data.guild || data.guild.role !== "owner";
+  $("social-capacity").textContent = presence ? `Serveur ${presence.realm} · ${presence.online}/${presence.capacity} joueurs · équipe ${data.team?.members.length || 1}/${data.team?.capacity || presence.team_capacity || 4} · guilde ${data.guild ? data.guild.members.length + "/" + data.guild.capacity : "aucune"} · PvP ${presence.pvp ? "optionnel actif" : "désactivé"}` : "Choisissez votre personnage pour retrouver les autres joueurs.";
+  if ($("guild-create")) $("guild-create").hidden = Boolean(data.guild);
+  if ($("social-guild-invite")) $("social-guild-invite").hidden = !data.guild || data.guild.role !== "owner";
   const root = $("social-content");
   const retained = new Set();
   function row(key, text, actions) {
@@ -115,5 +115,5 @@ $("character-create").addEventListener("submit", event => {event.preventDefault(
 $("character-cancel").addEventListener("click", () => {$("characters").hidden = true; sectionSignatures.clear(); refresh(true);});
 $("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});
 $("social-invite").addEventListener("click", () => socialAction("team_invite", {username: $("social-name").value.trim()}));
-$("social-guild-invite").addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));
-$("guild-create").addEventListener("submit", event => { event.preventDefault(); socialAction("guild_create", {name: $("guild-name").value.trim()}); });
+$("social-guild-invite")?.addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));
+$("guild-create")?.addEventListener("submit", event => { event.preventDefault(); socialAction("guild_create", {name: $("guild-name").value.trim()}); });

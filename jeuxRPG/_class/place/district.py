@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from jeuxRPG._class.place.building import Building
-from jeuxRPG._class.res.classType import Build_type, Build_state
+from jeuxRPG._class.res.classType import Build_state, Build_type
 
 if TYPE_CHECKING:
-    from jeuxRPG._class.place.town import Town
     from jeuxRPG._class.place.jobs.npc import NPC
+    from jeuxRPG._class.place.town import Town
 
 
 class District:
@@ -72,7 +74,7 @@ class District:
         name: str,
         b_type: Build_type,
         level: int = 1,
-        status: Build_state = Build_state.OPERATIONAL
+        status: Build_state = Build_state.OPERATIONAL,
     ) -> Building:
         """Crée et ajoute un nouveau bâtiment."""
         building = Building(name, b_type, level, status)
@@ -98,6 +100,7 @@ class District:
         if npc not in self.npcs:
             self.npcs.append(npc)
             from jeuxRPG._class.place.jobs.job_types import JobType
+
             if npc.job.job_type == JobType.GUARD:
                 self.guards.append(npc)
 
@@ -131,7 +134,10 @@ class District:
 
     def spend_resource(self, resource_name: str, quantity: int) -> bool:
         """Dépense une ressource. Retourne True si réussi."""
-        if resource_name in self.resources and self.resources[resource_name] >= quantity:
+        if (
+            resource_name in self.resources
+            and self.resources[resource_name] >= quantity
+        ):
             self.resources[resource_name] -= quantity
             return True
         return False
@@ -151,7 +157,7 @@ class District:
             "guards_count": len(self.guards),
             "resources": self.resources,
             "town": self.town.name if self.town else None,
-            "connected_to": self.get_accessible_districts()
+            "connected_to": self.get_accessible_districts(),
         }
 
     def __repr__(self) -> str:

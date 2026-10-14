@@ -4,7 +4,7 @@ Health management mixin for Character class.
 Handles HP, damage, healing, death, and resurrection.
 """
 
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 from jeuxRPG.i18n import t
 
@@ -24,15 +24,15 @@ class HealthMixin:
     - Damage reduction computation
     """
 
-    def is_alive(self: 'Character') -> bool:
+    def is_alive(self: "Character") -> bool:
         """Check if character is alive (HP > 0)."""
         return self.hp.current_value > 0
 
-    def _get_reduction(self: 'Character') -> Dict[str, List[int]]:
+    def _get_reduction(self: "Character") -> dict[str, list[int]]:
         """Get damage reduction stats from status effects."""
         return self.status["alteration"]["Damage"]["Reduction"]
 
-    def _compute_damage(self: 'Character', amount: float) -> float:
+    def _compute_damage(self: "Character", amount: float) -> float:
         """
         Compute final damage after applying reductions.
 
@@ -55,7 +55,7 @@ class HealthMixin:
 
         return max(0, final_amount)
 
-    def lose_hp(self: 'Character', source: 'Character', amount: int) -> str:
+    def lose_hp(self: "Character", source: "Character", amount: int) -> str:
         """
         Reduce character's HP by specified amount.
 
@@ -69,8 +69,10 @@ class HealthMixin:
         Raises:
             ValueError: If amount is not positive
         """
+
         def clamp_reduction() -> int:
             import math
+
             endurance = self.get_stat("Endurance").current_value
             L = 0.9
             k = 0.02
@@ -92,18 +94,20 @@ class HealthMixin:
         # Apply endurance-based damage reduction
         reduction = clamp_reduction()
 
-        amount = int(amount * (1 - (reduction/100)))
+        amount = int(amount * (1 - (reduction / 100)))
 
         self.hp.current_value = max(0, self.hp.current_value - amount)
 
-        message = t("combat.dealt_damage", attacker=source.name, damage=amount, target=self.name)
+        message = t(
+            "combat.dealt_damage", attacker=source.name, damage=amount, target=self.name
+        )
         if not self.is_alive():
             message += f" {self.drop_xp(source)}"
             self.invocations.kill_all()
 
         return message
 
-    def gain_hp(self: 'Character', amount: int) -> str:
+    def gain_hp(self: "Character", amount: int) -> str:
         """
         Restore character's HP by specified amount.
 
@@ -125,11 +129,11 @@ class HealthMixin:
 
         return t("combat.healed", name=self.name, amount=actual_heal)
 
-    def _check_death(self: 'Character') -> bool:
+    def _check_death(self: "Character") -> bool:
         """Check if character should die from status effects."""
         return self.status.get("Death_in", 0) == 0
 
-    def resurrect(self: 'Character', reviver: 'Character') -> str:
+    def resurrect(self: "Character", reviver: "Character") -> str:
         """
         Resurrect a defeated character.
 

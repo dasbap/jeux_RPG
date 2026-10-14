@@ -124,7 +124,8 @@ def test_complete_tutorial_and_acquired_skills(game, class_name):
     before = me["max_hp"]
     command(game, player["token"], "craft", recipe="veste")
     result = command(game, player["token"], "travel", destination="brume")
-    assert result["state"] == "finished"
+    assert result["state"] == "running"
+    assert result["tutorial"]["step"] == "complete"
     assert result["tutorial"]["step"] == "complete"
     assert result["tutorial"]["players"][0]["max_hp"] == before + 10
     assert result["tutorial"]["players"][0]["inventory"] == {"peau": 2, "croc": 1}

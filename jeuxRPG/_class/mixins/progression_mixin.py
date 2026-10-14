@@ -6,12 +6,16 @@ Handles experience, leveling up, and stat upgrades.
 
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
-from jeuxRPG.i18n import t
 from jeuxRPG._class.res.character.stats.basic_stat import (
-    HP, Endurance, Force, Intelligence, Sagesse
+    HP,
+    Endurance,
+    Force,
+    Intelligence,
+    Sagesse,
 )
+from jeuxRPG.i18n import t
 
 if TYPE_CHECKING:
     from jeuxRPG._class.character import Character
@@ -28,7 +32,7 @@ class ProgressionMixin:
     - XP drop on death
     """
 
-    def drop_xp(self: 'Character', killer: 'Character') -> str:
+    def drop_xp(self: "Character", killer: "Character") -> str:
         """
         Handle XP drop when character is defeated.
 
@@ -39,14 +43,21 @@ class ProgressionMixin:
             Result message string
         """
         get_xp_reward = getattr(self, "get_xp_reward", None)
-        xp_given = get_xp_reward() if callable(get_xp_reward) else self.level * 50 + self.exp
+        xp_given = (
+            get_xp_reward() if callable(get_xp_reward) else self.level * 50 + self.exp
+        )
         beneficiary = getattr(killer, "master", killer)
         beneficiary.gain_exp(xp_given)
         self.exp = 0
         self.level = max(1, self.level - 5)
-        return t("progression.defeated_xp", killer=killer.name, amount=xp_given, defeated=self.name)
+        return t(
+            "progression.defeated_xp",
+            killer=killer.name,
+            amount=xp_given,
+            defeated=self.name,
+        )
 
-    def gain_exp(self: 'Character', amount: int) -> str:
+    def gain_exp(self: "Character", amount: int) -> str:
         """
         Gain experience points, potentially leveling up multiple times.
 
@@ -73,15 +84,15 @@ class ProgressionMixin:
 
         return " ".join(messages)
 
-    def can_level_up(self: 'Character') -> bool:
+    def can_level_up(self: "Character") -> bool:
         """Check if character has enough XP to level up."""
         return self.exp >= self._required_exp_for_next_level()
 
-    def _required_exp_for_next_level(self: 'Character') -> int:
+    def _required_exp_for_next_level(self: "Character") -> int:
         """Calculate XP needed for next level."""
         return self.level * 100
 
-    def level_up(self: 'Character') -> str:
+    def level_up(self: "Character") -> str:
         """
         Récursivement augmente le niveau du personnage si assez d'XP.
         Cumule les bonus dans self.tmp.
@@ -92,7 +103,7 @@ class ProgressionMixin:
                 "start_level": self.level,
                 "stats": defaultdict(int),
                 "energies": defaultdict(int),
-                "new_energies": []
+                "new_energies": [],
             }
 
         if not self.can_level_up():
@@ -101,12 +112,21 @@ class ProgressionMixin:
                 return t("progression.need_more_xp", name=self.name, amount=needed_xp)
 
             # Construction du message final unique
-            final_msg = [t("progression.level_up", name=self.name, from_level=self.tmp['start_level'], to_level=self.level)]
+            final_msg = [
+                t(
+                    "progression.level_up",
+                    name=self.name,
+                    from_level=self.tmp["start_level"],
+                    to_level=self.level,
+                )
+            ]
 
             for stat, value in self.tmp["stats"].items():
                 final_msg.append(t("progression.stat_up", stat_name=stat, value=value))
             for energy, value in self.tmp["energies"].items():
-                final_msg.append(t("progression.energy_up", energy_name=energy, value=value))
+                final_msg.append(
+                    t("progression.energy_up", energy_name=energy, value=value)
+                )
             for energy_type in self.tmp["new_energies"]:
                 final_msg.append(t("progression.new_energy", energy_type=energy_type))
 
@@ -116,11 +136,11 @@ class ProgressionMixin:
         self.exp -= self._required_exp_for_next_level()
         self.level += 1
 
-        for level_skills_dict in self.class_skills_dict.keys():
+        for level_skills_dict in self.class_skills_dict:
             if level_skills_dict == "level " + str(self.level):
                 self.skills.update(deepcopy(self.class_skills_dict[level_skills_dict]))
 
-        upgrades: Dict[int, Dict] = self.class_table["upgrade_stats"]
+        upgrades: dict[int, dict] = self.class_table["upgrade_stats"]
         for threshold in sorted(upgrades.keys()):
             if self.level < threshold:
                 continue

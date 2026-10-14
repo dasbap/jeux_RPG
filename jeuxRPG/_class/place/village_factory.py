@@ -6,27 +6,25 @@ complet avec tous les bâtiments. Les PNJ sont chargés depuis les
 fichiers JSON dans .data/saves/npcs/
 """
 
-from jeuxRPG._class.place.town import Town
-from jeuxRPG._class.place.navigation import Navigator
 from jeuxRPG._class.place.jobs.npc_loader import load_npcs_for_village
-from jeuxRPG._class.res.classType import Build_type, Build_state
-
+from jeuxRPG._class.place.navigation import Navigator
+from jeuxRPG._class.place.town import Town
+from jeuxRPG._class.res.classType import Build_state, Build_type
 
 # Liste des PNJ du village de départ
 STARTING_VILLAGE_NPCS = [
-    "elara",        # Aubergiste
-    "baldric",      # Forgeron
-    "marco",        # Marchand
+    "elara",  # Aubergiste
+    "baldric",  # Forgeron
+    "marco",  # Marchand
     "pere_thomas",  # Prêtre
     "maire_henri",  # Maire
-    "pierre",       # Garde
-    "jacques",      # Garde
+    "pierre",  # Garde
+    "jacques",  # Garde
 ]
 
 
 def create_starting_village(
-    name: str = "Vallon Paisible",
-    load_npcs: bool = True
+    name: str = "Vallon Paisible", load_npcs: bool = True
 ) -> Town:
     """
     Crée un village de départ complet.
@@ -44,50 +42,36 @@ def create_starting_village(
         Town: Le village de départ configuré
     """
     # === Créer la ville ===
-    village = Town(
-        name=name,
-        population=150,
-        wealth=500,
-        reputation=50
-    )
+    village = Town(name=name, population=150, wealth=500, reputation=50)
 
     # === Créer le quartier central ===
     centre = village.create_district("Place Centrale")
 
     # === Créer les bâtiments ===
     centre.create_building(
-        "L'Étoile du Voyageur",
-        Build_type.INN,
-        level=2,
-        status=Build_state.OPERATIONAL
+        "L'Étoile du Voyageur", Build_type.INN, level=2, status=Build_state.OPERATIONAL
     )
 
     centre.create_building(
-        "La Forge Ardente",
-        Build_type.FORGE,
-        level=1,
-        status=Build_state.OPERATIONAL
+        "La Forge Ardente", Build_type.FORGE, level=1, status=Build_state.OPERATIONAL
     )
 
     centre.create_building(
-        "Bazar du Coin",
-        Build_type.SHOP,
-        level=1,
-        status=Build_state.OPERATIONAL
+        "Bazar du Coin", Build_type.SHOP, level=1, status=Build_state.OPERATIONAL
     )
 
     centre.create_building(
         "Temple de la Lumière",
         Build_type.TEMPLE,
         level=2,
-        status=Build_state.OPERATIONAL
+        status=Build_state.OPERATIONAL,
     )
 
     centre.create_building(
         "Maison du Conseil",
         Build_type.TOWN_HALL,
         level=1,
-        status=Build_state.OPERATIONAL
+        status=Build_state.OPERATIONAL,
     )
 
     # === Définir l'entrée ===

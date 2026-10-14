@@ -4,7 +4,7 @@ Energy management mixin for Character class.
 Handles energy systems, consumption, regeneration, and management.
 """
 
-from typing import TYPE_CHECKING, List, Type
+from typing import TYPE_CHECKING
 
 from jeuxRPG.i18n import t
 
@@ -23,7 +23,7 @@ class EnergyMixin:
     - Energy type management (add, change, get)
     """
 
-    def has_required_energie(self: 'Character', skill) -> bool:
+    def has_required_energie(self: "Character", skill) -> bool:
         """
         Check if character has enough energy to use skill.
 
@@ -39,7 +39,9 @@ class EnergyMixin:
         except (TypeError, AttributeError):
             return False
 
-    def consume_energie(self: 'Character', amount: int, energie_type: Type['Energie']) -> None:
+    def consume_energie(
+        self: "Character", amount: int, energie_type: type["Energie"]
+    ) -> None:
         """
         Consume specified amount of energy.
 
@@ -57,7 +59,9 @@ class EnergyMixin:
             raise ValueError("Not enough energy")
         energie.current_value -= amount
 
-    def gain_energie(self: 'Character', amount: int, energie_type: Type['Energie']) -> str:
+    def gain_energie(
+        self: "Character", amount: int, energie_type: type["Energie"]
+    ) -> str:
         """
         Restore specified amount of energy.
 
@@ -79,9 +83,14 @@ class EnergyMixin:
         actual_gain = min(amount, max_gain)
         energie.current_value += actual_gain
 
-        return t("energy.restored", name=self.name, amount=actual_gain, energy_type=energie.name.lower())
+        return t(
+            "energy.restored",
+            name=self.name,
+            amount=actual_gain,
+            energy_type=energie.name.lower(),
+        )
 
-    def add_energie(self: 'Character', energie: 'Energie') -> None:
+    def add_energie(self: "Character", energie: "Energie") -> None:
         """
         Add new energy type to character.
 
@@ -92,10 +101,14 @@ class EnergyMixin:
             ValueError: If energy type already exists
         """
         if any(isinstance(e, type(energie)) for e in self.energie):
-            raise ValueError(f"{energie.name} is already in the energy's list of {self.name}")
+            raise ValueError(
+                f"{energie.name} is already in the energy's list of {self.name}"
+            )
         self.energie.append(energie)
 
-    def change_energie(self: 'Character', old_energie: Type['Energie'], new_energie: 'Energie') -> None:
+    def change_energie(
+        self: "Character", old_energie: type["Energie"], new_energie: "Energie"
+    ) -> None:
         """
         Replace one energy type with another.
 
@@ -110,9 +123,11 @@ class EnergyMixin:
             if isinstance(energie, old_energie):
                 self.energie[i] = new_energie
                 return
-        raise TypeError(f"{old_energie.__name__} is not in the energy's list of {self.name}")
+        raise TypeError(
+            f"{old_energie.__name__} is not in the energy's list of {self.name}"
+        )
 
-    def get_energie(self: 'Character', energie_type: Type['Energie']) -> 'Energie':
+    def get_energie(self: "Character", energie_type: type["Energie"]) -> "Energie":
         """
         Get energy instance of specified type.
 
@@ -128,4 +143,6 @@ class EnergyMixin:
         for energie in self.energie:
             if isinstance(energie, energie_type):
                 return energie
-        raise TypeError(f"{energie_type.__name__} is not in the energy's list of {self.name}")
+        raise TypeError(
+            f"{energie_type.__name__} is not in the energy's list of {self.name}"
+        )

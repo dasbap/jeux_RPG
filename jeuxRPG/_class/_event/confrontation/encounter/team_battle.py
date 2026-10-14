@@ -1,16 +1,12 @@
-
-
 from random import shuffle
-from typing import List, Union
 
 from jeuxRPG._class._event.confrontation.encounter.fight import Fight
-from jeuxRPG._class.character import Character
 from jeuxRPG._class.res.team.alliance import Alliance
 from jeuxRPG._class.res.team.team import Team
 
 
 class TeamBattle:
-    def __init__(self, *teams: Union[List['Team'], 'Team']):
+    def __init__(self, *teams: "list[Team] | Team"):
         """Initialize a team battle with multiple teams or team lists.
 
         Args:
@@ -19,20 +15,20 @@ class TeamBattle:
         if len(teams) < 2:
             raise RuntimeError("At least 2 teams required for battle")
 
-        self.teams: List['Team'] = []
+        self.teams: list[Team] = []
         for t in teams:
             if isinstance(t, list):
                 self.teams.extend(t)
             else:
                 self.teams.append(t)
 
-        self.fights: List['Fight'] = []
-        self.alliances: List['Alliance'] = []
+        self.fights: list[Fight] = []
+        self.alliances: list[Alliance] = []
         self._format_battle()
 
     def _format_battle(self) -> None:
         """Organise les équipes en alliances et configure les combats"""
-        tmp_alliances: List['Alliance'] = []
+        tmp_alliances: list[Alliance] = []
 
         for team in self.teams:
             if any(team in alliance.get_allies() for alliance in tmp_alliances):
@@ -41,7 +37,8 @@ class TeamBattle:
             allies = {team} | set(team.get_allies())
 
             related_alliances = [
-                a for a in tmp_alliances
+                a
+                for a in tmp_alliances
                 if any(ally in a.get_allies() for ally in allies)
             ]
 
@@ -56,7 +53,7 @@ class TeamBattle:
                     if ally not in main_alliance.get_allies():
                         main_alliance.add_member(ally)
             else:
-                alliance_name = f"Alliance-{len(tmp_alliances)+1}"
+                alliance_name = f"Alliance-{len(tmp_alliances) + 1}"
                 new_alliance = Alliance(alliance_name)
                 for ally in allies:
                     new_alliance.add_member(ally)
@@ -71,29 +68,24 @@ class TeamBattle:
         self.fights.clear()
 
         for i, alliance1 in enumerate(self.alliances):
-            for alliance2 in self.alliances[i+1:]:
+            for alliance2 in self.alliances[i + 1 :]:
                 if self._are_enemies(alliance1, alliance2):
                     fight_name = f"{alliance1.name} vs {alliance2.name}"
                     self.fights.append(Fight(alliance1, alliance2, fight_name))
                     alliance1.add_enemy(alliance2)
 
-    def _are_enemies(self, a1: 'Alliance', a2: 'Alliance') -> bool:
+    def _are_enemies(self, a1: "Alliance", a2: "Alliance") -> bool:
         """Détermine si deux alliances sont ennemies (non-alliées par défaut)"""
         if a1 == a2:
             return False
 
         # Crée un set des alliés pour une recherche plus rapide
-        a2_allies = {team for team in a2.get_allies()}
+        a2_allies = set(a2.get_allies())
 
         # Vérifie si au moins un membre de a1 est allié avec un membre de a2
-        for team1 in a1.get_allies():
-            if team1 in a2_allies:
-                return False
+        return all(team1 not in a2_allies for team1 in a1.get_allies())
 
-        # Aucune alliance trouvée, donc elles sont ennemies
-        return True
-
-    def get_team_alliance(self, team: 'Team') -> 'Alliance':
+    def get_team_alliance(self, team: "Team") -> "Alliance":
         """Trouve l'alliance d'une équipe"""
         for alliance in self.alliances:
             if team in alliance.get_allies():

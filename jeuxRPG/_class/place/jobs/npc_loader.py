@@ -3,21 +3,22 @@ Loader pour charger les PNJ depuis les fichiers JSON.
 """
 
 import json
-import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from jeuxRPG._class.place.jobs.job import Job
 from jeuxRPG._class.place.jobs.job_types import JobType
 from jeuxRPG._class.place.jobs.npc import NPC
 
 if TYPE_CHECKING:
-    from jeuxRPG._class.place.building import Building
     from jeuxRPG._class.place.town import Town
 
 
 # Chemin par défaut vers les fichiers NPC
-DEFAULT_NPC_PATH = Path(__file__).parent.parent.parent.parent.parent / ".data" / "saves" / "npcs"
+DEFAULT_NPC_PATH = (
+    Path(__file__).parent.parent.parent.parent.parent / ".data" / "saves" / "npcs"
+)
 
 
 def get_npc_path() -> Path:
@@ -35,7 +36,7 @@ def load_npc_from_file(filepath: str | Path) -> dict:
     Returns:
         dict: Données brutes du PNJ
     """
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -59,10 +60,7 @@ def load_npc_data(npc_id: str, npc_path: Path | None = None) -> dict | None:
     return load_npc_from_file(filepath)
 
 
-def create_npc_from_data(
-    data: dict,
-    location_resolver: Callable | None = None
-) -> NPC:
+def create_npc_from_data(data: dict, location_resolver: Callable | None = None) -> NPC:
     """
     Crée un objet NPC à partir des données JSON.
 
@@ -81,7 +79,7 @@ def create_npc_from_data(
     job = Job(
         name=job_data.get("name", data["name"]),
         job_type=job_type,
-        level=job_data.get("level", 1)
+        level=job_data.get("level", 1),
     )
 
     # Ajouter les recettes
@@ -110,16 +108,14 @@ def create_npc_from_data(
         dialogues=data.get("dialogues"),
         inventory=data.get("inventory", []),
         gold=data.get("gold", 100),
-        quests=data.get("quests", [])
+        quests=data.get("quests", []),
     )
 
     return npc
 
 
 def load_npc(
-    npc_id: str,
-    location_resolver: Callable | None = None,
-    npc_path: Path | None = None
+    npc_id: str, location_resolver: Callable | None = None, npc_path: Path | None = None
 ) -> NPC | None:
     """
     Charge et crée un NPC depuis un fichier JSON.
@@ -140,8 +136,7 @@ def load_npc(
 
 
 def load_all_npcs(
-    npc_path: Path | None = None,
-    location_resolver: Callable | None = None
+    npc_path: Path | None = None, location_resolver: Callable | None = None
 ) -> list[NPC]:
     """
     Charge tous les PNJ depuis le dossier.
@@ -171,9 +166,7 @@ def load_all_npcs(
 
 
 def load_npcs_for_village(
-    village: "Town",
-    npc_ids: list[str] | None = None,
-    npc_path: Path | None = None
+    village: "Town", npc_ids: list[str] | None = None, npc_path: Path | None = None
 ) -> list[NPC]:
     """
     Charge des PNJ et les associe aux bâtiments d'un village.
@@ -186,7 +179,10 @@ def load_npcs_for_village(
     Returns:
         list[NPC]: Liste des PNJ chargés
     """
-    def location_resolver(town_name: str | None, district_name: str | None, building_name: str | None):
+
+    def location_resolver(
+        town_name: str | None, district_name: str | None, building_name: str | None
+    ):
         """Résout une location vers un Building."""
         if not building_name:
             return None
@@ -233,12 +229,12 @@ def save_npc_to_file(npc: NPC, npc_id: str, npc_path: Path | None = None) -> Pat
     location_data = None
     if npc.location:
         building = npc.location
-        district = getattr(building, 'district', None)
-        town = getattr(district, 'town', None) if district else None
+        district = getattr(building, "district", None)
+        town = getattr(district, "town", None) if district else None
         location_data = {
             "town": town.name if town else None,
             "district": district.name if district else None,
-            "building": building.name
+            "building": building.name,
         }
 
     data = {
@@ -248,13 +244,13 @@ def save_npc_to_file(npc: NPC, npc_id: str, npc_path: Path | None = None) -> Pat
             "name": npc.job.name,
             "type": npc.job.job_type.name,
             "level": npc.job.level,
-            "recipes": npc.job.recipes
+            "recipes": npc.job.recipes,
         },
         "location": location_data,
         "gold": npc.gold,
         "inventory": npc.inventory,
         "quests": npc.quests,
-        "dialogues": npc.dialogues
+        "dialogues": npc.dialogues,
     }
 
     with open(filepath, "w", encoding="utf-8") as f:

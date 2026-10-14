@@ -13,16 +13,16 @@ Factory:
 - create_blacksmith, create_innkeeper, create_merchant, etc.
 """
 
-from jeuxRPG._class.place.jobs.job_types import JobType, ServiceType
 from jeuxRPG._class.place.jobs.job import Job
+from jeuxRPG._class.place.jobs.job_types import JobType, ServiceType
 from jeuxRPG._class.place.jobs.npc import (
     NPC,
     create_blacksmith,
+    create_guard,
     create_innkeeper,
+    create_mayor,
     create_merchant,
     create_priest,
-    create_mayor,
-    create_guard
 )
 
 __all__ = [

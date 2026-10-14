@@ -4,10 +4,10 @@ Combat management mixin for Character class.
 Handles attack, heal actions, and combat flow.
 """
 
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
-from jeuxRPG.i18n import t
 from jeuxRPG._class.res.classType import SkillType
+from jeuxRPG.i18n import t
 
 if TYPE_CHECKING:
     from jeuxRPG._class.character import Character
@@ -24,10 +24,8 @@ class CombatMixin:
     """
 
     def attack(
-        self: 'Character',
-        target: 'Character',
-        skill_name: Optional[str] = None
-    ) -> Tuple[bool, str]:
+        self: "Character", target: "Character", skill_name: str | None = None
+    ) -> tuple[bool, str]:
         """
         Perform an attack action against target.
 
@@ -59,10 +57,8 @@ class CombatMixin:
         return success, message
 
     def heal(
-        self: 'Character',
-        target: 'Character',
-        skill_name: Optional[str] = None
-    ) -> Tuple[bool, str]:
+        self: "Character", target: "Character", skill_name: str | None = None
+    ) -> tuple[bool, str]:
         """
         Perform a heal action on target.
 

@@ -6,8 +6,8 @@ The export contains account data: never commit or upload it unencrypted.
 import argparse
 import json
 import os
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 from jeuxRPG.multiplayer.turso import TursoConnection
 from scripts.verify_backup import verify_backup

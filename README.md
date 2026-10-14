@@ -11,8 +11,24 @@ Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou
 ```bash
 git clone https://github.com/dasbap/jeux_RPG.git
 cd jeux_RPG
+python -m pip install .
 python main.py
 ```
+
+### Windows avec PowerShell
+
+Depuis le dossier du dépôt :
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install .
+python main.py
+```
+
+Si le venv est déjà créé et activé, reprendre à `python -m pip install .`.
+
+`python -m pip install -r requirements.txt` installe également le projet et toutes ses dépendances. L’option `-r` est en minuscule ; `-R` n’existe pas. Le paquet Python `redis` est requis ; aucun serveur Redis externe n’est nécessaire pour le mode local.
 
 Ouvrir **http://127.0.0.1:8080**.
 
@@ -400,7 +416,7 @@ Le builder ouvre un **Aperçu rendu final** autonome dans le navigateur, avec le
 
 ## Contrôleur du projet
 
-`python controller.py` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.
+`python -m jeuxRPG.multiplayer.controller` ou `jeux-rpg-controller` ouvre le contrôleur graphique : builder, quêtes, espèces, succès et titres, PNJ et paramètres du monde. Voir [le guide complet](docs/CONTROLLER_GUIDE.md). Enregistrer puis redémarrer le serveur pour appliquer les définitions.
 
 ## Alpha 0.11.0a20 — accès du builder et parcours client
 
@@ -415,3 +431,5 @@ Le [parcours client sur les données actuelles](docs/DEMO_UI.md) utilise des cli
 L’exécution de l’audit complémentaire, les preuves et les réserves sont dans [le rapport courant](docs/audit-20261011-followup/REPORT.md). Les protections master/prod sont actives. La publication exige désormais une sauvegarde Turso exportée, restaurée et conservée chiffrée ; configurer la variable publique `RPG_BACKUP_RECIPIENT` avant de lancer le workflow. [Le rapport précédent](docs/audit-20261011/FINAL_REPORT.md) conserve les preuves historiques.
 
 Pour contrôler une sauvegarde SQLite exportée et stable, arrêter le serveur qui écrit ce fichier puis lancer `python scripts/verify_backup.py chemin/monde.sqlite3`. Le contrôle ouvre la source en lecture seule, restaure une copie temporaire, compare ses tables et vérifie la réouverture du moteur. Il ne crée pas une sauvegarde durable et ne certifie pas les sauvegardes distantes Turso ou Redis.
+
+Les conventions uniformes du moteur et les contrôles de non-régression sont décrits dans [la politique de qualité](docs/ENGINE_QUALITY.md).
