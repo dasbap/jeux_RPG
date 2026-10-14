@@ -11,9 +11,9 @@ def test_local_and_packaged_world_group_maps_into_five_zones():
         maps = data.get("maps", data)
         places = layout_places(maps)
         assert set(places) == {"foret_eveilles", "zone_rosee", "zone_lisiere", "zone_brume", "grotte_oublies"}
-        assert {p["id"] for p in places["zone_rosee"]["points"]} == {"rosee", "forest"}
+        assert {p["id"] for p in places["zone_rosee"]["points"]} == {"rosee", "forest", "rosee_prairies", "rosee_verger", "rosee_bois", "rosee_carriere"}
         assert {p["id"] for p in places["zone_lisiere"]["points"]} == {"lisiere", "hunt"}
-        assert {p["id"] for p in places["zone_brume"]["points"]} == {"brume"}
+        assert {p["id"] for p in places["zone_brume"]["points"]} == {"brume", "brume_marais", "brume_ruines", "brume_ravin", "brume_sanctuaire"}
         assert {p["id"] for p in places["grotte_oublies"]["points"]} == {"cave_1", "cave_2"}
         assert all(p["id"] in maps for place in places.values() for p in place["points"])
 
