@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 
@@ -41,13 +40,8 @@ def verify(environment):
         with redis.pubsub() as pubsub:
             pubsub.subscribe("jeux-rpg:runtime:v2:accounts:diagnostic")
             pubsub.get_message(timeout=5)
-        saved = redis.get("jeux-rpg:runtime:v2:accounts:checkpoint")
-    print("Vérification de la restauration du checkpoint Redis." if saved else "Vérification de la restauration depuis Turso.", flush=True)
-    if saved:
-        checkpoint = json.loads(saved)
-        store = RuntimeStore(environment, checkpoint.get("durable", checkpoint))
-    else:
-        store = RuntimeStore.load(environment)
+    print("Vérification de la restauration depuis Turso.", flush=True)
+    store = RuntimeStore.load(environment)
     store.close()
 
 
