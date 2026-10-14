@@ -59,8 +59,8 @@ def test_packaged_world_uses_five_logical_zones():
     expected = {
         "foret_eveilles": {"clearing"},
         "zone_lisiere": {"lisiere", "hunt"},
-        "zone_rosee": {"rosee", "forest"},
-        "zone_brume": {"brume"},
+        "zone_rosee": {"rosee", "forest", "rosee_prairies", "rosee_verger", "rosee_bois", "rosee_carriere"},
+        "zone_brume": {"brume", "brume_marais", "brume_ruines", "brume_ravin", "brume_sanctuaire"},
         "grotte_oublies": {"cave_1", "cave_2"},
     }
     logical = maps["clearing"]["logical_zones"]
