@@ -5,9 +5,6 @@ import threading
 import time
 from collections import deque
 
-from redis import Redis
-from redis.exceptions import RedisError
-
 from .redis_configuration import redis_url
 
 RATE_SCRIPT = """
@@ -17,6 +14,12 @@ if current == 1 then
 end
 return current
 """
+
+
+def redis_client(url, **options):
+    from redis import Redis
+
+    return Redis.from_url(url, **options)
 
 
 class LocalRateLimiter:
@@ -47,7 +50,7 @@ class LocalRateLimiter:
 
 class RedisRateLimiter:
     def __init__(self, url, prefix="jeux-rpg:rate:v1:", fallback=None):
-        self.redis = Redis.from_url(
+        self.redis = redis_client(
             url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
         )
         self.prefix = prefix
@@ -55,6 +58,8 @@ class RedisRateLimiter:
         self._warned_at = 0.0
 
     def accept(self, key, limit):
+        from redis.exceptions import RedisError
+
         digest = hashlib.sha256(
             json.dumps(key, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
@@ -85,7 +90,7 @@ class PresenceRegistry:
     def __init__(self, url=None, prefix="jeux-rpg:presence:v1:"):
         self.prefix = prefix
         self.redis = (
-            Redis.from_url(
+            redis_client(
                 url, decode_responses=True, socket_connect_timeout=2, socket_timeout=2
             )
             if url

@@ -1,3 +1,5 @@
+import io
+import zipfile
 import asyncio
 import json
 import os
@@ -94,7 +96,8 @@ def main():
     expected_release = os.environ.get('RPG_EXPECTED_RELEASE')
     if expected_release:
         verify_release(base, expected_release)
-    for route, expected in (("/", 200), ("/app_core.js", 200), ("/app_world.js", 200), ("/app_skills.js", 200), ("/app_tutorial.js", 200), ("/app_battle.js", 200), ("/app_camera.js", 200), ("/app_social.js", 200), ("/app.js", 200), ("/app_bootstrap.js", 200), ("/app_session.js", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 401)):
+    solo_only = os.environ.get("RPG_RELEASE_MODE") == "solo"
+    for route, expected in (("/", 200), ("/app_core.js", 200), ("/app_world.js", 200), ("/app_skills.js", 200), ("/app_tutorial.js", 200), ("/app_battle.js", 200), ("/app_camera.js", 200), ("/app_social.js", 200), ("/app.js", 200), ("/app_bootstrap.js", 200), ("/app_session.js", 200), ("/app_modes.js", 200), ("/solo_transport.js", 200), ("/solo_worker.js", 200), ("/solo-engine.zip", 200), ("/mobile_controls.js", 200), ("/admin", 200), ("/admin.js", 200), ("/api/classes", 200), ("/api/admin/accounts", 503 if solo_only else 401)):
         status = None
         error_code = 'unknown'
         for attempt in range(3):
@@ -105,6 +108,12 @@ def main():
                 with urlopen(deployment_request(base + route, headers=headers), timeout=30) as response:
                     status = response.status
                     body = response.read(2 * 1024 * 1024)
+                    if route == "/solo-engine.zip":
+                        with zipfile.ZipFile(io.BytesIO(body)) as archive:
+                            if "jeuxRPG/multiplayer/browser_solo.py" not in archive.namelist():
+                                raise SystemExit("Moteur solo absent du déploiement")
+                    if route == "/solo_worker.js" and "wasm-unsafe-eval" not in response.headers.get("Content-Security-Policy", ""):
+                        raise SystemExit("Compilation WebAssembly solo interdite par la CSP")
                     if route == "/api/classes":
                         if "application/json" not in response.headers.get("Content-Type", ""):
                             raise SystemExit("API de classes inaccessible : réponse non JSON")
@@ -123,6 +132,9 @@ def main():
         if status != expected:
             raise SystemExit(f"Vérification échouée : {route}, HTTP {status}, attendu {expected}, code {error_code}")
         print(f"Route vérifiée : {route}, HTTP {status}")
+    if solo_only:
+        print("Version, interface, moteur solo et indisponibilité du mode en ligne vérifiés. Publication solo uniquement.")
+        return
     username = "verify_" + uuid.uuid4().hex[:12]
     password = uuid.uuid4().hex + uuid.uuid4().hex
     registration = json.dumps({"username": username, "password": password}).encode()

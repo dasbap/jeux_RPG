@@ -1,6 +1,10 @@
 "use strict";
 function renderCharacters() {
   if (!accountState) return;
+  soloTransport?.subscribe(false);
+  $("mode-online").setAttribute("aria-pressed", String(gameMode === "online"));
+  $("mode-solo").setAttribute("aria-pressed", String(gameMode === "solo"));
+  $("mode-status").textContent = gameMode === "solo" ? "Solo · sauvegarde sur cet appareil uniquement. Aucun transfert vers le mode en ligne." : "En ligne · personnages sauvegardés sur le serveur.";
   document.body.classList.remove("combat-active", "hud-menu-open");
   $("characters").hidden = false;
   $("registration").hidden = true;
@@ -28,6 +32,7 @@ async function selectCharacter(body) {
   stateEpoch++;
   try {
     accountState = await api("/api/account/character", body);
+    if (gameMode === "solo") token = accountState.token;
     session = null;
     sessionId = "";
     presenceState = null;
@@ -35,6 +40,7 @@ async function selectCharacter(body) {
     currentView = "map";
     sectionSignatures.clear();
     $("characters").hidden = true;
+    soloTransport?.subscribe(true);
     remember();
   } catch (error) { message(error.message, true); }
   finally { busy = false; if ($("characters").hidden) await refresh(true); }
@@ -112,7 +118,7 @@ for (const id of ["choose-character", "choose-character-options"]) $(id).addEven
   try { accountState = await api("/api/account/me"); renderCharacters(); } catch (error) { message(error.message, true); }
 });
 $("character-create").addEventListener("submit", event => {event.preventDefault(); selectCharacter({action: "create", name: $("new-character-name").value, class_name: $("new-character-class").value});});
-$("character-cancel").addEventListener("click", () => {$("characters").hidden = true; sectionSignatures.clear(); refresh(true);});
+$("character-cancel").addEventListener("click", () => {$("characters").hidden = true; soloTransport?.subscribe(true); sectionSignatures.clear(); refresh(true);});
 $("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});
 $("social-invite").addEventListener("click", () => socialAction("team_invite", {username: $("social-name").value.trim()}));
 $("social-guild-invite")?.addEventListener("click", () => socialAction("guild_invite", {username: $("social-name").value.trim()}));

@@ -13,6 +13,7 @@ const files = [
   "app.js",
   "app_bootstrap.js",
   "app_session.js",
+  "app_modes.js",
 ];
 
 function clientSource(root = path.join(__dirname, "..", "jeuxRPG", "multiplayer", "web")) {

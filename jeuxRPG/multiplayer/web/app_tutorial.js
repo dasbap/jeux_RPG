@@ -65,7 +65,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("outing-vitals").hidden = fighting;
   if (!fighting) renderVitals("outing-vitals", adventure.players);
   document.body.classList.toggle("combat-active", Boolean(session?.tutorial));
-  $("chat-toggle").hidden = !session?.tutorial;
+  $("chat-toggle").hidden = gameMode === "solo" || !session?.tutorial;
   if (!fighting) combatFullscreenRequested = false;
   if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
   $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
