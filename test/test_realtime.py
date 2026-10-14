@@ -355,7 +355,7 @@ def test_two_instances_share_one_engine_and_recover_from_turso_without_redis_sna
     async def run():
         persisted = []
         durable = {'value': None}
-        monkeypatch.setattr(RuntimeStore, 'load', classmethod(lambda cls, environment: RuntimeStore(environment, durable['value'])))
+        monkeypatch.setattr(RuntimeStore, 'load', classmethod(lambda cls, environment, fence=None: RuntimeStore(environment, durable['value'])))
         def persist(store, fence, batch):
             persisted.append((fence, batch))
             durable['value'] = json.loads(store.snapshot())

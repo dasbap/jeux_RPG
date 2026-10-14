@@ -164,7 +164,9 @@ class Coordinator:
             if saved and not await self.restore_legacy_checkpoint(saved):
                 self.deadline = 0
                 return
-            loaded = await asyncio.to_thread(RuntimeStore.load, self.environment)
+            loaded = await asyncio.to_thread(
+                RuntimeStore.load, self.environment, self.fence
+            )
             try:
                 if getattr(loaded, "reset_performed", False):
                     await self.redis.set(
