@@ -1,11 +1,16 @@
 import ast
 import os
-from pathlib import Path
 import sys
 import tomllib
+from pathlib import Path
 
 
 def check(root, environment):
+    from jeuxRPG.multiplayer.redis_configuration import (
+        RedisConfigurationError,
+        redis_url,
+    )
+
     errors = []
     for name in ("app.py", "jeuxRPG/multiplayer/realtime.py", "jeuxRPG/multiplayer/realtime_store.py", "jeuxRPG/multiplayer/serverless.py", "jeuxRPG/multiplayer/turso.py", "jeuxRPG/multiplayer/schema.py", "jeuxRPG/multiplayer/admin.py", "jeuxRPG/_class/character.py"):
         path = root / name
@@ -22,8 +27,13 @@ def check(root, environment):
     for name in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
         if not environment.get(name):
             errors.append(f"Variable Vercel requise absente : {name}")
-    if not (environment.get('REDIS_URL') or environment.get('KV_URL')):
-        errors.append('REDIS_URL requis : connectez le stockage Redis au projet Vercel jeux-rpg')
+    try:
+        selected_redis = redis_url(environment)
+    except RedisConfigurationError as error:
+        errors.append(str(error))
+    else:
+        if not selected_redis or selected_redis == '[SENSITIVE]':
+            errors.append('REDIS_URL ou REDIS_URLS requis : configurez le stockage Redis du projet jeux-rpg')
     if len(environment.get("RPG_ADMIN_TOKEN", "")) < 32:
         errors.append("RPG_ADMIN_TOKEN requis : secret administrateur distinct de 32 caractères minimum")
     if not (root / "jeuxRPG" / "maps" / "world.json").is_file():

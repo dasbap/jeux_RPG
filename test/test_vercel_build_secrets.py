@@ -25,3 +25,22 @@ def test_missing_ci_secret_fails_before_rewriting_configuration(tmp_path, value)
     with pytest.raises(ValueError, match="TURSO_DATABASE_URL"):
         prepare(path, {"TURSO_DATABASE_URL": value})
     assert path.read_text() == "REDIS_URL='redis://fixture'\n"
+
+
+def test_multiple_redis_urls_are_restored_from_ci_secret_with_selected_index(tmp_path):
+    path = tmp_path / "production.local"
+    path.write_text("REDIS_URLS='[SENSITIVE]'\nRPG_REDIS_ACTIVE_INDEX='0'\n")
+    secrets = {"TURSO_DATABASE_URL": "libsql://fixture", "TURSO_AUTH_TOKEN": "fixture-token", "RPG_ADMIN_TOKEN": "fixture-admin", "REDIS_URLS": '["redis://first","rediss://second"]', "RPG_REDIS_ACTIVE_INDEX": "1"}
+    prepare(path, secrets)
+    values = dotenv_values(path)
+    assert values["REDIS_URLS"] == secrets["REDIS_URLS"]
+    assert values["RPG_REDIS_ACTIVE_INDEX"] == "1"
+
+
+def test_unavailable_secret_list_does_not_silently_use_another_redis(tmp_path):
+    path = tmp_path / "production.local"
+    path.write_text("REDIS_URLS='[SENSITIVE]'\nREDIS_URL='redis://old'\n")
+    secrets = {"TURSO_DATABASE_URL": "libsql://fixture", "TURSO_AUTH_TOKEN": "fixture-token", "RPG_ADMIN_TOKEN": "fixture-admin"}
+    with pytest.raises(ValueError, match="REDIS_URLS"):
+        prepare(path, secrets)
+    assert "[SENSITIVE]" in path.read_text()

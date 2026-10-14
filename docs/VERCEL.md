@@ -11,6 +11,8 @@ L’application déployée expose `app:app`, une application FastAPI/ASGI créé
 - `RPG_ADMIN_TOKEN` : secret aléatoire distinct, au moins 32 caractères, pour le panneau administrateur.
 - `RPG_PUBLIC_ORIGIN` : origine HTTPS sans chemin si un domaine personnalisé est utilisé.
 - `REDIS_URL` ou `KV_URL` : Redis partagé pour coordination temps réel, présence et rate limiting distribué.
+- `REDIS_URLS` : liste JSON facultative d'URL Redis ; a priorité sur les deux variables précédentes.
+- `RPG_REDIS_ACTIVE_INDEX` : index de l'instance active dans cette liste, à partir de 0. Le moteur et les autres services Redis utilisent tous cet index.
 
 Configurer ces valeurs pour les environnements réellement déployés. Les previews doivent utiliser une base distincte pour isoler les données. Les secrets GitHub ne sont pas transmis automatiquement à Vercel.
 
@@ -40,7 +42,9 @@ Le contrôle avant build vérifie les fichiers et les variables sans afficher le
 
 ## Branche de publication
 
-`master` contient le code intégré. `deploy/production` désigne une révision prête à publier. Pour la mettre à jour, fusionner une révision validée de `master` sans réécrire son historique. Lancer **Publication Vercel jeux-rpg** manuellement sur cette branche.
+`master` contient le code intégré. `prod` est la branche publiée par le workflow **Publication Vercel jeux-rpg** à chaque push, ainsi que lors d'un lancement manuel sur cette branche.
+
+Pour configurer plusieurs instances, ajouter le secret `REDIS_URLS` et la variable `RPG_REDIS_ACTIVE_INDEX` dans l'environnement GitHub `production`. Le workflow les synchronise vers Vercel et restaure les secrets CI pour le build local, car les secrets Vercel récupérés par `vercel pull` sont remplacés par `[SENSITIVE]`. La procédure de bascule et la reprise depuis Turso sont décrites dans [realtime.md](realtime.md#plusieurs-url-redis).
 
 Le workflow exécute les tests et migrations, prépare un déploiement de production avec `--skip-domain`, contrôle son URL exacte et son `RPG_RELEASE_SHA`, puis promeut ce même déploiement. Le domaine public reste sur la précédente version tant que la vérification échoue. `VERCEL_TOKEN`, les accès Turso et les accès Redis doivent correspondre au projet existant. Pour un déploiement protégé, fournir le secret `VERCEL_AUTOMATION_BYPASS_SECRET` au vérificateur.
 

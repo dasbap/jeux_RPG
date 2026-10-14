@@ -12,6 +12,7 @@ from redis.exceptions import (
 )
 
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
+from jeuxRPG.multiplayer.redis_configuration import redis_url
 
 
 def failure_code(error):
@@ -30,7 +31,7 @@ def failure_code(error):
 
 
 def verify(environment):
-    url = environment.get("REDIS_URL") or environment.get("KV_URL")
+    url = redis_url(environment)
     if not url:
         raise RuntimeError("missing_configuration")
     print("Vérification de la connexion Redis.", flush=True)
