@@ -164,7 +164,7 @@ class RuntimeStore:
         self.observed_changes = self.db.total_changes
 
     @classmethod
-    def load(cls, environment):
+    def load(cls, environment, fence=None):
         connection = TursoConnection(
             environment["TURSO_DATABASE_URL"], environment["TURSO_AUTH_TOKEN"]
         )
@@ -177,9 +177,24 @@ class RuntimeStore:
                 from .account_rollout import reset_test_players
 
                 reset = reset_test_players(connection)
+            if fence is not None:
+                current = connection.execute_many(
+                    [
+                        ("BEGIN IMMEDIATE", ()),
+                        ("SELECT value FROM meta WHERE key='runtime_fence'", ()),
+                    ]
+                )[-1].fetchone()
+                if current and int(current[0]) > fence:
+                    raise RuntimeError("Moteur remplacé")
+                connection.execute(
+                    "INSERT INTO meta VALUES('runtime_fence',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (str(fence),),
+                )
+            else:
+                connection.execute("BEGIN")
             results = connection.execute_many(
-                [(f"SELECT * FROM {table}", ()) for table in TABLES]
-            )
+                [(f"SELECT * FROM {table}", ()) for table in TABLES] + [("COMMIT", ())]
+            )[:-1]
             store = cls(
                 environment,
                 {

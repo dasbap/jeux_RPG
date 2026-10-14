@@ -257,9 +257,9 @@ def test_save_failure_keeps_changes_for_retry(monkeypatch):
                 raise OSError('Turso indisponible')
         monkeypatch.setattr(store, 'persist', persist)
         coordinator = Coordinator(ENV, store=store)
-        await coordinator.save(store, store.pending_batch(), store.snapshot(), 1)
+        await coordinator.save(store, 1)
         assert store.pending and store.last_save_error
-        await coordinator.save(store, store.pending_batch(), store.snapshot(), 1)
+        await coordinator.save(store, 1)
         assert not store.pending and store.save_count == 1
         store.close()
     asyncio.run(run())
@@ -351,11 +351,15 @@ def test_new_deployment_validates_origin_before_relay_to_old_owner(public):
 
 
 @pytest.mark.skipif(not os.environ.get('RPG_TEST_REDIS_URL'), reason='Redis réel disponible dans le workflow de publication')
-def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
+def test_two_instances_share_one_engine_and_recover_from_turso_without_redis_snapshot(monkeypatch):
     async def run():
         persisted = []
-        monkeypatch.setattr(RuntimeStore, 'load', classmethod(lambda cls, environment: RuntimeStore(environment)))
-        monkeypatch.setattr(RuntimeStore, 'persist', lambda self, fence, batch: persisted.append((fence, batch)))
+        durable = {'value': None}
+        monkeypatch.setattr(RuntimeStore, 'load', classmethod(lambda cls, environment, fence=None: RuntimeStore(environment, durable['value'])))
+        def persist(store, fence, batch):
+            persisted.append((fence, batch))
+            durable['value'] = json.loads(store.snapshot())
+        monkeypatch.setattr(RuntimeStore, 'persist', persist)
         a = Coordinator(ENV, redis=Redis.from_url(os.environ['RPG_TEST_REDIS_URL'], decode_responses=True))
         b = Coordinator(ENV, redis=Redis.from_url(os.environ['RPG_TEST_REDIS_URL'], decode_responses=True))
         prefix = 'test:jeux-rpg:' + uuid.uuid4().hex + ':'
@@ -377,6 +381,7 @@ def test_two_instances_share_one_engine_and_recover_checkpoint(monkeypatch):
             assert not a.outgoing and not a.pending
             await a.flush()
             assert len(persisted) == 1
+            assert await a.redis.get(prefix + 'checkpoint') is None
             old_fence = a.fence
             await a.release()
             await b.elect()
