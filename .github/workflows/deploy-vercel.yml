@@ -120,19 +120,42 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
+          REDIS_URLS: ${{ secrets.REDIS_URLS }}
+          RPG_REDIS_ACTIVE_INDEX: ${{ vars.RPG_REDIS_ACTIVE_INDEX }}
         run: |
           python - <<'PY'
           import os
           import subprocess
-          values = {key: os.environ[key] for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN')}
-          values.update(RPG_RESET_TEST_PLAYERS='0', RPG_RUNTIME_REALMS='1')
+          from jeuxRPG.multiplayer.redis_configuration import redis_url
+          values = {key: os.environ[key] for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN', 'RPG_ADMIN_TOKEN')}
+          redis_configuration = {}
+          if os.environ.get('REDIS_URLS'):
+              redis_configuration = {'REDIS_URLS': os.environ['REDIS_URLS'], 'RPG_REDIS_ACTIVE_INDEX': os.environ.get('RPG_REDIS_ACTIVE_INDEX') or '0'}
+              redis_url(redis_configuration)
+              values['REDIS_URLS'] = redis_configuration['REDIS_URLS']
           for key, value in values.items():
               subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive'], input=value, text=True, check=True)
+          configuration = {'RPG_RESET_TEST_PLAYERS': '0', 'RPG_RUNTIME_REALMS': '1'}
+          if redis_configuration:
+              configuration['RPG_REDIS_ACTIVE_INDEX'] = redis_configuration['RPG_REDIS_ACTIVE_INDEX']
+          for key, value in configuration.items():
+              subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--no-sensitive'], input=value, text=True, check=True)
           PY
       - name: Recuperer la configuration de build du projet exact
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: .deploy-tools/node_modules/.bin/vercel pull --yes --environment=production --scope team_qde9V6kikwwSvLtNrjAsAkRY
+      - name: Completer la configuration locale du build avec les secrets CI
+        run: python -m scripts.prepare_vercel_environment
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
+          REDIS_URLS: ${{ secrets.REDIS_URLS }}
+          RPG_REDIS_ACTIVE_INDEX: ${{ vars.RPG_REDIS_ACTIVE_INDEX }}
+      - name: Verifier le stockage du moteur de production
+        run: python -m scripts.verify_runtime_storage
       - name: Construire l'artefact de production en CI
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -152,6 +175,9 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: .deploy-tools/node_modules/.bin/vercel promote "$(cat deployment-url.txt)" --yes
+      - name: Supprimer la configuration locale contenant les secrets CI
+        if: always()
+        run: rm -f .vercel/.env.production.local
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

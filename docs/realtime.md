@@ -18,6 +18,20 @@ Variables de production : `REDIS_URL` ou `KV_URL`, `TURSO_DATABASE_URL`, `TURSO_
 
 Le workflow de publication teste deux instances avec Redis réel avant le déploiement, puis vérifie en production le WebSocket, le tutoriel, la sauvegarde et les lectures d'état sans appel à Turso. Le forfait gratuit reste soumis aux quotas CPU, mémoire, transfert et commandes des fournisseurs.
 
+## Plusieurs URL Redis
+
+`REDIS_URLS` accepte une liste JSON d'URL Redis. `RPG_REDIS_ACTIVE_INDEX` choisit l'entrée active à partir de 0 ; sa valeur par défaut est 0. Cette liste a priorité sur `REDIS_URL` et `KV_URL`. Le moteur, le relais, la présence et les limites de connexion utilisent tous la même entrée. Les autres instances sont des destinations de secours indépendantes, sans réplication automatique.
+
+Pour la production, enregistrer la liste dans le secret GitHub de l'environnement `production` nommé `REDIS_URLS`, puis l'index dans la variable `RPG_REDIS_ACTIVE_INDEX` du même environnement. Exemple de structure avec des valeurs fictives :
+
+```json
+["rediss://utilisateur:mot-de-passe@redis-principal:6379", "rediss://utilisateur:mot-de-passe@redis-secours:6379"]
+```
+
+L'index 1 sélectionne la seconde entrée. Le workflow synchronise ce secret vers le projet Vercel existant et vérifie l'instance sélectionnée avant publication. Sans liste, les installations actuelles continuent d'utiliser `REDIS_URL` ou `KV_URL`.
+
+Une bascule doit se faire pendant une maintenance, après arrêt des anciens moteurs et vérification de la sauvegarde Turso. Utiliser une instance de destination neuve pour reprendre depuis Turso ; réutiliser un ancien checkpoint d'une instance de secours peut réintroduire un état périmé. Les changements encore en RAM ne sont pas transférés entre deux Redis indépendants. La sélection est explicite dans la configuration de déploiement et reste identique pour toutes les instances.
+
 ## Commandes mobiles et budget réseau
 
 Le joystick est calculé dans le navigateur. Il regroupe les mouvements du doigt, limite les intentions de déplacement à quatre par seconde et réutilise une trajectoire déjà en cours. Une position identique ne déclenche pas une nouvelle commande dans la même direction. Le relâchement annule la trajectoire avec une seule commande. Les attaques et sorts utilisent les mêmes fonctions et le même moteur autoritaire que les déplacements ; aucun serveur distinct n'est ajouté.

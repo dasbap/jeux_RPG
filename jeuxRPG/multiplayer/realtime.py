@@ -108,9 +108,9 @@ class Coordinator:
             if self.started:
                 return
             if not self.local:
-                url = self.environment.get("REDIS_URL") or self.environment.get(
-                    "KV_URL"
-                )
+                from .redis_configuration import redis_url
+
+                url = redis_url(self.environment)
                 if not url and self.redis is None:
                     raise RuntimeError("Stockage temps réel absent")
                 if self.redis is None:
