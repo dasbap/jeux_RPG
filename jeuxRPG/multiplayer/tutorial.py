@@ -974,6 +974,25 @@ def _enter_world_zone(party, now, error):
         if party["position"] in fields.MAPS
         else world.zone_of(party["position"])
     )
+    site_map = next(
+        (
+            key
+            for key, definition in fields.MAPS.items()
+            if any(
+                site["id"] == party["position"] for site in definition.get("sites", [])
+            )
+        ),
+        None,
+    )
+    if identifier not in fields.MAPS:
+        identifier = site_map or next(
+            (
+                key
+                for key in fields.MAPS
+                if fields.zone_of(fields.MAPS, key) == identifier
+            ),
+            identifier,
+        )
     previous = party.get("field_return_from")
     if (
         previous in fields.MAPS

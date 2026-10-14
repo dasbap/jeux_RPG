@@ -105,7 +105,7 @@ async function finishCombat(dom) {
       if (path?.length) await command(dom, "battle_move", {x: target[0], y: target[1], path});
       else await pause(50);
     } else {
-      await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.includes("La zone est calme"), "interface après mort du dernier mob");
+      await waitFor(() => el(dom, "mob-cards").children.length === 0 && el(dom, "combat-status").textContent.trim() === "", "interface après mort du dernier mob");
       assert.equal(el(dom, "enemy-intents").querySelectorAll("tr").length, 0);
       assert.equal(el(dom, "combat-target").options.length, 0);
       assert.equal(el(dom, "mob-hp").textContent, "");
@@ -185,9 +185,9 @@ async function main() {
     await waitFor(async () => {
       const state = (await request(necromancer, "/api/state")).session;
       const me = state.tutorial.players.find(p => p.id === state.me);
-      return me.energies.some(e => e.type === "Mana" && e.current >= 8) && el(necromancer, "unit-control-list").querySelector("input:not(:disabled)");
+      return me.energies.some(e => e.type === "Mana" && e.current >= 8) && me.cooldown_real_seconds <= 0 && !me.casting && !me.stunned && me.hp > 0 && el(necromancer, "combat-resources").querySelector(".companion-segment");
     }, "énergie disponible pour le contrôle du squelette");
-    el(necromancer, "unit-control-list").querySelector("input").click();
+    el(necromancer, "combat-resources").querySelector(".companion-segment").click();
     await waitFor(async () => Object.values((await request(necromancer, "/api/state")).session.tutorial.battle.summons).some(u => u.controlled), "contrôle effectif du squelette");
     const controlledState = (await request(necromancer, "/api/state")).session;
     const controlledId = Object.keys(controlledState.tutorial.battle.summons)[0];

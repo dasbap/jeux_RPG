@@ -450,3 +450,49 @@ def test_returning_to_a_map_resets_the_empty_map_countdown():
     fields.transition(data, gate, "p", 1001)
     fields.enter(data, "clearing", [1, 10], 1120)
     assert len(data["battle"]["corpses"]) == 1
+
+
+def test_saved_position_is_repaired_after_terrain_changes_without_version_bump(monkeypatch):
+    data = party()
+    fields.migrate_terrain(data)
+    unit = data['battle']['players']['p']
+    original = deepcopy(data['characters'])
+    definition = deepcopy(tactics.PRESETS[data['battle']['preset']])
+    definition['cover'].append(unit['position'][:])
+    monkeypatch.setitem(tactics.PRESETS, data['battle']['preset'], definition)
+    unit['route'] = [[999, 999]]
+    fields.migrate_terrain(data)
+    assert tactics.walkable(definition, unit['position'])
+    assert not unit['route']
+    assert data['characters'] == original
+    assert tuple(unit['position']) in fields.reachable_terrain(definition)
+
+
+def test_followers_can_be_controlled_and_moved_without_mana(monkeypatch):
+    data = party()
+    definition = deepcopy(tactics.PRESETS[data['battle']['preset']])
+    definition['sites'].append({'id':'guide', 'name':'Guide', 'owner':'p', 'position':[3, 10]})
+    monkeypatch.setitem(tactics.PRESETS, data['battle']['preset'], definition)
+    characters = {key:tutorial.unpack(value) for key,value in data['characters'].items()}
+    tactics.advance_companions(data, characters, definition, 0)
+    before = deepcopy(data['characters']['p']['energies'])
+    tactics.control(data, 'p', 'control_units', {'units':['guide']}, 0, GameError)
+    follower = data['battle']['companions']['guide']
+    assert follower['controlled']
+    assert follower['control_cost'] == {'energy':None, 'per_second':0}
+    target = next(point for point in [[4,10],[3,11],[2,10],[3,9]] if tactics.valid_step(definition, follower['position'], point))
+    tactics.control(data, 'p', 'unit_order', {'units':['guide'],'order':'move','target':target,'paths':{'guide':[target]}}, 0, GameError)
+    tactics.advance_companions(data, characters, definition, 20)
+    assert follower['position'] == target
+    assert data['characters']['p']['energies'] == before
+
+
+def test_legacy_forge_save_can_return_to_walkable_map():
+    data = party()
+    data.update(position='forge', battle=None, mobs=[], mob=None)
+    data.pop('field_map', None)
+    characters = deepcopy(data['characters'])
+    tutorial.execute(data, 'p', 'enter_zone', {}, 0, GameError, lambda:.5)
+    assert data['field_map'] == 'rosee'
+    assert tactics.walkable(fields.MAPS['rosee'], data['battle']['players']['p']['position'])
+    assert data['characters'] == characters

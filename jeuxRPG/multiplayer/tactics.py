@@ -413,7 +413,20 @@ def advance_companions(party, characters, preset, now):
         key = site["id"]
         if key not in companions:
             companions[key] = {**deepcopy(site), "owner": owner, "next_move": now}
-        follow_owner(preset, companions[key], battle["players"][owner], now)
+        unit = companions[key]
+        unit.setdefault("hp", site.get("hp", 20))
+        unit.setdefault("max_hp", unit["hp"])
+        unit.setdefault("route", [])
+        unit["control_cost"] = {"energy": None, "per_second": 0}
+        unit["energies"] = []
+        if unit.get("controlled"):
+            if unit["route"] and unit["next_move"] <= now:
+                destination = unit["route"].pop(0)
+                if walkable(preset, destination):
+                    unit["position"] = destination
+                unit["next_move"] = now + progression.ACTION_SECONDS * progression.RATIO
+            continue
+        follow_owner(preset, unit, battle["players"][owner], now)
 
 
 def _defeated_summon_target(party, target, characters, now, random, messages):
@@ -650,7 +663,7 @@ def _control_units(party, player, params, now, error, units, characters):
         raise error(
             "control_energy", "Énergie insuffisante pour prendre le contrôle.", 409
         )
-    for key, unit in battle["summons"].items():
+    for key, unit in {**battle["summons"], **battle.get("companions", {})}.items():
         if unit["owner"] != player:
             continue
         if key in ids:
@@ -676,6 +689,10 @@ def _unit_skill(party, player, params, now, error, units, characters):
             "invalid_units", "Une compétence exige une seule invocation contrôlée."
         )
     unit = units[0]
+    if "index" not in unit:
+        raise error(
+            "invalid_units", "Ce suiveur ne possède pas de compétence de combat."
+        )
     invocation = characters[player].invocations.get_all()[unit["index"]]
     skill = (
         invocation.skills.get(params["skill_name"])
@@ -758,6 +775,11 @@ def _validate_unit_routes(party, ids, units, target, routes, params, error):
     return routes
 
 
+def require_combat_units(units, error):
+    if any("index" not in unit for unit in units):
+        raise error("invalid_order", "Les suiveurs civils ne peuvent pas attaquer.")
+
+
 def control(party, player, action, params, now, error):
     from .tutorial import pack, unpack
 
@@ -765,15 +787,18 @@ def control(party, player, action, params, now, error):
     if not battle:
         raise error("not_fighting", "Aucun champ de bataille actif.", 409)
     sync_summons(party, now)
+    characters = {key: unpack(data) for key, data in party["characters"].items()}
+    advance_companions(party, characters, PRESETS[battle["preset"]], now)
+    allies = {**battle["summons"], **battle.get("companions", {})}
     ids = params["units"]
     if (
         not isinstance(ids, list)
-        or len(ids) > len(battle["summons"])
+        or len(ids) > len(allies)
         or any(not isinstance(key, str) for key in ids)
         or len(set(ids)) != len(ids)
     ):
         raise error("invalid_units", "Sélection d’alliés invalide.")
-    units = [battle["summons"].get(key) for key in ids]
+    units = [allies.get(key) for key in ids]
     if any(not unit or unit["owner"] != player or unit["hp"] <= 0 for unit in units):
         raise error(
             "forbidden_unit", "Vous ne pouvez contrôler que vos alliés vivants.", 403
@@ -796,6 +821,10 @@ def control(party, player, action, params, now, error):
             "Prenez le contrôle des alliés avant de leur donner un ordre.",
             409,
         )
+    if action == "unit_skill" and any("index" not in unit for unit in units):
+        raise error(
+            "invalid_units", "Ce suiveur ne possède pas de compétence de combat."
+        )
     if action == "unit_skill":
         return _unit_skill(party, player, params, now, error, units, characters)
     if any(unit.get("casting") for unit in units):
@@ -812,6 +841,7 @@ def control(party, player, action, params, now, error):
     if order == "move":
         routes = _validate_unit_routes(party, ids, units, target, routes, params, error)
     elif order == "attack":
+        require_combat_units(units, error)
         enemy = (
             next((m for m in party["mobs"] if m["combat_id"] == target), None)
             if isinstance(target, str)
