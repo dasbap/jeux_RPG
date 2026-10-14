@@ -106,7 +106,9 @@ def create_mob(maps, identifier, config, index, first=False):
                     skill.energie_target(max(30, skill.energie_cost), 0.3)
                 )
     base_hp = actor.hp.value
-    level = config.get("level") or map_level(maps, identifier)
+    level = (
+        config.get("level") or definition.get("level") or map_level(maps, identifier)
+    )
     while actor.level < level:
         actor.gain_exp(actor._required_exp_for_next_level() - actor.exp)
     if config["mob_id"] == "goblin":
