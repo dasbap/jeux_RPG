@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="/style.css">
   <script src="/map_artwork.js" defer></script>
   <script src="/realtime.js" defer></script>
+  <meta name="rpg-solo-worker" content="/solo_worker.js">
+  <script src="/solo_transport.js" defer></script>
   <script src="/mobile_controls.js" defer></script>
   <script src="/app_core.js" defer></script>
   <script src="/app_world.js" defer></script>
@@ -26,6 +28,7 @@
   <script src="/app.js" defer></script>
   <script src="/app_bootstrap.js" defer></script>
   <script src="/app_session.js" defer></script>
+  <script src="/app_modes.js" defer></script>
 </head>
 <body>
   <main>
@@ -45,9 +48,9 @@
         <label for="class-name">Classe</label><select id="class-name">{{CLASS_OPTIONS}}</select>
         <button type="submit">Créer mon compte et mon personnage</button>
       </form>
-      <details><summary>J’ai déjà un compte</summary><form id="restore-form"><label for="login-name">Nom de compte</label><input id="login-name" required maxlength="24" autocomplete="username"><label for="login-password">Mot de passe</label><input id="login-password" type="password" required maxlength="128" autocomplete="current-password"><button type="submit" class="secondary">Se connecter</button></form></details>
+      <button id="solo-entry" type="button" class="secondary">Jouer en solo sur cet appareil</button><p>Solo : sauvegarde locale, personnages distincts du mode en ligne.</p><details><summary>J’ai déjà un compte</summary><form id="restore-form"><label for="login-name">Nom de compte</label><input id="login-name" required maxlength="24" autocomplete="username"><label for="login-password">Mot de passe</label><input id="login-password" type="password" required maxlength="128" autocomplete="current-password"><button type="submit" class="secondary">Se connecter</button></form></details>
     </section>
-    <section id="characters" class="panel" hidden><h2 id="account-title">Mes personnages</h2><div id="character-list" class="actions"></div><form id="character-create"><label for="new-character-name">Nom du personnage</label><input id="new-character-name" maxlength="32" required autocomplete="off"><label for="new-character-class">Classe</label><select id="new-character-class">{{CLASS_OPTIONS}}</select><button type="submit">Créer et jouer</button></form><button id="character-cancel" type="button" class="secondary">Retour au jeu</button></section>
+    <section id="characters" class="panel" hidden><h2 id="account-title">Mes personnages</h2><div class="actions" aria-label="Mode de jeu"><button id="mode-online" type="button">En ligne</button><button id="mode-solo" type="button" class="secondary">Solo</button></div><p id="mode-status">En ligne · personnages sauvegardés sur le serveur.</p><div id="character-list" class="actions"></div><form id="character-create"><label for="new-character-name">Nom du personnage</label><input id="new-character-name" maxlength="32" required autocomplete="off"><label for="new-character-class">Classe</label><select id="new-character-class">{{CLASS_OPTIONS}}</select><button type="submit">Créer et jouer</button></form><button id="character-cancel" type="button" class="secondary">Retour au jeu</button></section>
     <section id="lobby" class="panel" hidden>
       <div class="section-head"><h2 id="player-name">Votre personnage</h2><button id="logout" class="quiet">Se déconnecter</button></div>
 

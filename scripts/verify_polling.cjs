@@ -12,7 +12,7 @@ function setup(settings = {}) {
   const timers = new Map(), events = {}, nodes = new Map();
   const session = settings.session === undefined ? {id: "room", revision: 1, state: "running", tutorial: {}} : settings.session;
   const context = {
-    token: "token", session, sessionId: session?.id || "", accountState: {selected: "player"},
+    gameMode: "online", token: "token", session, sessionId: session?.id || "", accountState: {selected: "player"},
     polling: false, stateEpoch: 0, nextRefreshAt: 0, refreshFailures: 0, currentView: "map", busy: false,
     bundleHashes: {}, bundleValues: {}, lastPlayer: null, location: {hostname: "game.vercel.app"},
     Date: class extends Date {static now() {return now;}}, Math: Object.assign(Object.create(Math), {random: () => .5}),
