@@ -53,14 +53,13 @@ const {chromium} = require("../.ui-test/node_modules/playwright");
     assert.equal(apiCalls, before);
     const other = await context.newPage();
     await other.goto(base);
-    await other.locator("#solo-entry").click();
+
     await other.waitForFunction(() => document.getElementById("message").textContent.includes("autre onglet"));
     await other.close();
     await page.reload();
-    await page.locator("#solo-entry").click();
-    await page.locator("#character-list button").waitFor({timeout: 60000});
-    await page.locator("#character-list button").click();
-    await page.waitForFunction(expected => session?.id === expected, sessionId);
+    await page.waitForFunction(expected => session?.id === expected, sessionId, {timeout: 60000});
+    assert.equal(await page.evaluate(() => gameMode), "solo");
+    assert.equal(await page.locator("#registration").isVisible(), false);
     await page.locator("#game-menu-toggle").click();
     await page.locator("#show-options").click();
     await page.locator("#choose-character-options").click();

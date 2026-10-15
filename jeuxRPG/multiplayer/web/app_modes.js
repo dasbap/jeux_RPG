@@ -1,7 +1,8 @@
 "use strict";
 
-async function switchGameMode(mode) {
+async function switchGameMode(mode, {resume = false} = {}) {
   if (busy || mode === gameMode) return;
+  let resumeSelected = false;
   busy = true;
   stateEpoch++;
   message(mode === "solo" ? "Chargement du moteur solo… La première ouverture nécessite Internet." : "Ouverture du mode en ligne…");
@@ -34,6 +35,8 @@ async function switchGameMode(mode) {
       accountState = null;
       bindTransport();
     }
+    localStorage.setItem("rpg-mode", gameMode);
+    resumeSelected = gameMode === "solo" && resume && Boolean(accountState.selected);
     stateEpoch++;
     session = null; sessionId = ""; lastPlayer = null; socialState = null; presenceState = null;
     bundleToken = ""; bundleHashes = {}; bundleValues = {}; sectionSignatures.clear();
@@ -42,16 +45,25 @@ async function switchGameMode(mode) {
     for (const id of ["lobby", "battle", "character-menu", "chat-panel", "characters", "invitation"]) $(id).hidden = true;
     $("registration").hidden = Boolean(token) || gameMode === "solo";
     document.body.classList.remove("combat-active", "hud-menu-open", "chat-open");
-    if (gameMode === "solo") renderCharacters();
+    if (gameMode === "solo") {
+      if (resumeSelected) soloTransport.subscribe(true);
+      else renderCharacters();
+    }
     else if (token) { accountState = await api("/api/account/me"); renderCharacters(); }
-    message(gameMode === "solo" ? "Choisissez ou créez votre personnage solo." : "Mode en ligne.");
+    message(resumeSelected ? "Reprise de votre aventure solo…" : gameMode === "solo" ? "Choisissez ou créez votre personnage solo." : "Mode en ligne.");
   } catch (error) {
     if (gameMode === "online" && !accountState) $("registration").hidden = false;
     message(error.message, true);
   }
-  finally { busy = false; scheduleRefresh(); }
+  finally {
+    busy = false;
+    if (resumeSelected) await refresh(true);
+    scheduleRefresh();
+  }
 }
 $("solo-entry").addEventListener("click", () => switchGameMode("solo"));
 $("mode-solo").addEventListener("click", () => switchGameMode("solo"));
 $("mode-online").addEventListener("click", () => switchGameMode("online"));
 document.addEventListener("visibilitychange", () => { if (document.hidden) soloTransport?.flush().catch(error => message(error.message, true)); });
+
+if (restoreSolo) switchGameMode("solo", {resume: true});
