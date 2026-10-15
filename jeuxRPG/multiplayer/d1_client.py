@@ -28,6 +28,15 @@ class D1Client:
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 result = json.loads(response.read(16_000_000))
+        except urllib.error.HTTPError as error:
+            if error.code == 409:
+                try:
+                    detail = json.loads(error.read(4096))
+                except ValueError:
+                    detail = {}
+                if detail.get("error") == "stale_runtime_fence":
+                    raise RuntimeError("Moteur remplacé") from error
+            raise D1StorageError("Opération D1 refusée") from error
         except (urllib.error.URLError, TimeoutError, ValueError) as error:
             raise D1StorageError("Opération D1 indisponible") from error
         if not isinstance(result, dict):
