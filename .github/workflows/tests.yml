@@ -81,6 +81,8 @@ jobs:
       - run: npm install --prefix .solo-test pyodide@314.0.7 fake-indexeddb@6.2.4
       - run: node scripts/verify_browser_solo.cjs
       - run: node scripts/verify_solo_menu.cjs
+      - run: node scripts/verify_solo_resume.cjs
+      - run: node scripts/verify_zone_exit.cjs
       - run: node scripts/verify_solo_browser.cjs
       - run: node scripts/verify_transport.cjs
       - run: node scripts/verify_reconnect_endurance.cjs

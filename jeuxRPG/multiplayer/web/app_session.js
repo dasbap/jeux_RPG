@@ -259,4 +259,4 @@ function bindTransport() {
   };
 }
 bindTransport();
-resumeRefresh();
+if (typeof restoreSolo === "undefined" || !restoreSolo) resumeRefresh();

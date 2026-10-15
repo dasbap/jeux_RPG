@@ -170,8 +170,8 @@ function renderGame(adventure, preserveBattle = false) {
   $("standby-description").textContent = adventure.moving ? "Vous marchez vers votre destination. Une rencontre peut interrompre le trajet." : ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position) ? "Explorez les alentours pour rencontrer des créatures." : adventure.position === "rosee" ? "Cliquez sur Mira pour parler de sa quête, ou sur la forge pour consulter son accès." : "Choisissez un point sur la carte pour poursuivre votre aventure.";
   if (!fighting && !adventure.moving) {
     for (const route of adventure.world.routes.filter(route => route.destination)) {
-      const destination = adventure.world.places.find(place => place.id === route.destination);
-      action("tutorial-actions", `Rejoindre ${destination.name}`, "travel", {destination: destination.id});
+      const destination = adventure.world.places.flatMap(place => [place, ...place.points]).find(point => point.id === route.destination);
+      action("tutorial-actions", `Rejoindre ${destination?.name || route.name}`, "travel", {destination: route.destination});
     }
     if (!adventure.moving && !adventure.world.routes.some(route => route.id === adventure.position)) action("tutorial-actions", "Explorer à pied", "enter_zone");
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
