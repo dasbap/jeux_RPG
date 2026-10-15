@@ -66,4 +66,12 @@ $("mode-solo").addEventListener("click", () => switchGameMode("solo"));
 $("mode-online").addEventListener("click", () => switchGameMode("online"));
 document.addEventListener("visibilitychange", () => { if (document.hidden) soloTransport?.flush().catch(error => message(error.message, true)); });
 
-if (restoreSolo) switchGameMode("solo", {resume: true});
+async function restoreGameMode() {
+  if (restoreSolo) return switchGameMode("solo", {resume: true});
+  if (localStorage.getItem("rpg-mode") || token || !globalThis.indexedDB?.databases) return;
+  try {
+    const databases = await indexedDB.databases();
+    if (databases.some(database => database.name === "jeux-rpg-solo")) await switchGameMode("solo", {resume: true});
+  } catch (error) { message("Reprise solo : " + error.message, true); }
+}
+restoreGameMode();
