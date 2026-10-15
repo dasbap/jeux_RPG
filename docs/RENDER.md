@@ -1,6 +1,10 @@
 # Évaluation de Render — 15 octobre 2026
 
-## Recommandation
+## Décision retenue
+
+Maintien sur Vercel et sur les offres gratuites uniquement. Aucune migration Render et aucune souscription payante ne sont prévues. L’évaluation ci-dessous est conservée comme référence technique, sans action de déploiement.
+
+## Évaluation technique initiale
 
 Render est un candidat pertinent pour ce backend FastAPI avec moteur en RAM et WebSocket, sous réserve d’une adaptation et d’un test de charge sur l’instance cible. Commencer par une instance de préproduction ; ne pas déplacer directement le trafic public.
 
@@ -33,7 +37,7 @@ Aucun service Render n’a été créé ; aucune facturation ni bascule n’a é
 
 ## Mentions légales
 
-Le jeu contient un panneau accessible sans connexion. Les informations personnelles non fournies sont explicitement à compléter : identité et statut de l’éditeur, contact, direction de publication, coordonnées exactes de l’hébergeur, règles de conservation et informations RGPD. Ne pas considérer ce brouillon comme une conformité juridique acquise.
+Le jeu contient un panneau accessible sans connexion. Les informations personnelles non fournies sont explicitement à compléter : coordonnées exactes de l’hébergeur, règles de conservation et informations RGPD. L’éditeur et responsable de publication est Baptiste Da Silva, pour un projet personnel non professionnel ; son adresse de contact est renseignée dans le jeu. Ne pas considérer ce brouillon comme une conformité juridique acquise.
 
 ## Sources
 
