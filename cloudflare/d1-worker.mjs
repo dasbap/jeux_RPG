@@ -68,7 +68,7 @@ export default {
    }
    return reply({error:"unknown_operation"},400);
   } catch(error) {
-   return reply({error:"database_operation_failed"},409);
+   return reply({error:String(error?.message || "").includes("stale_runtime_fence") ? "stale_runtime_fence" : "database_operation_failed"},409);
   }
  }
 };
