@@ -82,6 +82,12 @@ jobs:
       - run: node scripts/verify_solo_menu.cjs
         env:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - run: node scripts/verify_solo_resume.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
+      - run: node scripts/verify_zone_exit.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Installer le chiffrement de sauvegarde
         run: sudo apt-get update && sudo apt-get install --yes age
       - name: Exporter et restaurer Turso avant migration
