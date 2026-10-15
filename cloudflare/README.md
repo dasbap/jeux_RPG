@@ -1,0 +1,43 @@
+# Cloudflare D1 — déploiement expérimental (pas de production)
+
+Le code D1 reste désactivé par défaut. Il ne faut pas modifier les secrets Vercel tant que la migration de données et les tests réels sur Cloudflare ne sont pas validés.
+
+## Fonctionnement
+
+- `cloudflare/d1-worker.mjs` : Worker privé, authentification par jeton, lecture cohérente par session primaire et sauvegarde atomique via D1 `batch()`.
+- `cloudflare/0004_fence_guard.sql` : triggers empêchant une instance périmée d'écraser la progression d'une plus récente. **Ce fichier est obligatoire**.
+- `jeuxRPG/multiplayer/d1_client.py` : adaptateur HTTP Python.
+- `RPG_DATABASE_BACKEND=d1` active ce backend. Sans cela, Turso fonctionne comme avant.
+
+## Provisionnement manuel d'une base de test
+
+Créer une base D1 isolée avec juridiction UE :
+
+```bash
+npx wrangler d1 create jeux-rpg-preview --jurisdiction eu
+```
+
+Créer un projet Worker depuis `cloudflare/d1-worker.mjs` et configurer son binding `DB` avec l'identifiant exact de cette base, puis définir le secret de service :
+
+```bash
+npx wrangler secret put RPG_D1_SERVICE_TOKEN
+npx wrangler deploy
+```
+
+Les fichiers SQL `jeuxRPG/multiplayer/migrations/0001_initial.sql`, `0002_receipt_expiry.sql`, `0003_guilds.sql` doivent être exécutés **dans cet ordre sur D1 de test**, avant `cloudflare/0004_fence_guard.sql`, avec `wrangler d1 execute <nom-base> --remote --file <fichier>`. Les trois migrations du jeu doivent être testées en pratique sur D1. L'enregistrement `schema_version` doit être défini à 3 conformément à `schema.py`; vérifier les tables et les références avant de poursuivre. Ne pas exécuter ces commandes sur Turso.
+
+## Configuration de préproduction Vercel seulement
+
+```text
+RPG_DATABASE_BACKEND=d1
+RPG_D1_WORKER_URL=https://<worker>.workers.dev/
+RPG_D1_SERVICE_TOKEN=<secret identique au Worker>
+```
+
+Le Worker n'a pas d'endpoint d'administration ni de SQL arbitraire. L'API est protégée par un secret partagé, mais l'accès au domaine workers.dev doit aussi être restreint selon la politique d'exploitation.
+
+## Limites restantes
+
+**Ne pas activer en production.** Il manque une procédure complète d'export/import des données Turso, un test intégral contre un vrai D1 (notamment les triggers de fencing, les limites de taille et les sauvegardes concurrentes), une recette des sessions/comptes et un plan de retour arrière. La sauvegarde actuelle envoie le batch dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà, elle échoue sans basculer silencieusement vers Turso.
+
+Le Worker ne peut pas être déployé depuis GitHub sans rattachement explicite à un compte Cloudflare et création du binding D1.
