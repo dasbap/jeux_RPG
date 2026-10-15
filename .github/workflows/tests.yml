@@ -83,6 +83,7 @@ jobs:
       - run: node scripts/verify_solo_menu.cjs
       - run: node scripts/verify_solo_resume.cjs
       - run: node scripts/verify_zone_exit.cjs
+      - run: node scripts/verify_world_camera.cjs
       - run: node scripts/verify_solo_browser.cjs
       - run: node scripts/verify_transport.cjs
       - run: node scripts/verify_reconnect_endurance.cjs
