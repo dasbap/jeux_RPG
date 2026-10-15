@@ -24,7 +24,7 @@ npx wrangler secret put RPG_D1_SERVICE_TOKEN
 npx wrangler deploy
 ```
 
-Les fichiers SQL `jeuxRPG/multiplayer/migrations/0001_initial.sql`, `0002_receipt_expiry.sql`, `0003_guilds.sql` doivent être exécutés **dans cet ordre sur D1 de test**, avant `cloudflare/0004_fence_guard.sql`, avec `wrangler d1 execute <nom-base> --remote --file <fichier>`. Les trois migrations du jeu doivent être testées en pratique sur D1. L'enregistrement `schema_version` doit être défini à 3 conformément à `schema.py`; vérifier les tables et les références avant de poursuivre. Ne pas exécuter ces commandes sur Turso.
+Les fichiers SQL `jeuxRPG/multiplayer/migrations/0001_initial.sql`, `0002_receipt_expiry.sql`, `0003_guilds.sql` doivent être exécutés **dans cet ordre sur D1 de test**, avant `cloudflare/0004_fence_guard.sql`, avec `wrangler d1 execute <nom-base> --remote --file <fichier>`. Les trois migrations du jeu doivent être testées en pratique sur D1. Il faut créer la table `schema_version` et y inscrire la version 3 (une seule ligne `id=1`) selon `schema.py`, puis vérifier les tables et les références. Préparer cette initialisation sur une copie de test, sans improviser sur la production. Ne pas exécuter ces commandes sur Turso.
 
 ## Configuration de préproduction Vercel seulement
 
