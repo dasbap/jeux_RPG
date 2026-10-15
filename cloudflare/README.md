@@ -65,3 +65,22 @@ npx wrangler d1 execute jeux-rpg-preview --remote --file .\\d1-private-import.sq
 Le script génère un `PRAGMA defer_foreign_keys=ON`, suivi d'insertions avec littéraux SQLite; la base cible doit déjà contenir les tables et `schema_version=3`. Vérifier que le CLI accepte le fichier et que les décomptes de lignes correspondent au rapport JSON produit. Après l'import, réaliser des tests réels de lecture, sauvegarde, concurrence et reprise avec le Worker.
 
 **Attention :** la migration réelle n'est pas complète : ce script prépare un import à partir d'une sauvegarde ponctuelle; il ne réalise ni capture des dernières écritures, ni synchronisation en continu, ni commutation atomique Vercel/D1.
+
+
+## Export sécurisé via GitHub Actions (sans secrets sur le PC)
+
+Le workflow `.github/workflows/export-turso-d1.yml` lit les secrets Turso de l'environnement GitHub `production`. Il ne s'exécute que manuellement depuis `master`, **après intégration du workflow sur la branche par défaut**.
+
+1. Installer `age` localement et créer une paire de clés : `age-keygen -o d1-migration-key.txt`. Conserver ce fichier privé hors du dépôt et dans un coffre sécurisé.
+2. Copier la ligne `Public key: age1...` et enregistrer uniquement sa valeur `age1...` dans **Settings > Environments > production > Variables** sous le nom `BACKUP_AGE_RECIPIENT`.
+3. Vérifier que `TURSO_DATABASE_URL` (secret ou variable) et `TURSO_AUTH_TOKEN` (secret) existent dans cet environnement.
+4. Lancer **Actions > Export Turso vers D1 (chiffre) > Run workflow**, branche `master`.
+5. Télécharger l'artefact `turso-d1-chiffre` puis le déchiffrer localement :
+   - `age -d -i d1-migration-key.txt -o turso-private.sqlite3 backup.sqlite3.age`
+   - `age -d -i d1-migration-key.txt -o d1-private-import.sql d1-import.sql.age`
+
+Le workflow ne modifie aucune base. Les fichiers SQL déchiffrés contiennent les données personnelles des joueurs, comptes et hashes de mots de passe : ne pas les committer, les joindre à une issue, ni les partager dans le chat. Le fichier de clé privée ne doit pas être chargé dans GitHub.
+
+**Ne pas fusionner l'ensemble de la PR en production uniquement pour déclencher ce workflow tant que les tests du code D1 ne sont pas terminés.** Le workflow peut être isolé dans une PR dédiée puis fusionné séparément après revue.
+
+Un export pendant que les joueurs continuent d'écrire n'est qu'une photographie temporaire. Il ne doit jamais servir à une bascule finale sans gel des écritures, nouvelle sauvegarde et contrôle des écarts.
