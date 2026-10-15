@@ -41,3 +41,27 @@ Le Worker n'a pas d'endpoint d'administration ni de SQL arbitraire. L'API est pr
 **Ne pas activer en production.** Il manque une procédure complète d'export/import des données Turso, un test intégral contre un vrai D1 (notamment les triggers de fencing, les limites de taille et les sauvegardes concurrentes), une recette des sessions/comptes et un plan de retour arrière. La sauvegarde actuelle envoie le batch dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà, elle échoue sans basculer silencieusement vers Turso.
 
 Le Worker ne peut pas être déployé depuis GitHub sans rattachement explicite à un compte Cloudflare et création du binding D1.
+
+
+## Export des données réelles (étape hors production)
+
+**Ne jamais importer tant que la préproduction D1 n'a pas été testée.** La base D1 doit être dédiée à la recette et ne contenir aucune donnée utilisateur. Toute bascule nécessite de geler les écritures, refaire un export final, valider l'import et sauvegarder Turso.
+
+Dans PowerShell, depuis la branche `migration/cloudflare-d1-design`, configurer `TURSO_DATABASE_URL` et `TURSO_AUTH_TOKEN` localement sans les enregistrer dans Git, puis :
+
+```powershell
+python -m scripts.export_turso_backup .\\turso-private.sqlite3
+python -m scripts.prepare_d1_import .\\turso-private.sqlite3 .\\d1-private-import.sql
+```
+
+Le fichier `d1-private-import.sql` contient des données personnelles et des empreintes de mots de passe. Le conserver hors Git, ne pas le communiquer dans les tickets ni dans les journaux publics. Les scripts refusent d'écraser un fichier existant.
+
+Après avoir vérifié que la cible D1 de **préproduction uniquement** est vide (en dehors des tables), importer :
+
+```powershell
+npx wrangler d1 execute jeux-rpg-preview --remote --file .\\d1-private-import.sql
+```
+
+Le script génère un `PRAGMA defer_foreign_keys=ON`, suivi d'insertions avec littéraux SQLite; la base cible doit déjà contenir les tables et `schema_version=3`. Vérifier que le CLI accepte le fichier et que les décomptes de lignes correspondent au rapport JSON produit. Après l'import, réaliser des tests réels de lecture, sauvegarde, concurrence et reprise avec le Worker.
+
+**Attention :** la migration réelle n'est pas complète : ce script prépare un import à partir d'une sauvegarde ponctuelle; il ne réalise ni capture des dernières écritures, ni synchronisation en continu, ni commutation atomique Vercel/D1.
