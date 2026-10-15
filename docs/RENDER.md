@@ -37,7 +37,9 @@ Aucun service Render n’a été créé ; aucune facturation ni bascule n’a é
 
 ## Mentions légales
 
-Le jeu contient un panneau accessible sans connexion. Les informations personnelles non fournies sont explicitement à compléter : coordonnées exactes de l’hébergeur, règles de conservation et informations RGPD. L’éditeur et responsable de publication est Baptiste Da Silva, pour un projet personnel non professionnel ; son adresse de contact est renseignée dans le jeu. Ne pas considérer ce brouillon comme une conformité juridique acquise.
+Le jeu contient un panneau accessible sans connexion avec l’identité et le contact de Baptiste Da Silva, les coordonnées officielles de Vercel et la politique de conservation demandée. Le contrôle du code précise les limites du chat : 50 messages globaux en mémoire par connexion, journal local sans purge chronologique définie, 200 messages de groupe au maximum, table chat exclue des checkpoints Turso. Une analyse HTML confirme des identifiants uniques et la présence des liens de contact.
+
+Points non vérifiables dans le dépôt : identité du fournisseur Redis derrière les secrets, régions effectives, acceptation du DPA Turso et purge des copies des prestataires. La conservation des comptes inactifs doit encore être encadrée ; aucune suppression automatique n’a été ajoutée sans décision de l’éditeur. Aucune certification de conformité, fusion ou publication n’est annoncée.
 
 ## Sources
 
