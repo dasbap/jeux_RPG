@@ -44,7 +44,8 @@ def test_turso_export_restores_consistent_private_copy(tmp_path):
         copy.execute("INSERT INTO chat(scope,player_id,name,message,sent) VALUES('world','fixture','Backup','resumed',2)")
         assert copy.execute('SELECT id FROM chat').fetchone()[0] == 501
     assert not remote.in_transaction
-    assert os.stat(destination).st_mode & 0o777 == 0o600
+    if os.name == 'posix':
+        assert os.stat(destination).st_mode & 0o777 == 0o600
     assert transport.db.execute('SELECT name FROM players').fetchone()[0] == 'Backup'
     remote.close()
 

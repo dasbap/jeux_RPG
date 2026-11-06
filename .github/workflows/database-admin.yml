@@ -1,9 +1,9 @@
-name: Administration Turso
+name: Administration du stockage
 on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Action sur la base Turso
+        description: Controle en lecture seule de la base active
         required: true
         default: connexion
         type: choice
@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: turso-administration
+  group: database-administration
   cancel-in-progress: false
 jobs:
   administration:
@@ -29,14 +29,17 @@ jobs:
       - run: python -m pip install -c constraints.txt .
       - name: Verifier, administrer et verifier l'integrite
         env:
+          RPG_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
+          RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-          TURSO_OPERATION: ${{ inputs.operation }}
+          DATABASE_OPERATION: ${{ inputs.operation }}
         run: |
-          case "$TURSO_OPERATION" in
+          case "$DATABASE_OPERATION" in
             connexion|schema|integrite) ;;
             *) echo "Les migrations passent uniquement par la publication avec sauvegarde."; exit 1 ;;
           esac
-          python -m jeuxRPG.multiplayer.turso_admin connexion
-          python -m jeuxRPG.multiplayer.turso_admin "$TURSO_OPERATION"
-          python -m jeuxRPG.multiplayer.turso_admin integrite
+          python -m scripts.database_admin connexion
+          python -m scripts.database_admin "$DATABASE_OPERATION"
+          python -m scripts.database_admin integrite

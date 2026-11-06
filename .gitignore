@@ -26,6 +26,7 @@ htmlcov/
 
 # Virtual environments
 .venv/
+.venv-*/
 venv/
 ENV/
 
@@ -33,8 +34,12 @@ ENV/
 saves/
 .data/
 *.pid
+.controller.lock
 *.log
 *.sqlite3
+*-private-import.sql
+d1-import.sql
+d1-migration-key.txt
 *.db
 pytest-of-root/
 *.sqlite3-journal
@@ -62,6 +67,7 @@ Thumbs.db
 
 .vercel/
 .vercel
+.wrangler/
 
 .runtime-deps/
 

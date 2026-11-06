@@ -1,0 +1,15 @@
+{
+  "name": "jeux-rpg-d1-preview",
+  "main": "d1-worker.mjs",
+  "account_id": "f95afeda8a89102a14ed5d7eeabd068c",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jeux-rpg-import-preview",
+      "database_id": "494fd86e-648f-44c7-9a89-85ce6b74ac2c"
+    }
+  ]
+}

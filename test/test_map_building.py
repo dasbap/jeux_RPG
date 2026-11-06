@@ -11,7 +11,7 @@ from jeuxRPG.multiplayer.map_editor import MapEditor
 
 @pytest.fixture(autouse=True)
 def stable_builder_scenarios(monkeypatch):
-    data = json.loads((Path(__file__).parent / 'fixtures' / 'fields.json').read_text())
+    data = json.loads((Path(__file__).parent / 'fixtures' / 'fields.json').read_text(encoding='utf-8'))
     monkeypatch.setattr(fields, 'MAPS', data)
     places = deepcopy(world.PLACES)
     for key, definition in data.items():

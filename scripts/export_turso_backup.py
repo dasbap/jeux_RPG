@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from jeuxRPG.multiplayer.turso import TursoConnection
@@ -25,7 +26,7 @@ def export_backup(source, destination):
                 "SELECT type,name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END,name"
             )
         ]
-        with sqlite3.connect(destination) as restored:
+        with closing(sqlite3.connect(destination)) as restored, restored:
             for item in schema:
                 kind, name, sql = item["type"], item["name"], item["sql"]
                 if kind == "table":

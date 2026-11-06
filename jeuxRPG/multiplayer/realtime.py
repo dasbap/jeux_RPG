@@ -24,6 +24,7 @@ from .realtime_store import KEYS, RuntimeStore
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
+from .storage_configuration import runtime_prefix
 
 LEASE = """
 local current = redis.call('GET', KEYS[1])
@@ -69,7 +70,7 @@ class Coordinator:
         self.store = store
         self.local = store is not None
         self.uid = uuid.uuid4().hex
-        self.prefix = "jeux-rpg:runtime:v2:accounts:"
+        self.prefix = runtime_prefix(environment)
         self.fence = 0
         self.deadline = 0
         self.tasks = []

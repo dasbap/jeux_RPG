@@ -93,34 +93,39 @@ jobs:
           NODE_PATH: ${{ github.workspace }}/.deploy-tools/node_modules
       - name: Installer le chiffrement de sauvegarde
         run: sudo apt-get update && sudo apt-get install --yes age
-      - name: Exporter et restaurer Turso avant migration
+      - name: Exporter et restaurer le stockage actif avant publication
         env:
+          RPG_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
+          RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           RPG_BACKUP_RECIPIENT: ${{ vars.RPG_BACKUP_RECIPIENT }}
         run: |
           umask 077
           trap 'rm -f "$RUNNER_TEMP/production-before.sqlite3"' EXIT
-          python -m scripts.export_turso_backup "$RUNNER_TEMP/production-before.sqlite3" > backup-check.json
+          python -m scripts.export_database_backup "$RUNNER_TEMP/production-before.sqlite3" > backup-check.json
           age -r "$RPG_BACKUP_RECIPIENT" -o production-before.sqlite3.age "$RUNNER_TEMP/production-before.sqlite3"
           sha256sum production-before.sqlite3.age > backup-checksum.txt
       - name: Conserver uniquement la sauvegarde chiffree hors production
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: turso-before-${{ github.sha }}
+          name: database-before-${{ github.sha }}
           path: |
             production-before.sqlite3.age
             backup-checksum.txt
             backup-check.json
           retention-days: 30
           if-no-files-found: error
-      - name: Initialiser et verifier la base Turso
+      - name: Verifier la base persistante selectionnee
         env:
+          RPG_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
+          RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
-          python -m jeuxRPG.multiplayer.turso_admin initialiser
-          python -m jeuxRPG.multiplayer.turso_admin integrite
+          python -m scripts.check_database
       - name: Cibler exclusivement jeux-rpg
         run: |
           mkdir -p .vercel
@@ -129,8 +134,11 @@ jobs:
           from pathlib import Path
           Path('.vercel/project.json').write_text(json.dumps({'projectId': 'prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2', 'orgId': 'team_qde9V6kikwwSvLtNrjAsAkRY', 'projectName': 'jeux-rpg'}))
           PY
-      - name: Synchroniser les acces Turso valides vers Vercel
+      - name: Synchroniser les acces du stockage actif vers Vercel
         env:
+          RPG_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
+          RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
@@ -142,7 +150,8 @@ jobs:
           import os
           import subprocess
           from jeuxRPG.multiplayer.redis_configuration import redis_url
-          values = {key: os.environ[key] for key in ('TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN', 'RPG_ADMIN_TOKEN')}
+          from jeuxRPG.multiplayer.storage_configuration import database_backend, database_variables
+          values = {key: os.environ[key] for key in (*database_variables(os.environ), 'RPG_ADMIN_TOKEN')}
           redis_configuration = {}
           if os.environ.get('REDIS_URLS'):
               redis_configuration = {'REDIS_URLS': os.environ['REDIS_URLS'], 'RPG_REDIS_ACTIVE_INDEX': os.environ.get('RPG_REDIS_ACTIVE_INDEX') or '0'}
@@ -150,7 +159,7 @@ jobs:
               values['REDIS_URLS'] = redis_configuration['REDIS_URLS']
           for key, value in values.items():
               subprocess.run(['.deploy-tools/node_modules/.bin/vercel', 'env', 'add', key, 'production', '--force', '--sensitive'], input=value, text=True, check=True)
-          configuration = {'RPG_RESET_TEST_PLAYERS': '0', 'RPG_RUNTIME_REALMS': '1'}
+          configuration = {'RPG_RESET_TEST_PLAYERS': '0', 'RPG_RUNTIME_REALMS': '1', 'RPG_DATABASE_BACKEND': database_backend(os.environ)}
           if redis_configuration:
               configuration['RPG_REDIS_ACTIVE_INDEX'] = redis_configuration['RPG_REDIS_ACTIVE_INDEX']
           for key, value in configuration.items():
@@ -163,6 +172,9 @@ jobs:
       - name: Completer la configuration locale du build avec les secrets CI
         run: python -m scripts.prepare_vercel_environment
         env:
+          RPG_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
+          RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || vars.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           RPG_ADMIN_TOKEN: ${{ secrets.RPG_ADMIN_TOKEN }}
