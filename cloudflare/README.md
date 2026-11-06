@@ -43,9 +43,10 @@ Le Worker n'a pas d'endpoint d'administration ni de SQL arbitraire. L'API est pr
 
 ## Limites restantes
 
-**Ne pas activer en production.** L'export et l'import des données réelles restent
-à autoriser puis valider, ainsi que la recette Vercel complète et le retour
-arrière opérationnel. Les tests de comptes et de sauvegarde concurrente passent
+**Ne pas activer en production.** L'export autorisé et l'import des données réelles
+sont validés (707 lignes durables, séquences, relations, reprise et sauvegarde
+restaurée). La recette Vercel complète et le retour arrière opérationnel restent
+à réaliser. Les tests de comptes et de sauvegarde concurrente passent
 sur D1 réel avec des données fictives. La sauvegarde actuelle envoie le batch
 dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà,
 elle échoue sans basculer silencieusement vers Turso.
@@ -107,17 +108,15 @@ sont consignées dans [le dossier fournisseur](../docs/CLOUDFLARE_DATA_PROCESSIN
 **Attention :** la migration réelle n'est pas complète : ce script prépare un import à partir d'une sauvegarde ponctuelle; il ne réalise ni capture des dernières écritures, ni synchronisation en continu, ni commutation atomique Vercel/D1.
 
 
-## Export sécurisé via GitHub Actions (sans secrets sur le PC)
+## Export sécurisé via GitHub Actions (sans secrets Turso sur le PC)
 
-Le workflow `.github/workflows/export-turso-d1.yml` lit les secrets Turso de l'environnement GitHub `production`. Il ne s'exécute que manuellement depuis `master`, **après intégration du workflow sur la branche par défaut**.
+Le workflow `.github/workflows/export-turso-d1.yml`, intégré par la PR #90, lit les secrets Turso du dépôt. Il s'exécute uniquement manuellement depuis la branche protégée `master`. Il crée un export vérifié puis chiffré, sans écriture dans la base source.
 
 1. Installer `age` localement et créer une paire de clés : `age-keygen -o d1-migration-key.txt`. Conserver ce fichier privé hors du dépôt et dans un coffre sécurisé.
-2. Copier la ligne `Public key: age1...` et enregistrer uniquement sa valeur `age1...` dans **Settings > Environments > production > Variables** sous le nom `BACKUP_AGE_RECIPIENT`.
-3. Vérifier que `TURSO_DATABASE_URL` (secret ou variable) et `TURSO_AUTH_TOKEN` (secret) existent dans cet environnement.
-4. Lancer **Actions > Export Turso vers D1 (chiffre) > Run workflow**, branche `master`.
-5. Télécharger l'artefact `turso-d1-chiffre` puis le déchiffrer localement :
-   - `age -d -i d1-migration-key.txt -o turso-private.sqlite3 backup.sqlite3.age`
-   - `age -d -i d1-migration-key.txt -o d1-private-import.sql d1-import.sql.age`
+2. Enregistrer uniquement la clé publique `age1...` dans les variables Actions du dépôt sous le nom `D1_MIGRATION_BACKUP_RECIPIENT`. La clé privée ne quitte pas le poste.
+3. Vérifier que les secrets de dépôt `TURSO_DATABASE_URL` et `TURSO_AUTH_TOKEN` existent.
+4. Lancer **Actions > Export prive Turso pour migration D1 > Run workflow**, branche `master`.
+5. Télécharger l'artefact `d1-private-source` (rétention sept jours), vérifier `export-checksum.txt`, puis déchiffrer localement `d1-source.sqlite3.age`. Générer ensuite le SQL avec `prepare_d1_import.py` dans un dossier privé.
 
 Le workflow ne modifie aucune base. Les fichiers SQL déchiffrés contiennent les données personnelles des joueurs, comptes et hashes de mots de passe : ne pas les committer, les joindre à une issue, ni les partager dans le chat. Le fichier de clé privée ne doit pas être chargé dans GitHub.
 

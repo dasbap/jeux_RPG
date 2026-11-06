@@ -24,7 +24,7 @@ def main():
     token = dotenv_values(LOCAL_ENV).get("RPG_D1_SERVICE_TOKEN") or secrets.token_urlsafe(48)
     set_key(LOCAL_ENV, "RPG_D1_SERVICE_TOKEN", token)
     set_key(LOCAL_ENV, "RPG_DATABASE_BACKEND", "d1")
-    command = ["npx.cmd" if os.name == "nt" else "npx", "--yes", "wrangler@4.76.0"]
+    command = ["npx.cmd" if os.name == "nt" else "npx", "--yes", "wrangler@4.158.0"]
     subprocess.run(command + ["secret", "put", "RPG_D1_SERVICE_TOKEN", "--config", str(CONFIG)], input=token, text=True, check=True)
     subprocess.run(command + ["deploy", "--config", str(CONFIG)], check=True)
     print("Worker de préproduction publié. Reporter son URL publique dans preview.env (RPG_D1_WORKER_URL).")

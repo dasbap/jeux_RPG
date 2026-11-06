@@ -85,6 +85,10 @@ def test_remote_import_comparison_does_not_modify_source_or_claim_fence(monkeypa
         db.row_factory = sqlite3.Row
         data = {table: [dict(row) for row in db.execute(f"SELECT * FROM {table}")] for table in TABLES}
         sequences = [dict(row) for row in db.execute("SELECT name,seq FROM sqlite_sequence")]
+    # Model D1's JSON representation of integral SQLite REAL columns.
+    for row in data["members"]:
+        if row["ready_at"].is_integer():
+            row["ready_at"] = int(row["ready_at"])
 
     def forbidden(*_args, **_kwargs):
         raise AssertionError("Le contrôle d'import ne doit pas prendre le contrôle du moteur")

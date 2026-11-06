@@ -4,7 +4,9 @@
 
 Migration **non activée en production**. Une base D1 européenne et un Worker de
 préproduction ont été déployés et testés avec des données fictives le 6 novembre
-2026. La production Vercel continue d'utiliser Turso. Les preuves et les étapes
+2026. Les données réelles ont ensuite été exportées, importées dans une nouvelle
+base européenne et intégralement comparées. La production Vercel continue
+d'utiliser Turso. Les preuves et les étapes
 restantes sont dans [D1_PREPRODUCTION.md](D1_PREPRODUCTION.md).
 
 ## Architecture vérifiée

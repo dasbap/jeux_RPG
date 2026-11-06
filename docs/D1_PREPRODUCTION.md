@@ -2,10 +2,11 @@
 
 ## Réalisé
 
-La base `jeux-rpg-preview` a été créée avec `--jurisdiction eu` dans le compte
-Cloudflare déjà connecté. Son identifiant et le binding `DB` sont dans
-`cloudflare/wrangler.preview.json`. Le schéma du jeu (version 3) et les deux triggers
-de protection de génération du moteur sont installés.
+La base initiale `jeux-rpg-preview` a été créée avec `--jurisdiction eu` pour
+les essais fictifs. Après autorisation, une nouvelle base européenne vide
+`jeux-rpg-import-preview` a été créée pour l'import réel. Son identifiant et le
+binding `DB` sont maintenant dans `cloudflare/wrangler.preview.json`. Le schéma
+du jeu (version 3) et les deux triggers de protection du moteur sont installés.
 
 Le Worker authentifié est publié à
 `https://jeux-rpg-d1-preview.dasbap-jeux-rpg.workers.dev`.
@@ -21,10 +22,10 @@ La recette réelle `scripts/verify_d1_preview.py` a validé :
 - refus du moteur périmé lors de sauvegardes concurrentes ;
 - annulation complète d'un lot avec une clé étrangère invalide.
 
-Les données fictives ont été retirées par le script. Il reste des métadonnées
-techniques et une génération de moteur : cette base de recette n'est donc pas
-une destination vide pour un import de production. Utiliser une **nouvelle base
-D1 de recette vide** pour cet import, puis y appliquer le même schéma.
+Les données fictives ont été retirées de la base initiale. Le Worker de
+préproduction est maintenant lié à la nouvelle base importée. Ne pas relancer
+`verify_d1_preview.py` sur ces données : le script refuse une base non vide.
+Le contrôle d'import `verify_d1_import.py` reste intégralement en lecture seule.
 
 ## Retrait progressif de Turso
 
@@ -40,30 +41,46 @@ différent de celui de Turso et des autres bases D1.
 `scripts/export_database_backup.py` prépare une sauvegarde SQLite privée du
 stockage sélectionné ; `scripts/check_database.py` contrôle son schéma et ses
 relations. Le code Turso reste disponible pour l'export initial et le retour arrière.
-Le workflow de production n'a pas encore été modifié ni exécuté pour D1.
+Le workflow de publication sélectionne désormais le backend pour la sauvegarde,
+sa restauration de contrôle, la vérification et la synchronisation des accès.
+Il ne dépend plus obligatoirement de Turso. L'administration utilise également
+un script commun en lecture seule. Les sauvegardes de publication restent
+chiffrées et conservées trente jours. Aucune publication de production n'est
+exécutée lors de cette étape et son backend n'est pas basculé.
 
-## Autorisations encore nécessaires
+## Export autorisé et exécuté
 
-La PR [#90](https://github.com/dasbap/jeux_RPG/pull/90) prépare un export Turso
+La PR [#90](https://github.com/dasbap/jeux_RPG/pull/90), fusionnée, prépare un export Turso
 en lecture seule, chiffré avec age et conservé sept jours dans un artefact GitHub.
 Tous ses contrôles GitHub sont verts. La clé privée est conservée uniquement sur
 le poste, dans `.data/d1-migration/backup.key` avec accès local restreint.
 
-La revue automatique a refusé le lancement de cet export tant que le propriétaire
-n'a pas explicitement autorisé les données concernées et leur destination GitHub.
-Elle a également refusé d'adapter les sauvegardes du workflow de production à D1
-sans accord distinct sur ces futurs exports chiffrés. Aucun contournement n'est
-prévu. Ces deux autorisations sont demandées dans la conversation.
+Le propriétaire a explicitement autorisé l'export et l'import, ainsi que les
+sauvegardes chiffrées du workflow de publication. Le workflow
+[42225399950](https://github.com/dasbap/jeux_RPG/actions/runs/42225399950) a réussi.
+L'artefact téléchargé contient uniquement la sauvegarde chiffrée, son checksum
+et un rapport sans données personnelles. Le checksum a été vérifié.
 
-## Après autorisation de l'export
+## Import réel et restauration vérifiés
 
-Fusionner la PR #90 normalement, déclencher le workflow manuel depuis `master`,
-télécharger et déchiffrer l'artefact dans le dossier privé local. Créer une base D1
-de recette neuve, y appliquer le SQL produit par `scripts/prepare_d1_schema.py`,
-puis importer le fichier produit par `scripts/prepare_d1_import.py`.
+La vacuité de `jeux-rpg-import-preview` a été contrôlée, puis le schéma et le
+fichier privé produit par `prepare_d1_import.py` ont été importés. Le contrôle
+`verify_d1_import.py` confirme les tables durables et leurs séquences identiques
+à la sauvegarde source : **707 lignes**, dont 23 comptes, 24 personnages,
+27 sessions de compte, 16 parties/membres/tutoriels et 544 événements.
 
-Comparer intégralement les tables durables et leurs séquences avec
-`python -m scripts.verify_d1_import SOURCE --env-file ENV_D1`, sans modifier la
-génération du moteur distant. Tester ensuite les parcours de préproduction.
-Une bascule finale exige un gel des écritures et une nouvelle sauvegarde ;
-la production actuelle reste sur Turso jusqu'à cette validation.
+La comparaison inclut les mots de passe hachés, les sessions et les états JSON,
+sans publier leurs valeurs. Elle normalise les REAL SQLite intégraux que le JSON
+D1 représente comme des entiers (`0.0` devient `0`), sans arrondir les fractions.
+Les relations et la réouverture du moteur importé sont valides.
+
+Un export privé depuis ce vrai D1 a ensuite été restauré localement par
+`export_database_backup.py` : intégrité, relations, tables et réouverture du moteur
+réussies. Les preuves et copies privées restent dans `.data/d1-migration/`, hors Git.
+
+L'import est une photographie ponctuelle, sans synchronisation continue. La
+production actuelle reste sur Turso. Une recette complète du déploiement Vercel
+D1 avec Redis reste à réaliser avant la bascule publique. Celle-ci exige un gel
+des écritures, un nouvel export final et une comparaison, en conservant Turso
+pour le retour arrière. Toute progression écrite ensuite sur D1 doit être
+conservée avant un éventuel retour vers Turso.

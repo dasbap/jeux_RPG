@@ -8,8 +8,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "jeux-rpg-preview",
-      "database_id": "bf29ab72-c4a8-440b-a106-da6badde250c"
+      "database_name": "jeux-rpg-import-preview",
+      "database_id": "494fd86e-648f-44c7-9a89-85ce6b74ac2c"
     }
   ]
 }

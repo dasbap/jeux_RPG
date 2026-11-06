@@ -13,7 +13,12 @@ from jeuxRPG.multiplayer.realtime_store import TABLES, RuntimeStore
 
 
 def normalized(rows):
-    return sorted(json.dumps(dict(row), sort_keys=True, separators=(",", ":")) for row in rows)
+    # D1's JSON transport represents SQLite REAL 0.0 as the JSON number 0.
+    # Canonicalize integral reals without rounding fractional values or text.
+    return sorted(json.dumps({
+        key: int(value) if type(value) is float and value.is_integer() else value
+        for key, value in dict(row).items()
+    }, sort_keys=True, separators=(",", ":")) for row in rows)
 
 
 def verify(source, environment):
