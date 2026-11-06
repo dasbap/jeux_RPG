@@ -12,6 +12,8 @@ from redis.exceptions import (
 
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
 from jeuxRPG.multiplayer.redis_configuration import redis_url
+from jeuxRPG.multiplayer.d1_client import D1Client
+from jeuxRPG.multiplayer.storage_configuration import database_backend
 
 
 def failure_code(error):
@@ -47,8 +49,14 @@ def verify(environment):
             raise
         mode = "solo"
         print("Quota Redis épuisé : publication du mode solo uniquement.", flush=True)
-    print("Vérification de la restauration depuis Turso.", flush=True)
-    store = RuntimeStore.load(environment)
+    backend = database_backend(environment)
+    print("Vérification de la restauration du stockage " + backend + ".", flush=True)
+    if backend == "d1":
+        client = D1Client(environment)
+        client.health()
+        store = RuntimeStore(environment, client.read_snapshot())
+    else:
+        store = RuntimeStore.load(environment)
     store.close()
     return mode
 

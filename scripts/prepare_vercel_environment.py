@@ -4,17 +4,29 @@ from pathlib import Path
 from dotenv import dotenv_values, set_key
 
 from jeuxRPG.multiplayer.redis_configuration import RedisConfigurationError, redis_url
+from jeuxRPG.multiplayer.storage_configuration import (
+    DATABASE_VARIABLES,
+    database_backend,
+    database_variables,
+)
 
 
 def prepare(path, environment):
     pulled = dotenv_values(path)
     values = {key: value for key, value in pulled.items() if value and value != "[SENSITIVE]"}
-    required = ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "RPG_ADMIN_TOKEN")
+    selection = {**pulled, **environment}
+    backend = database_backend(selection)
+    required = (*database_variables(selection), "RPG_ADMIN_TOKEN")
     for key in required:
         value = environment.get(key)
         if not value or value == "[SENSITIVE]":
             raise ValueError("Configuration CI requise absente : " + key)
         values[key] = value
+    values["RPG_DATABASE_BACKEND"] = backend
+    for inactive, names in DATABASE_VARIABLES.items():
+        if inactive != backend:
+            for key in names:
+                values.pop(key, None)
     values.update(RPG_RESET_TEST_PLAYERS="0", RPG_RUNTIME_REALMS="1")
     redis_urls = environment.get("REDIS_URLS")
     if redis_urls:

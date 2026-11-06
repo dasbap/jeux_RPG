@@ -2,7 +2,10 @@
 
 ## État
 
-Migration **non activée**. La production Vercel continue d'utiliser Turso. Ce document prépare une migration sans mettre en danger les sauvegardes des joueurs.
+Migration **non activée en production**. Une base D1 européenne et un Worker de
+préproduction ont été déployés et testés avec des données fictives le 6 novembre
+2026. La production Vercel continue d'utiliser Turso. Les preuves et les étapes
+restantes sont dans [D1_PREPRODUCTION.md](D1_PREPRODUCTION.md).
 
 ## Architecture vérifiée
 

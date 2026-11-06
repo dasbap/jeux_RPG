@@ -25,9 +25,9 @@ def duplicate_windows(baseline=None):
     )
     for path in paths:
         source = (
-            subprocess.check_output(["git", "show", f"{baseline}:{path}"], text=True)
+            subprocess.check_output(["git", "show", f"{baseline}:{path}"], text=True, encoding="utf-8")
             if baseline
-            else path.read_text()
+            else path.read_text(encoding="utf-8")
         )
         tree = ast.parse(source)
         seen = set()
@@ -87,7 +87,7 @@ def main():
             "Duplication exacte supérieure au budget courant (22 groupes / 24 occurrences supplémentaires)."
         )
     if args.coverage:
-        data = json.loads(Path(args.coverage).read_text())["totals"]
+        data = json.loads(Path(args.coverage).read_text(encoding="utf-8"))["totals"]
         lines = data["covered_lines"] / data["num_statements"] * 100
         branches = data["covered_branches"] / data["num_branches"] * 100
         print(f"Coverage: lines={lines:.2f}% branches={branches:.2f}%")
@@ -100,7 +100,7 @@ def main():
             "before": duplicate_windows(args.baseline) if args.baseline else None,
             "after": duplicate_windows(),
         }
-        Path(args.inventory).write_text(json.dumps(report, indent=2) + "\n")
+        Path(args.inventory).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if issues:
         raise SystemExit("\n".join(issues))
     print("Budgets respectes.")

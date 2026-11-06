@@ -2,6 +2,11 @@
 
 Le code D1 reste désactivé par défaut. Il ne faut pas modifier les secrets Vercel tant que la migration de données et les tests réels sur Cloudflare ne sont pas validés.
 
+La préproduction `jeux-rpg-preview` et son Worker sont maintenant déployés en UE.
+La recette réelle avec compte fictif passe : sauvegarde, reprise, reconnexion,
+rejet du moteur périmé et rollback atomique. Voir
+[les preuves et les étapes restantes](../docs/D1_PREPRODUCTION.md).
+
 ## Fonctionnement
 
 - `cloudflare/d1-worker.mjs` : Worker privé, authentification par jeton, lecture cohérente par session primaire et sauvegarde atomique via D1 `batch()`.
@@ -38,9 +43,21 @@ Le Worker n'a pas d'endpoint d'administration ni de SQL arbitraire. L'API est pr
 
 ## Limites restantes
 
-**Ne pas activer en production.** Il manque une procédure complète d'export/import des données Turso, un test intégral contre un vrai D1 (notamment les triggers de fencing, les limites de taille et les sauvegardes concurrentes), une recette des sessions/comptes et un plan de retour arrière. La sauvegarde actuelle envoie le batch dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà, elle échoue sans basculer silencieusement vers Turso.
+**Ne pas activer en production.** L'export et l'import des données réelles restent
+à autoriser puis valider, ainsi que la recette Vercel complète et le retour
+arrière opérationnel. Les tests de comptes et de sauvegarde concurrente passent
+sur D1 réel avec des données fictives. La sauvegarde actuelle envoie le batch
+dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà,
+elle échoue sans basculer silencieusement vers Turso.
 
 Le Worker ne peut pas être déployé depuis GitHub sans rattachement explicite à un compte Cloudflare et création du binding D1.
+
+Le déploiement local de recette est reproductible avec
+`python -m scripts.deploy_d1_preview`, qui utilise la connexion Wrangler existante,
+et `python -m scripts.verify_d1_preview --env-file .data/d1-migration/preview.env`.
+Ce dernier script exige une base contenant uniquement des métadonnées et ne doit
+pas être utilisé après l'import des comptes réels. Le contrôle d'import est
+`python -m scripts.verify_d1_import SOURCE --env-file ENV_D1` ; il reste en lecture seule.
 
 
 ## Export des données réelles (étape hors production)
@@ -63,6 +80,29 @@ npx wrangler d1 execute jeux-rpg-preview --remote --file .\\d1-private-import.sq
 ```
 
 Le script génère un `PRAGMA defer_foreign_keys=ON`, suivi d'insertions avec littéraux SQLite; la base cible doit déjà contenir les tables et `schema_version=3`. Vérifier que le CLI accepte le fichier et que les décomptes de lignes correspondent au rapport JSON produit. Après l'import, réaliser des tests réels de lecture, sauvegarde, concurrence et reprise avec le Worker.
+
+Le générateur ouvre un instantané en lecture seule et refuse une version de schéma
+différente de celle du serveur, une table obligatoire absente ou des références
+invalides. Il vérifie les relations de toute la sauvegarde, mais exporte uniquement
+les tables durables du moteur (`TABLES`) ; chat, présence et limites transitoires
+restent exclus. Un test local vérifie la conservation des lignes et la reprise
+d'une partie après import.
+
+## Vérifications locales
+
+```powershell
+python -m pytest test/test_d1_client.py test/test_d1_import.py -q
+node scripts/verify_d1_worker.mjs
+```
+
+Le second contrôle nécessite Node 24 et utilise SQLite local avec une simulation
+du binding D1. Il couvre un lot où l'enfant précède le parent, le refus d'un moteur
+périmé et l'annulation de tout le lot si une relation est invalide. Le Worker diffère
+les clés étrangères jusqu'à la fin du lot atomique ; il ne les désactive pas.
+Ces contrôles passent aussi en CI et ne certifient pas le service Cloudflare réel.
+
+Les sources contractuelles et les limites gratuites vérifiées lors de la reprise
+sont consignées dans [le dossier fournisseur](../docs/CLOUDFLARE_DATA_PROCESSING.md).
 
 **Attention :** la migration réelle n'est pas complète : ce script prépare un import à partir d'une sauvegarde ponctuelle; il ne réalise ni capture des dernières écritures, ni synchronisation en continu, ni commutation atomique Vercel/D1.
 

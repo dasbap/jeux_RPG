@@ -20,7 +20,7 @@ function guardedFence(db, fence) {
 }
 function checkpointStatements(db, body) {
   if (!validFence(body.fence) || !Array.isArray(body.changes) || body.changes.length > 1000) throw new Error("invalid_checkpoint");
-  const statements=[guardedFence(db,body.fence)];
+  const statements=[db.prepare("PRAGMA defer_foreign_keys=ON"),guardedFence(db,body.fence)];
   for(const item of body.changes) {
     if(!item || !TABLES.includes(item.table) || item.table==="meta" && item.row?.key==="runtime_fence") throw new Error("invalid_table");
     const keys=KEYS[item.table];
@@ -49,10 +49,18 @@ export default {
   if(size>2000000) return reply({error:"too_large"},413);
   let body;
   try { const raw=await request.text(); if(raw.length>2000000) return reply({error:"too_large"},413); body=JSON.parse(raw); } catch {return reply({error:"invalid_json"},400);}
+  if(!body || typeof body!=="object" || Array.isArray(body)) return reply({error:"invalid_request"},400);
   try {
    if(body.operation==="health") {
     const row=await env.DB.prepare("SELECT version FROM schema_version WHERE id=1").first();
-    return reply({ok:true,version:row?.version});
+    const guards=await env.DB.prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='trigger' AND name IN ('reject_stale_runtime_fence_update','reject_stale_runtime_fence_delete')").first();
+    const ready=row?.version===3 && guards?.count===2;
+    return reply({ok:ready,version:row?.version,fence_guards:guards?.count},ready?200:503);
+   }
+   if(body.operation==="read_snapshot"){
+    const session=env.DB.withSession("first-primary");
+    const batch=await session.batch([...TABLES.map(t=>session.prepare("SELECT * FROM "+t)),session.prepare("SELECT name,seq FROM sqlite_sequence")]);
+    return reply({data:Object.fromEntries(TABLES.map((t,i)=>[t,batch[i].results])),sequences:batch[TABLES.length].results});
    }
    if(body.operation==="load_snapshot"){
     if(!validFence(body.fence)) return reply({error:"invalid_fence"},400);

@@ -296,6 +296,10 @@ class Application:
     def service(self):
         if self.factory:
             return self.factory()
+        from .storage_configuration import database_backend
+
+        if database_backend(self.environment) == "d1":
+            raise sqlite3.OperationalError("D1 requiert le moteur temps réel ASGI")
         connection = TursoConnection(
             self.environment.get("TURSO_DATABASE_URL", ""),
             self.environment.get("TURSO_AUTH_TOKEN", ""),

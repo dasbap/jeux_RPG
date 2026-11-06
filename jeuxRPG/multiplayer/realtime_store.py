@@ -9,6 +9,7 @@ from .distributed import PresenceRegistry
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .schema import initialize
 from .serverless import Application, RemoteGameService
+from .storage_configuration import database_backend
 from .turso import TursoConnection
 from .world import zone_of
 
@@ -166,10 +167,12 @@ class RuntimeStore:
 
     @classmethod
     def load(cls, environment, fence=None):
-        if environment.get("RPG_DATABASE_BACKEND") == "d1":
+        if database_backend(environment) == "d1":
             if fence is None:
                 raise RuntimeError("Un fence est requis pour charger depuis D1")
-            return cls(environment, D1Client(environment).load_snapshot(fence))
+            client = D1Client(environment)
+            client.health()
+            return cls(environment, client.load_snapshot(fence))
         connection = TursoConnection(
             environment["TURSO_DATABASE_URL"], environment["TURSO_AUTH_TOKEN"]
         )
@@ -394,7 +397,7 @@ class RuntimeStore:
         return deepcopy(self.pending)
 
     def persist(self, fence: int, batch: PendingBatch) -> None:
-        if self.environment.get("RPG_DATABASE_BACKEND") == "d1":
+        if database_backend(self.environment) == "d1":
             D1Client(self.environment).persist_checkpoint(fence, batch)
             return
         connection = TursoConnection(
