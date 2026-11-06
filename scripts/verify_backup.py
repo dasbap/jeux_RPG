@@ -1,4 +1,5 @@
 import argparse
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
@@ -19,10 +20,10 @@ def table_summary(connection):
 
 def verify_backup(database, temporary_directory=None):
     database = Path(database).resolve(strict=True)
-    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as source:
+    with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as source:
         with tempfile.TemporaryDirectory(dir=temporary_directory) as directory:
             restored_path = Path(directory) / 'restored.sqlite3'
-            with sqlite3.connect(restored_path) as restored:
+            with closing(sqlite3.connect(restored_path)) as restored:
                 source.backup(restored)
                 if restored.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
                     raise RuntimeError('Copie SQLite invalide')

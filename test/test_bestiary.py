@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(autouse=True)
 def packaged_bestiary(monkeypatch):
-    mobs = json.loads((ROOT / "jeuxRPG/maps/mobs.json").read_text())["maps"]
+    mobs = json.loads((ROOT / "jeuxRPG/maps/mobs.json").read_text(encoding="utf-8"))["maps"]
     monkeypatch.setattr(map_building, "MOBS", mob_rules.validate_mobs(mobs))
     monkeypatch.setitem(DATA, "gameplay", deepcopy(DEFAULTS))
 
@@ -55,13 +55,13 @@ def test_bestiary_covers_ten_levels_and_all_categories():
 
 def test_packaged_and_authored_catalogs_match():
     for filename in ["mobs.json"]:
-        assert json.loads((ROOT / "jeuxRPG/maps" / filename).read_text()) == json.loads(
-            (ROOT / "projects/authored" / filename).read_text()
+        assert json.loads((ROOT / "jeuxRPG/maps" / filename).read_text(encoding="utf-8")) == json.loads(
+            (ROOT / "projects/authored" / filename).read_text(encoding="utf-8")
         )
 
 
 def test_camp_uses_warriors_and_boss():
-    world = json.loads((ROOT / "jeuxRPG/maps/world.json").read_text())
+    world = json.loads((ROOT / "jeuxRPG/maps/world.json").read_text(encoding="utf-8"))
     camp = world["hunt"]["spawners"]
     chief = next(spawn for spawn in camp if spawn["name"] == "Chef Gobelin")
     guards = [spawn for spawn in camp if spawn["name"] == "Garde gobelin"]

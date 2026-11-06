@@ -18,10 +18,15 @@ def test_asgi_health_reports_release_without_database_access():
         assert response.status_code == 200
         assert response.headers['content-type'].startswith('application/json')
         assert response.headers['cache-control'] == 'no-store'
-        assert response.json() == {'status': 'ok', 'release': 'reviewed-commit'}
+        assert response.json() == {'status': 'ok', 'release': 'reviewed-commit', 'database_backend': 'turso'}
         assert client.get('/missing-route').status_code == 404
 
 
 def test_asgi_health_omits_unconfigured_release():
     with TestClient(create_app({}, UnavailableCoordinator())) as client:
-        assert client.get('/health').json() == {'status': 'ok'}
+        assert client.get('/health').json() == {'status': 'ok', 'database_backend': 'turso'}
+
+
+def test_health_reports_d1_without_reading_its_credentials_or_database():
+    with TestClient(create_app({'RPG_DATABASE_BACKEND': 'd1'}, UnavailableCoordinator())) as client:
+        assert client.get('/health').json()['database_backend'] == 'd1'

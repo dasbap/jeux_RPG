@@ -35,6 +35,17 @@ def test_release_health_accepts_exact_commit(monkeypatch):
     verify_deployment.verify_release(BASE, 'expected')
 
 
+@pytest.mark.parametrize('backend', ['d1', 'turso'])
+def test_release_health_requires_the_selected_backend(monkeypatch, backend):
+    monkeypatch.setenv('RPG_EXPECTED_DATABASE_BACKEND', 'd1')
+    monkeypatch.setattr(verify_deployment, 'urlopen', lambda *args, **kwargs: response(json.dumps({'release': 'expected', 'database_backend': backend}).encode(), 'application/json'))
+    if backend == 'd1':
+        verify_deployment.verify_release(BASE, 'expected')
+    else:
+        with pytest.raises(SystemExit, match='stockage attendu'):
+            verify_deployment.verify_release(BASE, 'expected')
+
+
 @pytest.mark.parametrize('body,content_type,message', [
     (b'<html>private response</html>', 'text/html', 'VERCEL_AUTOMATION_BYPASS_SECRET'),
     (b'{invalid', 'application/json', 'JSON invalide'),

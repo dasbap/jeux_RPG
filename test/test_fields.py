@@ -11,7 +11,7 @@ from jeuxRPG.multiplayer.service import GameError, GameService
 
 @pytest.fixture(autouse=True)
 def stable_field_scenarios(monkeypatch):
-    maps = json.loads((Path(__file__).parent / "fixtures" / "fields.json").read_text())
+    maps = json.loads((Path(__file__).parent / "fixtures" / "fields.json").read_text(encoding="utf-8"))
     monkeypatch.setattr(fields, "MAPS", maps)
     places = deepcopy(world.PLACES)
     for key, definition in maps.items():

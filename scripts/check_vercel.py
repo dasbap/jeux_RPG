@@ -12,7 +12,14 @@ def check(root, environment):
     )
 
     errors = []
-    for name in ("app.py", "jeuxRPG/multiplayer/realtime.py", "jeuxRPG/multiplayer/realtime_store.py", "jeuxRPG/multiplayer/serverless.py", "jeuxRPG/multiplayer/turso.py", "jeuxRPG/multiplayer/schema.py", "jeuxRPG/multiplayer/admin.py", "jeuxRPG/_class/character.py"):
+    from jeuxRPG.multiplayer.storage_configuration import database_backend, database_variables
+
+    try:
+        backend = database_backend(environment)
+    except ValueError as error:
+        return [str(error)]
+    client_file = "d1_client.py" if backend == "d1" else "turso.py"
+    for name in ("app.py", "jeuxRPG/multiplayer/realtime.py", "jeuxRPG/multiplayer/realtime_store.py", "jeuxRPG/multiplayer/serverless.py", "jeuxRPG/multiplayer/" + client_file, "jeuxRPG/multiplayer/schema.py", "jeuxRPG/multiplayer/admin.py", "jeuxRPG/_class/character.py"):
         path = root / name
         if not path.is_file():
             errors.append(f"Fichier requis absent : {name}")
@@ -24,8 +31,8 @@ def check(root, environment):
     configuration = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     if configuration.get("tool", {}).get("vercel", {}).get("entrypoint") != "app:app":
         errors.append("Entrée WSGI à configurer dans pyproject.toml : tool.vercel.entrypoint = app:app")
-    for name in ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"):
-        if not environment.get(name):
+    for name in database_variables(environment):
+        if not environment.get(name) or environment[name] == "[SENSITIVE]":
             errors.append(f"Variable Vercel requise absente : {name}")
     try:
         selected_redis = redis_url(environment)
@@ -49,7 +56,7 @@ def main():
             print(f"- {error}")
         print("Le serveur local main.py ne remplace pas une entrée WSGI et une base persistante distante.")
         return 1
-    print("Fichiers Vercel et variables Turso présents. La connexion distante et le parcours de jeu restent à vérifier sur une preview.")
+    print("Fichiers Vercel et configuration du stockage présents. La connexion distante et le parcours de jeu restent à vérifier sur une preview.")
     return 0
 
 
