@@ -223,8 +223,9 @@ def species_details(identifier):
     definition = resolve(MOBS, identifier)
     actor = Character.create(definition["class_name"], "bestiary", definition["name"])
     for key, formula in definition.get("stats", {}).items():
-        getattr(actor, key).value = formula["base"]
-        getattr(actor, key).current_value = formula["base"]
+        stat = getattr(actor, key)
+        stat.value = round(formula["base"])
+        stat.current_value = stat.value
     advantages = actor.class_table["advantage"]
     return {
         "hp": actor.hp.value,
