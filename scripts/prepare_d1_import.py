@@ -19,7 +19,7 @@ def sql_literal(db, value):
     return db.execute("SELECT quote(?)", (value,)).fetchone()[0]
 
 
-def generate_import(source, destination):
+def generate_import(source, destination, reset_runtime_fence=False):
     source = Path(source).resolve(strict=True)
     destination = Path(destination)
     if source.resolve() == destination.resolve():
@@ -59,6 +59,8 @@ def generate_import(source, destination):
                     quoted_cols = ",".join('"' + col.replace('"', '""') + '"' for col in columns)
                     quoted_table = '"' + table + '"'
                     for row in db.execute("SELECT * FROM " + quoted_table):
+                        if reset_runtime_fence and table == "meta" and row[columns.index("key")] == "runtime_fence":
+                            row = tuple("0" if column == "value" else value for column, value in zip(columns, row, strict=True))
                         values = ",".join(sql_literal(db, v) for v in row)
                         output.write(f"INSERT INTO {quoted_table} ({quoted_cols}) VALUES ({values});\n")
                 for name, seq in db.execute("SELECT name,seq FROM sqlite_sequence"):
@@ -76,5 +78,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source")
     parser.add_argument("destination")
+    parser.add_argument("--reset-runtime-fence", action="store_true", help="Nouvelle coordination D1 apres gel definitif de Turso")
     args = parser.parse_args()
-    print(json.dumps(generate_import(args.source, args.destination)))
+    print(json.dumps(generate_import(args.source, args.destination, args.reset_runtime_fence)))

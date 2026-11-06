@@ -21,7 +21,7 @@ def normalized(rows):
     }, sort_keys=True, separators=(",", ":")) for row in rows)
 
 
-def verify(source, environment):
+def verify(source, environment, reset_runtime_fence=False):
     client = D1Client(environment)
     client.health()
     remote, sequences = client.backup_snapshot()
@@ -32,6 +32,8 @@ def verify(source, environment):
         counts = {}
         for table in TABLES:
             rows = db.execute(f"SELECT * FROM {table}").fetchall()
+            if reset_runtime_fence and table == "meta":
+                rows = [{**dict(row), "value": "0"} if row["key"] == "runtime_fence" else row for row in rows]
             if normalized(rows) != normalized(remote[table]):
                 raise RuntimeError("Données différentes après import : " + table)
             counts[table] = len(rows)
@@ -52,5 +54,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("--env-file", type=Path, required=True)
+    parser.add_argument("--reset-runtime-fence", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(verify(args.source, dotenv_values(args.env_file))))
+    print(json.dumps(verify(args.source, dotenv_values(args.env_file), args.reset_runtime_fence)))

@@ -183,7 +183,7 @@ jobs:
       - name: Verifier le stockage du moteur de production
         id: runtime
         env:
-          RPG_ALLOW_SOLO_RELEASE: '1'
+          RPG_ALLOW_SOLO_RELEASE: '0'
         run: python -m scripts.verify_runtime_storage
       - name: Construire l'artefact de production en CI
         env:
@@ -200,6 +200,7 @@ jobs:
         env:
           RPG_RELEASE_MODE: ${{ steps.runtime.outputs.mode }}
           RPG_EXPECTED_RELEASE: ${{ github.sha }}
+          RPG_EXPECTED_DATABASE_BACKEND: ${{ vars.RPG_DATABASE_BACKEND || 'turso' }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promouvoir la version verifiee
         env:
