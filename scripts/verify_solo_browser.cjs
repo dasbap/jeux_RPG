@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const net = require("node:net");
-const {spawn} = require("node:child_process");
+const {spawn, execFileSync} = require("node:child_process");
 const {chromium} = require("../.ui-test/node_modules/playwright");
 (async () => {
   const listener = net.createServer();
@@ -38,6 +38,9 @@ const {chromium} = require("../.ui-test/node_modules/playwright");
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", error => errors.push(String(error)));
+    page.on("console", message => {
+      if (message.type() === "error" && /Content Security Policy|Traceback|Stat value must be an integer/.test(message.text())) errors.push(message.text());
+    });
     const home = await page.goto(base);
     assert.equal(home.status(), 200);
     await page.locator("#solo-entry").click();
@@ -51,6 +54,53 @@ const {chromium} = require("../.ui-test/node_modules/playwright");
     const sessionId = await page.evaluate(() => session.id);
     await page.evaluate(() => soloTransport.flush());
     assert.equal(apiCalls, before);
+    // Resume a progressed save: the packaged boss has decimal stat bases.
+    const saved = await page.evaluate(async () => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open("jeux-rpg-solo", 1);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction("saves", "readonly");
+          const request = tx.objectStore("saves").get("game");
+          tx.oncomplete = () => resolve(Array.from(request.result));
+          tx.onerror = () => reject(tx.error);
+        });
+      } finally { db.close(); }
+    });
+    const progressed = execFileSync(process.env.PYTHON || "python", ["-c", [
+      "import json, sqlite3, sys",
+      "db = sqlite3.connect(':memory:')",
+      "db.deserialize(sys.stdin.buffer.read())",
+      "row = db.execute('SELECT session_id, data FROM tutorials').fetchone()",
+      "party = json.loads(row[1])",
+      "party['seen_mobs'] = ['goblin', 'gobelin_boss']",
+      "db.execute('UPDATE tutorials SET data=? WHERE session_id=?', (json.dumps(party), row[0]))",
+      "db.commit()",
+      "sys.stdout.buffer.write(db.serialize())",
+      "db.close()"
+    ].join("\n")], {input: Buffer.from(saved)});
+    // Close the worker before replacing the fixture so autosave cannot overwrite it.
+    await page.evaluate(() => soloTransport.close());
+    await page.evaluate(async bytes => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open("jeux-rpg-solo", 1);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction("saves", "readwrite");
+          tx.objectStore("saves").put(new Uint8Array(bytes), "game");
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      } finally { db.close(); }
+    }, Array.from(progressed));
+    await page.reload();
+    await page.waitForFunction(expected => session?.id === expected && session.tutorial?.world?.bestiary.some(mob => mob.id === "gobelin_boss"), sessionId, {timeout: 60000});
     const other = await context.newPage();
     await other.goto(base);
 
