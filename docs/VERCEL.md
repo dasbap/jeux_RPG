@@ -2,6 +2,11 @@
 
 Le projet cible est `dasbaps-projects/jeux-rpg`. `fleet-test` ne doit pas être modifié.
 
+Depuis la bascule du 6 novembre 2026, la production publique utilise **Cloudflare
+D1 en UE**. Le SHA, les preuves du transfert et les vérifications navigateur sont
+dans [D1_PRODUCTION.md](D1_PRODUCTION.md). Turso reste une source de récupération
+verrouillée ; il n'est plus le backend actif.
+
 L’application déployée expose `app:app`, une application FastAPI/ASGI créée par `jeuxRPG.multiplayer.realtime.create_app`. Le serveur HTTP local conserve son entrée dédiée. Python 3.12 et la région Francfort sont configurés.
 
 ## Variables Vercel

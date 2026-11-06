@@ -1,5 +1,8 @@
 # Préproduction D1 — 6 novembre 2026
 
+Ce rapport conserve les étapes de préproduction. La bascule publique a ensuite
+été effectuée et vérifiée : voir [D1_PRODUCTION.md](D1_PRODUCTION.md).
+
 ## Réalisé
 
 La base initiale `jeux-rpg-preview` a été créée avec `--jurisdiction eu` pour
@@ -79,8 +82,9 @@ Un export privé depuis ce vrai D1 a ensuite été restauré localement par
 réussies. Les preuves et copies privées restent dans `.data/d1-migration/`, hors Git.
 
 L'import est une photographie ponctuelle, sans synchronisation continue. La
-production actuelle reste sur Turso. Une recette complète du déploiement Vercel
-D1 avec Redis reste à réaliser avant la bascule publique. Celle-ci exige un gel
+production restait alors sur Turso. La recette Vercel D1 avec Redis et la bascule
+publique ont depuis été effectuées ; leurs preuves sont dans le rapport de
+production ci-dessus. Une nouvelle bascule exige un gel
 des écritures, un nouvel export final et une comparaison, en conservant Turso
 pour le retour arrière. Toute progression écrite ensuite sur D1 doit être
 conservée avant un éventuel retour vers Turso.

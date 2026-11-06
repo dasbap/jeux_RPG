@@ -1,6 +1,10 @@
-# Cloudflare D1 — déploiement expérimental (pas de production)
+# Cloudflare D1 — production et préproduction
 
-Le code D1 reste désactivé par défaut. Il ne faut pas modifier les secrets Vercel tant que la migration de données et les tests réels sur Cloudflare ne sont pas validés.
+La production publique utilise désormais D1 en UE. Les données, les sauvegardes,
+le déploiement Vercel et le parcours navigateur ont été vérifiés ; voir
+[D1_PRODUCTION.md](../docs/D1_PRODUCTION.md). Les configurations anciennes sans
+sélection explicite restent compatibles avec Turso ; le backend de production
+est explicitement `RPG_DATABASE_BACKEND=d1`.
 
 La préproduction `jeux-rpg-preview` et son Worker sont maintenant déployés en UE.
 La recette réelle avec compte fictif passe : sauvegarde, reprise, reconnexion,
@@ -43,10 +47,11 @@ Le Worker n'a pas d'endpoint d'administration ni de SQL arbitraire. L'API est pr
 
 ## Limites restantes
 
-**Ne pas activer en production.** L'export autorisé et l'import des données réelles
-sont validés (707 lignes durables, séquences, relations, reprise et sauvegarde
-restaurée). La recette Vercel complète et le retour arrière opérationnel restent
-à réaliser. Les tests de comptes et de sauvegarde concurrente passent
+La bascule finale de production et la recette Vercel sont validées. Le transfert
+conserve les 707 lignes durables initiales, les séquences, les relations et la
+reprise ; une sauvegarde D1 a été restaurée. Un retour vers Turso exige de
+conserver les nouvelles écritures D1 avant toute réactivation de l'ancienne base.
+Les tests de comptes et de sauvegarde concurrente passent
 sur D1 réel avec des données fictives. La sauvegarde actuelle envoie le batch
 dans une seule requête HTTP plafonnée à 2 Mo et au maximum 1000 lignes ; au-delà,
 elle échoue sans basculer silencieusement vers Turso.
