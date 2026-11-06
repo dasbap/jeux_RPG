@@ -10,7 +10,7 @@ globalThis.createRpgSoloTransport = async function () {
   }).catch(readyReject);
   await locked;
   let worker;
-  try { worker = new Worker(document.querySelector('meta[name="rpg-solo-worker"]')?.content || "/solo_worker.js"); }
+  try { worker = new Worker(document.querySelector('meta[name="rpg-solo-worker"]')?.content || "/solo_worker.js", {type: "module"}); }
   catch (error) { release(); await lockTask; throw error; }
   const pending = new Map();
   let sequence = 0, closed = false;

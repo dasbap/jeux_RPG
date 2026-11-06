@@ -27,7 +27,7 @@ async function initialize() {
     request.onerror = () => reject(request.error);
   });
   const saved = await transaction("readonly", store => store.get("game"));
-  importScripts("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js");
+  const {loadPyodide} = await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs");
   python = await loadPyodide({indexURL: "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"});
   const response = await fetch("/solo-engine.zip");
   if (!response.ok) throw new Error("Moteur solo indisponible.");

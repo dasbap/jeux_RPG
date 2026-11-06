@@ -11,7 +11,6 @@ function worker() {
   let nextId = 0;
   const pending = new Map(), timers = [];
   const context = {indexedDB, Uint8Array, Promise, JSON, Date, console,
-    importScripts(url) { assert.equal(url, "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"); },
     loadPyodide: () => loadPyodide(),
     fetch: async url => { requests++; assert.equal(url, "/solo-engine.zip"); return {ok: true, arrayBuffer: async () => new Uint8Array(archive).buffer}; },
     setInterval: (fn, delay) => timers.push({fn, delay}),
@@ -23,7 +22,10 @@ function worker() {
     }
   };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync("jeuxRPG/multiplayer/web/solo_worker.js", "utf8"), context);
+  const source = fs.readFileSync("jeuxRPG/multiplayer/web/solo_worker.js", "utf8");
+  const loaderImport = 'const {loadPyodide} = await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs");';
+  assert(source.includes(loaderImport));
+  vm.runInContext(source.replace(loaderImport, ""), context);
   return {send(type, payload) { const id = ++nextId; return new Promise((resolve, reject) => { pending.set(id, {resolve, reject}); context.onmessage({data: {id, type, payload}}); }); }};
 }
 (async () => {

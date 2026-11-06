@@ -18,6 +18,26 @@ def packaged_bestiary(monkeypatch):
     mobs = json.loads((ROOT / "jeuxRPG/maps/mobs.json").read_text(encoding="utf-8"))["maps"]
     monkeypatch.setattr(map_building, "MOBS", mob_rules.validate_mobs(mobs))
     monkeypatch.setitem(DATA, "gameplay", deepcopy(DEFAULTS))
+    map_building.species_details.cache_clear()
+    yield
+    map_building.species_details.cache_clear()
+
+
+def test_every_packaged_species_has_integer_bestiary_stats():
+    for identifier in map_building.MOBS:
+        details = map_building.species_details(identifier)
+        assert type(details["hp"]) is int
+        assert all(type(value) is int for value in details["stats"].values())
+
+
+@pytest.mark.parametrize("base", [6.0, 6.4, 6.6])
+def test_bestiary_rounds_decimal_bases_like_level_one_combat(base):
+    map_building.MOBS["gobelin_boss"]["stats"]["force"]["base"] = base
+    details = map_building.species_details("gobelin_boss")
+    mob = map_building.create_mob(
+        {"test": {"level": 1}}, "test", {"mob_id": "gobelin_boss", "level": 1}, 0
+    )
+    assert details["stats"]["force"] == mob["stats"]["force"]["current"] == round(base)
 
 
 def test_bestiary_covers_ten_levels_and_all_categories():
