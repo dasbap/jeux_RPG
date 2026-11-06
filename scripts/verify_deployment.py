@@ -89,6 +89,9 @@ def verify_release(base, expected_release):
         raise SystemExit(f'Healthcheck HTTP {error.code} ; promotion refusée.') from None
     if not isinstance(payload, dict) or payload.get('release') != expected_release:
         raise SystemExit('Le déploiement ne correspond pas au commit attendu')
+    expected_backend = os.environ.get('RPG_EXPECTED_DATABASE_BACKEND')
+    if expected_backend and payload.get('database_backend') != expected_backend:
+        raise SystemExit('Le déploiement ne correspond pas au stockage attendu')
 
 
 def main():

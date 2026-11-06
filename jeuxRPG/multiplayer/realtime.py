@@ -877,7 +877,9 @@ def create_app(environment=None, coordinator=None):
 
     @app.get("/health")
     async def healthcheck():
-        result = {"status": "ok"}
+        from .storage_configuration import database_backend
+
+        result = {"status": "ok", "database_backend": database_backend(environment)}
         if environment.get("RPG_RELEASE_SHA"):
             result["release"] = environment["RPG_RELEASE_SHA"]
         return JSONResponse(result)
