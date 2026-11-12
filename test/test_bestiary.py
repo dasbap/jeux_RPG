@@ -8,16 +8,18 @@ import pytest
 from jeuxRPG._class.res.character.class_models import MODELS
 from jeuxRPG.multiplayer import map_building, mob_rules
 from jeuxRPG.multiplayer.content import DATA
-from jeuxRPG.multiplayer.gameplay_catalog import DEFAULTS, validate_references
+from jeuxRPG.multiplayer.gameplay_catalog import validate_references
 
 ROOT = Path(__file__).resolve().parents[1]
+EQUIPMENT_SPECIES = {"gardien_de_schiste", "luciole_cuirassee", "sanglier_roncier", "veilleur_des_brumes"}
 
 
 @pytest.fixture(autouse=True)
 def packaged_bestiary(monkeypatch):
     mobs = json.loads((ROOT / "jeuxRPG/maps/mobs.json").read_text(encoding="utf-8"))["maps"]
     monkeypatch.setattr(map_building, "MOBS", mob_rules.validate_mobs(mobs))
-    monkeypatch.setitem(DATA, "gameplay", deepcopy(DEFAULTS))
+    gameplay = json.loads((ROOT / "jeuxRPG/maps/content.json").read_text(encoding="utf-8"))["content"]["gameplay"]
+    monkeypatch.setitem(DATA, "gameplay", deepcopy(gameplay))
     map_building.species_details.cache_clear()
     yield
     map_building.species_details.cache_clear()
@@ -42,10 +44,11 @@ def test_bestiary_rounds_decimal_bases_like_level_one_combat(base):
 
 def test_bestiary_covers_ten_levels_and_all_categories():
     mobs = map_building.MOBS
+    assert EQUIPMENT_SPECIES <= mobs.keys()
     added = {
         key: value
         for key, value in mobs.items()
-        if key not in {"goblin", "orc", "dragon_whelp", "gobelin_boss"}
+        if key not in {"goblin", "orc", "dragon_whelp", "gobelin_boss"} | EQUIPMENT_SPECIES
     }
     assert len(added) == 50
     assert Counter(mob["level"] for mob in added.values()) == dict.fromkeys(
@@ -66,8 +69,10 @@ def test_bestiary_covers_ten_levels_and_all_categories():
             if item in {"peau", "croc"}:
                 assert not drop["rare"]
                 continue
-            assert key in item
-            assert mob["name"] in DATA["gameplay"]["materials"][item]["name"]
+            if key not in EQUIPMENT_SPECIES:
+                assert key in item
+                label = DATA["gameplay"]["materials"][item]["name"]
+                assert mob["name"] in label or key.replace("_", " ") in label
             assert item not in owners or owners[item] == key
             owners[item] = key
             assert DATA["gameplay"]["materials"][item]["rare_chance"] == 0

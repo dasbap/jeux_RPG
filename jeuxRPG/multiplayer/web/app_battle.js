@@ -72,7 +72,7 @@ function renderVitals(container, units) {
       card.append(name, resources, statuses); parent.append(card);
     }
     kept.add(card);
-    const signature = JSON.stringify([unitName(unit), unit.hp, unit.max_hp, unit.energies, unit.hidden, unit.detected, unit.stunned, unit.effects]);
+    const signature = JSON.stringify([unitName(unit), unit.level, unit.class_name, unit.rank, unit.hp, unit.max_hp, unit.energies, unit.hidden, unit.detected, unit.stunned, unit.effects]);
     if (card.vitalsSignature === signature) continue;
     card.vitalsSignature = signature;
     const previousHp = Number(card.dataset.hp ?? unit.hp);
@@ -81,7 +81,14 @@ function renderVitals(container, units) {
       setTimeout(() => change.remove(), 1200);
     }
     card.dataset.hp = String(unit.hp);
-    kept.add(card); card.querySelector(".vitals-name").textContent = unitName(unit);
+    kept.add(card);
+    const name = card.querySelector(".vitals-name");
+    name.textContent = unitName(unit);
+    if (unit.level) {
+      const meta = document.createElement("small");meta.className="vitals-meta";
+      const type = unit.rank ? `Rang ${unit.rank}` : classes[unit.class_name] || {Knight:"Chevalier",Mage:"Mage",Necromancien:"Nécromancien"}[unit.class_name] || unit.class_name;
+      meta.textContent=`Niv. ${unit.level}${type?` · ${type}`:""}`;name.append(meta);
+    }
     const resources = [{type: "PV", current: unit.hp, max: unit.max_hp}, ...(unit.energies || [])];
     const rows = card.querySelector(".vitals-resources");
     for (let index = 0; index < resources.length; index++) {
@@ -124,13 +131,23 @@ function moveControlled(adventure, me, destination) {
   adventure = session.tutorial;
   me = adventure.players.find(player => player.id === session.me);
   const controlled = controlledUnits(adventure, me.id);
-  const [x,y] = destination;
   if (controlled.length) {
     const paths = Object.fromEntries(controlled.map(([id,unit]) => [id, gridPath(adventure.battle.map, unit.position, destination)]));
     if (Object.values(paths).some(path => path === null)) return message("Ce chemin est bloqué pour un allié.");
     return tutorialCommand("unit_order", {units: controlled.map(([id]) => id), order: "move", target: destination, paths});
   }
   const unit = adventure.battle.players[me.id];
+  const site=adventure.battle.map.sites?.find(site=>site.position.join(",")===destination.join(","));
+  if(site?.dialogue) {
+    if(Math.hypot(unit.position[0]-destination[0],unit.position[1]-destination[1])<=1.5)return tutorialCommand("talk",{npc:site.id});
+    const map=adventure.battle.map;
+    const candidates=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dx,dy])=>[destination[0]+dx,destination[1]+dy])
+      .filter(point=>!map.exits?.some(gate=>gate.position.join(",")===point.join(","))&&!map.sites.some(other=>other.position.join(",")===point.join(",")))
+      .map(point=>({point,path:gridPath(map,unit.position,point)})).filter(value=>value.path!==null).sort((a,b)=>a.path.length-b.path.length);
+    if(!candidates.length)return message("Impossible d’approcher ce lieu par un chemin praticable.",true);
+    destination=candidates[0].point;
+  }
+  const [x,y]=destination;
   if (unit.route.length && unit.route.at(-1).join(",") === destination.join(",")) return;
   const path = gridPath(adventure.battle.map, unit.position, destination);
   if (path === null) return message("Ce chemin est inaccessible : vérifiez les passages sur la carte.", true);
@@ -262,6 +279,27 @@ function gridPath(map, source, destination) {
   }
   return null;
 }
+function exitCaptionLayout(name, x, y, view, pixel, measure) {
+  const padding=8*pixel, gap=24*pixel;
+  const rightSpace=view.right-x-gap-padding, leftSpace=x-view.left-gap-padding;
+  const toRight=rightSpace>=leftSpace;
+  const maxWidth=Math.max(60,Math.min(260,Math.max(rightSpace,leftSpace)/pixel));
+  const lines=[];let line="";
+  for (const word of String(name || "Sortie").split(/\s+/)) {
+    if(line && measure(line+" "+word)>maxWidth-16) {lines.push(line);line="";}
+    if(line) line+=" ";
+    for (const character of word) {
+      if (measure(line+character)>maxWidth-16 && line) {lines.push(line);line="";}
+      line+=character;
+    }
+  }
+  if(line.trim()) lines.push(line.trim());
+  const width=(Math.max(...lines.map(measure),0)+16)*pixel;
+  const height=(lines.length*16+10)*pixel;
+  return {lines,width,height,
+    x:Math.max(view.left+padding,Math.min(view.right-padding-width,toRight?x+gap:x-gap-width)),
+    y:Math.max(view.top+padding,Math.min(view.bottom-padding-height,y-height/2)),pixel};
+}
 function renderBattle(adventure, me) {
   const battle = adventure.battle, map = battle.map;
   const unit = battle.players[me.id];
@@ -312,16 +350,16 @@ function renderBattle(adventure, me) {
     cell.ondblclick = move;
     cell.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); move(); } };
     svg.append(cell);
-    if (exit) {
-      const label = element("text", {x: x * 40 + 20, y: y * 40 + 24, class: "exit-label", "text-anchor": "middle", "pointer-events": "none"}, gate?.name || "Sortie");
-      svg.append(label);
-    }
   }
   decorateMap(svg, map, element, {left, top, width, height}, explored);
   for (const site of map.sites || []) {
     if (!inView(site.position) || explored && !explored.has(site.position.join(","))) continue;
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id, role: "button", tabindex: "0", "aria-label": site.id === "forge" ? "Parler à Garrik · ouvrir la forge" : site.name});
-    node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
+    if(site.interaction==="inspect") {
+      const x=site.position[0]*40+20,y=site.position[1]*40+20;
+      node.classList.add("field-clue");node.setAttribute("aria-label",`Examiner ${site.name}`);
+      node.append(element("path",{d:`M ${x} ${y-13} l 13 13 -13 13 -13 -13 Z`}));
+    } else node.append(element("circle", {cx: site.position[0] * 40 + 20, cy: site.position[1] * 40 + 20, r: 13}));
     node.append(element("text", {x: site.position[0] * 40 + 20, y: site.position[1] * 40 + 42}, site.name));
     node.onclick = () => {
       inspectedCell = site.position;
@@ -329,7 +367,7 @@ function renderBattle(adventure, me) {
       const nearby = Math.hypot(unit.position[0] - site.position[0], unit.position[1] - site.position[1]) <= 1.5;
       if (nearby && (site.dialogue || site.id === "mira")) tutorialCommand("talk", {npc: site.id});
       else if (!nearby && site.id === "mira") message("Approchez-vous de Mira : double-cliquez sur sa position pour marcher jusqu’à elle.");
-      else if (!nearby && site.dialogue) message(`Approchez-vous de ${site.name} : double-cliquez sur sa position pour marcher jusqu’à lui parler.`);
+      else if (!nearby && site.dialogue) message(`Approchez-vous de ${site.name} : double-cliquez sur sa position pour ${site.interaction==="inspect"?"l’examiner":"lui parler"}.`);
       else message(site.name);
     };
     node.onkeydown = event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); node.onclick(); } };
@@ -370,6 +408,13 @@ function renderBattle(adventure, me) {
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
   const gateMarkers = map.exits?.length ? map.exits : [{position: battle.exit || [0, Math.floor(map.height / 2)], name: "Sortie"}];
   const usedGateMarkers = [];
+  const gateCaptions = [];
+  const pixel = measured ? width*40/bounds.width : 1;
+  const captionView = {left:left*40,top:top*40,right:(left+width)*40,bottom:(top+height)*40};
+  const captionObstacles = measured ? ["zone-banner","combat-player-panel","combat-enemy-panel","hud-navigation","field-camera","game-menu-toggle","mob-list-toggle","back-view","touch-stick","skill-hud"].map(id=>$(id)?.getBoundingClientRect()).filter(rect=>rect?.width>0&&rect.height>0).map(rect=>({x:captionView.left+(rect.left-bounds.left)*pixel,y:captionView.top+(rect.top-bounds.top)*pixel,width:rect.width*pixel,height:rect.height*pixel})) : [];
+  const captionContext = typeof CanvasRenderingContext2D === "undefined" ? null : document.createElement("canvas").getContext("2d");
+  if(captionContext) captionContext.font="600 12px system-ui";
+  const measureCaption = text => captionContext ? captionContext.measureText(text).width : text.length*7.5;
   for (const gate of gateMarkers) {
     const [gx, gy] = gate.position;
     const baseX = Math.max(left + .5, Math.min(left + width - .5, gx + .5)) * 40;
@@ -383,21 +428,49 @@ function renderBattle(adventure, me) {
     }
     usedGateMarkers.push([x, y]);
     const marker = element("g", {class: "battle-unit exit-marker", "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
-    marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"), element("title", {}, gate.name || "Sortie"));
+    marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"));
     marker.onclick = () => { inspectedCell = gate.position; message(gate.name || "Sortie"); };
     marker.ondblclick = () => moveControlled(adventure, me, gate.position);
     marker.onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); moveControlled(adventure, me, gate.position); } };
     svg.append(marker);
+    const caption=exitCaptionLayout(gate.name,x,y,captionView,pixel,measureCaption);
+    const obstacles=[...captionObstacles,...gateCaptions],gap=6*pixel;
+    const overlaps=(cx,cy,box)=>cx<box.x+box.width+gap && cx+caption.width+gap>box.x && cy<box.y+box.height+gap && cy+caption.height+gap>box.y;
+    if(obstacles.some(box=>overlaps(caption.x,caption.y,box))) {
+      const clampX=value=>Math.max(captionView.left+8*pixel,Math.min(captionView.right-8*pixel-caption.width,value));
+      const clampY=value=>Math.max(captionView.top+8*pixel,Math.min(captionView.bottom-8*pixel-caption.height,value));
+      const xs=[caption.x,...obstacles.flatMap(box=>[clampX(box.x-caption.width-gap),clampX(box.x+box.width+gap)])];
+      const ys=[caption.y,...obstacles.flatMap(box=>[clampY(box.y-caption.height-gap),clampY(box.y+box.height+gap)])];
+      let best=null;
+      for(const cx of xs)for(const cy of ys) {
+        const distance=Math.hypot(cx-caption.x,cy-caption.y);
+        if((!best||distance<best.distance)&&!obstacles.some(box=>overlaps(cx,cy,box)))best={x:cx,y:cy,distance};
+      }
+      if(best){caption.x=best.x;caption.y=best.y;}
+    }
+    gateCaptions.push({...caption,marker,name:gate.name || "Sortie"});
+  }
+  for(const caption of gateCaptions) {
+    const group=element("g",{class:"exit-caption","pointer-events":"none"});
+    group.append(element("rect",{x:caption.x,y:caption.y,width:caption.width,height:caption.height,rx:6*pixel,"stroke-width":pixel}));
+    const label=element("text",{x:caption.x+8*pixel,y:caption.y+17*pixel,"font-size":12*pixel,"text-anchor":"start"});
+    caption.lines.forEach((line,index)=>label.append(element("tspan",{x:caption.x+8*pixel,dy:index?16*pixel:0},line)));
+    group.append(label);caption.marker.append(group);
   }
   const previousMap = $("world-map").querySelector(".battle-map");
   if (previousMap && previousMap.getAttribute("viewBox") === svg.getAttribute("viewBox")) {
     const nodes = [...svg.children].map(node => {
-      const selector = node.dataset.unit ? `[data-unit="${node.dataset.unit}"]` : node.dataset.cell ? `[data-cell="${node.dataset.cell}"]` : null;
+      const selector = node.dataset.unit ? `[data-unit="${node.dataset.unit}"]` : node.dataset.cell ? `[data-cell="${node.dataset.cell}"]` : node.dataset.exit ? `[data-exit="${node.dataset.exit}"]` : node.dataset.site ? `[data-site="${node.dataset.site}"]` : null;
       const retained = node.tagName.toLowerCase() === "defs" ? previousMap.querySelector("defs") : selector && previousMap.querySelector(selector);
       if (retained && node.tagName.toLowerCase() === "defs") return retained;
       if (!retained) return node;
       for (const attr of [...retained.attributes]) if (!node.hasAttribute(attr.name)) retained.removeAttribute(attr.name);
       for (const attr of node.attributes) if (retained.getAttribute(attr.name) !== attr.value) retained.setAttribute(attr.name, attr.value);
+      if(node.dataset.exit) {
+        retained.replaceChildren(...node.childNodes);
+        retained.onclick=node.onclick;retained.ondblclick=node.ondblclick;retained.onkeydown=node.onkeydown;
+        return retained;
+      }
       const children = [...node.children].map((child, index) => {
         const oldChild = retained.children[index];
         if (!oldChild || oldChild.tagName !== child.tagName) return child;
@@ -422,6 +495,15 @@ function renderBattle(adventure, me) {
     if (!vitals) { vitals = document.createElement("div"); vitals.className = "enemy-vitals"; card.append(vitals); }
     renderVitals(vitals, [{...mob, id: mob.combat_id, hp: mob.stats.hp.current, max_hp: mob.stats.hp.max}]);
     card.classList.toggle("selected", focusedMob === mob.combat_id);
+    card.setAttribute("aria-label", `${mob.name}, niveau ${mob.level}, rang ${mob.rank}, ${mob.stats.hp.current} sur ${mob.stats.hp.max} PV`);
+    let quote=card.querySelector(".mob-quote");
+    if(mob.battlecry){if(!quote){quote=document.createElement("p");quote.className="mob-quote";card.append(quote);}if(quote.textContent!==mob.battlecry)quote.textContent=mob.battlecry;}
+    else if(quote)quote.remove();
+    let intent = card.querySelector(".mob-intent");
+    if (!intent) {intent=document.createElement("p");intent.className="mob-intent";card.append(intent);}
+    const intention = battle.intents.find(item=>item.id===mob.combat_id);
+    intent.textContent = intention ? `${intention.action}${intention.remaining_seconds>0&&/Entaille|Appel/.test(intention.action)?` · ${intention.remaining_seconds.toFixed(1)} s`:""}` : mob.intent || "";
+    intent.title = intent.textContent;
     let quick = card.querySelector(".mob-quick-actions");
     if (!quick) {quick = document.createElement("div");quick.className = "mob-quick-actions";card.append(quick);}
     quick.ondblclick = event => event.stopPropagation();

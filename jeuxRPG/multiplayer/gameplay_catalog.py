@@ -4,6 +4,7 @@ from copy import deepcopy
 
 STATS = ("hp", "endurance", "force", "intelligence", "sagesse")
 DEFAULTS = {
+    "equipment_sets": {},
     "materials": {
         key: {"name": name, "rare_chance": chance}
         for key, name, chance in [
@@ -531,12 +532,18 @@ def validate_recipes(data):
         raise ValueError("Emplacements d’équipement invalides.")
     for value in data["recipes"].values():
         if (
-            set(value) - {"name", "slot", "adjective", "cost", *STATS}
+            set(value) - {"name", "slot", "adjective", "cost", "set_id", *STATS}
             or value.get("slot") not in slots
             or not isinstance(value.get("adjective"), str)
             or len(value["adjective"]) > 100
         ):
             raise ValueError("Recette : emplacement, attribut ou adjectif invalide.")
+        if (
+            not isinstance(value.get("set_id", ""), str)
+            or value.get("set_id")
+            and value["set_id"] not in data["equipment_sets"]
+        ):
+            raise ValueError("Recette : panoplie inconnue.")
         costs = value.get("cost")
         if (
             not isinstance(costs, dict)
@@ -555,7 +562,38 @@ def validate_recipes(data):
         )
 
 
+def validate_equipment_sets(data):
+    sets = data["equipment_sets"]
+    if not isinstance(sets, dict) or len(sets) > 200:
+        raise ValueError("Panoplies : catalogue de 0 à 200 éléments requis.")
+    if sets:
+        named_catalog(sets, "Panoplies")
+    for definition in sets.values():
+        if (
+            set(definition) != {"name", "bonuses"}
+            or not isinstance(definition["bonuses"], dict)
+            or set(definition["bonuses"]) != {"2", "4", "5"}
+        ):
+            raise ValueError("Panoplie : bonus aux paliers 2, 4 et 5 requis.")
+        for bonuses in definition["bonuses"].values():
+            if (
+                not isinstance(bonuses, dict)
+                or set(bonuses) - set(STATS)
+                or not bonuses
+                or any(
+                    not numeric(value, 0, 100000, True) for value in bonuses.values()
+                )
+                or not any(bonuses.values())
+            ):
+                raise ValueError(
+                    "Panoplie : chaque palier doit accorder un bonus entier positif."
+                )
+
+
 def validate(data):
+    if isinstance(data, dict):
+        data = deepcopy(data)
+        data.setdefault("equipment_sets", {})
     if not isinstance(data, dict) or set(data) != set(DEFAULTS):
         raise ValueError("Catalogues de gameplay incomplets ou inconnus.")
     named_catalog(data["materials"], "Matériaux")
@@ -565,6 +603,7 @@ def validate(data):
         ):
             raise ValueError("Matériau : probabilité de drop rare invalide.")
     validate_rules(data["rules"])
+    validate_equipment_sets(data)
     validate_recipes(data)
     chain = data["encounter_chain"]
     if (

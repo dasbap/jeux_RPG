@@ -1248,21 +1248,15 @@ def defeated(party, mob, now, random, messages):
         zone = world.zone_of(party["position"])
         kills = party.setdefault("zone_kills", {})
         kills[zone] = kills.get(zone, 0) + 1
-    if (
-        party["quest"] == "active"
-        and world.zone_of(party["position"]) == "lisiere"
-        and mob.get("mob_id", "goblin") == "goblin"
-    ):
-        party["kills"] = (
-            min(content.HUNT["count"], party["kills"] + 1)
-            if content.HUNT
-            else party["kills"] + 1
-        )
     if not party.get("training"):
-        achievements.event(party, "kills", mob.get("mob_id", "goblin"))
         content.quest_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
+        achievements.event(party, "kills", mob.get("mob_id", "goblin"))
+        if content.HUNT:
+            state = content.quest_states(party).get(content.HUNT["id"])
+            if state:
+                party["kills"] = state.get("progress", 0)
         content.endgame_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )

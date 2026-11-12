@@ -22,25 +22,595 @@
         "npc": "mira",
         "kind": "kill",
         "target": "goblin",
-        "zone": "lisiere",
-        "count": 10,
-        "reward_xp": 750,
-        "description": "Battez les gobelins puis rapportez la nouvelle à Mira.",
+        "zone": "zone_lisiere",
+        "count": 4,
+        "reward_xp": 400,
+        "description": "Repoussez 4 gobelins ordinaires dans la Lisière, puis rendez la quête à Mira. Les gardes et le chef ne comptent pas. Récompense d’accès : forge de Rosée.",
         "previous_ids": [
           "mira_hunt"
         ],
-        "category": "tutorial"
+        "category": "hunt",
+        "dialogue": {
+          "accept": "Repoussez 4 gobelins ordinaires dans la Lisière, puis rendez la quête à Mira. Les gardes et le chef ne comptent pas. Récompense d’accès : forge de Rosée.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "Les porteurs pourront passer avec une escorte plus légère. Je préviens Garrik : une part du charbon est désormais pour tes commandes."
+        },
+        "recommended_level": 1
       },
       {
         "id": "mira_hunt_2",
-        "name": "Le chef Gobelin",
+        "name": "Le fer derrière les raids",
         "npc": "mira",
         "kind": "kill",
-        "target": "goblin",
+        "target": "gobelin_boss",
         "zone": "hunt",
         "count": 1,
         "reward_xp": 1200,
-        "description": "il y a un nouveau chef gobelin au dessus de la foret, occupe t'en"
+        "description": "Vainquez le Chef Gobelin du campement de la Lisière, puis retournez voir Mira. Les raids visent surtout les outils et le métal.",
+        "category": "boss",
+        "requirements": {
+          "quests": [
+            "mira_hunt_1"
+          ]
+        },
+        "dialogue": {
+          "accept": "Vainquez le Chef Gobelin du campement de la Lisière, puis retournez voir Mira. Les raids visent surtout les outils et le métal.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "Ils ont laissé la nourriture mais pris les outils. Garrik pourra peut-être reconnaître leur marque."
+        },
+        "recommended_level": 3
+      },
+      {
+        "id": "hunt_luciole_cuirassee",
+        "name": "Une lumière trop proche",
+        "category": "hunt",
+        "npc": "seve",
+        "kind": "kill",
+        "target": "luciole_cuirassee",
+        "zone": "zone_rosee",
+        "map": "rosee_prairies",
+        "count": 3,
+        "reward_xp": 250,
+        "description": "Vainquez 3 lucioles cuirassées dans les Prairies des Lucioles, puis revenez voir Sève. Dépecez leurs corps si vous souhaitez utiliser leurs matériaux.",
+        "dialogue": {
+          "accept": "Vainquez 3 lucioles cuirassées dans les Prairies des Lucioles, puis revenez voir Sève. Dépecez leurs corps si vous souhaitez utiliser leurs matériaux.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "Les cueilleurs pourront reprendre leur travail. Cette poudre ressemble à celle que Néran a rapportée de la carrière."
+        },
+        "recommended_level": 1
+      },
+      {
+        "id": "craft_bottes_lucioles",
+        "name": "Marcher sans écraser la lumière",
+        "category": "crafting",
+        "npc": "forge",
+        "kind": "craft",
+        "target": "bottes_lucioles",
+        "zone": "",
+        "count": 1,
+        "reward_xp": 150,
+        "description": "Les carapaces restent souples si on les chauffe peu. Avec deux carapaces et une mesure de poudre lumineuse, je peux te fabriquer des bottes. Fabriquez cette pièce à la forge de Rosée, puis rendez la commande à Garrik.",
+        "recommended_level": 1,
+        "requirements": {
+          "quests": [
+            "mira_hunt_1"
+          ]
+        },
+        "dialogue": {
+          "accept": "Les carapaces restent souples si on les chauffe peu. Avec deux carapaces et une mesure de poudre lumineuse, je peux te fabriquer des bottes.",
+          "complete": "Elles sont à toi. Reviens si tu veux renforcer la couture."
+        }
+      },
+      {
+        "id": "upgrade_bottes_lucioles",
+        "name": "La couture qui tient",
+        "category": "upgrade",
+        "npc": "forge",
+        "kind": "upgrade",
+        "target": "bottes_lucioles",
+        "zone": "",
+        "count": 1,
+        "upgrade_level": 1,
+        "reward_xp": 300,
+        "description": "Améliorez Bottes des Lucioles jusqu’à +1, puis revenez voir Garrik. Une pièce déjà améliorée est reconnue.",
+        "requirements": {
+          "quests": [
+            "craft_bottes_lucioles"
+          ]
+        },
+        "recommended_level": 1,
+        "dialogue": {
+          "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
+          "complete": "Même lumière, meilleure couture. Le premier travail n’était pas mauvais ; celui-ci tiendra plus longtemps."
+        }
+      },
+      {
+        "id": "hunt_sanglier_roncier",
+        "name": "Sous les racines du verger",
+        "category": "hunt",
+        "npc": "seve",
+        "kind": "kill",
+        "target": "sanglier_roncier",
+        "zone": "zone_rosee",
+        "map": "rosee_verger",
+        "count": 3,
+        "reward_xp": 500,
+        "description": "Vainquez 3 sangliers ronciers au Verger des Ronces, puis revenez voir Sève. Les animaux creusent là où les racines rencontrent la pierre.",
+        "dialogue": {
+          "accept": "Vainquez 3 sangliers ronciers au Verger des Ronces, puis revenez voir Sève. Les animaux creusent là où les racines rencontrent la pierre.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "La récolte restante est sauvée pour aujourd’hui. Pour demain, il faudra comprendre ce qui les attire."
+        },
+        "recommended_level": 3
+      },
+      {
+        "id": "craft_gants_ronciers",
+        "name": "La ronce à la bonne place",
+        "category": "crafting",
+        "npc": "forge",
+        "kind": "craft",
+        "target": "gants_ronciers",
+        "zone": "",
+        "count": 1,
+        "reward_xp": 300,
+        "description": "Les ronces blessent lorsqu’on les tient mal. Avec leur cuir et leurs épines, fabriquons des gants qui protègent tes mains. Fabriquez cette pièce à la forge de Rosée, puis rendez la commande à Garrik.",
+        "recommended_level": 3,
+        "requirements": {
+          "quests": [
+            "mira_hunt_1"
+          ]
+        },
+        "dialogue": {
+          "accept": "Les ronces blessent lorsqu’on les tient mal. Avec leur cuir et leurs épines, fabriquons des gants qui protègent tes mains.",
+          "complete": "La ronce accroche encore. Maintenant, c’est ce que tu tiens qu’elle accroche."
+        }
+      },
+      {
+        "id": "upgrade_gants_ronciers",
+        "name": "Une prise plus sûre",
+        "category": "upgrade",
+        "npc": "forge",
+        "kind": "upgrade",
+        "target": "gants_ronciers",
+        "zone": "",
+        "count": 1,
+        "upgrade_level": 1,
+        "reward_xp": 550,
+        "description": "Améliorez Gants des Ronces jusqu’à +1, puis revenez voir Garrik. Une pièce déjà améliorée est reconnue.",
+        "requirements": {
+          "quests": [
+            "craft_gants_ronciers"
+          ]
+        },
+        "recommended_level": 3,
+        "dialogue": {
+          "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
+          "complete": "Ferme le poing. Si tu peux le rouvrir sans tirer sur la couture, j’ai fait mon travail."
+        }
+      },
+      {
+        "id": "hunt_gardien_de_schiste",
+        "name": "La pierre qui répond",
+        "category": "boss",
+        "npc": "neran",
+        "kind": "kill",
+        "target": "gardien_de_schiste",
+        "zone": "zone_rosee",
+        "map": "rosee_carriere",
+        "count": 1,
+        "reward_xp": 750,
+        "description": "Vainquez 1 Gardien de schiste à la Carrière des Échos, puis revenez voir Néran. Les carriers pourront récupérer leur matériel.",
+        "dialogue": {
+          "accept": "Vainquez 1 Gardien de schiste à la Carrière des Échos, puis revenez voir Néran. Les carriers pourront récupérer leur matériel.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "Le poste de taille est dégagé. Regarde l’inscription près de l’abri si tu veux comprendre pourquoi nous hésitons à reprendre le travail."
+        },
+        "recommended_level": 5
+      },
+      {
+        "id": "craft_casque_schiste",
+        "name": "L’écho dans le métal",
+        "category": "crafting",
+        "npc": "forge",
+        "kind": "craft",
+        "target": "casque_schiste",
+        "zone": "",
+        "count": 1,
+        "reward_xp": 450,
+        "description": "Le schiste de la Carrière peut renforcer un casque. Il faut écouter la pierre avant de la travailler. Fabriquez cette pièce à la forge de Rosée, puis rendez la commande à Garrik.",
+        "recommended_level": 5,
+        "requirements": {
+          "quests": [
+            "mira_hunt_1"
+          ]
+        },
+        "dialogue": {
+          "accept": "Le schiste de la Carrière peut renforcer un casque. Il faut écouter la pierre avant de la travailler.",
+          "complete": "Néran appelle cela une pierre muette. Pose-la sur l’établi et attends."
+        }
+      },
+      {
+        "id": "upgrade_casque_schiste",
+        "name": "Forger entre deux coups",
+        "category": "upgrade",
+        "npc": "forge",
+        "kind": "upgrade",
+        "target": "casque_schiste",
+        "zone": "",
+        "count": 1,
+        "upgrade_level": 2,
+        "reward_xp": 800,
+        "description": "Améliorez Casque de Schiste jusqu’à +2, puis revenez voir Garrik. Une pièce déjà améliorée est reconnue.",
+        "requirements": {
+          "quests": [
+            "craft_casque_schiste"
+          ]
+        },
+        "recommended_level": 5,
+        "dialogue": {
+          "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
+          "complete": "Il faut laisser du silence entre les coups. Je le savais déjà à l’époque. C’est cela qui me dérange."
+        }
+      },
+      {
+        "id": "hunt_veilleur_des_brumes",
+        "name": "Le dernier tour de garde",
+        "category": "hunt",
+        "npc": "elyne",
+        "kind": "kill",
+        "target": "veilleur_des_brumes",
+        "zone": "zone_brume",
+        "map": "brume_ruines",
+        "count": 3,
+        "reward_xp": 1000,
+        "description": "Vainquez 3 Veilleurs des brumes aux Ruines de la Veille, puis revenez voir Élyne. Leur ordre de protection ne peut plus s’achever.",
+        "dialogue": {
+          "accept": "Vainquez 3 Veilleurs des brumes aux Ruines de la Veille, puis revenez voir Élyne. Leur ordre de protection ne peut plus s’achever.",
+          "active": "Revenez me voir lorsque l’intervention sera terminée.",
+          "complete": "Je ne vais pas appeler cela une victoire. Mais leur garde est terminée, et les voyageurs qu’ils retenaient peuvent repartir. Je conserverai leurs noms."
+        },
+        "recommended_level": 7
+      },
+      {
+        "id": "craft_manteau_veille",
+        "name": "Ce qu’on garde sur les épaules",
+        "category": "crafting",
+        "npc": "forge",
+        "kind": "craft",
+        "target": "manteau_veille",
+        "zone": "",
+        "count": 1,
+        "reward_xp": 600,
+        "description": "Les étoffes des Veilleurs ont longtemps porté un ordre. Fabriquons un manteau pour qu’elles portent désormais quelqu’un. Fabriquez cette pièce à la forge de Rosée, puis rendez la commande à Garrik.",
+        "recommended_level": 7,
+        "requirements": {
+          "quests": [
+            "mira_hunt_1"
+          ]
+        },
+        "dialogue": {
+          "accept": "Les étoffes des Veilleurs ont longtemps porté un ordre. Fabriquons un manteau pour qu’elles portent désormais quelqu’un.",
+          "complete": "Il gardera une part de leur savoir. Pour le souvenir, je te laisse choisir ce qu’il signifie."
+        }
+      },
+      {
+        "id": "upgrade_manteau_veille",
+        "name": "Une mémoire qui protège",
+        "category": "upgrade",
+        "npc": "forge",
+        "kind": "upgrade",
+        "target": "manteau_veille",
+        "zone": "",
+        "count": 1,
+        "upgrade_level": 2,
+        "reward_xp": 1050,
+        "description": "Améliorez Manteau de la Veille jusqu’à +2, puis revenez voir Garrik. Une pièce déjà améliorée est reconnue.",
+        "requirements": {
+          "quests": [
+            "craft_manteau_veille"
+          ]
+        },
+        "recommended_level": 7,
+        "dialogue": {
+          "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
+          "complete": "La couture tient. Ce souvenir peut désormais te protéger sans te retenir."
+        }
+      },
+      {
+        "id": "derniere_borne",
+        "name": "La dernière borne",
+        "npc": "clearing:0",
+        "kind": "story",
+        "target": "borne_lue",
+        "count": 1,
+        "reward_xp": 100,
+        "category": "exploration",
+        "zone": "",
+        "description": "Examinez la borne fendue près de la sortie du sentier oublié, puis rapportez son inscription à Maël.",
+        "recommended_level": 1,
+        "dialogue": {
+          "accept": "Examinez la borne fendue près de la sortie du sentier oublié, puis rapportez son inscription à Maël.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "« Écoute. » Je pensais qu’elle indiquait une distance. Merci. Je vais commencer par écouter les gens, ce sera moins inquiétant."
+        },
+        "objectives": [
+          "borne_lue"
+        ]
+      },
+      {
+        "id": "metal_outil",
+        "name": "Le métal ne nourrit personne",
+        "npc": "mira",
+        "kind": "story",
+        "target": "outil_lu",
+        "count": 1,
+        "reward_xp": 150,
+        "category": "investigation",
+        "zone": "",
+        "description": "Comparez avec Garrik la marque des outils volés, puis revenez voir Mira.",
+        "recommended_level": 3,
+        "dialogue": {
+          "accept": "Comparez avec Garrik la marque des outils volés, puis revenez voir Mira.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Une commande de la carrière… Néran pourra peut-être expliquer ce qui a changé dans les bois."
+        },
+        "requirements": {
+          "quests": [
+            "mira_hunt_2"
+          ]
+        },
+        "objectives": [
+          "outil_lu"
+        ]
+      },
+      {
+        "id": "trois_silences",
+        "name": "Trois coups de silence",
+        "npc": "neran",
+        "kind": "story",
+        "target": "inscription_lue",
+        "count": 2,
+        "reward_xp": 250,
+        "category": "investigation",
+        "zone": "",
+        "description": "Lisez l’inscription près de l’abri de la Carrière des Échos, interrogez Garrik, puis revenez voir Néran.",
+        "recommended_level": 5,
+        "dialogue": {
+          "accept": "Lisez l’inscription près de l’abri de la Carrière des Échos, interrogez Garrik, puis revenez voir Néran.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Nous avons tous deux lu cet avertissement. Aucun de nous ne peut plus prétendre que l’autre décidait seul."
+        },
+        "objectives": [
+          "inscription_lue",
+          "garrik_inscription"
+        ]
+      },
+      {
+        "id": "prix_outil",
+        "name": "Le prix de l’outil",
+        "npc": "forge",
+        "kind": "story",
+        "target": "garrik_aveu",
+        "count": 1,
+        "reward_xp": 150,
+        "category": "dialogue",
+        "zone": "",
+        "description": "Demandez à Garrik qui a fabriqué l’outil et choisissez comment lui répondre. Toutes les réponses permettent de poursuivre l’enquête.",
+        "recommended_level": 5,
+        "dialogue": {
+          "accept": "Demandez à Garrik qui a fabriqué l’outil et choisissez comment lui répondre. Toutes les réponses permettent de poursuivre l’enquête.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Merci d’avoir écouté. Il reste une attache à comprendre et deux villages à prévenir."
+        },
+        "requirements": {
+          "quests": [
+            "trois_silences"
+          ]
+        },
+        "objectives": [
+          "garrik_aveu"
+        ]
+      },
+      {
+        "id": "rusk_rencontre",
+        "name": "Un déserteur ne fait pas une armée",
+        "npc": "rusk",
+        "kind": "story",
+        "target": "rusk_parole",
+        "count": 2,
+        "reward_xp": 200,
+        "category": "encounter",
+        "zone": "",
+        "description": "Écoutez Rusk dans son abri du sentier oublié, prévenez Mira, puis rapportez sa réponse à Rusk.",
+        "recommended_level": 2,
+        "dialogue": {
+          "accept": "Écoutez Rusk dans son abri du sentier oublié, prévenez Mira, puis rapportez sa réponse à Rusk.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Mira veut parler ? J’irai quand il fera jour. Je veux voir ses mains. Elle voudra sûrement voir les miennes."
+        },
+        "objectives": [
+          "rusk_parole",
+          "mira_rusk"
+        ]
+      },
+      {
+        "id": "rusk_temoin",
+        "name": "Ce que Rusk a entendu",
+        "npc": "rusk",
+        "kind": "story",
+        "target": "chargement_lu",
+        "count": 2,
+        "reward_xp": 250,
+        "category": "investigation",
+        "zone": "",
+        "description": "Examinez l’ancien chargement dans la Forêt de Rosée, transmettez le témoignage à Oriel à Brume, puis revenez voir Rusk.",
+        "recommended_level": 4,
+        "dialogue": {
+          "accept": "Examinez l’ancien chargement dans la Forêt de Rosée, transmettez le témoignage à Oriel à Brume, puis revenez voir Rusk.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Elle a pris mes mots au sérieux ? Alors je n’ai pas seulement fui. J’ai peut-être aidé quelqu’un à comprendre."
+        },
+        "requirements": {
+          "quests": [
+            "rusk_rencontre"
+          ]
+        },
+        "objectives": [
+          "chargement_lu",
+          "oriel_rusk"
+        ]
+      },
+      {
+        "id": "noms_mousse",
+        "name": "Les noms sous la mousse",
+        "npc": "oriel",
+        "kind": "story",
+        "target": "stele_aline_lue",
+        "count": 3,
+        "reward_xp": 350,
+        "category": "exploration",
+        "zone": "",
+        "description": "Relevez les noms de trois stèles dans les Marais des Feux Follets, puis comparez-les au registre d’Oriel.",
+        "recommended_level": 6,
+        "dialogue": {
+          "accept": "Relevez les noms de trois stèles dans les Marais des Feux Follets, puis comparez-les au registre d’Oriel.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Aline, Tovan et Isel. Élyne les connaît aussi. Je crois qu’elle attendait que quelqu’un d’autre les lise avant d’en parler."
+        },
+        "objectives": [
+          "stele_aline_lue",
+          "stele_tovan_lue",
+          "stele_isel_lue"
+        ]
+      },
+      {
+        "id": "garde_sans_releve",
+        "name": "Une garde sans relève",
+        "npc": "elyne",
+        "kind": "story",
+        "target": "ordre_lu",
+        "count": 1,
+        "reward_xp": 350,
+        "category": "investigation",
+        "zone": "",
+        "description": "Examinez l’ordre du poste de garde dans les Ruines de la Veille, puis revenez voir Élyne.",
+        "recommended_level": 7,
+        "dialogue": {
+          "accept": "Examinez l’ordre du poste de garde dans les Ruines de la Veille, puis revenez voir Élyne.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Cet ordre porte mon sceau. Je l’ai donné pendant l’évacuation. Je croyais revenir assez tôt pour les relever."
+        },
+        "requirements": {
+          "quests": [
+            "noms_mousse"
+          ]
+        },
+        "objectives": [
+          "ordre_lu"
+        ]
+      },
+      {
+        "id": "ceux_qu_on_garde",
+        "name": "Ceux qu’on n’efface pas",
+        "npc": "elyne",
+        "kind": "story",
+        "target": "noms_confies",
+        "count": 1,
+        "reward_xp": 300,
+        "category": "service",
+        "zone": "",
+        "description": "Confiez à Oriel les noms des trois Veilleurs dont la garde est terminée, puis revenez voir Élyne. Aucun nouveau combat n’est nécessaire.",
+        "recommended_level": 7,
+        "dialogue": {
+          "accept": "Confiez à Oriel les noms des trois Veilleurs dont la garde est terminée, puis revenez voir Élyne. Aucun nouveau combat n’est nécessaire.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Pas un compte de plus dans un rapport. Des noms. Merci de les avoir confiés à quelqu’un qui les gardera."
+        },
+        "requirements": {
+          "quests": [
+            "garde_sans_releve",
+            "hunt_veilleur_des_brumes"
+          ]
+        },
+        "objectives": [
+          "noms_confies"
+        ],
+        "reward_title": "Porte-mémoire"
+      },
+      {
+        "id": "voix_commande",
+        "name": "La voix qui commande",
+        "npc": "elyne",
+        "kind": "kill",
+        "target": "seigneur_gobelin",
+        "count": 1,
+        "reward_xp": 900,
+        "category": "boss",
+        "zone": "zone_brume",
+        "description": "Vainquez le Seigneur gobelin du Sanctuaire des Racines, puis revenez voir Élyne. Une victoire déjà obtenue est reconnue.",
+        "recommended_level": 10,
+        "dialogue": {
+          "accept": "Vainquez le Seigneur gobelin du Sanctuaire des Racines, puis revenez voir Élyne. Une victoire déjà obtenue est reconnue.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Il voulait qu’une seule voix demeure. La cloche peut maintenant être confiée aux habitants. Écoute Mira, Garrik et moi avant de parler à Oriel."
+        },
+        "requirements": {
+          "quests": [
+            "garde_sans_releve"
+          ]
+        },
+        "remember": true,
+        "map": "brume_sanctuaire"
+      },
+      {
+        "id": "accord_vivants",
+        "name": "L’accord des vivants",
+        "npc": "oriel",
+        "kind": "story",
+        "target": "avis_mira",
+        "count": 4,
+        "reward_xp": 500,
+        "category": "main",
+        "zone": "",
+        "description": "Recueillez les avis de Mira, Garrik et Élyne dans l’ordre de votre choix. Proposez ensuite à Oriel un avenir pour la Veille, puis rendez-lui cette quête. Les deux conclusions donnent les mêmes récompenses.",
+        "recommended_level": 10,
+        "dialogue": {
+          "accept": "Recueillez les avis de Mira, Garrik et Élyne dans l’ordre de votre choix. Proposez ensuite à Oriel un avenir pour la Veille, puis rendez-lui cette quête. Les deux conclusions donnent les mêmes récompenses.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Nous avons un accord. Nous conserverons ce qui doit l’être, et chacun saura désormais à qui répondre. L’aventure des villages continue avec leurs habitants."
+        },
+        "requirements": {
+          "quests": [
+            "voix_commande"
+          ]
+        },
+        "objectives": [
+          "avis_mira",
+          "avis_garrik",
+          "avis_elyne",
+          "accord_choisi"
+        ],
+        "reward_title": "Témoin de la Veille"
+      },
+      {
+        "id": "patrouille_veteran",
+        "name": "Le temps des patrouilles",
+        "npc": "mira",
+        "kind": "kill",
+        "target": "goblin",
+        "count": 5,
+        "reward_xp": 250,
+        "category": "hunt",
+        "zone": "zone_lisiere",
+        "description": "Repoussez 5 gobelins ordinaires dans la Lisière, puis revenez voir Mira. Contrat facultatif répétable pour les voyageurs qui souhaitent continuer à patrouiller.",
+        "recommended_level": 5,
+        "dialogue": {
+          "accept": "Repoussez 5 gobelins ordinaires dans la Lisière, puis revenez voir Mira. Contrat facultatif répétable pour les voyageurs qui souhaitent continuer à patrouiller.",
+          "active": "Prenez le temps qu’il vous faut. Revenez quand vous aurez terminé.",
+          "complete": "Un passage sécurisé pour aujourd’hui. Je te proposerai une autre patrouille si tu veux continuer."
+        },
+        "repeatable": true,
+        "previous_contract": "veteran_hunt"
       }
     ],
     "achievements": [
@@ -172,21 +742,57 @@
         "name": "Noyau gobelin",
         "buy": 200,
         "sell": 100
-      }
-    ],
-    "endgame": [
+      },
       {
-        "id": "veteran_hunt",
-        "name": "Chasse vétéran",
-        "kind": "kill",
-        "target": "goblin",
-        "zone": "",
-        "count": 10,
-        "min_level": 5,
-        "reward_xp": 500,
-        "repeatable": true
+        "id": "carapace_luciole",
+        "name": "Carapace de luciole",
+        "buy": 12,
+        "sell": 4
+      },
+      {
+        "id": "poudre_lumineuse",
+        "name": "Poudre lumineuse",
+        "buy": 12,
+        "sell": 4
+      },
+      {
+        "id": "cuir_roncier",
+        "name": "Cuir de sanglier roncier",
+        "buy": 20,
+        "sell": 7
+      },
+      {
+        "id": "epine_ronciere",
+        "name": "Épine roncière",
+        "buy": 20,
+        "sell": 7
+      },
+      {
+        "id": "plaque_schiste",
+        "name": "Plaque de schiste",
+        "buy": 28,
+        "sell": 10
+      },
+      {
+        "id": "coeur_mineral",
+        "name": "Cœur minéral",
+        "buy": 28,
+        "sell": 10
+      },
+      {
+        "id": "etoffe_veille",
+        "name": "Étoffe de veille",
+        "buy": 36,
+        "sell": 13
+      },
+      {
+        "id": "essence_veille",
+        "name": "Essence de veille",
+        "buy": 36,
+        "sell": 13
       }
     ],
+    "endgame": [],
     "gameplay": {
       "materials": {
         "peau": {
@@ -216,6 +822,686 @@
         "noyau_gobelin": {
           "name": "Noyau de gobelin",
           "rare_chance": 0.02
+        },
+        "carapace_luciole": {
+          "name": "Carapace de luciole",
+          "rare_chance": 0
+        },
+        "poudre_lumineuse": {
+          "name": "Poudre lumineuse",
+          "rare_chance": 0
+        },
+        "cuir_roncier": {
+          "name": "Cuir de sanglier roncier",
+          "rare_chance": 0
+        },
+        "epine_ronciere": {
+          "name": "Épine roncière",
+          "rare_chance": 0
+        },
+        "plaque_schiste": {
+          "name": "Plaque de schiste",
+          "rare_chance": 0
+        },
+        "coeur_mineral": {
+          "name": "Cœur minéral",
+          "rare_chance": 0
+        },
+        "etoffe_veille": {
+          "name": "Étoffe de veille",
+          "rare_chance": 0
+        },
+        "essence_veille": {
+          "name": "Essence de veille",
+          "rare_chance": 0
+        },
+        "essence_spectre_des_brumes": {
+          "name": "essence spectre des brumes",
+          "rare_chance": 0.0
+        },
+        "noyau_golem_d_argile": {
+          "name": "noyau golem d argile",
+          "rare_chance": 0.0
+        },
+        "soie_matriarche_araignee": {
+          "name": "soie matriarche araignee",
+          "rare_chance": 0.0
+        },
+        "croc_gobelin_berserker": {
+          "name": "croc gobelin berserker",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_berserker": {
+          "name": "relique gobelin berserker",
+          "rare_chance": 0.0
+        },
+        "carapace_reine_scorpion": {
+          "name": "carapace reine scorpion",
+          "rare_chance": 0.0
+        },
+        "relique_dragon_whelp": {
+          "name": "relique dragon whelp",
+          "rare_chance": 0.0
+        },
+        "os_squelette_errant": {
+          "name": "os squelette errant",
+          "rare_chance": 0.0
+        },
+        "griffe_kobold_mineur": {
+          "name": "griffe kobold mineur",
+          "rare_chance": 0.0
+        },
+        "relique_golem_runique": {
+          "name": "relique golem runique",
+          "rare_chance": 0.0
+        },
+        "relique_rat_des_champs": {
+          "name": "relique rat des champs",
+          "rare_chance": 0.0
+        },
+        "incisive_rat_des_champs": {
+          "name": "incisive rat des champs",
+          "rare_chance": 0.0
+        },
+        "mandibule_scarabee_des_pres": {
+          "name": "mandibule scarabee des pres",
+          "rare_chance": 0.0
+        },
+        "relique_slime_bleu": {
+          "name": "relique slime bleu",
+          "rare_chance": 0.0
+        },
+        "ecaille_dragon_whelp": {
+          "name": "ecaille dragon whelp",
+          "rare_chance": 0.0
+        },
+        "ectoplasme_spectre_des_brumes": {
+          "name": "ectoplasme spectre des brumes",
+          "rare_chance": 0.0
+        },
+        "relique_champignon_anime": {
+          "name": "relique champignon anime",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_apprenti": {
+          "name": "relique gobelin apprenti",
+          "rare_chance": 0.0
+        },
+        "os_liche_apprentie": {
+          "name": "os liche apprentie",
+          "rare_chance": 0.0
+        },
+        "defense_orc": {
+          "name": "defense orc",
+          "rare_chance": 0.0
+        },
+        "peau_ogre_des_collines": {
+          "name": "peau ogre des collines",
+          "rare_chance": 0.0
+        },
+        "pierre_golem_de_pierre": {
+          "name": "pierre golem de pierre",
+          "rare_chance": 0.0
+        },
+        "essence_feu_follet": {
+          "name": "essence feu follet",
+          "rare_chance": 0.0
+        },
+        "peau_troll_des_marais": {
+          "name": "peau troll des marais",
+          "rare_chance": 0.0
+        },
+        "cendre_elementaire_de_braise": {
+          "name": "cendre elementaire de braise",
+          "rare_chance": 0.0
+        },
+        "peau_garde_orc": {
+          "name": "peau garde orc",
+          "rare_chance": 0.0
+        },
+        "peau_orc_eclaireur": {
+          "name": "peau orc eclaireur",
+          "rare_chance": 0.0
+        },
+        "relique_loup_gris": {
+          "name": "relique loup gris",
+          "rare_chance": 0.0
+        },
+        "noyau_roi_des_slimes": {
+          "name": "noyau roi des slimes",
+          "rare_chance": 0.0
+        },
+        "relique_roi_des_slimes": {
+          "name": "relique roi des slimes",
+          "rare_chance": 0.0
+        },
+        "relique_scorpion_des_roches": {
+          "name": "relique scorpion des roches",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_chamane": {
+          "name": "relique gobelin chamane",
+          "rare_chance": 0.0
+        },
+        "relique_orc_chamane": {
+          "name": "relique orc chamane",
+          "rare_chance": 0.0
+        },
+        "relique_loup_alpha": {
+          "name": "relique loup alpha",
+          "rare_chance": 0.0
+        },
+        "etoffe_gobelin_apprenti": {
+          "name": "etoffe gobelin apprenti",
+          "rare_chance": 0.0
+        },
+        "fourrure_loup_alpha": {
+          "name": "fourrure loup alpha",
+          "rare_chance": 0.0
+        },
+        "relique_orc": {
+          "name": "relique orc",
+          "rare_chance": 0.0
+        },
+        "relique_chauve_souris": {
+          "name": "relique chauve souris",
+          "rare_chance": 0.0
+        },
+        "etoffe_gobelin_chamane": {
+          "name": "etoffe gobelin chamane",
+          "rare_chance": 0.0
+        },
+        "fourrure_loup_gris": {
+          "name": "fourrure loup gris",
+          "rare_chance": 0.0
+        },
+        "peau_sanglier_des_bois": {
+          "name": "peau sanglier des bois",
+          "rare_chance": 0.0
+        },
+        "seve_gardien_du_bosquet": {
+          "name": "seve gardien du bosquet",
+          "rare_chance": 0.0
+        },
+        "ecaille_salamandre_de_braise": {
+          "name": "ecaille salamandre de braise",
+          "rare_chance": 0.0
+        },
+        "fourrure_chef_des_rats": {
+          "name": "fourrure chef des rats",
+          "rare_chance": 0.0
+        },
+        "carapace_scorpion_des_roches": {
+          "name": "carapace scorpion des roches",
+          "rare_chance": 0.0
+        },
+        "relique_harpie_des_collines": {
+          "name": "relique harpie des collines",
+          "rare_chance": 0.0
+        },
+        "relique_gardien_du_bosquet": {
+          "name": "relique gardien du bosquet",
+          "rare_chance": 0.0
+        },
+        "gel_slime_bleu": {
+          "name": "gel slime bleu",
+          "rare_chance": 0.0
+        },
+        "venin_araignee_des_bois": {
+          "name": "venin araignee des bois",
+          "rare_chance": 0.0
+        },
+        "gel_slime_vert": {
+          "name": "gel slime vert",
+          "rare_chance": 0.0
+        },
+        "peau_orc_guerrier": {
+          "name": "peau orc guerrier",
+          "rare_chance": 0.0
+        },
+        "relique_chef_orc": {
+          "name": "relique chef orc",
+          "rare_chance": 0.0
+        },
+        "os_squelette_archer": {
+          "name": "os squelette archer",
+          "rare_chance": 0.0
+        },
+        "croc_garde_gobelin": {
+          "name": "croc garde gobelin",
+          "rare_chance": 0.0
+        },
+        "relique_dragonnet_rouge": {
+          "name": "relique dragonnet rouge",
+          "rare_chance": 0.0
+        },
+        "essence_liche_apprentie": {
+          "name": "essence liche apprentie",
+          "rare_chance": 0.0
+        },
+        "relique_golem_d_argile": {
+          "name": "relique golem d argile",
+          "rare_chance": 0.0
+        },
+        "carapace_scarabee_des_pres": {
+          "name": "carapace scarabee des pres",
+          "rare_chance": 0.0
+        },
+        "essence_necromancien_errant": {
+          "name": "essence necromancien errant",
+          "rare_chance": 0.0
+        },
+        "croc_ogre_des_collines": {
+          "name": "croc ogre des collines",
+          "rare_chance": 0.0
+        },
+        "relique_squelette_archer": {
+          "name": "relique squelette archer",
+          "rare_chance": 0.0
+        },
+        "venin_reine_scorpion": {
+          "name": "venin reine scorpion",
+          "rare_chance": 0.0
+        },
+        "noyau_golem_de_pierre": {
+          "name": "noyau golem de pierre",
+          "rare_chance": 0.0
+        },
+        "cristal_gobelin_chamane": {
+          "name": "cristal gobelin chamane",
+          "rare_chance": 0.0
+        },
+        "fibre_ronce_vivante": {
+          "name": "fibre ronce vivante",
+          "rare_chance": 0.0
+        },
+        "fourrure_rat_des_champs": {
+          "name": "fourrure rat des champs",
+          "rare_chance": 0.0
+        },
+        "peau_gobelin_eclaireur": {
+          "name": "peau gobelin eclaireur",
+          "rare_chance": 0.0
+        },
+        "pierre_golem_runique": {
+          "name": "pierre golem runique",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_eclaireur": {
+          "name": "relique gobelin eclaireur",
+          "rare_chance": 0.0
+        },
+        "cristal_orc_chamane": {
+          "name": "cristal orc chamane",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_archer": {
+          "name": "relique gobelin archer",
+          "rare_chance": 0.0
+        },
+        "relique_chef_kobold": {
+          "name": "relique chef kobold",
+          "rare_chance": 0.0
+        },
+        "ecaille_kobold_mineur": {
+          "name": "ecaille kobold mineur",
+          "rare_chance": 0.0
+        },
+        "croc_loup_gris": {
+          "name": "croc loup gris",
+          "rare_chance": 0.0
+        },
+        "peau_garde_gobelin": {
+          "name": "peau garde gobelin",
+          "rare_chance": 0.0
+        },
+        "bec_corbeau_des_bois": {
+          "name": "bec corbeau des bois",
+          "rare_chance": 0.0
+        },
+        "peau_seigneur_gobelin": {
+          "name": "peau seigneur gobelin",
+          "rare_chance": 0.0
+        },
+        "etoffe_necromancien_errant": {
+          "name": "etoffe necromancien errant",
+          "rare_chance": 0.0
+        },
+        "relique_ronce_vivante": {
+          "name": "relique ronce vivante",
+          "rare_chance": 0.0
+        },
+        "griffe_chef_kobold": {
+          "name": "griffe chef kobold",
+          "rare_chance": 0.0
+        },
+        "phalange_squelette_archer": {
+          "name": "phalange squelette archer",
+          "rare_chance": 0.0
+        },
+        "relique_kobold_mineur": {
+          "name": "relique kobold mineur",
+          "rare_chance": 0.0
+        },
+        "relique_troll_des_marais": {
+          "name": "relique troll des marais",
+          "rare_chance": 0.0
+        },
+        "defense_garde_orc": {
+          "name": "defense garde orc",
+          "rare_chance": 0.0
+        },
+        "gel_roi_des_slimes": {
+          "name": "gel roi des slimes",
+          "rare_chance": 0.0
+        },
+        "relique_goblin": {
+          "name": "relique goblin",
+          "rare_chance": 0.0
+        },
+        "croc_loup_alpha": {
+          "name": "croc loup alpha",
+          "rare_chance": 0.0
+        },
+        "relique_chevalier_squelette": {
+          "name": "relique chevalier squelette",
+          "rare_chance": 0.0
+        },
+        "phalange_squelette_errant": {
+          "name": "phalange squelette errant",
+          "rare_chance": 0.0
+        },
+        "venin_basilic_juvenile": {
+          "name": "venin basilic juvenile",
+          "rare_chance": 0.0
+        },
+        "relique_elementaire_de_braise": {
+          "name": "relique elementaire de braise",
+          "rare_chance": 0.0
+        },
+        "relique_gobelin_boss": {
+          "name": "relique gobelin boss",
+          "rare_chance": 0.0
+        },
+        "relique_sanglier_des_bois": {
+          "name": "relique sanglier des bois",
+          "rare_chance": 0.0
+        },
+        "plume_harpie_des_collines": {
+          "name": "plume harpie des collines",
+          "rare_chance": 0.0
+        },
+        "griffe_dragonnet_rouge": {
+          "name": "griffe dragonnet rouge",
+          "rare_chance": 0.0
+        },
+        "relique_chef_des_rats": {
+          "name": "relique chef des rats",
+          "rare_chance": 0.0
+        },
+        "relique_slime_vert": {
+          "name": "relique slime vert",
+          "rare_chance": 0.0
+        },
+        "epine_ronce_vivante": {
+          "name": "epine ronce vivante",
+          "rare_chance": 0.0
+        },
+        "relique_squelette_errant": {
+          "name": "relique squelette errant",
+          "rare_chance": 0.0
+        },
+        "oreille_gobelin_eclaireur": {
+          "name": "oreille gobelin eclaireur",
+          "rare_chance": 0.0
+        },
+        "os_chevalier_squelette": {
+          "name": "os chevalier squelette",
+          "rare_chance": 0.0
+        },
+        "ecorce_gardien_du_bosquet": {
+          "name": "ecorce gardien du bosquet",
+          "rare_chance": 0.0
+        },
+        "relique_griffon_juvenile": {
+          "name": "relique griffon juvenile",
+          "rare_chance": 0.0
+        },
+        "relique_golem_de_pierre": {
+          "name": "relique golem de pierre",
+          "rare_chance": 0.0
+        },
+        "phalange_chevalier_squelette": {
+          "name": "phalange chevalier squelette",
+          "rare_chance": 0.0
+        },
+        "peau_orc": {
+          "name": "peau orc",
+          "rare_chance": 0.0
+        },
+        "relique_spectre_des_brumes": {
+          "name": "relique spectre des brumes",
+          "rare_chance": 0.0
+        },
+        "relique_garde_orc": {
+          "name": "relique garde orc",
+          "rare_chance": 0.0
+        },
+        "relique_seigneur_gobelin": {
+          "name": "relique seigneur gobelin",
+          "rare_chance": 0.0
+        },
+        "relique_matriarche_araignee": {
+          "name": "relique matriarche araignee",
+          "rare_chance": 0.0
+        },
+        "essence_elementaire_de_braise": {
+          "name": "essence elementaire de braise",
+          "rare_chance": 0.0
+        },
+        "plume_corbeau_des_bois": {
+          "name": "plume corbeau des bois",
+          "rare_chance": 0.0
+        },
+        "croc_troll_des_marais": {
+          "name": "croc troll des marais",
+          "rare_chance": 0.0
+        },
+        "defense_orc_guerrier": {
+          "name": "defense orc guerrier",
+          "rare_chance": 0.0
+        },
+        "ecaille_basilic_juvenile": {
+          "name": "ecaille basilic juvenile",
+          "rare_chance": 0.0
+        },
+        "peau_gobelin_berserker": {
+          "name": "peau gobelin berserker",
+          "rare_chance": 0.0
+        },
+        "noyau_slime_vert": {
+          "name": "noyau slime vert",
+          "rare_chance": 0.0
+        },
+        "relique_salamandre_de_braise": {
+          "name": "relique salamandre de braise",
+          "rare_chance": 0.0
+        },
+        "relique_liche_apprentie": {
+          "name": "relique liche apprentie",
+          "rare_chance": 0.0
+        },
+        "griffe_dragon_whelp": {
+          "name": "griffe dragon whelp",
+          "rare_chance": 0.0
+        },
+        "relique_feu_follet": {
+          "name": "relique feu follet",
+          "rare_chance": 0.0
+        },
+        "croc_seigneur_gobelin": {
+          "name": "croc seigneur gobelin",
+          "rare_chance": 0.0
+        },
+        "noyau_slime_bleu": {
+          "name": "noyau slime bleu",
+          "rare_chance": 0.0
+        },
+        "peau_gobelin_archer": {
+          "name": "peau gobelin archer",
+          "rare_chance": 0.0
+        },
+        "ecaille_chef_kobold": {
+          "name": "ecaille chef kobold",
+          "rare_chance": 0.0
+        },
+        "defense_chef_orc": {
+          "name": "defense chef orc",
+          "rare_chance": 0.0
+        },
+        "soie_araignee_des_bois": {
+          "name": "soie araignee des bois",
+          "rare_chance": 0.0
+        },
+        "relique_araignee_des_bois": {
+          "name": "relique araignee des bois",
+          "rare_chance": 0.0
+        },
+        "poussiere_feu_follet": {
+          "name": "poussiere feu follet",
+          "rare_chance": 0.0
+        },
+        "croc_salamandre_de_braise": {
+          "name": "croc salamandre de braise",
+          "rare_chance": 0.0
+        },
+        "relique_ogre_des_collines": {
+          "name": "relique ogre des collines",
+          "rare_chance": 0.0
+        },
+        "venin_matriarche_araignee": {
+          "name": "venin matriarche araignee",
+          "rare_chance": 0.0
+        },
+        "incisive_chef_des_rats": {
+          "name": "incisive chef des rats",
+          "rare_chance": 0.0
+        },
+        "relique_garde_gobelin": {
+          "name": "relique garde gobelin",
+          "rare_chance": 0.0
+        },
+        "tendon_gobelin_archer": {
+          "name": "tendon gobelin archer",
+          "rare_chance": 0.0
+        },
+        "ecaille_dragonnet_rouge": {
+          "name": "ecaille dragonnet rouge",
+          "rare_chance": 0.0
+        },
+        "argile_golem_d_argile": {
+          "name": "argile golem d argile",
+          "rare_chance": 0.0
+        },
+        "spore_champignon_anime": {
+          "name": "spore champignon anime",
+          "rare_chance": 0.0
+        },
+        "relique_basilic_juvenile": {
+          "name": "relique basilic juvenile",
+          "rare_chance": 0.0
+        },
+        "relique_scarabee_des_pres": {
+          "name": "relique scarabee des pres",
+          "rare_chance": 0.0
+        },
+        "relique_corbeau_des_bois": {
+          "name": "relique corbeau des bois",
+          "rare_chance": 0.0
+        },
+        "plume_griffon_juvenile": {
+          "name": "plume griffon juvenile",
+          "rare_chance": 0.0
+        },
+        "defense_orc_eclaireur": {
+          "name": "defense orc eclaireur",
+          "rare_chance": 0.0
+        },
+        "croc_gobelin_boss": {
+          "name": "croc gobelin boss",
+          "rare_chance": 0.0
+        },
+        "relique_reine_scorpion": {
+          "name": "relique reine scorpion",
+          "rare_chance": 0.0
+        },
+        "cristal_gobelin_apprenti": {
+          "name": "cristal gobelin apprenti",
+          "rare_chance": 0.0
+        },
+        "griffe_griffon_juvenile": {
+          "name": "griffe griffon juvenile",
+          "rare_chance": 0.0
+        },
+        "relique_orc_eclaireur": {
+          "name": "relique orc eclaireur",
+          "rare_chance": 0.0
+        },
+        "venin_scorpion_des_roches": {
+          "name": "venin scorpion des roches",
+          "rare_chance": 0.0
+        },
+        "membrane_chauve_souris": {
+          "name": "membrane chauve souris",
+          "rare_chance": 0.0
+        },
+        "croc_goblin": {
+          "name": "croc goblin",
+          "rare_chance": 0.0
+        },
+        "etoffe_orc_chamane": {
+          "name": "etoffe orc chamane",
+          "rare_chance": 0.0
+        },
+        "relique_orc_guerrier": {
+          "name": "relique orc guerrier",
+          "rare_chance": 0.0
+        },
+        "relique_necromancien_errant": {
+          "name": "relique necromancien errant",
+          "rare_chance": 0.0
+        },
+        "peau_goblin": {
+          "name": "peau goblin",
+          "rare_chance": 0.0
+        },
+        "peau_gobelin_boss": {
+          "name": "peau gobelin boss",
+          "rare_chance": 0.0
+        },
+        "croc_chauve_souris": {
+          "name": "croc chauve souris",
+          "rare_chance": 0.0
+        },
+        "defense_sanglier_des_bois": {
+          "name": "defense sanglier des bois",
+          "rare_chance": 0.0
+        },
+        "mycelium_champignon_anime": {
+          "name": "mycelium champignon anime",
+          "rare_chance": 0.0
+        },
+        "noyau_golem_runique": {
+          "name": "noyau golem runique",
+          "rare_chance": 0.0
+        },
+        "peau_chef_orc": {
+          "name": "peau chef orc",
+          "rare_chance": 0.0
+        },
+        "griffe_harpie_des_collines": {
+          "name": "griffe harpie des collines",
+          "rare_chance": 0.0
         }
       },
       "slots": {
@@ -238,7 +1524,8 @@
           "hp": 3,
           "endurance": 1,
           "intelligence": 2,
-          "sagesse": 1
+          "sagesse": 1,
+          "set_id": "lisiere"
         },
         "veste": {
           "slot": "torso",
@@ -249,7 +1536,8 @@
             "croc": 3
           },
           "hp": 10,
-          "endurance": 3
+          "endurance": 3,
+          "set_id": "lisiere"
         },
         "gants": {
           "slot": "hands",
@@ -261,7 +1549,8 @@
           },
           "hp": 2,
           "endurance": 1,
-          "force": 2
+          "force": 2,
+          "set_id": "lisiere"
         },
         "jambieres": {
           "slot": "legs",
@@ -273,7 +1562,8 @@
           },
           "hp": 5,
           "endurance": 2,
-          "force": 1
+          "force": 1,
+          "set_id": "lisiere"
         },
         "bottes": {
           "slot": "feet",
@@ -285,7 +1575,8 @@
           },
           "hp": 3,
           "endurance": 1,
-          "sagesse": 1
+          "sagesse": 1,
+          "set_id": "lisiere"
         },
         "ceinture": {
           "slot": "waist",
@@ -298,7 +1589,55 @@
           "hp": 2,
           "endurance": 1,
           "intelligence": 1,
+          "sagesse": 2,
+          "set_id": "lisiere"
+        },
+        "bottes_lucioles": {
+          "name": "Bottes des Lucioles",
+          "slot": "feet",
+          "adjective": "éveillé",
+          "cost": {
+            "carapace_luciole": 2,
+            "poudre_lumineuse": 1
+          },
+          "hp": 4,
+          "endurance": 1,
           "sagesse": 2
+        },
+        "gants_ronciers": {
+          "name": "Gants des Ronces",
+          "slot": "hands",
+          "adjective": "éveillé",
+          "cost": {
+            "cuir_roncier": 2,
+            "epine_ronciere": 1
+          },
+          "hp": 4,
+          "force": 3,
+          "endurance": 1
+        },
+        "casque_schiste": {
+          "name": "Casque de Schiste",
+          "slot": "head",
+          "adjective": "éveillé",
+          "cost": {
+            "plaque_schiste": 2,
+            "coeur_mineral": 1
+          },
+          "hp": 8,
+          "endurance": 3
+        },
+        "manteau_veille": {
+          "name": "Manteau de la Veille",
+          "slot": "torso",
+          "adjective": "éveillé",
+          "cost": {
+            "etoffe_veille": 2,
+            "essence_veille": 1
+          },
+          "hp": 8,
+          "intelligence": 4,
+          "sagesse": 3
         }
       },
       "rules": {
@@ -441,23 +1780,626 @@
         },
         "village": {
           "name": "Village de Rosée",
-          "description": "Parlez à Mira pour accepter sa quête de chasse."
+          "description": "Explorez librement. Les habitants proposent des quêtes facultatives."
         },
         "hunt": {
           "name": "Lisière de Rosée",
-          "description": "Battez trois gobelins puis rapportez la nouvelle à Mira."
+          "description": "Choisissez vos contrats de chasse ou poursuivez votre exploration."
         },
         "craft": {
           "name": "Forge de Rosée",
-          "description": "Fabriquez et équipez une veste avec les matériaux des gobelins."
+          "description": "Rendez « Protéger la lisière » à Mira pour utiliser la forge de Rosée. Vous pouvez explorer les autres régions librement."
         },
         "travel": {
           "name": "Route des Deux Villages",
-          "description": "Votre équipement est prêt. Rejoignez le village de Brume."
+          "description": "Visitez Brume quand vous le souhaitez, avec ou sans quête terminée."
         },
         "complete": {
           "name": "Village de Brume",
-          "description": "Tutoriel terminé : combat, compétences, quête, butin et équipement maîtrisés."
+          "description": "Brume est découverte. Oriel et Élyne connaissent une autre partie de l’histoire de la Veille. Explorez et choisissez vos contrats librement."
+        }
+      },
+      "equipment_sets": {
+        "lisiere": {
+          "name": "Panoplie de la Lisière",
+          "bonuses": {
+            "2": {
+              "hp": 4,
+              "endurance": 1
+            },
+            "4": {
+              "force": 2,
+              "intelligence": 2,
+              "sagesse": 1
+            },
+            "5": {
+              "hp": 8,
+              "endurance": 2,
+              "sagesse": 2
+            }
+          }
+        }
+      }
+    },
+    "narrative": {
+      "title": "Les Cloches sous les racines",
+      "facts": {
+        "borne_lue": {
+          "name": "Lire la borne du sentier oublié",
+          "description": "Sous la mousse, un mot demeure : « Écoute ». Trois sillons descendent sous la borne, vers les racines.",
+          "map": "clearing",
+          "npc": "borne_veille"
+        },
+        "chargement_lu": {
+          "name": "Examiner le chargement abandonné",
+          "description": "Des attaches de caisse portent une marque de forge. Une flèche gravée indique Brume et un mot gobelin traduit par Rusk : « la voix ».",
+          "map": "forest",
+          "npc": "ancien_chargement"
+        },
+        "inscription_lue": {
+          "name": "Lire l’inscription de la Carrière",
+          "description": "« Trois coups, puis trois silences. Ne pas extraire la veine qui répond. » La fin a été rayée, mais elle reste lisible.",
+          "map": "rosee_carriere",
+          "npc": "inscription_veille"
+        },
+        "stele_aline_lue": {
+          "name": "Relever le nom sur stèle d’aline",
+          "description": "Aline. Elle connaissait le nom de chaque voyageur. Relève : au troisième appel.",
+          "map": "brume_marais",
+          "npc": "stele_aline"
+        },
+        "stele_tovan_lue": {
+          "name": "Relever le nom sur stèle de tovan",
+          "description": "Tovan. Il demeura au pont jusqu’au dernier départ. Relève : au troisième appel.",
+          "map": "brume_marais",
+          "npc": "stele_tovan"
+        },
+        "stele_isel_lue": {
+          "name": "Relever le nom sur stèle d’isel",
+          "description": "Isel. Elle conserva les noms lorsque les voix se turent. Relève : au troisième appel.",
+          "map": "brume_marais",
+          "npc": "stele_isel"
+        },
+        "ordre_lu": {
+          "name": "Examiner l’ordre du poste de garde",
+          "description": "L’ordre porte le sceau d’Élyne : « Ne laisser personne derrière. Attendre mon retour avant de lever la garde. » Aucune relève n’a été inscrite.",
+          "map": "brume_ruines",
+          "npc": "poste_veille"
+        },
+        "outil_lu": {
+          "name": "Comparer la marque de l’outil",
+          "description": "Garrik reconnaît sa marque sur les outils du camp. Une commande identique venait de la Carrière des Échos.",
+          "map": "rosee",
+          "npc": "forge"
+        },
+        "garrik_inscription": {
+          "name": "Interroger Garrik sur l’inscription",
+          "description": "Garrik a lu l’avertissement avant de forger l’outil. La Carrière ne contenait pas une simple veine de minerai.",
+          "map": "rosee",
+          "npc": "forge"
+        },
+        "garrik_aveu": {
+          "name": "Écouter l’aveu de Garrik",
+          "description": "Garrik reconnaît avoir fabriqué l’outil et ignoré l’avertissement. L’attache rompue reliait Rosée au réseau de la Veille.",
+          "map": "rosee",
+          "npc": "forge"
+        },
+        "rusk_parole": {
+          "name": "Écouter Rusk",
+          "description": "Rusk a déserté après avoir compris que les outils volés ne servaient pas à construire des abris. Il veut sortir son frère du service du chef.",
+          "map": "clearing",
+          "npc": "rusk"
+        },
+        "mira_rusk": {
+          "name": "Prévenir Mira au sujet de Rusk",
+          "description": "Mira accepte d’entendre le déserteur sans le livrer aux autres gobelins.",
+          "map": "rosee",
+          "npc": "mira"
+        },
+        "oriel_rusk": {
+          "name": "Transmettre le témoignage de Rusk",
+          "description": "Oriel rapproche le chargement gobelin d’une cloche déplacée vers le Sanctuaire des Racines.",
+          "map": "brume",
+          "npc": "oriel"
+        },
+        "noms_confies": {
+          "name": "Confier les noms des Veilleurs à Oriel",
+          "description": "Aline, Tovan et Isel sont conservés dans le registre de Brume. Leur garde peut finir sans effacer ceux qui l’ont tenue.",
+          "map": "brume",
+          "npc": "oriel"
+        },
+        "avis_mira": {
+          "name": "Recueillir l’avis de Mira",
+          "description": "Mira veut une relève commune pour que les habitants puissent dormir sans faire porter toute la garde aux voyageurs.",
+          "map": "rosee",
+          "npc": "mira"
+        },
+        "avis_garrik": {
+          "name": "Recueillir l’avis de Garrik",
+          "description": "Garrik accepte de refaire l’attache, mais refuse désormais de décider seul à partir d’un plan.",
+          "map": "rosee",
+          "npc": "forge"
+        },
+        "avis_elyne": {
+          "name": "Recueillir l’avis de Élyne",
+          "description": "Élyne demande de conserver les noms et de ne plus laisser un ordre sans possibilité de relève.",
+          "map": "brume",
+          "npc": "elyne"
+        },
+        "accord_choisi": {
+          "name": "Choisir l’avenir de la Veille",
+          "description": "Après avoir écouté les trois responsables, vous avez proposé aux villages un avenir commun pour la cloche.",
+          "map": "brume",
+          "npc": "oriel"
+        }
+      },
+      "npcs": {
+        "borne_veille": {
+          "greeting": "Sous la mousse, un mot demeure : « Écoute ». Trois sillons descendent sous la borne, vers les racines.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "Sous la mousse, un mot demeure : « Écoute ». Trois sillons descendent sous la borne, vers les racines.",
+              "facts": [
+                "borne_lue"
+              ]
+            }
+          ]
+        },
+        "ancien_chargement": {
+          "greeting": "Des attaches de caisse portent une marque de forge. Une flèche gravée indique Brume et un mot gobelin traduit par Rusk : « la voix ».",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "Des attaches de caisse portent une marque de forge. Une flèche gravée indique Brume et un mot gobelin traduit par Rusk : « la voix ».",
+              "requires": [
+                "rusk_rencontre"
+              ],
+              "facts": [
+                "chargement_lu"
+              ]
+            }
+          ]
+        },
+        "inscription_veille": {
+          "greeting": "« Trois coups, puis trois silences. Ne pas extraire la veine qui répond. » La fin a été rayée, mais elle reste lisible.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "« Trois coups, puis trois silences. Ne pas extraire la veine qui répond. » La fin a été rayée, mais elle reste lisible.",
+              "facts": [
+                "inscription_lue"
+              ]
+            }
+          ]
+        },
+        "stele_aline": {
+          "greeting": "Aline. Elle connaissait le nom de chaque voyageur. Relève : au troisième appel.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "Aline. Elle connaissait le nom de chaque voyageur. Relève : au troisième appel.",
+              "facts": [
+                "stele_aline_lue"
+              ]
+            }
+          ]
+        },
+        "stele_tovan": {
+          "greeting": "Tovan. Il demeura au pont jusqu’au dernier départ. Relève : au troisième appel.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "Tovan. Il demeura au pont jusqu’au dernier départ. Relève : au troisième appel.",
+              "facts": [
+                "stele_tovan_lue"
+              ]
+            }
+          ]
+        },
+        "stele_isel": {
+          "greeting": "Isel. Elle conserva les noms lorsque les voix se turent. Relève : au troisième appel.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "Isel. Elle conserva les noms lorsque les voix se turent. Relève : au troisième appel.",
+              "facts": [
+                "stele_isel_lue"
+              ]
+            }
+          ]
+        },
+        "poste_veille": {
+          "greeting": "L’ordre porte le sceau d’Élyne : « Ne laisser personne derrière. Attendre mon retour avant de lever la garde. » Aucune relève n’a été inscrite.",
+          "topics": [
+            {
+              "id": "lire",
+              "label": "Examiner et noter",
+              "text": "L’ordre porte le sceau d’Élyne : « Ne laisser personne derrière. Attendre mon retour avant de lever la garde. » Aucune relève n’a été inscrite.",
+              "requires": [
+                "noms_mousse"
+              ],
+              "facts": [
+                "ordre_lu"
+              ]
+            }
+          ]
+        },
+        "clearing:0": {
+          "greeting": "Rosée ? Suis le chemin jusqu’aux maisons. Si quelqu’un t’appelle dans les bois, regarde avant de répondre. Hier, la voix était la mienne.",
+          "topics": [
+            {
+              "id": "voix",
+              "label": "Tu étais où ?",
+              "text": "Au village, à cette heure-là. C’est bien ce qui m’ennuie."
+            },
+            {
+              "id": "routes",
+              "label": "Connais-tu les environs ?",
+              "text": "Rosée se trouve après la forêt. Le camp gobelin est du côté de la lisière. Brume est plus loin sur la Route des Deux Villages. On peut y aller sans passer par la grotte."
+            },
+            {
+              "id": "apres",
+              "label": "Ta tournée est terminée ?",
+              "text": "J’ai terminé ma tournée sans oublier personne. Pour une fois, c’est une bonne nouvelle qui ne voyage pas toute seule.",
+              "requires": [
+                "accord_vivants"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "mira": {
+          "greeting": "Les voyageurs arrivent sans leurs outils, les gardes rentrent sans sommeil, et chacun me demande quand cela va finir. Tu cherches du travail ou simplement une route ?",
+          "topics": [
+            {
+              "id": "routes",
+              "label": "Comment rejoindre Brume ?",
+              "text": "Prends la Route des Deux Villages depuis la carte globale. Aucun service à me rendre pour avoir le droit de passer. Fais attention aux rencontres."
+            },
+            {
+              "id": "forge",
+              "label": "Pourquoi la forge est-elle réservée ?",
+              "text": "Nous réservons son charbon aux réparations des patrouilles. Aide-nous à dégager la lisière, puis rends-moi la quête « Protéger la lisière ». Garrik pourra alors travailler pour toi."
+            },
+            {
+              "id": "rusk",
+              "label": "Parler du déserteur Rusk",
+              "text": "Un déserteur reste un risque. Mais je ne vais pas appeler « armée » un garçon caché sous une bâche. Dis à Rusk que je veux lui parler, pas le livrer.",
+              "facts": [
+                "mira_rusk"
+              ],
+              "requires_facts": [
+                "rusk_parole"
+              ]
+            },
+            {
+              "id": "accord",
+              "label": "Ton avis sur la cloche",
+              "text": "Je veux qu’on puisse dormir sans demander aux voyageurs de faire notre garde. Si les deux villages s’engagent à prendre la relève, nous pouvons réparer ce qui a tenu.",
+              "requires": [
+                "voix_commande"
+              ],
+              "facts": [
+                "avis_mira"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "forge": {
+          "greeting": "Je peux regarder ton équipement. Pour utiliser l’atelier, rends d’abord « Protéger la lisière » à Mira : elle répartit notre réserve de charbon.",
+          "topics": [
+            {
+              "id": "metier",
+              "label": "Parle-moi de ton métier",
+              "text": "On peut battre un métal jusqu’à ce qu’il cède. On peut aussi apprendre à entendre quand il va céder. La seconde méthode coûte moins de doigts."
+            },
+            {
+              "id": "panoplie",
+              "label": "La panoplie de la Lisière",
+              "text": "Les six pièces reprennent une couture commune aux anciens patrouilleurs. Deux pièces se soutiennent, quatre répartissent l’effort, cinq tiennent l’ensemble. Tu peux aussi mélanger ces pièces avec les équipements de créatures."
+            },
+            {
+              "id": "outil",
+              "label": "Comparer la marque de l’outil",
+              "text": "Cette marque est la mienne. J’ai forgé un outil semblable pour Néran, à la Carrière des Échos. Pourquoi les gobelins cherchaient-ils ce métal ?",
+              "requires": [
+                "mira_hunt_2"
+              ],
+              "facts": [
+                "outil_lu"
+              ]
+            },
+            {
+              "id": "inscription",
+              "label": "Tu avais lu l’inscription ?",
+              "text": "Oui. « Trois coups, puis trois silences. » Je pensais que les anciens avaient peur d’un filon capricieux. J’aurais dû demander pourquoi ils avaient aussi dessiné une cloche.",
+              "facts": [
+                "garrik_inscription"
+              ],
+              "requires_facts": [
+                "inscription_lue"
+              ]
+            },
+            {
+              "id": "aveu",
+              "label": "Qui a fabriqué l’outil ?",
+              "text": "C’est moi. Sur le plan, il était écrit de ne pas toucher à la veine qui chantait. J’ai trouvé cela superstitieux.",
+              "requires": [
+                "trois_silences"
+              ],
+              "choices": [
+                {
+                  "id": "colere",
+                  "label": "Des gens ont été blessés.",
+                  "text": "Oui. Et mon ignorance n’a pas tenu le manche à ma place. L’outil coupait une attache de la Veille ; les gens de Brume entretenaient l’autre bout.",
+                  "facts": [
+                    "garrik_aveu"
+                  ]
+                },
+                {
+                  "id": "comprendre",
+                  "label": "Tu ne pouvais pas tout savoir.",
+                  "text": "Peut-être. Mais j’aurais pu poser une question de plus. L’outil coupait une attache de la Veille ; les gens de Brume entretenaient l’autre bout.",
+                  "facts": [
+                    "garrik_aveu"
+                  ]
+                },
+                {
+                  "id": "reparer",
+                  "label": "Qu’est-ce qu’on peut réparer ?",
+                  "text": "L’outil coupait une attache. Il faut retrouver ce qu’elle retenait avant de prétendre la remettre. Les gens de Brume entretenaient l’autre bout.",
+                  "facts": [
+                    "garrik_aveu"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "accord",
+              "label": "Ton avis sur la cloche",
+              "text": "Je peux refaire une attache. Mais je ne prendrai plus le plan pour une permission de décider seul. Je travaillerai avec l’accord des deux villages.",
+              "requires": [
+                "voix_commande"
+              ],
+              "facts": [
+                "avis_garrik"
+              ]
+            }
+          ],
+          "service": "forge",
+          "greetings": [
+            {
+              "requires": [
+                "mira_hunt_1"
+              ],
+              "text": "Mira m’a parlé de toi. Pose tes matériaux. Cette fois, on va pouvoir faire autre chose que réparer les dégâts des autres."
+            },
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "seve": {
+          "greeting": "Les lucioles viennent jusqu’aux paniers de récolte. Elles ne mangent rien. Elles attendent autour des pierres, puis attaquent la première main qui approche.",
+          "topics": [
+            {
+              "id": "animaux",
+              "label": "Pourquoi les animaux sont-ils agressifs ?",
+              "text": "Les sangliers creusent là où les racines rencontrent la pierre. Les lucioles cherchent une poudre presque identique à celle de la carrière. Je veux protéger les cueilleurs, pas vider les bois de toute vie."
+            },
+            {
+              "id": "apres",
+              "label": "Comment va le verger ?",
+              "text": "Nous sauverons ce qui peut l’être. Au moins, maintenant, les gens de la carrière et ceux des champs se parlent.",
+              "requires": [
+                "accord_vivants"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "neran": {
+          "greeting": "Parle depuis ce côté de l’abri. Le gardien a déjà transformé deux brouettes en cailloux plus petits.",
+          "topics": [
+            {
+              "id": "travail",
+              "label": "Pourquoi avoir repris l’extraction ?",
+              "text": "Un chantier arrêté ne paie personne. Je pensais faire gagner une journée. Maintenant, personne ne veut y retourner."
+            },
+            {
+              "id": "registre",
+              "label": "Pourquoi avoir rayé l’avertissement ?",
+              "text": "J’ai dit à Garrik de s’occuper du métal pendant que je m’occupais de la pierre. C’était commode, de partager les torts avant même de les connaître.",
+              "requires_facts": [
+                "inscription_lue"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "rusk": {
+          "greeting": "Si tu viens pour le chef, je ne suis plus avec lui. Si tu viens pour ma couverture, c’est la seule chose que je possède.",
+          "topics": [
+            {
+              "id": "partir",
+              "label": "Pourquoi avoir déserté ?",
+              "text": "Mon frère croyait qu’on construisait des abris. On empilait des outils. Les abris, on les a laissés brûler. Je veux le sortir de là.",
+              "facts": [
+                "rusk_parole"
+              ]
+            },
+            {
+              "id": "chargement",
+              "label": "Qu’as-tu entendu au sujet des vols ?",
+              "text": "Le chargement traversait la Forêt de Rosée avant de partir vers Brume. Une caisse est restée près du chemin. Le chef appelait cela « prendre la voix ». Montre sa marque à l’archiviste de Brume.",
+              "requires": [
+                "rusk_rencontre"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "oriel": {
+          "greeting": "Bienvenue à Brume. Si quelqu’un te demande si tu as entendu les cloches, dis-lui d’abord à quelle heure. Ici, la différence compte.",
+          "topics": [
+            {
+              "id": "veille",
+              "label": "Que sont les cloches ?",
+              "text": "Nos anciennes gardes entretenaient un réseau enfoui. La cloche de Rosée ancrait les vibrations, celle des ruines conservait les appels, celle du Sanctuaire les accordait. Depuis peu, les traces répondent à des personnes qui ne sont plus là."
+            },
+            {
+              "id": "rusk",
+              "label": "Transmettre le témoignage de Rusk",
+              "text": "Une attache coupée à Rosée, des outils volés, une cloche déplacée vers le Sanctuaire… Ce ne sont pas trois histoires. Je vais noter ce que Rusk a entendu.",
+              "requires": [
+                "rusk_rencontre"
+              ],
+              "facts": [
+                "oriel_rusk"
+              ],
+              "requires_facts": [
+                "chargement_lu"
+              ]
+            },
+            {
+              "id": "noms",
+              "label": "Confier les noms des Veilleurs",
+              "text": "Aline, Tovan et Isel. On peut arrêter une garde sans faire disparaître ceux qui l’ont tenue. Leurs noms resteront dans ce registre.",
+              "requires": [
+                "garde_sans_releve",
+                "hunt_veilleur_des_brumes"
+              ],
+              "facts": [
+                "noms_confies"
+              ]
+            },
+            {
+              "id": "accord",
+              "label": "Décider de l’avenir de la Veille",
+              "text": "Nous avons deux façons de confier la cloche. Les deux préservent l’accès aux régions et les mêmes récompenses. Ce choix est définitif pour ton récit : prends le temps de lire les deux propositions.",
+              "requires": [
+                "voix_commande"
+              ],
+              "requires_facts": [
+                "avis_mira",
+                "avis_garrik",
+                "avis_elyne"
+              ],
+              "choices": [
+                {
+                  "id": "restaurer",
+                  "label": "Confirmer : rétablir l’ancien accord",
+                  "description": "Réparer les attaches, préserver les échos et instaurer une relève commune.",
+                  "text": "Alors nous conservons ce qui a tenu. Mais nous écrivons aussi pourquoi cela a cédé. Les villages partageront la garde ; Garrik réparera l’attache avec leur accord.",
+                  "ending": "restaurer",
+                  "facts": [
+                    "accord_choisi"
+                  ]
+                },
+                {
+                  "id": "partager",
+                  "label": "Confirmer : partager autrement la Veille",
+                  "description": "Créer des relais communs et recopier les noms avant de laisser s’éteindre certains échos.",
+                  "text": "Alors nous garderons les noms, même quand les voix ne reviendront plus. Il faudra écouter les vivants à leur place. Les deux villages entretiendront ensemble les nouveaux relais.",
+                  "ending": "partager",
+                  "facts": [
+                    "accord_choisi"
+                  ]
+                }
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
+        },
+        "elyne": {
+          "greeting": "Les Veilleurs ont reçu l’ordre de ne laisser personne derrière. Ils obéissent toujours. Seulement, ils ne distinguent plus ceux qu’ils protègent de ceux qu’ils retiennent.",
+          "topics": [
+            {
+              "id": "ordre",
+              "label": "Cet ordre porte ton sceau.",
+              "text": "Oui. Je l’ai donné pendant l’évacuation. Je croyais revenir assez tôt pour les relever. Le réseau conserve cet ordre, même quand ceux qui l’entendent ne sont plus là.",
+              "requires_facts": [
+                "ordre_lu"
+              ]
+            },
+            {
+              "id": "sanctuaire",
+              "label": "Qui tient la cloche du Sanctuaire ?",
+              "text": "Le Seigneur gobelin veut imposer sa voix aux autres clans. Il profite d’une attache déjà rompue ; il n’a pas créé la catastrophe. Le Sanctuaire reste accessible, que tu acceptes ou non mon enquête."
+            },
+            {
+              "id": "accord",
+              "label": "Ton avis sur la cloche",
+              "text": "L’ancien accord gardait aussi les ordres que nous n’osions plus retirer. Si nous le reprenons, faisons-le en le sachant. Quoi que nous choisissions, les noms doivent rester.",
+              "requires": [
+                "voix_commande"
+              ],
+              "facts": [
+                "avis_elyne"
+              ]
+            }
+          ],
+          "greetings": [
+            {
+              "requires": [
+                "accord_vivants"
+              ],
+              "text": "Les villages ont un nouvel accord. Les routes ne sont pas devenues sans danger, mais nous savons désormais pourquoi nous prenons la relève. Merci d’y avoir pris part."
+            }
+          ]
         }
       }
     }

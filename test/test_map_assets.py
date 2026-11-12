@@ -35,6 +35,7 @@ def test_map_file_roundtrip_and_atomic_save(tmp_path):
     lambda d: d["clearing"]["spawns"].append([200, 1]),
     lambda d: d["clearing"]["spawns"].append(d["clearing"]["cover"][0]),
     lambda d: d["clearing"]["exits"][0].update(destination="unknown"),
+    lambda d: d["clearing"]["exits"][0].update(world_exit="true"),
     lambda d: d["clearing"]["exits"][0].update(destination="rosee", entry=[200, 1]),
     lambda d: d["rosee"]["sites"].append(deepcopy(d["rosee"]["sites"][0])),
     lambda d: d.pop("clearing"),
@@ -235,6 +236,22 @@ def test_editor_creates_practicable_bidirectional_gate():
     assert reverse["position"] != [2, 20]
     assert reverse["entry"] != [2, 10]
     map_assets.validate(editor.maps)
+
+
+def test_builder_world_exit_preserves_route_duration_and_survives_save(tmp_path):
+    from jeuxRPG.multiplayer.map_editor import MapEditor
+    from types import SimpleNamespace
+    editor = MapEditor.__new__(MapEditor)
+    editor.maps = maps()
+    editor.selected = SimpleNamespace(get=lambda: "clearing")
+    editor.set_gate([2, 10], {"name": "Carte globale", "destination": "rosee", "entry": "2,20", "bidirectional": True, "world_exit": True, "travel_minutes": 0.5})
+    gate = editor.maps["clearing"]["exits"][-1]
+    assert gate["world_exit"] is True and gate["destination"] == "rosee"
+    assert gate["travel_minutes"] == 0.5
+    assert editor.maps["rosee"]["exits"][-1]["world_exit"] is True
+    path = tmp_path / "world.json"
+    map_assets.save(path, editor.maps)
+    assert map_assets.load(path) == editor.maps
 
 
 def test_editor_complete_exit_ignores_unused_arrival_and_preserves_origin():

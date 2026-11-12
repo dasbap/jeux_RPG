@@ -15,13 +15,21 @@ Après installation, le raccourci fonctionne aussi :
 jeux-rpg-controller
 ```
 
-Le contrôleur utilise le dossier `maps` du répertoire courant. Pour un projet séparé :
+Le contrôleur ouvre `projects/authored` par défaut. Pour un projet séparé :
 
 ```powershell
 python -m jeuxRPG.multiplayer.controller D:\RPG\mon_monde\maps
 ```
 
 Un dossier neuf est initialisé avec les catalogues fournis. Tkinter doit être présent dans Python ; il est normalement inclus avec l’installation Windows.
+
+Les zones, leurs secteurs, les PNJ, les rues et les trajets proviennent uniquement
+des catalogues du projet. Une zone regroupe des cartes sans créer de passages
+entre elles : seuls les passages et chemins configurés dans le Builder permettent
+de voyager. Supprimer une rue ou une route ne rétablit aucun ancien modèle.
+La construction du client exporte automatiquement `projects/authored` vers les
+catalogues livrés. Pour le serveur, exporter avec
+`python -m scripts.export_builder_project`, puis redéployer et redémarrer.
 
 ## Organisation
 
@@ -38,7 +46,8 @@ Le contrôleur est un outil externe au jeu. Il modifie les définitions, pas les
 | Compétences moteur | Effets multiples, invocations, buffs, coûts, scaling, portée et incantation |
 | PNJ | Carte, nom, identifiant, dialogue, joueur lié facultatif et placement par clic |
 | Monde | Délai de repop, XP des mobs, courbe d’XP, durée de séjour du marchand et vision des joueurs |
-| Forge / recettes | Création, emplacement, cinq bonus, matériaux et aperçu des améliorations |
+| Forge / recettes | Création, emplacement, panoplie, cinq bonus, matériaux et aperçu des améliorations |
+| Panoplies | Bonus cumulés à 2, 4 et 5 pièces ; associations dans les recettes |
 | Matériaux / équipement | Noms affichés, probabilités rares et emplacements personnalisés |
 | Règles du jeu | Temps, régénération, déplacement, combat, IA, saignement, capacités sociales, trajets et apparition initiale |
 | Améliorations rares | Matériaux supplémentaires, niveau de début et formule de quantité |
@@ -62,6 +71,9 @@ Créer d’abord le PNJ donneur, puis ajouter la quête. Les objectifs disponibl
 
 - `kill` : vaincre une espèce, dans une zone donnée ou partout si la zone est vide. Le champ Carte restreint à un secteur précis. Les anciens objectifs utilisant un ID de secteur dans Zone restent reconnus.
 - `craft` : fabriquer une recette de forge existante. Une amélioration ne compte pas comme une fabrication.
+- `upgrade` : atteindre le palier `upgrade_level` d’une recette précise (nombre requis : 1). Un équipement ayant déjà atteint ce palier est reconnu lors de l’acceptation. Fabriquer la pièce ou améliorer une autre recette ne valide pas cet objectif.
+
+Les catégories `hunt`, `boss`, `crafting` et `upgrade` correspondent à Chasse, Créature d’élite, Artisanat et Perfectionnement dans le journal. Les anciennes catégories restent reconnues. Les quêtes ne bloquent pas l’accès aux régions : on peut rejoindre Brume sans les terminer. La quête de Mira conserve son rôle spécifique de déblocage de **la forge du village de Rosée** ; ce verrou est vérifié par le serveur et affiché dans le jeu.
 
 La quête est acceptée en parlant au PNJ, à proximité, hors menace ennemie, sur la carte de terrain. Le compteur démarre à l’acceptation. Les membres du groupe partagent la progression. Revenir parler au PNJ une fois l’objectif rempli accorde l’XP à chaque joueur, une seule fois. Le journal affiche les quêtes acceptées, leur avancement et leur état.
 
@@ -274,3 +286,7 @@ L’ouverture valide les références et la jouabilité. Les identifiants de PNJ
 Une sauvegarde contrôle les tailles compatibles avec la relecture, détecte les modifications externes et verrouille le projet pendant l’écriture. Si une autre instance a enregistré, rechargez le projet avant de continuer. Les fichiers précédents sont conservés pendant le remplacement ; une écriture interrompue est restaurée à la prochaine ouverture. Cette récupération ne remplace pas une sauvegarde externe du dossier, notamment en cas de défaillance du disque.
 
 Dans le Builder intégré, **Enregistrer sous** exporte une copie complète dans le dossier choisi. Le projet original reste ouvert et ses modifications en mémoire restent à enregistrer. Les durées des trajets utilisent la vitesse et le ratio réglés dans le projet. Les formulaires longs disposent d’un défilement et de boutons de validation fixes.
+
+Dans les propriétés d’un passage, **Sortir vers la carte globale (destination à choisir)** fait quitter la zone sans déclencher de marche. La destination, l’arrivée et la durée configurées restent utilisées pour les voyages choisis sur la carte globale. Ce réglage est activé sur les sorties du village de Rosée et des deux forêts ; les passages internes des donjons conservent leur comportement.
+
+Le catalogue **Histoire / dialogues / indices** permet d’éditer séparément les accueils, sujets, réponses et notes du journal. Les références de quêtes et d’indices sont validées avec le projet ; une suite impossible est refusée. Le type de quête `story` utilise une liste d’indices ou de témoignages, avec acceptation et remise explicites. Voir [le récit intégré et ses réglages](HISTOIRE_IMPLEMENTATION.md).

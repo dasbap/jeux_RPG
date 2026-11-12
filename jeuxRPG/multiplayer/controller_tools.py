@@ -6,6 +6,10 @@ from . import content, map_building, mob_rules
 
 def catalog_rows(project, section):
     p = project
+    if section == "narrative":
+        from .controller_narrative import rows
+
+        return rows(project)
     from .controller_gameplay import SECTIONS, rows
 
     if section in dict(SECTIONS):

@@ -2,12 +2,18 @@ from copy import deepcopy
 
 from jeuxRPG.multiplayer import fields, tutorial, world
 from jeuxRPG.multiplayer.service import GameError
+from jeuxRPG.multiplayer.world_topology import compile_world
 
 
 def test_village_graph_connects_attached_sectors(monkeypatch):
-    places = deepcopy(world.PLACES)
-    places['rosee']['points'].append({'id': 'remote_forest', 'name': 'Forêt'})
-    monkeypatch.setattr(world, 'PLACES', places)
+    maps = deepcopy(world.WORLD_MAP_DATA)
+    maps['remote_forest'] = deepcopy(maps['forest'])
+    maps['remote_forest'].update(name='Forêt', zone_id='rosee', sites=[], exits=[])
+    maps['rosee']['exits'].append({'destination': 'remote_forest', 'entry': [1, 1]})
+    maps['remote_forest']['exits'].append({'destination': 'rosee', 'entry': [1, 1]})
+    monkeypatch.setattr(world, 'WORLD_MAP_DATA', maps)
+    for name, value in zip(('PLACES', 'VILLAGE_STREETS', 'ROUTES', 'LEVELS', 'POINT_MAPS', 'ZONE_ENTRIES', 'EDGES'), compile_world(maps), strict=True):
+        monkeypatch.setattr(world, name, value)
     graph = world.graph({'rosee'})
     assert 'rosee' in graph['remote_forest']
     assert world.validate_path('remote_forest', 'rosee', {'rosee'}, ['rosee'])

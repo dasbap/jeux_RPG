@@ -20,6 +20,8 @@ function renderCombatFeedback(adventure) {
   if (followLatest) log.scrollTop = log.scrollHeight;
 }
 function renderGame(adventure, preserveBattle = false) {
+  syncRegionTravel(adventure);
+  renderJourney(adventure);
   if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
@@ -92,8 +94,11 @@ function renderGame(adventure, preserveBattle = false) {
   const nearbyNpc = fieldInteractions.map(site => ({...worldPoints.find(point => point.id === site.id), ...site})).find(site => site.dialogue || site.type === "pnj") || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
   const canTalk = Boolean(nearbyNpc) && !adventure.moving;
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
+  const forgeUnlocked = adventure.forge_unlocked ?? adventure.quest === "completed";
   const canCraft = atForge && adventure.step === "craft" && !me.equipment;
-  const activeQuest = (adventure.quest_journal || []).find(quest => quest.status === "active");
+  const activeQuest = activeHudQuest(adventure);
+  const menuNames = {stats:"Personnage",equipment:"Équipement",inventory:"Inventaire",map:"Carte de la région",bestiary:"Bestiaire",achievements:"Succès",social:"Social",options:"Options"};
+  document.querySelector(".consultation > h2").textContent = menuNames[currentView] || "Menu";
   $("map-view").hidden = false;
   for (const view of ["social", "options", "stats", "equipment", "inventory", "bestiary", "achievements"]) $(`${view}-view`).hidden = currentView !== view;
   $("quest-view").hidden = currentView !== "quest";
@@ -110,28 +115,36 @@ function renderGame(adventure, preserveBattle = false) {
   }
   $("back-view").hidden = !document.body.classList.contains("hud-menu-open");
   $("back-view").textContent = fighting ? "Retour au combat" : "Retour à l'exploration";
-  $("battle-title").textContent = adventure.step === "complete" ? "Aventure accomplie" : "Votre tutoriel";
+  $("back-view").title = $("back-view").textContent;
+  $("battle-title").textContent = adventure.narrative?.title || (adventure.step === "complete" ? "Aventure accomplie" : "Votre tutoriel");
   $("attack").hidden = true;
   $("leave").hidden = true;
-  $("result").textContent = adventure.step === "complete" ? "Vous êtes arrivé au village de Brume." : "";
+  $("result").textContent = adventure.step === "complete" ? adventure.narrative ? "Brume est découverte. Oriel et Élyne vous accueillent ; l’exploration continue." : "Vous êtes arrivé au village de Brume." : "";
   $("location").textContent = adventure.location;
   const currentZone = adventure.world?.places?.find(place => place.id === adventure.world.current);
   const zoneKey = `${session.id}:${adventure.field_map || adventure.world.current}:${adventure.battle?.map.id || ""}`;
-  if ($("zone-banner").dataset.zone !== zoneKey) {
+  if (!adventure.field_map && !adventure.battle) {
+    clearTimeout(zoneBannerTimer);
+    $("zone-banner").hidden = true;
+    $("zone-banner").dataset.zone = "";
+  } else if ($("zone-banner").dataset.zone !== zoneKey) {
+    clearTimeout(zoneBannerTimer);
     $("zone-banner").dataset.zone = zoneKey;
+    $("zone-banner").hidden = false;
     $("zone-banner").classList.remove("zone-arrival");
     void $("zone-banner").offsetWidth;
     $("zone-banner").classList.add("zone-arrival");
+    zoneBannerTimer = setTimeout(() => {$("zone-banner").hidden = true;}, 3000);
   }
   $("zone-name").textContent = fighting ? adventure.battle.map.name : adventure.location;
   $("zone-level").textContent = `Niv. ${currentZone?.level ?? me.level}`;
   $("position-label").textContent = `Vous êtes ici : ${adventure.location}${fighting && adventure.transit ? " · Trajet suspendu pendant le combat" : adventure.moving ? ` · Marche : ${adventure.travel_remaining_real_seconds.toFixed(1)} s avant le prochain point` : ""}`;
   $("objective").textContent = adventure.objective;
-  renderHudNavigation(adventure);
   renderEndgame(adventure);
   const quests = adventure.quest_journal || [];
   $("quest-progress").textContent = quests.length ? quests.map(quest => `${quest.name} : ${quest.progress}/${quest.count} (${quest.status === "completed" ? "accomplie" : "en cours"})`).join(" · ") : "Aucune quête acceptée.";
   $("quest-description").textContent = activeQuest?.description || "Consultez les PNJ pour obtenir des quêtes.";
+  renderQuestJournal(adventure);
   if (sectionChanged("character", [session.id, me])) {
   renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
@@ -149,8 +162,7 @@ function renderGame(adventure, preserveBattle = false) {
   }
   for (const invocation of me.invocations) { const text = document.createElement("p"); text.textContent = statsText(invocation); $("character-details").append(text); }
   }
-  for (const id of ["tutorial-actions", "npc-actions", "quest-actions", "craft-actions"]) $(id).replaceChildren();
-  const stableActions = new Map(["combat-actions", "skills", "self-skills", "unit-control-actions"].map(id => [id, new Set()]));
+  const stableActions = new Map(["tutorial-actions", "npc-actions", "quest-actions", "craft-actions", "combat-actions", "skills", "self-skills", "unit-control-actions"].map(id => [id, new Set()]));
   function button(container, label, handler, disabled = false) {
     const retained = stableActions.get(container);
     const existing = retained && [...$(container).children].find(child => child.dataset.actionLabel === label);
@@ -177,19 +189,20 @@ function renderGame(adventure, preserveBattle = false) {
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
   if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
-  $("npc-title").textContent = nearbyNpc ? `Parler à ${nearbyNpc.name}` : "Dialogue";
-  $("npc-dialogue").textContent = nearbyNpc ? `${nearbyNpc.name} : ${nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : "Approchez-vous d'un PNJ pour lui parler.";
-  if (canTalk && nearbyNpc) action("npc-actions", nearbyNpc.id === "forge" ? "Parler à Garrik · ouvrir la forge" : "Parler", "talk", {npc: nearbyNpc.id});
-  button("quest-actions", "Localiser le lieu de la quête", () => { const target = hudQuestTarget(adventure); mapMarker = {zone: target.zone, point: target.point}; renderGame(session.tutorial); message("La destination de la quête est entourée sur la carte."); });
+  $("npc-title").textContent = nearbyNpc ? `${nearbyNpc.interaction==="inspect"?"Examiner":"Parler à"} ${nearbyNpc.name}` : "Dialogue";
+  $("npc-dialogue").textContent = nearbyNpc ? `${nearbyNpc.name} : ${adventure.narrative?.greetings?.[nearbyNpc.id] || nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : "Approchez-vous d'un PNJ pour lui parler.";
+  if (canTalk && nearbyNpc) action("npc-actions", nearbyNpc.interaction==="inspect"?"Examiner":nearbyNpc.id === "forge" ? "Parler à Garrik" : "Parler", "talk", {npc: nearbyNpc.id});
+  if (activeQuest) button("quest-actions", `Localiser : ${activeQuest.name}`, () => { const target = hudQuestTarget(adventure); mapMarker = {zone: target.zone, point: target.point}; mapPlace = target.zone; showView("map", {toggle:false}); message("La destination de la quête est repérée sur la carte."); });
   const materialName = item => adventure.material_names?.[item] || item;
   $("forge-keeper").textContent = nearbyNpc?.id === "forge" ? nearbyNpc.name : adventure.world?.places?.flatMap(place => place.points || []).find(point => point.id === "forge")?.name || "Forgeron";
   const forgeMaximum = me.forge?.[0]?.max_level ?? 10;
   $("forge-description").textContent = `Fabriquez ${me.forge?.length || 0} pièces indépendantes et améliorez-les jusqu’à +${forgeMaximum}. Les coûts figurent dans le catalogue.`;
   $("forge-status").textContent = `Fabriquez ou améliorez chaque pièce indépendamment jusqu’à +${forgeMaximum}.`;
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
-  if (vest && adventure.quest === "completed") $("forge-status").textContent = `Veste équipée (+${vest.level}). ${adventure.step === "craft" ? "Votre compagnon doit encore fabriquer la sienne." : "Fabrication validée : rejoignez Brume pour terminer le tutoriel."}`;
+  $("forge-status").textContent = forgeUnlocked ? "Forge de Rosée débloquée. Fabriquez et améliorez chaque équipement indépendamment." : `Terminez « ${adventure.forge_unlock_quest?.name || "Protéger la lisière"} » auprès de Mira pour utiliser la forge de Rosée. Vous pouvez continuer à explorer librement.`;
   $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${materialName(item)}`).join(", ") || "aucun matériau"}.`;
-  if (sectionChanged("forge", [session.id, atForge, me.forge, adventure.material_names, adventure.quest, busy])) {
+  if (sectionChanged("forge", [session.id, atForge, me.forge, adventure.material_names, adventure.quest, forgeUnlocked, busy])) {
+  if (sectionChanged("forge-catalogue", [session.id, me.id, me.forge, me.inventory, adventure.material_names, adventure.step, forgeUnlocked, busy])) {
   $("forge-catalogue").replaceChildren();
   if (atForge) for (const recipe of me.forge) {
     const card = document.createElement("article"); card.className = "codex-card"; card.dataset.recipe = recipe.recipe;
@@ -198,9 +211,11 @@ function renderGame(adventure, preserveBattle = false) {
     const info = document.createElement("p"); info.textContent = recipe.cost ? `Coût : ${Object.entries(recipe.cost).map(([k,v]) => `${v} ${materialName(k)}`).join(", ")}` : `Amélioration maximale +${recipe.max_level ?? forgeMaximum} atteinte.`; card.append(info);
     if (recipe.cost && !recipe.affordable) { const missing = document.createElement("p"); missing.textContent = `Il manque : ${Object.entries(recipe.cost).filter(([item, quantity]) => (me.inventory[item] || 0) < quantity).map(([item, quantity]) => `${quantity - (me.inventory[item] || 0)} ${materialName(item)}`).join(", ")}.`; card.append(missing); }
     const bonus = document.createElement("p"); bonus.textContent = `Bonus : ${equipmentBonuses(recipe.equipped || recipe)}.`; card.append(bonus);
+    if(recipe.set_name){const set=document.createElement("p");set.className="set-membership";set.textContent=`${recipe.set_name} · Bonus à 2, 4 et 5 pièces équipées.`;card.append(set);}
     const adjective = document.createElement("p"); adjective.textContent = `À +${recipe.max_level ?? forgeMaximum} : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
-    if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = recipe.equipped ? "upgrade" : "craft"; craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || adventure.quest !== "completed" || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
+    if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = recipe.equipped ? "upgrade" : "craft"; craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || !forgeUnlocked || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);
+  }
   }
   }
   $("mob-name").textContent = fighting ? `${(adventure.mobs || []).length} ennemi(s) visible(s)` : "";
@@ -223,17 +238,9 @@ function renderGame(adventure, preserveBattle = false) {
     }
   }
   const possibleTargets = fighting ? [...enemies, ...adventure.players].filter(target => (!focusedMob || target.id === focusedMob) && (target.enemy || me.skills.some(skill => skillAllowed(me, skill, target, mob)))) : [];
-  $("combat-target").replaceChildren();
-  for (const target of possibleTargets) {
-    const option = document.createElement("option");
-    option.value = target.id;
-    option.textContent = `${target.name}${target.id === me.id ? " · vous" : ""}`;
-    $("combat-target").append(option);
-  }
-  if (!combatTarget && possibleTargets.length) {
-    const placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = "Sélectionnez une entité sur la carte"; $("combat-target").prepend(placeholder);
-  }
-  $("combat-target").value = possibleTargets.length ? combatTarget : "";
+  const targetOptions = possibleTargets.map(target => [target.id, `${target.name}${target.id === me.id ? " · vous" : ""}`]);
+  if (!combatTarget && possibleTargets.length) targetOptions.unshift(["", "Sélectionnez une entité sur la carte"]);
+  syncSelectOptions($("combat-target"), targetOptions, combatTarget);
   $("target-controls").hidden = true;
   const selected = [...enemies, ...adventure.players].find(target => target.id === combatTarget);
   $("combat-status").textContent = !fighting ? "" : !adventure.battle.hostiles_alive ? "" : me.casting ? `${me.casting.name} · incantation : ${me.casting.remaining_seconds.toFixed(1)} s · immobile${me.casting.concentration ? " · dégâts = interruption" : ""}` : me.hp <= 0 ? "Vous êtes à terre. Votre compagnon peut terminer le combat." : me.cooldown_real_seconds > 0 ? `Prochaine action dans ${me.cooldown_real_seconds.toFixed(1)} s.` : me.stunned ? "Vous êtes étourdi : aucune action n'est disponible." : selected ? selected.name : "";
@@ -273,13 +280,15 @@ function renderGame(adventure, preserveBattle = false) {
     }
   }
   const regionOpen = Boolean(session?.tutorial) && document.body.classList.contains("hud-menu-open") && currentView === "map";
+  const regionJustOpened = regionOpen && $("region-view").hidden;
   $("region-view").hidden = !regionOpen;
+  $("region-view").querySelector("h3").textContent = fighting ? "Carte de la région" : "Destination";
   const detailsParent = regionOpen ? $("region-view") : $("map-view");
   if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
-  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
-    renderWorld(adventure, me, $("region-map"));
+  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.equipment_sets, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+    renderWorld(adventure, me, $("region-map"), {overview: fighting});
     renderAchievements(adventure.achievements);
-    if (regionOpen) $("map-details").open = true;
+    if (regionJustOpened) $("map-details").open = true;
   }
   const controlledHud = fighting && controlledUnits(adventure, me.id).length > 0;
   $("combat-view").classList.toggle("controlled-hud", controlledHud);
@@ -287,6 +296,8 @@ function renderGame(adventure, preserveBattle = false) {
   $("combat-actions").hidden = !controlledHud;
   $("skills").hidden = !controlledHud;
   if (fighting && !controlledHud) renderSkillHud(adventure, me, mob, canAttack, selected);
+  renderHudNavigation(adventure);
+  renderNarrative(adventure);
   if (!fighting) $("unit-controls").hidden = true;
   for (const [id, retained] of stableActions) for (const child of [...$(id).children]) if (!retained.has(child)) child.remove();
   $("combat-auto-target").setAttribute("aria-pressed", String(!focusedMob));

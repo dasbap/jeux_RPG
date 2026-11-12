@@ -8,7 +8,7 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 
 .point-icon{fill:#17202b;text-anchor:middle;font-size:15px;pointer-events:none}
 
-.combat-mode .consultation,.combat-mode .quest-box,.combat-mode #map-details,.combat-mode #location,.combat-mode #objective,.combat-mode #shared-log-title,.combat-mode #events{display:none!important}.combat-mode .adventure-grid{grid-template-columns:1fr}.battle-map{width:100%;max-height:420px;background:#16251f;border-radius:12px}.battle-cell{fill:#1d3128;stroke:#324b3f;stroke-width:1;cursor:crosshair}.battle-cell:hover{fill:#40644a}.battle-cover{fill:#655136;stroke:#ad8755;stroke-width:2}.battle-unit{cursor:pointer}.battle-unit circle{stroke:#121721;stroke-width:2}.battle-unit text{fill:#fff;font-size:10px;text-anchor:middle;pointer-events:none}.visible-player circle{fill:#387cd4}.hidden-player circle{fill:#364856;stroke:#73d9af;stroke-dasharray:3 2}.enemy-unit circle{fill:#ce514c}.corpse-unit circle{fill:#656970}.objective-ring{fill:none!important;stroke:#ffd67a!important;stroke-width:3!important;pointer-events:none}.route-dot{fill:#b7a0ff;pointer-events:none}.mob-card{background:#283442;color:#eceef3;display:grid;gap:8px;min-width:200px;text-align:left}.mob-card progress{width:100%;height:13px;accent-color:#e47c75}#enemy-intents table{width:100%;border-collapse:collapse}#enemy-intents td{padding:9px;border-bottom:1px solid #394556}#forge-catalogue{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}#forge-catalogue .codex-card{margin:0}#bestiary-filters label{flex:1;min-width:160px}#combat-resources p{display:inline-block;margin:6px 14px 10px 0}#tactical-actions,#corpse-actions{margin:12px 0}
+.combat-mode .consultation,.combat-mode .quest-box,.combat-mode #map-details,.combat-mode #location,.combat-mode #objective,.combat-mode #shared-log-title,.combat-mode #events{display:none!important}.combat-mode .adventure-grid{grid-template-columns:1fr}.battle-map{width:100%;max-height:420px;background:#16251f;border-radius:12px}.battle-cell{fill:#1d3128;stroke:#324b3f;stroke-width:1;cursor:crosshair}.battle-cell:hover{fill:#40644a}.battle-cover{fill:#655136;stroke:#ad8755;stroke-width:2}.battle-unit{cursor:pointer}.battle-unit circle{stroke:#121721;stroke-width:2}.battle-unit > text{fill:#fff;font-size:10px;text-anchor:middle;pointer-events:none}.visible-player circle{fill:#387cd4}.hidden-player circle{fill:#364856;stroke:#73d9af;stroke-dasharray:3 2}.enemy-unit circle{fill:#ce514c}.corpse-unit circle{fill:#656970}.objective-ring{fill:none!important;stroke:#ffd67a!important;stroke-width:3!important;pointer-events:none}.route-dot{fill:#b7a0ff;pointer-events:none}.mob-card{background:#283442;color:#eceef3;display:grid;gap:8px;min-width:200px;text-align:left}.mob-card progress{width:100%;height:13px;accent-color:#e47c75}#enemy-intents table{width:100%;border-collapse:collapse}#enemy-intents td{padding:9px;border-bottom:1px solid #394556}#forge-catalogue{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}#forge-catalogue .codex-card{margin:0}#bestiary-filters label{flex:1;min-width:160px}#combat-resources p{display:inline-block;margin:6px 14px 10px 0}#tactical-actions,#corpse-actions{margin:12px 0}
 
 .combat-active main>header,.combat-active main>h1,.combat-active main>.intro,.combat-active footer{display:none}
 
@@ -49,7 +49,7 @@ main{max-width:1400px}.adventure-grid{display:grid;grid-template-columns:minmax(
 
 .battle-cell.terrain-forest{fill:#556d42}.battle-cell.terrain-forest.terrain-shade{fill:#627a47}
 
-.combat-active #battle{position:fixed;inset:0;z-index:20;margin:0;padding:8px;border:0;border-radius:0;overflow:hidden;background:#11141b}.combat-mode>.section-head{display:none}.combat-mode #tutorial-panel{height:100%}.combat-mode #combat-layout{height:100%;grid-template-columns:minmax(160px,16vw) minmax(0,1fr) minmax(190px,19vw);grid-template-rows:minmax(0,1fr) minmax(170px,27vh);gap:8px}.combat-mode #combat-map-panel{min-height:0;display:flex}.combat-mode #map-strip,.combat-mode #map-view{height:100%;width:100%;display:flex;flex-direction:column;padding:4px}.combat-mode #map-view>h3,.combat-mode #map-help{display:none}.combat-mode #world-map{flex:1;min-height:0}.combat-mode #combat-map-panel .battle-map{height:100%;min-height:0;max-height:none}.combat-mode .dashboard-box{padding:10px}.combat-mode #combat-action-panel{overflow:auto}.combat-mode #combat-action-panel h2{font-size:1rem;margin:0 0 4px}.combat-mode #combat-action-panel #combat-view{gap:4px}.combat-mode #combat-status{min-height:0;margin:0;font-size:.85rem}.combat-mode #combat-action-panel button{min-height:36px;padding:7px 10px;min-width:100px}.combat-mode #combat-action-panel .actions{min-height:0}.combat-mode #combat-view>.muted{display:none}.combat-mode #combat-feedback{min-height:0}.combat-mode #combat-notice{min-height:0;padding:4px 8px;font-size:.85rem}.combat-mode #combat-feedback details{margin:2px 0}.exit-marker circle{fill:#245b47;stroke:#ffe28c;stroke-width:3}.exit-marker text{font-size:22px;font-weight:bold}@media(max-width:750px){.combat-mode #combat-layout{grid-template-columns:minmax(85px,19vw) minmax(0,1fr) minmax(95px,22vw);grid-template-rows:minmax(0,1fr) minmax(155px,32vh);grid-template-areas:"allies map enemies" "actions actions actions"}.combat-mode .dashboard-box{padding:4px}.combat-mode #combat-layout h2,.combat-mode #combat-layout h3{font-size:.8rem}.combat-mode #combat-action-panel #combat-view{grid-template-columns:repeat(3,minmax(0,1fr))}.combat-mode #field-camera{flex-wrap:wrap;font-size:.7rem}.combat-mode #field-camera button{min-width:28px;min-height:28px;padding:4px}.combat-mode .vitals-card{font-size:.75rem}.combat-mode #combat-enemy-panel .mob-card{padding:6px}.combat-mode #combat-action-panel button{min-width:70px;font-size:.75rem}}
+.combat-active #battle{position:fixed;inset:0;z-index:20;margin:0;padding:8px;border:0;border-radius:0;overflow:hidden;background:#11141b}.combat-mode>.section-head{display:none}.combat-mode #tutorial-panel{height:100%}.combat-mode #combat-layout{height:100%;grid-template-columns:minmax(160px,16vw) minmax(0,1fr) minmax(190px,19vw);grid-template-rows:minmax(0,1fr) minmax(170px,27vh);gap:8px}.combat-mode #combat-map-panel{min-height:0;display:flex}.combat-mode #map-strip,.combat-mode #map-view{height:100%;width:100%;display:flex;flex-direction:column;padding:4px}.combat-mode #map-view>h3,.combat-mode #map-help{display:none}.combat-mode #world-map{flex:1;min-height:0}.combat-mode #combat-map-panel .battle-map{height:100%;min-height:0;max-height:none}.combat-mode .dashboard-box{padding:10px}.combat-mode #combat-action-panel{overflow:auto}.combat-mode #combat-action-panel h2{font-size:1rem;margin:0 0 4px}.combat-mode #combat-action-panel #combat-view{gap:4px}.combat-mode #combat-status{min-height:0;margin:0;font-size:.85rem}.combat-mode #combat-action-panel button{min-height:36px;padding:7px 10px;min-width:100px}.combat-mode #combat-action-panel .actions{min-height:0}.combat-mode #combat-view>.muted{display:none}.combat-mode #combat-feedback{min-height:0}.combat-mode #combat-notice{min-height:0;padding:4px 8px;font-size:.85rem}.combat-mode #combat-feedback details{margin:2px 0}.exit-marker circle{fill:#245b47;stroke:#ffe28c;stroke-width:3}.exit-marker > text{font-size:22px;font-weight:bold}@media(max-width:750px){.combat-mode #combat-layout{grid-template-columns:minmax(85px,19vw) minmax(0,1fr) minmax(95px,22vw);grid-template-rows:minmax(0,1fr) minmax(155px,32vh);grid-template-areas:"allies map enemies" "actions actions actions"}.combat-mode .dashboard-box{padding:4px}.combat-mode #combat-layout h2,.combat-mode #combat-layout h3{font-size:.8rem}.combat-mode #combat-action-panel #combat-view{grid-template-columns:repeat(3,minmax(0,1fr))}.combat-mode #field-camera{flex-wrap:wrap;font-size:.7rem}.combat-mode #field-camera button{min-width:28px;min-height:28px;padding:4px}.combat-mode .vitals-card{font-size:.75rem}.combat-mode #combat-enemy-panel .mob-card{padding:6px}.combat-mode #combat-action-panel button{min-width:70px;font-size:.75rem}}
 
 progress.health-fill{width:100%;height:100%;display:block;appearance:none;border:0;background:transparent}progress.health-fill::-webkit-progress-bar{background:transparent}progress.health-fill::-webkit-progress-value{background:#45b881}progress.health-fill::-moz-progress-bar{background:#45b881}
 .terrain-bridge.bridge-rotation-0{fill:url(#river-bridge-0)}
@@ -413,3 +413,157 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .combat-active.hud-menu-open .combat-mode .consultation:has(#social-view:not([hidden])){display:block!important}
 
 .companion-list{margin:5px 0 0 12px;display:grid;gap:3px}.companion-list .companion-segment{padding:4px 6px;margin:0;font-size:.72rem;border:1px solid transparent;border-radius:5px;cursor:pointer;touch-action:manipulation}.companion-segment.selected{border-color:#b497ed;background:#47395c}.companion-segment .vitals-name{font-size:.72rem}.companion-segment .vitals-row{gap:4px}.companion-segment progress{height:5px}.companion-segment .vitals-statuses{display:none}#companion-detail{position:fixed;z-index:100;top:12px;left:270px;max-width:min(360px,70vw);padding:10px;background:#17202bf5;border:1px solid #8e9aac;border-radius:8px;font-size:.8rem;pointer-events:none}#companion-detail[hidden]{display:none}.combat-active #combat-player-panel #selected-unit-stats{min-height:0}.combat-active #unit-controls{display:none!important}#combat-notice:empty,#combat-status:empty{display:none}.combat-active #combat-status{min-height:0}@media(max-width:750px){#companion-detail{left:12px;top:130px}}
+
+/* The game viewport must not scroll when focus moves into a HUD menu. */
+.combat-active #battle{overflow:clip!important}
+.combat-active .combat-mode #tutorial-panel{position:absolute;inset:0;width:100%;height:100%;min-height:0}
+.combat-active .combat-mode #combat-player-panel{top:76px}
+.combat-active #chat-toggle,.combat-active.chat-open #chat-toggle{top:14px;bottom:auto;left:132px}
+.combat-active #chat-toggle[hidden]{display:none!important}
+.combat-active #character-menu #back-view{position:absolute;left:calc(100% + 64px);top:3px;width:44px;height:44px;min-height:44px;padding:0;font-size:0}
+.combat-active #character-menu #back-view::before{content:"↩";font-size:1.3rem}
+.combat-active #chat-panel{top:68px;bottom:auto;left:calc(min(310px,27vw) + 24px);max-height:min(320px,calc(100dvh - 92px));overflow:auto}
+@media(max-width:750px){
+  .combat-active #chat-toggle,.combat-active.chat-open #chat-toggle{top:max(10px,env(safe-area-inset-top));left:126px}
+  .combat-active #chat-panel{left:12px;top:calc(25dvh + 130px);max-height:min(220px,calc(75dvh - 154px))}
+}
+
+/* Local navigation and readable combat information. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.combat-active #hud-navigation{left:12px;right:auto;top:auto;bottom:64px;width:224px;max-height:calc(100dvh - 320px);padding:10px;transform:none;overflow:auto;pointer-events:auto;background:#111c27f5;border-color:#45596a;border-radius:14px;z-index:54}
+.minimap-header{display:flex;align-items:center;gap:8px;margin-bottom:7px;min-width:0}
+#minimap-location{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem}
+.minimap-north{color:#bbcad6;font-size:.72rem;white-space:nowrap}
+.combat-active #hud-navigation #minimap-toggle{flex:none;width:32px;height:32px;min-height:32px;padding:0;font-size:1.2rem;background:#273749;color:#eef4fa;border:1px solid #506477}
+#hud-minimap{display:block;width:100%;height:126px;background:#0b141d;border:1px solid #334655;border-radius:8px;cursor:crosshair;touch-action:manipulation}
+.mini-fog{fill:#101b24}.mini-ground{fill:#53674c}.mini-wall{fill:#253d32}.mini-water{fill:#32738f}.mini-road{fill:#bd9e6e}.mini-bridge{fill:#ead09b}.mini-building{fill:#d8b7a1}
+.mini-marker circle,.mini-marker rect{stroke:#0b121b;stroke-width:1.5px;vector-effect:non-scaling-stroke}
+.mini-exit rect{fill:#ffcf62}.mini-exit text{fill:#181b20;font-family:system-ui;font-weight:800;pointer-events:none}
+.mini-site circle{fill:#c5a4ff}.mini-enemy circle{fill:#f2777b}
+.mini-marker.mini-objective circle{stroke:#ffdd82;stroke-width:2.5px}
+.mini-player{fill:#66ebd7;stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke}
+.mini-viewport{fill:#d8edff0a;stroke:#e6f3ff;stroke-opacity:.7;stroke-width:1px;stroke-dasharray:3 2;vector-effect:non-scaling-stroke;pointer-events:none}
+.minimap-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;color:#c5d2df;font-size:.68rem}
+.minimap-legend span{display:flex;gap:4px;align-items:center}.minimap-legend i{display:inline-block;width:7px;height:7px;border-radius:50%}.legend-player{background:#66ebd7}.legend-exit{background:#ffcf62;border-radius:1px!important}.legend-site{background:#c5a4ff}
+#minimap-exits{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.combat-active #minimap-exits button{padding:5px 6px;min-height:28px;font-size:.68rem;font-weight:500;background:#253544;color:#ffe1a1;border:1px solid #455362;text-align:left;line-height:1.25;overflow-wrap:anywhere}
+#hud-objective{font-size:.75rem;line-height:1.4;white-space:normal;overflow:visible;margin-top:8px;color:#f3e5b4}
+.combat-active #hud-navigation.minimap-expanded{width:min(460px,calc(100vw - 24px));z-index:75;max-height:calc(100dvh - 170px)}
+.minimap-expanded #hud-minimap{height:240px}
+.vitals-name .vitals-meta{display:block;margin-top:3px;font-size:.72rem;font-weight:500;color:#bdccda;line-height:1.4}
+.combat-active .combat-mode #combat-player-panel{width:270px;max-width:29vw;padding:10px;max-height:calc(100dvh - 420px)}
+.combat-active .combat-mode #combat-enemy-panel{top:76px;right:12px;width:260px;max-width:29vw;max-height:calc(100dvh - 320px);padding:10px;display:block;scrollbar-gutter:stable}
+.combat-active .combat-mode #mob-name{display:block;margin:0 0 8px;font-size:.85rem;color:#dce5ed}
+.combat-active .combat-mode #mob-hp,.combat-active .combat-mode #enemy-intents,.combat-active .combat-mode #cell-entities{display:none}
+#mob-cards{display:grid;gap:8px;margin:0}
+.combat-active .combat-mode #combat-enemy-panel .mob-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:9px;min-width:0;margin:0;border:1px solid #3d4c5c;border-radius:10px;background:#1c2a38}
+.mob-card.selected{border-color:#f4ce7d!important;box-shadow:inset 3px 0 #f4ce7d}
+.enemy-vitals{grid-column:1/-1}
+.combat-active .enemy-vitals .vitals-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "resources" "statuses";gap:5px;padding:0;border:0}
+.combat-active .combat-mode #combat-enemy-panel .vitals-name{font-size:.82rem;line-height:1.3}
+.combat-active .combat-mode #combat-enemy-panel .vitals-row{display:grid;grid-template-columns:minmax(30px,1fr) auto;gap:8px;font-size:.72rem;margin:0}
+.enemy-vitals .vitals-row progress{height:6px}
+.enemy-vitals .vitals-row .vitals-hp{accent-color:#ed8a86}
+.enemy-vitals .vitals-row .vitals-energy{accent-color:var(--energy-color,#b78cf6)}
+.combat-active .combat-mode #combat-enemy-panel .vitals-statuses{display:flex;font-size:.7rem;gap:4px}
+.combat-active .combat-mode #combat-enemy-panel .vitals-statuses[hidden]{display:none}
+.mob-intent{align-self:center;margin:0;color:#c0ccda;font-size:.72rem;line-height:1.4;overflow-wrap:anywhere}
+.mob-quick-actions{align-self:center;justify-content:flex-end;margin:0}
+.combat-active .combat-mode #combat-enemy-panel .mob-quick-actions button{width:36px;height:36px;min-height:36px;min-width:36px;flex:0 0 36px;padding:0}
+.combat-active #field-camera #field-move-selected{width:auto;min-width:96px;padding:0 10px;font-size:.8rem;white-space:nowrap}
+.combat-active #character-menu #back-view{position:fixed;top:14px;left:180px;width:146px;max-width:none;padding:0 12px;font-size:.8rem;min-height:44px;background:#243445;color:#e4edf6;white-space:nowrap;overflow-wrap:normal}
+.combat-active #character-menu #back-view::before{display:none}
+.combat-active #game-menu-items{position:fixed;left:304px;top:12px;width:320px;padding:10px;background:#14212ff5;border:1px solid #47596c;border-radius:12px;box-shadow:0 12px 32px #0005;margin:0}
+.combat-active #game-menu-items button{min-height:52px;font-size:.75rem}
+.combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{position:fixed;top:76px;bottom:auto;left:304px;right:auto;width:min(540px,calc(100vw - 600px));max-width:none;max-height:calc(100dvh - 92px);padding:12px;background:#13202ff5;border:1px solid #455a70;box-shadow:0 16px 40px #0004;scrollbar-gutter:stable}
+.combat-active.hud-menu-open .adventure-grid h2{font-size:1rem;color:#a6bccf;letter-spacing:.04em}
+.quest-card{padding:14px;border:1px solid #3b4d61;border-radius:12px;margin:10px 0;background:#1b2b3b}
+.quest-card.tracked{border-color:#d6b775;background:#28313a}
+.quest-card h4{margin:0 0 6px;font-size:1rem;line-height:1.4}
+.quest-status{font-size:.72rem;color:#f4d795}
+.quest-filter{display:grid;gap:6px;font-size:.8rem;color:#c2d0df}.quest-filter select{width:100%;margin-bottom:8px}
+.quest-card p{font-size:.85rem;line-height:1.6;color:#d2dce7}
+.quest-card progress{width:100%;height:6px;accent-color:#e4c37a}
+.quest-card .quest-meta{font-size:.76rem;color:#c0cddd}
+.quest-card button{min-height:38px;padding:7px 12px;font-size:.8rem}
+#quest-actions button{width:100%;font-size:.82rem}
+@media(max-width:1100px) and (min-width:751px){.combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:calc(29vw + 24px);width:calc(100vw - 58vw - 48px)}.combat-active #game-menu-items{left:calc(29vw + 24px);width:min(320px,calc(100vw - 29vw - 36px))}}
+@media(max-width:750px){
+ .combat-active .combat-mode #combat-player-panel{left:8px;top:76px;width:44vw;max-width:none;padding:8px;max-height:34dvh}
+ .combat-active .combat-mode #combat-enemy-panel{right:8px;top:76px;width:44vw;max-width:none;padding:6px;max-height:min(42dvh,360px)}
+ .combat-active .combat-mode #combat-enemy-panel #mob-name{display:block;font-size:.75rem}
+ .combat-active .combat-mode #combat-enemy-panel .vitals-row:not(:first-child){display:grid}
+ .combat-active .combat-mode #combat-enemy-panel .vitals-statuses{display:flex}
+ .combat-active .combat-mode #combat-enemy-panel .mob-card{padding:7px;gap:4px}
+ .combat-active .combat-mode #combat-enemy-panel .vitals-name{font-size:.75rem}
+ .combat-active .combat-mode #combat-enemy-panel .mob-quick-actions button{width:40px;height:40px;min-width:40px;min-height:40px;flex-basis:40px}
+ .combat-active #hud-navigation{left:8px;right:auto;top:auto;bottom:220px;width:152px;padding:8px;max-height:calc(100dvh - 460px)}
+ .combat-active .combat-mode #field-camera{left:164px;top:auto;bottom:220px;transform:none;flex-direction:column;max-width:none}
+ #hud-minimap{height:84px}.minimap-header{gap:4px}.minimap-north{font-size:.65rem}#minimap-location{font-size:.72rem}
+ .minimap-legend{gap:7px;font-size:.62rem}#hud-objective{font-size:.7rem}
+ #minimap-exits{max-height:60px;overflow:auto}.combat-active #minimap-exits button{min-height:32px;font-size:.65rem}
+ .combat-active #hud-navigation.minimap-expanded{width:calc(100vw - 16px);max-height:calc(100dvh - 450px)}.minimap-expanded #hud-minimap{height:160px}
+ .combat-active.hud-menu-open #hud-navigation{display:none}
+ .combat-active.hud-menu-open .combat-mode #combat-enemy-panel{max-height:148px}
+ .combat-active.hud-menu-open .combat-mode #combat-enemy-panel .mob-quick-actions{display:none}
+ .combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:8px;top:236px;width:calc(100vw - 16px);max-height:calc(100dvh - 456px);padding:10px}
+ .combat-active #game-menu-items{left:8px;top:236px;width:calc(100vw - 16px);max-height:calc(100dvh - 456px)}
+ .combat-active #character-menu #back-view{left:176px;width:146px;max-width:calc(100vw - 188px);font-size:.72rem;padding:0 8px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ .combat-active .combat-mode #combat-player-panel{left:8px;top:70px;width:190px;max-width:25vw;max-height:150px}
+ .combat-active .combat-mode #field-camera{left:408px;top:auto;bottom:12px;transform:none;flex-direction:column;max-width:none}
+ .combat-active #field-camera #field-move-selected{display:none}
+ .combat-active .combat-mode #combat-enemy-panel{top:8px;right:8px;width:210px;max-width:27vw;max-height:43dvh}
+ .combat-active #hud-navigation{left:220px;top:auto;bottom:12px;width:180px;padding:7px;max-height:144px}
+ #hud-minimap{height:58px}.minimap-header{margin-bottom:3px}.minimap-legend,#minimap-exits{display:none}#hud-objective{font-size:.68rem;margin-top:4px}
+ .combat-active #hud-navigation.minimap-expanded{left:8px;bottom:12px;width:min(460px,calc(100vw - 260px));max-height:calc(100dvh - 24px)}.minimap-expanded #hud-minimap{height:160px}
+ .combat-active.hud-menu-open #hud-navigation{display:none}
+ .combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:220px;top:70px;width:calc(100vw - 460px);max-height:calc(100dvh - 160px)}
+ .combat-active #game-menu-items{left:220px;top:12px;width:calc(100vw - 460px);max-height:calc(100dvh - 32px)}
+}
+#journey-view{position:fixed;z-index:65;top:34%;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 40px));box-sizing:border-box;padding:22px 32px;border:1px solid #718b99;border-radius:16px;background:#13202ff5;box-shadow:0 12px 45px #0008;text-align:center;color:#eef6ff}
+#journey-view[hidden]{display:none!important}
+#journey-view strong{font-size:1.2rem}#journey-route{margin:10px 0 22px;color:#bcd4e2}
+.journey-track{position:relative;height:80px;margin:0 22px 12px;border-bottom:4px dashed #a5bdc5}
+.journey-start,.journey-end{position:absolute;bottom:-12px;color:#8ae2bd;font-size:25px}.journey-start{left:-10px}.journey-end{right:-10px}
+#journey-player{position:absolute;bottom:8px;transform:translateX(-50%);transition:left .3s linear;display:grid;justify-items:center;color:#fff;font-weight:bold}
+#journey-player svg{width:40px;height:48px;fill:#bfa4ff;stroke:#f4f7ff;stroke-width:4;stroke-linecap:round;animation:journey-step .5s ease-in-out infinite alternate}
+#journey-player span{padding:2px 8px;border-radius:8px;background:#264971}
+#journey-progress{width:100%;height:10px;accent-color:#8ae2bd}#journey-remaining{margin:10px 0 0;color:#c9d9e5;font-variant-numeric:tabular-nums}
+@keyframes journey-step{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-4px) rotate(5deg)}}
+@media(prefers-reduced-motion:reduce){#journey-player svg{animation:none}#journey-player{transition:none}}
+@media(max-width:750px){#journey-view{top:32%;padding:16px 24px}}
+.route-badge circle{fill:#172b3c;stroke:#afc6d4;stroke-width:1.5}.route-badge text{fill:#fff;font-size:13px;font-weight:700;text-anchor:middle}.world-route-legend{display:grid;gap:7px;margin:4px 0 18px;text-align:left}.world-route-legend p{margin:0;padding:7px 10px;border-left:3px solid #73d9af;background:#101923;border-radius:5px;color:#d5e3eb;font-size:.85rem;line-height:1.5;overflow-wrap:anywhere}.combat-active #world-map>.world-route-legend{display:none}
+.combat-active #character-menu #game-menu-toggle{position:fixed;left:auto;right:12px;top:12px}
+.combat-active #character-menu{backdrop-filter:none;-webkit-backdrop-filter:none}
+.combat-active #character-menu #back-view{left:auto;right:72px;top:12px}
+.combat-active #game-menu-items{left:auto;right:12px;top:236px;width:320px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 416px)}
+.combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:auto;right:12px;top:236px;width:min(400px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 416px)}
+.combat-active.hud-menu-open .combat-mode #combat-enemy-panel,.combat-active:has(#game-menu-toggle[aria-expanded="true"]) .combat-mode #combat-enemy-panel{max-height:148px}
+.combat-active.hud-menu-open #field-camera{visibility:hidden}
+.combat-active #battle:not(.combat-mode) #field-camera{right:76px}
+@media(max-width:750px){
+ .combat-active #character-menu #game-menu-toggle{right:8px;top:10px}
+ .combat-active #character-menu #back-view{left:auto;right:62px;top:10px}
+ .combat-active #game-menu-items,.combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:auto;right:8px;top:236px;width:calc(100vw - 16px);max-height:calc(100dvh - 456px)}
+}
+@media(max-height:500px) and (orientation:landscape){
+ .combat-active #character-menu #game-menu-toggle{right:8px;top:8px}
+ .combat-active #character-menu #back-view{left:auto;right:62px;top:8px}
+ .combat-active #game-menu-items,.combat-active.hud-menu-open .combat-mode .adventure-grid,.combat-active.hud-menu-open #battle:not(.combat-mode) .adventure-grid{left:auto;right:8px;top:168px;width:calc(50vw - 24px);max-height:calc(100dvh - 270px)}
+}
+.exit-caption rect{fill:#13202ff2;stroke:#f1d489}.exit-caption text{fill:#fff;font-family:system-ui,sans-serif;font-weight:600;paint-order:stroke;stroke:#13202f;stroke-width:.2px}
+.exit-caption{visibility:hidden}.exit-marker:hover .exit-caption,.exit-marker:focus-visible .exit-caption{visibility:visible}
+.combat-active #character-menu{left:auto;right:12px;padding:0;border:0;background:transparent}
+.combat-active #character-menu #mob-list-toggle{position:fixed;left:auto;right:68px;top:12px;margin:0}
+.combat-active #character-menu #back-view{right:124px}
+.combat-active #battle:not(.combat-mode) #field-camera{right:128px}
+@media(max-width:750px){.combat-active #character-menu #mob-list-toggle{right:60px;top:10px}.combat-active #character-menu #back-view{right:112px}}
+@media(max-height:500px) and (orientation:landscape){.combat-active #character-menu #mob-list-toggle{right:60px;top:8px}.combat-active #character-menu #back-view{right:346px}.combat-active .combat-mode #combat-enemy-panel{right:116px}}
+.set-tier{color:#b9c4d8}.set-tier.active{color:#8fe1be;font-weight:650}.set-total{border-top:1px solid #455064;padding-top:8px;color:#f4dc9c}.set-membership{color:#c8b7ff}
+.route-name{pointer-events:none}.route-name rect{fill:#111d29;stroke:#607b89;stroke-width:1}.route-name text{fill:#e6f0f5;font:600 12px system-ui;text-anchor:middle}
+.field-clue path{fill:#f1cf77;stroke:#665226;stroke-width:2}
+.mob-quote{font-size:.85rem;line-height:1.4;color:#e8d19a;font-style:italic}
+.story-heading{position:sticky;top:-22px;background:#142230;z-index:1;padding:8px 0}@media(max-width:600px){.story-heading{top:-16px}}
+#story-dialog{width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:22px;border:1px solid #667d8b;border-radius:16px;background:#142230;color:#e6eff7}#story-dialog::backdrop{background:#081018b8}.story-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}.story-heading h2{margin:0}#story-response{white-space:pre-line;font-size:1.05rem;line-height:1.65;margin:22px 0}.story-choices{display:grid;gap:10px;margin-bottom:18px}.story-choices button{text-align:left;line-height:1.5}.story-quest{padding:14px;border:1px solid #43576a;border-radius:10px;margin:12px 0}.story-quest h4{margin:0 0 8px}.story-quest p{line-height:1.5}.story-quest p:nth-of-type(2){font-size:.85rem;color:#bfcedc}.quest-steps{padding-left:20px;font-size:.9rem;line-height:1.6}#story-notes{border-top:1px solid #45596d;padding-top:14px}#story-notes p{line-height:1.6}@media(max-width:600px){#story-dialog{padding:16px}.story-heading h2{font-size:1.05rem}.story-heading button{padding:10px}#story-topics button{width:100%;text-align:left}}

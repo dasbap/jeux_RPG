@@ -15,6 +15,7 @@ def split(state):
                 "repop_seconds",
                 "hunt_objective",
                 "quest_journal",
+                "narrative",
                 "endgame",
                 "hunt_goal",
                 "hunt_name",

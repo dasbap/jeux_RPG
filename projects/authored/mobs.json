@@ -3612,6 +3612,194 @@
           "damage_multiplier": 1.3
         }
       ]
+    },
+    "luciole_cuirassee": {
+      "parent": "scarabee_des_pres",
+      "name": "Luciole cuirassée",
+      "level": 1,
+      "rank": "E",
+      "damage": 1,
+      "stats": {
+        "hp": {
+          "base": 14,
+          "growth": 3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "carapace_luciole",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "poudre_lumineuse",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Éclat réparateur",
+          "type": "heal",
+          "level": 1,
+          "power": 2,
+          "growth": 0.3,
+          "cooldown": 12,
+          "cast": 1,
+          "range": 0,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "sanglier_roncier": {
+      "parent": "sanglier_des_bois",
+      "name": "Sanglier roncier",
+      "level": 3,
+      "rank": "D",
+      "damage": 2,
+      "stats": {
+        "hp": {
+          "base": 18,
+          "growth": 3.5
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "cuir_roncier",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "epine_ronciere",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Ruée des ronces",
+          "type": "stun",
+          "level": 1,
+          "power": 1,
+          "growth": 0.3,
+          "cooldown": 12,
+          "cast": 1.2,
+          "range": 1.5,
+          "duration": 0.8,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "gardien_de_schiste": {
+      "parent": "golem_d_argile",
+      "name": "Gardien de schiste",
+      "level": 5,
+      "rank": "C",
+      "damage": 3,
+      "stats": {
+        "hp": {
+          "base": 20,
+          "growth": 4
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "plaque_schiste",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "coeur_mineral",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Jet de schiste",
+          "type": "damage",
+          "level": 1,
+          "power": 3,
+          "growth": 0.3,
+          "cooldown": 9,
+          "cast": 1.5,
+          "range": 5,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
+    },
+    "veilleur_des_brumes": {
+      "parent": "spectre_des_brumes",
+      "name": "Veilleur des brumes",
+      "level": 7,
+      "rank": "C",
+      "damage": 2,
+      "stats": {
+        "hp": {
+          "base": 17,
+          "growth": 3
+        }
+      },
+      "loot": {},
+      "drops": [
+        {
+          "item": "etoffe_veille",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        },
+        {
+          "item": "essence_veille",
+          "chance": 1,
+          "attempts": 1,
+          "min": 1,
+          "max": 1,
+          "rare": false
+        }
+      ],
+      "abilities": [
+        {
+          "name": "Onde de veille",
+          "type": "damage",
+          "level": 1,
+          "power": 4,
+          "growth": 0.3,
+          "cooldown": 8,
+          "cast": 1.2,
+          "range": 6,
+          "duration": 2,
+          "concentration": true
+        }
+      ],
+      "phases": []
     }
   }
 }

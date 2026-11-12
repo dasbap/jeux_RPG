@@ -11,6 +11,7 @@ dom.window.eval(fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/map_artw
 dom.window.eval(require('./client_source.cjs')() + `
 window.mountHud = adventure => {session={id:'hud',me:'p0',tutorial:adventure,events:[]};renderGame(adventure);};
 window.hudCalls=[];tutorialCommand=async (action,params)=>window.hudCalls.push({action,params});
+window.approachNpc=destination=>moveControlled(session.tutorial,session.tutorial.players[0],destination);
 `);
 const el = id => dom.window.document.getElementById(id);
 (async () => {
@@ -48,5 +49,22 @@ const el = id => dom.window.document.getElementById(id);
   attack.click();
   assert.equal(dom.window.hudCalls.length,1);
   assert.equal(dom.window.hudCalls[0].action,'strike');
+  const field=JSON.parse(JSON.stringify(fixtures.field_village));
+  const site=field.battle.map.sites.find(site=>site.dialogue);
+  field.battle.players[field.players[0].id].position=[site.position[0]-1,site.position[1]];
+  field.battle.explored=[site.position,[site.position[0]-1,site.position[1]]];
+  dom.window.mountHud(field);
+  const marker=dom.window.document.querySelector(`[data-site="${site.id}"]`);
+  assert(marker,"Un marqueur de PNJ est visible");
+  for(let tick=0;tick<10;tick++)dom.window.mountHud(field);
+  assert.strictEqual(dom.window.document.querySelector(`[data-site="${site.id}"]`),marker,"Le marqueur du PNJ reste attaché au DOM");
+  field.battle.players[field.players[0].id].position=[2,20];
+  const callCount=dom.window.hudCalls.length;
+  dom.window.approachNpc(site.position);
+  assert.equal(dom.window.hudCalls.length,callCount+1);
+  const approach=dom.window.hudCalls.at(-1);
+  assert.equal(approach.action,"battle_move");
+  assert(Math.hypot(approach.params.x-site.position[0],approach.params.y-site.position[1])<=1.5);
+  assert(approach.params.x!==site.position[0]||approach.params.y!==site.position[1],"Le personnage s’arrête à côté du PNJ");
   process.stdout.write('HUD : boutons stables, focus, PV inchangés et appui long préservés après 40 actualisations.\n');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>dom.window.close());

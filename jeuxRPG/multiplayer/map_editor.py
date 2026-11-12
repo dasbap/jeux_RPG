@@ -342,11 +342,10 @@ class MapEditor:
                 "Suppression", "Cette carte est nécessaire au tutoriel."
             )
             return
-        from . import world
 
         if any(
             key in (r["from"], r["to"], r.get("combat_map"))
-            for r in self.maps["clearing"].get("travel_routes", world.ROUTES)
+            for r in self.maps["clearing"].get("travel_routes", [])
         ):
             self.messages.showerror(
                 "Suppression", "Retirez d’abord les trajets utilisant cette carte."
@@ -713,6 +712,7 @@ class MapEditor:
                 "mob_id": "goblin",
                 "level": "",
                 "count": 1,
+                "battlecry": "",
                 "name": "",
                 **{key: value for key, value in existing.items() if key != "patrol"},
             }
@@ -816,6 +816,7 @@ class MapEditor:
                 "destination": None,
                 "entry": [1, 1],
                 "fast_destination": "",
+                "world_exit": False,
                 **(existing or {}),
                 "bidirectional": False,
                 "pick_points": True,
@@ -827,6 +828,7 @@ class MapEditor:
                 "dialogue": "Bonjour !",
                 "owner": "",
                 "merchant": False,
+                "interaction": "talk",
                 **(existing or {}),
             }
         )
@@ -889,6 +891,7 @@ class MapEditor:
         }
         if "travel_minutes" in result:
             gate["travel_minutes"] = float(result["travel_minutes"])
+        gate["world_exit"] = result.get("world_exit", False) in (True, "True", "1")
         previous = next(
             (item for item in source["exits"] if item["position"] == point), {}
         )
@@ -923,6 +926,7 @@ class MapEditor:
                 "position": reverse_point,
                 "destination": self.selected.get(),
                 "entry": return_entry,
+                "world_exit": gate["world_exit"],
             }
         source["exits"] = [
             item for item in source["exits"] if item["position"] != point
@@ -952,6 +956,7 @@ class MapEditor:
                 "to_zone": "Zone d’arrivée",
                 "distance_km": "Distance (km)",
                 "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)",
+                "world_exit": "Sortir vers la carte globale (destination à choisir)",
                 "street_id": "Identifiant de rue",
                 "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)",
                 "square": "Identifiant de la place",
@@ -985,6 +990,8 @@ class MapEditor:
                 "dungeon_final": "Salle finale",
                 "dungeon_lock": "Verrouiller la salle suivante tant que des ennemis vivent",
                 "mob_id": "Espèce",
+                "battlecry": "Réplique au début du combat (facultatif)",
+                "interaction": "Interaction : talk = parler / inspect = examiner",
                 "count": "Nombre de créatures (1–5)",
             }
             ttk.Label(window, text=labels.get(key, key)).grid(
@@ -1238,6 +1245,24 @@ class MapEditor:
                 returning,
                 result.get("fast_destination"),
             )
+            for map_id, position in [(self.selected.get(), point)] + (
+                [(destination, reverse)] if reverse else []
+            ):
+                gate = next(
+                    gate
+                    for gate in updated[map_id]["exits"]
+                    if gate["position"] == position
+                )
+                gate["world_exit"] = result.get("world_exit", False) in (
+                    True,
+                    "True",
+                    "1",
+                )
+                if "travel_minutes" in result:
+                    gate["travel_minutes"] = float(result["travel_minutes"])
+            from .map_assets import validate
+
+            validate(updated)
             self.remember()
             self.maps = updated
             self.draw()

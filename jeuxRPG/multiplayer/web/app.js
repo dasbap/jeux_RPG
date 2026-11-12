@@ -52,8 +52,7 @@ function render(state) {
   }
   $("tutorial-panel").hidden = !(session && session.tutorial);
   $("character-menu").hidden = !(session && session.tutorial);
-  $("duel-target-controls").hidden = true;
-  if (!session) return;
+  if (!session) {$("duel-target-controls").hidden = true;return;}
   $("battle-title").textContent = {lobby: "En attente du second joueur", running: "Duel en cours", finished: "Duel terminé"}[session.state];
   $("version").textContent = `État ${session.revision}`;
   if (!session.tutorial) $("tutorial-panel").before($("fighters"));
@@ -91,16 +90,9 @@ function render(state) {
   $("party-tutorial").disabled = busy || session.players.length < 2;
   $("attack").hidden = session.state !== "running";
   $("attack").disabled = busy || me.cooldown_real_seconds > 0;
-  $("duel-target").replaceChildren();
-  if (!session.tutorial && session.state === "running" && me.hp > 0 && me.cooldown_real_seconds <= 0) {
-    for (const opponent of session.players.filter(p => p.id !== session.me && p.hp > 0)) {
-      const option = document.createElement("option");
-      option.value = opponent.id;
-      option.textContent = opponent.name;
-      $("duel-target").append(option);
-    }
-    $("duel-target-controls").hidden = $("duel-target").options.length === 0;
-  }
+  const opponents = !session.tutorial && session.state === "running" && me.hp > 0 ? session.players.filter(p => p.id !== session.me && p.hp > 0) : [];
+  syncSelectOptions($("duel-target"), opponents.map(opponent => [opponent.id, opponent.name]));
+  $("duel-target-controls").hidden = !opponents.length;
   $("attack").textContent = me.cooldown_real_seconds > 0 ? `Attaque dans ${me.cooldown_real_seconds.toFixed(1)} s` : "Attaquer";
   $("leave").hidden = session.state === "finished";
   $("leave").disabled = busy;

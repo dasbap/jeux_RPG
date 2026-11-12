@@ -74,3 +74,21 @@ def test_packaged_world_uses_five_logical_zones():
     assert "clearing" not in places
     assert "rosee" not in places
     assert "grotte_oublies" in places
+
+
+def test_packaged_hunt_counts_goblins_in_its_logical_zone():
+    from jeuxRPG.multiplayer import content, tutorial, world
+    from jeuxRPG.multiplayer.map_building import MOBS
+
+    content.validate_references(content.DATA, MOBS, fields.MAPS)
+
+    party = tutorial.new_party([{"id": "p", "name": "Test", "class_name": "Knight"}])
+    content.quest_dialogue(party, "mira")
+    hunt = content.HUNT
+    assert hunt["zone"] == world.zone_of("hunt")
+    party.update(position="forest", field_map="forest")
+    content.quest_event(party, "kill", "goblin", world.zone_of("forest"))
+    assert content.quest_states(party)[hunt["id"]]["progress"] == 0
+    party.update(position="hunt", field_map="hunt")
+    content.quest_event(party, "kill", "goblin", world.zone_of("hunt"))
+    assert content.quest_states(party)[hunt["id"]]["progress"] == 1

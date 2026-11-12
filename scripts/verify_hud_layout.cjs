@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..');
 const fixtures=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 const fixture=fixtures.combat;
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.RPG_BROWSER_EXECUTABLE});
  try{
   for(const [width,height] of [[1440,900],[390,844],[844,390]]){
    const mobile=width<751||height<500;
@@ -48,8 +48,31 @@ const fixture=fixtures.combat;
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
    const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
    assert(!overlaps(zone,menu)&&!overlaps(zone,vitals),'Zone lisible sans chevauchement');
+   assert(!overlaps(menu,vitals),'Les réglages ne masquent pas les statistiques');
+   assert(vitals.y>=0&&enemies.y>=0,'Les panneaux du haut ne sont pas coupés');
+   await page.locator('#battle').evaluate(element=>{element.scrollTop=1000;});
+   assert.equal(await page.locator('#battle').evaluate(element=>element.scrollTop),0,'Le viewport du jeu ne défile pas sous les panneaux');
+   const afterScroll=await rect('combat-enemy-panel');
+   assert.equal(afterScroll.y,enemies.y,'Le panneau ennemi reste ancré après une tentative de défilement');
+   const chatToggle=await rect('chat-toggle');
+   assert(chatToggle.y<70&&!overlaps(chatToggle,menu),'Le chat reste accessible près des réglages');
+   await page.locator('#game-menu-toggle').click();
+   await page.locator('#show-stats').click();
+   assert(!overlaps(await rect('character-menu'),await rect('combat-player-panel')),'Le retour de menu ne recouvre pas les PV');
+   const back=await rect('back-view');
+   assert(back.y>=0&&back.x+back.width<=width,'Le retour de menu reste dans la barre du haut');
+   await page.locator('#back-view').click();
+   await page.locator('#game-menu-toggle').click();
+   await page.locator('#show-map').click();
+   const places=await page.locator('#map-place option').evaluateAll(nodes=>nodes.map(node=>node.value));
+   if(places.length>1){
+    await page.locator('#map-place').selectOption(places[1]);
+    assert(await page.locator('#region-view').isVisible(),'Changer de lieu actualise la carte sans fermer le menu');
+    await page.locator('#map-place').selectOption(places[0]);
+   }
+   await page.locator('#back-view').click();
    if(mobile){
-    assert(mini.y+mini.height<=actions.y+2,'Minicarte au-dessus des actions : '+JSON.stringify({width,height,mini,actions}));
+    assert(!overlaps(mini,actions),'Minicarte hors des actions : '+JSON.stringify({width,height,mini,actions}));
     assert(mini.x+mini.width<=enemies.x+2||mini.y+mini.height<=enemies.y+2||mini.y>=enemies.y+enemies.height-2,'Minicarte hors du panneau ennemi : '+JSON.stringify({width,height,mini,enemies}));
    }else{
     assert(mini.x<width/3&&mini.y>height/2,'Minicarte dans le quart bas-gauche : '+JSON.stringify({width,height,mini}));
@@ -139,7 +162,7 @@ const fixture=fixtures.combat;
     assert(stick&&stick.x<width/2&&stick.y>height/2,'Joystick à gauche');
     assert(!overlaps(stick,await rect('chat-toggle')),'Joystick sans collision avec le chat');
     assert(!overlaps(stick,await rect('hud-navigation')),'Joystick sans collision avec la minicarte');
-    assert((await rect('combat-enemy-panel')).height<=Math.min(140,height*.25)+2,'Liste des monstres compacte');
+    assert((await rect('combat-enemy-panel')).height<=Math.min(360,height*.43)+2,'Liste compacte avec ressources et intentions lisibles');
     await page.locator('#chat-toggle').click();
     assert(await page.locator('#chat-panel').isVisible(),'Chat ouvrable');
     await page.locator('#chat-toggle').click();

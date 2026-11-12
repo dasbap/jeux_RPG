@@ -135,7 +135,18 @@ def _validate_map_objects(key, definition, width, height, point):
 
 
 def _validate_map_exits(key, definition, maps):
+    retired = definition.get("retired_mob_names", [])
+    if (
+        not isinstance(retired, list)
+        or len(retired) > 64
+        or any(
+            not isinstance(name, str) or not 1 <= len(name) <= 100 for name in retired
+        )
+    ):
+        raise ValueError(f"{key} : anciennes créatures invalides.")
     for exit in definition["exits"]:
+        if type(exit.get("world_exit", False)) is not bool:
+            raise ValueError(f"{key} : retour à la carte globale invalide.")
         minutes = exit.get("travel_minutes", 0)
         if (
             type(minutes) not in (int, float)
@@ -180,6 +191,8 @@ def _validate_map_sites(key, definition, site_owners):
     ) or len(set(ids)) != len(ids):
         raise ValueError(f"{key} : identifiants PNJ invalides ou dupliqués.")
     for site in definition.get("sites", []):
+        if site.get("interaction", "talk") not in ("talk", "inspect"):
+            raise ValueError(f"{key} : interaction de lieu invalide.")
         if site["id"] in site_owners:
             raise ValueError(
                 f"{key} : identifiant PNJ déjà utilisé sur une autre carte : {site['id']}."
@@ -246,6 +259,11 @@ def _validate_map_spawners(maps):
                 config.get("position"), list
             ):
                 raise ValueError(f"{key} : spawner invalide.")
+            if (
+                not isinstance(config.get("battlecry", ""), str)
+                or len(config.get("battlecry", "")) > 1000
+            ):
+                raise ValueError(f"{key} : réplique de combat invalide.")
             position = config["position"]
             if (
                 position not in definition["spawns"]
@@ -367,10 +385,9 @@ def validate(maps):
     _validate_dungeon_rooms(maps)
 
     _validate_map_spawners(maps)
-    from . import world
     from .map_world_editor import world_metadata
 
-    world_metadata(maps, world.VILLAGE_STREETS, world.ROUTES)
+    world_metadata(maps)
     return deepcopy(maps)
 
 

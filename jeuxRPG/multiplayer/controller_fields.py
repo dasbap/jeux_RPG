@@ -22,6 +22,13 @@ DECIMAL_FIELDS = {
 
 
 def parse_field(key, value, initial):
+    if isinstance(initial, (dict, list)):
+        import json
+
+        parsed = json.loads(value)
+        if type(parsed) is not type(initial):
+            raise ValueError("Structure JSON incompatible.")
+        return parsed
     if type(initial) is bool:
         return value == "Oui"
     if (

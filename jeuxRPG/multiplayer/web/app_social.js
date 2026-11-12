@@ -102,17 +102,24 @@ function renderSocial() {
   if (!root.children.length) row("empty", "Ajoutez un joueur par son nom de compte ou invitez-le dans votre équipe.", []);
   const travel = $("social-travel");
   const adventure = session?.tutorial;
-  if (!sectionChanged("social-travel", [presence?.realm, presence?.realms, adventure?.world.current, adventure?.moving, adventure?.transit?.waiting, Boolean(adventure?.battle), Boolean(data.team), busy])) return;
-  travel.replaceChildren();
-  function button(label, action, params) { const node = document.createElement("button"); node.textContent = label; node.disabled = busy; node.onclick = () => socialAction(action, params); travel.append(node); }
+  if (!sectionChanged("social-travel", [presence?.realm, presence?.realms, adventure?.world.current, adventure?.world.places, adventure?.moving, adventure?.transit?.waiting, Boolean(adventure?.battle), Boolean(data.team), busy])) return;
+  const travelNodes = new Set();
+  function button(label, action, params) {
+    const key = JSON.stringify([action, params]);
+    let node = [...travel.children].find(child => child.dataset.travelAction === key);
+    if (!node) {node = document.createElement("button");node.dataset.travelAction = key;travel.append(node);}
+    node.textContent = label;node.disabled = busy;node.onclick = () => socialAction(action, typeof params === "function" ? params() : params);travelNodes.add(node);
+  }
   if (adventure?.transit && !adventure.battle) button(adventure.transit.waiting ? "Reprendre le trajet" : "Attendre les alliés", adventure.transit.waiting ? "resume" : "wait", {});
   if (data.team && adventure && !adventure.battle && !adventure.moving) {
-    const select = document.createElement("select"); select.id = "rally-destination"; select.setAttribute("aria-label", "Destination du ralliement");
-    for (const place of adventure.world.places) { const option = document.createElement("option"); option.value = place.id; option.textContent = place.name; select.append(option); }
-    travel.append(select);
-    const call = document.createElement("button"); call.textContent = "Appeler les alliés"; call.disabled = busy; call.onclick = () => socialAction("rally", {destination: select.value}); travel.append(call);
+    let select = $("rally-destination");
+    if (!select) {select = document.createElement("select");select.id = "rally-destination";select.setAttribute("aria-label", "Destination du ralliement");travel.prepend(select);}
+    syncSelectOptions(select, adventure.world.places.map(place => [place.id, place.name]));
+    travelNodes.add(select);
+    button("Appeler les alliés", "rally", () => ({destination: select.value}));
   }
   for (let index = 1; index <= (presence?.realms || 0); index++) if (index !== presence.realm) button(`Rejoindre le serveur ${index}`, "realm", {realm: index});
+  for (const child of [...travel.children]) if (!travelNodes.has(child)) child.remove();
 }
 for (const id of ["choose-character", "choose-character-options"]) $(id).addEventListener("click", async () => {
   try { accountState = await api("/api/account/me"); renderCharacters(); } catch (error) { message(error.message, true); }

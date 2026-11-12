@@ -4,20 +4,23 @@ from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
-from .content import CONDITIONS
+from .content import CONDITIONS, QUEST_CATEGORIES
 from .controller_editors import ControllerEditorsMixin
 from .controller_fields import RANKS
 from .controller_fields import parse_field as parse_field
 from .controller_gameplay import FIXED as GAMEPLAY_FIXED
 from .controller_gameplay import SECTIONS as GAMEPLAY_SECTIONS
 from .controller_gameplay import ControllerGameplayMixin
+from .controller_narrative import ControllerNarrativeMixin
 from .controller_project import Project
 from .map_building import zone_of
 from .mob_rules import drop_rules, resolve
 from .mob_rules import validate_mobs as validate_mobs
 
 
-class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
+class Controller(
+    ControllerNarrativeMixin, ControllerGameplayMixin, ControllerEditorsMixin
+):
     def __init__(self, root, project):
         import tkinter as tk
         from tkinter import messagebox, simpledialog, ttk
@@ -58,6 +61,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         for section, title in [
             ("maps", "Cartes / zones"),
             ("quests", "Quêtes"),
+            ("narrative", "Histoire / dialogues / indices"),
             ("mobs", "Mobs"),
             ("achievements", "Succès et titres"),
             ("endgame", "Contrats"),
@@ -121,7 +125,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 command=lambda s=section: self.inspect(s),
             ).pack(side="left", padx=4)
             if (
-                section not in ("world", "maps", "npcs", "economy")
+                section not in ("world", "maps", "npcs", "economy", "narrative")
                 and section not in GAMEPLAY_FIXED
             ):
                 ttk.Button(
@@ -129,7 +133,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                     text="Dupliquer",
                     command=lambda s=section: self.duplicate(s),
                 ).pack(side="left", padx=4)
-            if section not in ("world", "economy") and section not in dict(
+            if section not in ("world", "economy", "narrative") and section not in dict(
                 GAMEPLAY_SECTIONS
             ):
                 ttk.Button(
@@ -173,6 +177,11 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         self.history.append(self.project.state() if state is None else state)
         self.history = self.history[-30:]
 
+    def finish_change(self, before):
+        self.project.validate()
+        self.remember(before)
+        self.refresh()
+
     def undo(self):
         if self.history:
             self.future.append(self.project.state())
@@ -196,6 +205,9 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             self.refresh()
 
     def inspect(self, section):
+        if section == "narrative":
+            self.inspect_narrative()
+            return
         if section in dict(GAMEPLAY_SECTIONS):
             self.inspect_gameplay(section)
             return
@@ -354,7 +366,8 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         return {
             "id": "Identifiant",
             "name": "Nom",
-            "category": "Type de quête (main / side / tutorial)",
+            "category": "Catégorie (toutes les quêtes sont facultatives)",
+            "upgrade_level": "Palier d’amélioration requis (+N)",
             "npc": "PNJ donneur",
             "kind": "Type d’objectif",
             "target": "Espèce / recette cible",
@@ -369,6 +382,21 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             "rank": "Rang",
             "damage": "Dégâts",
             "dialogue": "Dialogue",
+            "greeting": "Accueil du personnage",
+            "greetings": "Variantes d’accueil (JSON)",
+            "record": "Type : conversation (npc) / sujet (topic) / réponse (answer) / indice (fact)",
+            "label": "Texte du choix affiché au joueur",
+            "text": "Réplique du personnage",
+            "requires": "Quêtes à rendre avant ce sujet (liste JSON)",
+            "excludes": "Quêtes qui masquent ce sujet (liste JSON)",
+            "requires_facts": "Indices requis (liste JSON)",
+            "facts": "Indices recueillis (liste JSON)",
+            "objectives": "Indices de la quête (liste JSON)",
+            "recommended_level": "Niveau conseillé (ne bloque pas l’accès)",
+            "remember": "Reconnaître les victoires antérieures",
+            "reward_title": "Titre obtenu à la remise",
+            "ending": "Identifiant de la conclusion personnelle",
+            "service": "Service proposé",
             "owner": "Joueur lié (vide = fixe)",
             "map_id": "Carte",
             "width": "Largeur",
@@ -461,14 +489,33 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             labels[key].grid(row=row, column=0, padx=8, pady=5, sticky="w")
             if type(value) is bool:
                 choices[key] = ["Oui", "Non"]
-            widget = (
-                self.ttk.Combobox(
-                    window, values=choices[key], state="readonly", width=55
+            multiline = (
+                isinstance(value, (dict, list))
+                or isinstance(value, str)
+                and (
+                    len(value) > 100
+                    or key in ("text", "description", "dialogue", "greeting")
                 )
-                if key in choices
-                else self.ttk.Entry(window, width=58)
             )
-            if key in choices:
+            widget = (
+                self.tk.Text(window, width=58, height=6, wrap="word", undo=True)
+                if multiline
+                else (
+                    self.ttk.Combobox(
+                        window, values=choices[key], state="readonly", width=55
+                    )
+                    if key in choices
+                    else self.ttk.Entry(window, width=58)
+                )
+            )
+            if multiline:
+                widget.insert(
+                    "1.0",
+                    json.dumps(value, ensure_ascii=False, indent=2)
+                    if isinstance(value, (dict, list))
+                    else value,
+                )
+            elif key in choices:
                 widget.set(
                     "Oui" if value is True else "Non" if value is False else value
                 )
@@ -523,6 +570,8 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             targets = (
                 list(self.project.mobs)
                 if fields["kind"].get() == "kill"
+                else list(self.project.content.get("narrative", {}).get("facts", {}))
+                if fields["kind"].get() == "story"
                 else list(RECIPES)
             )
             fields["target"].configure(values=targets)
@@ -537,7 +586,13 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         def accept():
             try:
                 parsed = {
-                    key: parse_field(key, widget.get(), values[key])
+                    key: parse_field(
+                        key,
+                        widget.get("1.0", "end-1c")
+                        if isinstance(widget, self.tk.Text)
+                        else widget.get(),
+                        values[key],
+                    )
                     for key, widget in fields.items()
                 }
                 if "condition" in parsed and parsed["condition"] != "fast":
@@ -568,6 +623,9 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         return result[0] if result else None
 
     def edit(self, section, new=False):
+        if section == "narrative":
+            self.edit_narrative(new)
+            return
         if section in dict(GAMEPLAY_SECTIONS):
             self.edit_gameplay(section, new)
             return
@@ -966,11 +1024,11 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             else next(item for item in p.content[section] if item["id"] == key)
         )
         choices = {
-            "category": ["main", "side", "tutorial", "standard"],
+            "category": list(QUEST_CATEGORIES),
             "npc": sorted(
                 {site["id"] for data in p.maps.values() for site in data["sites"]}
             ),
-            "kind": ["kill", "craft"],
+            "kind": ["kill", "craft", "upgrade", "story"],
             "target": list(p.mobs),
             "zone": ["", *p.maps],
             "condition": CONDITIONS,
@@ -978,7 +1036,17 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
         if section == "achievements":
             old = {"target": "", "zone": "", "map": "", **old}
         else:
-            old = {"category": "side", "map": "", **old}
+            old = {
+                "category": "side",
+                "map": "",
+                "upgrade_level": 1,
+                "recommended_level": 1,
+                "objectives": [],
+                "remember": False,
+                "repeatable": False,
+                "dialogue": {},
+                **old,
+            }
         choices["zone"] = (
             ["", *p.maps]
             if section == "quests"
@@ -1003,6 +1071,10 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 if requirements is None:
                     return
                 values["requirements"] = requirements
+                if values["kind"] == "story":
+                    if not values["objectives"]:
+                        values["objectives"] = [values["target"]]
+                    values["count"] = len(values["objectives"])
             if not new and values["id"] != key:
                 p.rename(section, key, values["id"])
             metadata = (
@@ -1111,9 +1183,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 "parent": parent,
                 "name": resolve(self.project.mobs, parent)["name"] + " · sous-espèce",
             }
-            self.project.validate()
-            self.remember(before)
-            self.refresh()
+            self.finish_change(before)
             self.tables["mobs"].selection_set(identifier)
             self.edit("mobs")
         except ValueError as exc:
@@ -1121,6 +1191,9 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
             self.messagebox.showerror("Sous-espèce", str(exc), parent=self.root)
 
     def delete(self, section):
+        if section == "narrative":
+            self.delete_narrative()
+            return
         if section in dict(GAMEPLAY_SECTIONS):
             self.delete_gameplay(section)
             return
@@ -1157,9 +1230,7 @@ class Controller(ControllerGameplayMixin, ControllerEditorsMixin):
                 self.project.content[section] = [
                     item for item in self.project.content[section] if item["id"] != key
                 ]
-            self.project.validate()
-            self.remember(before)
-            self.refresh()
+            self.finish_change(before)
         except (ValueError, KeyError) as exc:
             self.project.restore(before)
             self.messagebox.showerror("Suppression refusée", str(exc), parent=self.root)

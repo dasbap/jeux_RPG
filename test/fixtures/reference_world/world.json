@@ -7162,6 +7162,29 @@
         ],
         "rotation": 90
       }
+    ],
+    "travel_routes": [
+      {
+        "id": "clearing_rosee",
+        "from": "clearing",
+        "to": "rosee",
+        "name": "Sentier de Rosée",
+        "distance_km": 0.3
+      },
+      {
+        "id": "rosee_lisiere",
+        "from": "rosee",
+        "to": "lisiere",
+        "name": "Chemin de la lisière",
+        "distance_km": 0.2
+      },
+      {
+        "id": "rosee_brume",
+        "from": "rosee",
+        "to": "brume",
+        "name": "Route des Deux Villages",
+        "distance_km": 1.0
+      }
     ]
   },
   "rosee": {
@@ -10868,7 +10891,28 @@
         ],
         "rotation": 90
       }
-    ]
+    ],
+    "village_streets": {
+      "square": "mira",
+      "streets": [
+        {
+          "id": "rosee_artisans",
+          "name": "Rue des artisans",
+          "buildings": [
+            "forge",
+            "training"
+          ]
+        },
+        {
+          "id": "rosee_habitations",
+          "name": "Rue des habitations",
+          "buildings": [
+            "rosee_house",
+            "rosee_inn"
+          ]
+        }
+      ]
+    }
   },
   "lisiere": {
     "id": "field_lisiere",
@@ -22171,6 +22215,26 @@
     "world_origin": [
       284,
       59
-    ]
+    ],
+    "village_streets": {
+      "square": "arrival",
+      "streets": [
+        {
+          "id": "brume_market",
+          "name": "Rue du marché",
+          "buildings": [
+            "brume_shop",
+            "brume_inn"
+          ]
+        },
+        {
+          "id": "brume_habitations",
+          "name": "Rue des habitations",
+          "buildings": [
+            "brume_house"
+          ]
+        }
+      ]
+    }
   }
 }

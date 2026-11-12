@@ -3,8 +3,7 @@ from copy import deepcopy
 
 from . import content, progression, tactics, world
 from .map_assets import configured
-from .map_building import create_mob, spawners, zone_of
-from .map_layout_editor import apply_layout
+from .map_building import create_mob, spawners
 
 
 def terrain(identifier, name, width, height, cover, exits, mobs=(), sites=()):
@@ -32,6 +31,9 @@ def gate(x, y, destination, entry, name):
 
 def arrival_point(identifier, source=None):
     definition = MAPS[identifier]
+    entry = world.travel_entry(source, identifier)
+    if entry is not None:
+        return entry
     if source in world.ROAD_POINTS:
         route = next(route for route in world.ROUTES if route["id"] == source)
         endpoint = "from" if route["from"] == identifier else "to"
@@ -64,86 +66,6 @@ def arrival_point(identifier, source=None):
 
 MAPS = configured()
 tactics.PRESETS.update({definition["id"]: definition for definition in MAPS.values()})
-for place in world.PLACES.values():
-    place["points"] = [
-        point
-        for point in place["points"]
-        if point["id"] not in {"cave_2", "cave_3"} - MAPS.keys()
-    ]
-
-for identifier in MAPS:
-    root_zone = zone_of(MAPS, identifier)
-    zone_definition = MAPS.get(
-        root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {})
-    )
-    if root_zone not in world.PLACES:
-        world.PLACES[root_zone] = {
-            "name": zone_definition["name"],
-            "type": "zone",
-            "x": 70,
-            "y": 300 + 30 * len(world.PLACES),
-            "description": "Zone personnalisée.",
-            "points": [],
-        }
-        world.LEVELS[root_zone] = zone_definition.get(
-            "level", zone_definition.get("zone_level", 1)
-        )
-for identifier, definition in MAPS.items():
-    zone = world.zone_of(identifier)
-    parent_zone = zone_of(MAPS, identifier)
-    if parent_zone == identifier:
-        parent_zone = definition.get("world_zone")
-    if (
-        identifier not in world.PLACES
-        and parent_zone in world.PLACES
-        and not any(
-            point["id"] == identifier for point in world.PLACES[parent_zone]["points"]
-        )
-    ):
-        for place in world.PLACES.values():
-            place["points"] = [
-                point for point in place["points"] if point["id"] != identifier
-            ]
-        zone = None
-    if zone is None and parent_zone in world.PLACES:
-        world.PLACES[parent_zone]["points"].append(
-            {
-                "id": identifier,
-                "name": definition["name"],
-                "type": "rencontre",
-                "description": "Secteur de forêt à explorer à pied.",
-            }
-        )
-        zone = parent_zone
-    if identifier in world.PLACES:
-        world.PLACES[identifier]["name"] = definition["name"]
-    elif zone:
-        for point in world.PLACES[zone]["points"]:
-            if point["id"] == identifier:
-                point["name"] = definition["name"]
-    if zone is None:
-        world.PLACES[identifier] = {
-            "name": definition["name"],
-            "type": "zone",
-            "x": 70,
-            "y": 300 + 30 * len(world.PLACES),
-            "description": "Zone personnalisée.",
-            "points": [],
-        }
-        world.LEVELS[identifier] = 1
-
-for identifier in MAPS:
-    root_zone = zone_of(MAPS, identifier)
-    if root_zone in world.LEVELS:
-        definition = MAPS.get(
-            root_zone, MAPS["clearing"].get("logical_zones", {}).get(root_zone, {})
-        )
-        world.LEVELS[root_zone] = definition.get(
-            "level", definition.get("zone_level", world.LEVELS[root_zone])
-        )
-
-
-apply_layout(world.PLACES, MAPS)
 
 
 def start(party, now):
@@ -171,6 +93,8 @@ def enter(party, identifier, entry, now, pursuers=()):
     party["field_map"] = identifier
     if identifier == "rosee" and party["step"] == "road":
         party["step"] = "village"
+    if identifier == "brume":
+        party["step"] = "complete"
     party["visited"] = sorted(
         set(party.get("visited", [])) | {world.zone_of(identifier)}
     )
@@ -300,6 +224,7 @@ def enter(party, identifier, entry, now, pursuers=()):
 
 
 def transition(party, gate, player, now):
+    destination = None if gate.get("world_exit") else gate["destination"]
     battle = party["battle"]
     definition = MAPS[party["field_map"]]
     unit = battle["players"][player]
@@ -329,12 +254,14 @@ def transition(party, gate, player, now):
             and tactics.sees(definition, mob, unit)
             and tactics.path(definition, mob["position"], unit["position"]) is not None
         ]
-        if gate["destination"] and not gate.get("travel_minutes", 0)
+        if destination and not gate.get("travel_minutes", 0)
         else []
     )
     remaining = [mob for mob in party["mobs"] if mob not in pursuers]
     party["fields"][party["field_map"]] = snapshot(party, now, remaining)
-    if gate["destination"] and gate.get("travel_minutes", 0) > 0:
+    # Crossing a physical gate replaces any itinerary from a previous outing.
+    party.update(journey=[], transit=None)
+    if destination and gate.get("travel_minutes", 0) > 0:
         duration = gate["travel_minutes"] * 60
         party["linked_companions"] = deepcopy(battle.get("companions", {}))
         party.update(battle=None, mobs=[], mob=None, journey=[])
@@ -353,7 +280,7 @@ def transition(party, gate, player, now):
         return [
             f"Vous empruntez {gate['name']} ({gate['travel_minutes']:g} min en jeu)."
         ]
-    if gate["destination"]:
+    if destination:
         followers = []
         for mob in pursuers:
             follower = deepcopy(mob)
@@ -607,6 +534,36 @@ def reachable_terrain(definition):
 
 
 def migrate_terrain(party):
+    retired = {
+        name
+        for definition in MAPS.values()
+        for name in definition.get("retired_mob_names", [])
+    }
+    if retired:
+        for snapshot in [party, *party.get("fields", {}).values()]:
+            removed = {
+                mob["combat_id"]
+                for mob in snapshot.get("mobs", [])
+                if mob["name"] in retired
+            }
+            if removed:
+                snapshot["mobs"] = [
+                    mob for mob in snapshot["mobs"] if mob["combat_id"] not in removed
+                ]
+                snapshot["mob"] = next(iter(snapshot["mobs"]), None)
+            saved_battle = snapshot.get("battle")
+            if saved_battle:
+                saved_battle["arrivals"] = [
+                    arrival
+                    for arrival in saved_battle.get("arrivals", [])
+                    if arrival["mob"]["name"] not in retired
+                ]
+                for unit in [
+                    *saved_battle.get("players", {}).values(),
+                    *saved_battle.get("summons", {}).values(),
+                ]:
+                    if (unit.get("casting") or {}).get("target") in removed:
+                        unit["casting"] = None
     battle = party.get("battle")
     if not battle:
         return
