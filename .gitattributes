@@ -1,0 +1,8 @@
+* text=auto
+
+# Shell scripts must remain executable by Bash after a Windows checkout.
+*.sh text eol=lf
+
+# Keep Windows launchers compatible with cmd.exe.
+*.cmd text eol=crlf
+*.bat text eol=crlf
