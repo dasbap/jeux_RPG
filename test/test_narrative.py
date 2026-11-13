@@ -361,6 +361,7 @@ def test_enemy_speech_is_authored_and_does_not_interrupt_combat(story):
     assert p["battle"] is not None and not narrative.view(p, "p")["conversation"]
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_builder_widgets_edit_narrative_and_multiline_fields(story, monkeypatch):
     import tkinter as tk
     from tkinter import ttk

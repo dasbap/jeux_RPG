@@ -10,12 +10,13 @@ import json
 from jeuxRPG.multiplayer import fields, tutorial
 p = tutorial.new_party([{'id':'p', 'name':'Test', 'class_name':'Knight'}])
 fields.start(p, 0)
-fields.transition(p, fields.MAPS['clearing']['exits'][0], 'p', 1)
+fields.enter(p, 'forest', [1, 13], 1)
 def snapshot(revision):
     v = tutorial.view(p, 'p', revision)
     return {'id':'room', 'me':'p', 'state':'running', 'revision':revision, 'players':v['players'], 'events':[], 'tutorial':v}
 before = snapshot(2)
-fields.transition(p, fields.MAPS['forest']['exits'][0], 'p', 3)
+gate = next(gate for gate in fields.MAPS['forest']['exits'] if gate.get('world_exit'))
+fields.transition(p, gate, 'p', 3)
 after = snapshot(4)
 print(json.dumps({'before':before, 'after':after}))
 `], {cwd:root, encoding:"utf8", env:{...process.env, RPG_MAPS_FILE:path.join(root,"jeuxRPG/maps")}});
@@ -33,14 +34,12 @@ w.mount(states.before);
 w.mount(states.after);
 assert.equal(w.document.querySelector("#world-map .battle-map"), null);
 assert(w.document.querySelector('#world-map [data-destination="zone_rosee"]'));
-assert.match(w.document.getElementById("tutorial-actions").textContent, /Rejoindre Village de Rosée/);
+assert.equal(states.after.tutorial.moving, false, "Sortir ouvre la carte globale sans imposer un trajet");
+assert(!states.after.tutorial.field_map);
+assert(w.document.body.classList.contains("hud-menu-open"));
 w.stubTravel();
-[...w.document.querySelectorAll("#tutorial-actions button")].find(button => button.textContent === "Rejoindre Village de Rosée").click();
-assert.equal(w.requested.action, "travel");
-assert.equal(w.requested.params.destination, "rosee");
-const missingPoint = structuredClone(states.after);
-missingPoint.tutorial.world.places.forEach(place => {place.points = place.points.filter(point => point.id !== "rosee");});
-w.mount(missingPoint);
-assert.match(w.document.getElementById("tutorial-actions").textContent, /Sentier de Rosée/);
+w.document.querySelector('#world-map [data-destination="zone_rosee"]').dispatchEvent(new w.MouseEvent("dblclick", {bubbles:true}));
+assert.equal(w.requested.action, "move");
+assert.equal(w.requested.params.destination, "zone_rosee");
 console.log("Sortie réelle de la forêt : rendu de la carte rapide sans ancien terrain conservé vérifié.");
 dom.window.close();

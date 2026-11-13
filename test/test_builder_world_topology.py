@@ -1,4 +1,6 @@
 import json
+
+import pytest
 import os
 from copy import deepcopy
 from pathlib import Path
@@ -175,6 +177,7 @@ def test_delivered_world_matches_builder_project():
     assert authored == delivered
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_builder_widgets_save_reopen_and_export_current_topology(tmp_path, monkeypatch):
     import tkinter as tk
     from tkinter import ttk, filedialog, messagebox, simpledialog

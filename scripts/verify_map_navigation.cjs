@@ -50,7 +50,8 @@ assert.match(worldUi, /Parler à \$\{nearbyPoint\.name\}/);
 const maps = JSON.parse(fs.readFileSync(path.join(__dirname, "../jeuxRPG/maps/world.json"), "utf8"));
 const forge = maps.rosee.sites.find(site => site.id === "forge");
 assert.equal(forge.name, "Garrik · maître forgeron");
-assert.match(forge.dialogue, /forge de Rosée/);
+assert.equal(typeof forge.dialogue, "string");
+assert(forge.dialogue.trim(), "Le forgeron conserve son dialogue défini dans le Builder");
 
 const html = fs.readFileSync(path.join(__dirname, "../jeuxRPG/multiplayer/web/index.html"), "utf8");
 assert.match(html, /id="npc-title"/);

@@ -66,6 +66,7 @@ def test_journal_transmits_type_without_turning_main_quests_mandatory(monkeypatc
     assert not journal[0].get("mandatory", False)
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_builder_real_widgets_save_french_type_and_repeatability(tmp_path):
     import tkinter as tk
     from tkinter import ttk

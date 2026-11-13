@@ -8,6 +8,7 @@ const fixture = spawnSync(process.env.PYTHON || 'python', ['-c', `
 import json
 from jeuxRPG.multiplayer import tutorial, fields, content
 from jeuxRPG.multiplayer.service import GameError
+next(site for site in fields.MAPS['rosee']['sites'] if site['id'] == 'mira')['dialogue'] = 'Bienvenue au village.'
 p = tutorial.new_party([{'id':'p', 'name':'Test', 'class_name':'Knight'}])
 p['step'] = 'road'
 fields.enter(p, 'rosee', [30,20], 0)
@@ -24,7 +25,7 @@ content.quest_states(p)[content.HUNT['id']]['progress'] = content.HUNT['count']
 ready = snapshot(4)
 messages, _ = tutorial.execute(p, 'p', 'talk', {'npc':'mira'}, 0, GameError, lambda:.5)
 completed = snapshot(5)
-completed['events'] = [{'id':2, 'game_time':0, 'message':next((text for text in messages if '750 XP' in text), messages[-1])}]
+completed['events'] = [{'id':2, 'game_time':0, 'message':next((text for text in messages if 'XP' in text), messages[-1])}]
 p['battle']['players']['p']['position'] = next(site['position'] for site in fields.MAPS['rosee']['sites'] if site['id'] == 'forge')
 p['inventory']['p'] = {'peau':9, 'croc':9}
 forge_near = snapshot(6)
@@ -32,9 +33,10 @@ messages, _ = tutorial.execute(p, 'p', 'craft', {'recipe':'veste'}, 0, GameError
 crafted = snapshot(7)
 crafted['events'] = [{'id':3, 'game_time':0, 'message':messages[-1]}]
 print(json.dumps({'forge_near':forge_near, 'crafted':crafted, 'far':far, 'near':near, 'active':active, 'ready':ready, 'completed':completed}))
-`], {cwd: root, encoding:'utf8'});
+`], {cwd: root, encoding:'utf8', env:{...process.env,RPG_MAPS_FILE:path.join(root,'test/fixtures/reference_world')}});
 assert.equal(fixture.status, 0, fixture.stderr);
 const states = JSON.parse(fixture.stdout);
+const hunt = states.active.tutorial.quest_journal.find(quest=>quest.id==='mira_hunt');
 const dom = new JSDOM(fs.readFileSync(path.join(root, 'jeuxRPG/multiplayer/web/index.html'), 'utf8'), {url:'https://rpg.test', runScripts:'outside-only'});
 const w = dom.window;
 const get = id => w.document.getElementById(id);
@@ -89,7 +91,7 @@ async function waitFor(check) {
   assert.equal(get('npc-actions').textContent, 'Parler');
   assert.equal(get('quest-view').parentElement.className, 'dashboard-box quest-box');
   mira().dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
-  await waitFor(() => w.ready() && /0\/10/.test(get('quest-progress').textContent));
+  await waitFor(() => w.ready() && get('quest-progress').textContent.includes(`0/${hunt.count}`));
   assert.equal(calls.length, 1);
   assert.match(get('quest-description').textContent, /Battez les gobelins/);
   assert.match(get('npc-dialogue').textContent, /Mira/);
@@ -100,9 +102,9 @@ async function waitFor(check) {
   get('npc-actions').querySelector('button').click();
   await waitFor(() => w.ready() && /accomplie/.test(get('quest-progress').textContent));
   assert.equal(calls.length, 2);
-  assert.match(get('forge-status').textContent, /Fabriquez ou améliorez/);
-  assert.match(get('message').textContent, /750 XP/);
-  assert.equal(w.document.querySelectorAll('[style]').length, 0);
+  assert.match(get('forge-status').textContent, /Fabriquez.*améliorez/);
+  assert(get('message').textContent.includes(`${hunt.reward_xp} XP`));
+  assert([...w.document.querySelectorAll('[style]')].every(node=>node===w.document.documentElement), 'Seules les variables de présentation du Builder sont appliquées au document');
   current = states.forge_near;
   w.mount(current);
   assert.equal(get('craft-view').open, false);
@@ -115,7 +117,8 @@ async function waitFor(check) {
   const vest = get('forge-catalogue').querySelector('[data-recipe="veste"]');
   assert(vest.classList.contains('quest-recipe'));
   vest.querySelector('button').click();
-  await waitFor(() => w.ready() && /Veste équipée/.test(get('forge-status').textContent));
+  await waitFor(() => w.ready() && get('craft-materials').textContent === 'Votre sac : 7 Peau, 6 Croc.');
+  assert.match(get('forge-catalogue').querySelector('[data-recipe="veste"]').textContent, /Améliorer/);
   assert.equal(get('craft-view').open, true);
   assert.equal(calls.at(-1).action, 'craft');
   assert.equal(get('craft-materials').textContent, 'Votre sac : 7 Peau, 6 Croc.');
