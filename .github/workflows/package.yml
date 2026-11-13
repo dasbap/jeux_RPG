@@ -27,6 +27,7 @@ jobs:
           /tmp/rpg-install/bin/jeux-rpg --help
           /tmp/rpg-install/bin/python -c "from jeuxRPG.multiplayer.service import GameService; from jeuxRPG.multiplayer.serverless import Application; from jeuxRPG.multiplayer.turso import TursoConnection; g = GameService('/tmp/rpg-package.sqlite3'); p = g.register('Test', 'Knight'); assert g.state(p['token'])['player']['name'] == 'Test'; g.close()"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: distribution
           path: |

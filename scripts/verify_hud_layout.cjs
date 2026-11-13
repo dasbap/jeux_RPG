@@ -10,7 +10,7 @@ const fixture=fixtures.combat;
  try{
   for(const [width,height] of [[1440,900],[390,844],[844,390]]){
    const mobile=width<751||height<500;
-   const page=await browser.newPage({viewport:{width,height},isMobile:mobile,hasTouch:mobile});
+   const page=await browser.newPage({viewport:{width,height},isMobile:mobile,hasTouch:mobile,reducedMotion:'reduce'});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    const html=fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/index.html'),'utf8').replace(/<script[^>]*>.*?<\/script>/gs,'');
    await page.route('http://hud.test/**',route=>route.fulfill({contentType:route.request().url().endsWith('.css')?'text/css':'text/html',body:route.request().url().endsWith('.css')?fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/style.css'),'utf8'):html}));
@@ -19,6 +19,7 @@ const fixture=fixtures.combat;
    await page.evaluate(()=>{window.fetch=()=>new Promise(()=>{});window.setInterval=()=>0;});
    for(const file of ['map_artwork.js','mobile_controls.js',...require('./client_source.cjs').files]) await page.addScriptTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web',file),'utf8')});
    await page.evaluate(adventure=>{
+    adventure.interface={...adventure.interface,hud:{zone_banner_seconds:15}};
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderGame(session.tutorial);`);
    },fixture);
    await page.locator('#zone-banner').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished));});
@@ -43,7 +44,7 @@ const fixture=fixtures.combat;
    const energyColors=await page.locator('#character-vitals .vitals-energy').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).accentColor));
    assert.deepEqual(energyColors,['rgb(52, 120, 246)','rgb(115, 207, 245)','rgb(247, 211, 95)'],'Mana bleu, aura bleu ciel et foi jaune');
 
-   assert(menu.x<width/2&&vitals.x<width/2&&enemies.x>width/2,'Paramètres à gauche, PV dessous et ennemis à droite');
+   assert((await rect('game-menu-toggle')).x>width/2&&vitals.x<width/2&&enemies.x>width/2,'Paramètres et ennemis à droite, ressources du joueur à gauche');
    assert(actions.x+actions.width<=width+1&&actions.y+actions.height<=height+1,'Actions dans l’écran : '+JSON.stringify({width,height,actions}));
    assert(map.width>=width-20&&map.height>=height-20,'Carte plein écran');
    const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
@@ -58,7 +59,7 @@ const fixture=fixtures.combat;
    assert(chatToggle.y<70&&!overlaps(chatToggle,menu),'Le chat reste accessible près des réglages');
    await page.locator('#game-menu-toggle').click();
    await page.locator('#show-stats').click();
-   assert(!overlaps(await rect('character-menu'),await rect('combat-player-panel')),'Le retour de menu ne recouvre pas les PV');
+   assert(!await page.locator('#combat-player-panel').isVisible(),'Le grand menu masque le HUD');
    const back=await rect('back-view');
    assert(back.y>=0&&back.x+back.width<=width,'Le retour de menu reste dans la barre du haut');
    await page.locator('#back-view').click();
@@ -172,7 +173,7 @@ const fixture=fixtures.combat;
    const socialDiagnostic=await page.locator('#social-view').evaluate(node=>({hidden:node.hidden,style:getComputedStyle(node).display,parent:node.parentElement?.outerHTML.slice(0,180),parentDisplay:getComputedStyle(node.parentElement).display,ancestor:[...function*(element){while(element){yield {tag:element.tagName,id:element.id,classes:element.className,display:getComputedStyle(element).display};element=element.parentElement}}(node)].slice(0,9),body:document.body.className}));
     assert(await page.locator('#social-view').isVisible(),'Social consultable dans le HUD : '+JSON.stringify(socialDiagnostic));
    await page.locator('#back-view').click();
-   await page.keyboard.press('Escape');
+   await page.locator('#game-menu-toggle').click();
    await page.locator('#show-inventory').click();
    assert(await page.locator('#inventory-view').isVisible(),'Inventaire consultable en combat');
    await page.locator('#back-view').click();
