@@ -16,4 +16,5 @@ if (process.argv.includes("--start")) {
   const linux = process.argv.includes("--linux");
   if (!linux && process.platform !== "win32") throw new Error("Construire le .exe depuis Windows ; utiliser --linux pour Linux.");
   run(process.execPath, [require.resolve("electron-builder/cli.js"), "--projectDir", __dirname, linux?"--linux":"--win", "--x64", "--publish", "never", ...(linux?["--config.directories.output",path.join(root,"dist/linux")]:[])]);
+  if (!linux) run(process.env.PYTHON || "python", ["-S", "scripts/build_distribution.py", "--finalize-only"]);
 }

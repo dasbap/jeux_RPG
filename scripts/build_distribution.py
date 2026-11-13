@@ -28,13 +28,15 @@ def finalize():
              ROOT / "dist/linux/Jeux-RPG-Linux-x86_64.AppImage", ROOT / "dist/linux/Jeux-RPG-Linux-x64.tar.gz"]
     manifest = {}
     for path in paths:
+        if not path.is_file():
+            continue
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         manifest[path.relative_to(ROOT / "dist").as_posix()] = {"bytes": path.stat().st_size, "sha256": digest}
     (ROOT / "dist/SHA256SUMS.txt").write_text("".join(value["sha256"] + "  " + name + "\n" for name, value in manifest.items()), encoding="utf-8")
     (ROOT / "dist/artifacts.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     shutil.copy2(ROOT / "docs/DISTRIBUTION_LIREMOI.md", ROOT / "dist/LIREMOI.md")
-    print("Distributions Windows, Linux et Android disponibles dans dist.")
+    print("Distributions disponibles dans dist : " + ", ".join(manifest))
 
 
 def main():

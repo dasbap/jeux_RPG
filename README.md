@@ -12,7 +12,7 @@ Construire le client `.exe` à partir de la version web, depuis Windows :
 .\build-client.cmd
 ```
 
-Résultat : `dist/client/Jeux-RPG.exe`. Le solo est embarqué et fonctionne hors
+Résultat : `dist/client/Jeux-RPG.exe`, également mis à jour dans `dist/windows/Jeux-RPG.exe`. Le solo est embarqué et fonctionne hors
 ligne ; le multijoueur se connecte au site. Node.js 22.12+ et Python 3.11+ sont
 requis pour construire, aucun des deux n'est nécessaire pour jouer avec le `.exe`.
 Voir [le guide du client Windows](docs/CLIENT_WINDOWS.md) pour les sauvegardes et
