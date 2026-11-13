@@ -1,5 +1,7 @@
 # Configuration restante pour la publication
 
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](../ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](../D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
+
 État confirmé le 9 octobre 2026 après connexion au navigateur Vercel :
 
 - Équipe `dasbaps-projects`, plan Hobby, projet `jeux-rpg`, ID `prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2`.

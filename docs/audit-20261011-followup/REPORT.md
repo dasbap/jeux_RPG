@@ -1,5 +1,7 @@
 # Exécution de l’audit complémentaire — 11 octobre 2026
 
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](../ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](../D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
+
 Ce rapport répond au fichier fourni `audit_jeux_RPG(2).md`. Il remplace les états opérationnels anciens, sans effacer leurs preuves. Référence de départ : `0e4f42e57e80b4097da631d66f9c30756e28212f` sur master ; production observée : `82a7461613ec748014d3cf5a97bdade88f1d1ee3`. Aucun ajout de contenu ou de règle de jeu dans ce correctif. La migration de guildes déjà fusionnée par le propriétaire est additive : tables/index nouveaux, aucune suppression.
 
 ## État des demandes

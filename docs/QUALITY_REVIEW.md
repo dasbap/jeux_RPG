@@ -1,6 +1,6 @@
 # Révision de qualité
 
-> Rapport historique : les états de protection et de publication sont remplacés par [le suivi courant](audit-20261011-followup/REPORT.md). Les mesures ci-dessous gardent leur date et leur périmètre.
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
 
 Date : 8 octobre 2026. Intégration des PR #16 et #17 sur `master`, version `0.11.0a25`. Mise à jour du 9 octobre : le workflow de publication cible `prod` ; `master` est la branche principale. Le commit servi par le domaine public reste à vérifier dans Vercel.
 

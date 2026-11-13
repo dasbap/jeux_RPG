@@ -8,7 +8,7 @@ include = [
   "jeuxRPG/**/*.py", "jeuxRPG/**/*.json",
   "jeuxRPG/multiplayer/web/*.js", "jeuxRPG/multiplayer/web/*.css",
   "jeuxRPG/multiplayer/web/*.html", "jeuxRPG/multiplayer/migrations/*.sql",
-  "scripts/*.py", "scripts/*.cjs", "scripts/*.sh", "scripts/*.ps1",
+  "scripts/*.py", "scripts/*.cjs", "scripts/*.mjs", "scripts/*.sh", "scripts/*.ps1",
   "test/**/*.py", "test/fixtures/**/*.json", "docs/**/*.md",
   "projects/authored/*.json",
   "desktop/*.cjs", "desktop/package.json", "desktop/package-lock.json",
@@ -16,7 +16,7 @@ include = [
   "android/*.gradle", "android/gradle.properties", "android/mobile_bridge.js",
   "android/app/build.gradle", "android/app/src/main/AndroidManifest.xml",
   "android/app/src/main/java/**/*.java", "android/app/src/main/res/**/*.xml",
-  "cloudflare/*.mjs", "cloudflare/*.sql", "cloudflare/*.md",
+  "cloudflare/*.mjs", "cloudflare/*.sql", "cloudflare/*.md", "cloudflare/wrangler.*.json",
   ".github/workflows/*.yml",
 ]
 
@@ -28,4 +28,6 @@ desktop = "Client de bureau Electron pour Windows et Linux."
 android = "Hôte Android du client et configuration de construction de l’APK."
 scripts = "Outils de construction, export, vérification et maintenance."
 docs = "Guides et documentation du projet."
+"docs/ARCHITECTURE.md" = "Architecture actuelle : Vercel, moteur Python, Redis et Cloudflare D1 ; portée des tests à 40 joueurs."
+cloudflare = "Worker privé et configuration du stockage durable Cloudflare D1."
 test = "Tests automatisés et données de référence."

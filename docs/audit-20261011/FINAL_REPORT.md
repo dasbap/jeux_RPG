@@ -1,6 +1,6 @@
 # Audit final du RPG — 11 octobre 2026
 
-> Rapport historique : les états de protection et de publication sont remplacés par [le suivi courant](../audit-20261011-followup/REPORT.md). Les mesures ci-dessous gardent leur date et leur périmètre.
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](../ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](../D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
 
 Le dépôt a été réaudité, les défauts démontrés corrigés et les vérifications accessibles exécutées. L’audit distingue les preuves locales, les preuves CI et les observations de production. Les contrôles nécessitant les comptes fournisseurs restent explicitement ouverts. La cible de 90/100 n’est pas déclarée atteinte : l’évaluation argumentée est **85/100**, indicative et non certifiée.
 

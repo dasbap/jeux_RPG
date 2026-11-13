@@ -43,7 +43,7 @@ différent de celui de Turso et des autres bases D1.
 
 `scripts/export_database_backup.py` prépare une sauvegarde SQLite privée du
 stockage sélectionné ; `scripts/check_database.py` contrôle son schéma et ses
-relations. Le code Turso reste disponible pour l'export initial et le retour arrière.
+relations. Le code Turso reste disponible pour les exports historiques et la récupération. Après des écritures D1, aucun retour ne doit réactiver une source périmée sans reprendre la progression D1.
 Le workflow de publication sélectionne désormais le backend pour la sauvegarde,
 sa restauration de contrôle, la vérification et la synchronisation des accès.
 Il ne dépend plus obligatoirement de Turso. L'administration utilise également
@@ -84,7 +84,7 @@ réussies. Les preuves et copies privées restent dans `.data/d1-migration/`, ho
 L'import est une photographie ponctuelle, sans synchronisation continue. La
 production restait alors sur Turso. La recette Vercel D1 avec Redis et la bascule
 publique ont depuis été effectuées ; leurs preuves sont dans le rapport de
-production ci-dessus. Une nouvelle bascule exige un gel
-des écritures, un nouvel export final et une comparaison, en conservant Turso
-pour le retour arrière. Toute progression écrite ensuite sur D1 doit être
-conservée avant un éventuel retour vers Turso.
+production ci-dessus. Une future migration doit repartir du backend actif,
+désormais D1, avec gel des écritures, sauvegarde finale et comparaison avant
+activation de sa cible. Toute récupération doit conserver la progression D1
+actuelle, y compris avant un éventuel retour vers Turso.
