@@ -1,4 +1,4 @@
-"""Explicit durable database selection during the staged D1 migration."""
+"""Select durable storage: production uses explicit D1; Turso is legacy."""
 
 import hashlib
 
@@ -9,7 +9,7 @@ DATABASE_VARIABLES = {
 
 
 def database_backend(environment):
-    # Existing deployments stay on Turso until their D1 migration is verified.
+    # Production sets d1 explicitly; keep the historical default for compatibility.
     backend = environment.get("RPG_DATABASE_BACKEND") or "turso"
     if backend not in DATABASE_VARIABLES:
         raise ValueError("RPG_DATABASE_BACKEND doit valoir d1 ou turso")

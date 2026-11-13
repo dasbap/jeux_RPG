@@ -85,6 +85,7 @@ def progress_signature(party):
         },
         "quests": [party.get("quest"), quests],
         "endgame": party.get("endgame", {}),
+        "narrative": party.get("narrative_state", {}),
         "zone": zone_of(party.get("position")) or zone_of(party.get("field_map")),
         "checkpoint": party.get("autosave_checkpoint"),
     }

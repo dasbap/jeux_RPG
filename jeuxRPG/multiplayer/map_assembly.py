@@ -304,10 +304,9 @@ class AssemblyWindow:
                 width=max(50, data["width"] * self.scale - 8),
                 tags=(tag,),
             )
-        from . import world
 
         for route in (
-            self.editor.maps["clearing"].get("travel_routes", world.ROUTES)
+            self.editor.maps["clearing"].get("travel_routes", [])
             if "clearing" in self.editor.maps
             else []
         ):

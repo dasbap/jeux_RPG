@@ -58,3 +58,10 @@ $("mob-list-toggle").addEventListener("click", () => {
 });
 
 $("forge-close").addEventListener("click", () => $("craft-view").close());
+
+$("minimap-toggle").addEventListener("click", () => {
+  const expanded = $("hud-navigation").classList.toggle("minimap-expanded");
+  $("minimap-toggle").setAttribute("aria-expanded", String(expanded));
+  $("minimap-toggle").setAttribute("aria-label", expanded ? "Réduire la minicarte" : "Agrandir la minicarte");
+});
+$("minimap-world").addEventListener("click", () => showView("map", {toggle:false}));

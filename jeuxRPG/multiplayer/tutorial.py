@@ -168,9 +168,9 @@ def new_party(players):
         "gold": {p["id"]: content.WORLD.get("starting_gold", 0) for p in players},
         "equipment": {},
         "ready": {p["id"]: 0 for p in players},
-        "visited": ["clearing"],
+        "visited": [content.gameplay()["rules"]["start"]["map"]],
         "seen_mobs": [],
-        "position": "clearing",
+        "position": content.gameplay()["rules"]["start"]["map"],
         "journey": [],
         "mobs": [],
         "combat_step": "clearing",
@@ -181,7 +181,7 @@ def new_party(players):
 def npc(now):
     stay = content.WORLD["merchant_stay_hours"] * 3600
     crossing = (
-        next(r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume")
+        next((r["distance_km"] for r in world.ROUTES if r["id"] == "rosee_brume"), 0)
         / 6
         * 3600
     )
@@ -253,14 +253,37 @@ def view(party, me, now):
             {
                 key: value
                 for key, value in party.items()
-                if key not in ("characters", "ready", "battle", "mobs", "mob")
+                if key
+                not in (
+                    "characters",
+                    "ready",
+                    "battle",
+                    "mobs",
+                    "mob",
+                    "narrative_state",
+                )
             },
             ensure_ascii=False,
             separators=(",", ":"),
         )
     )
     result["achievements"] = achievements.view(party)
-    result["quest_journal"] = content.quest_journal(party)
+    result["quest_journal"] = content.quest_journal(party, me)
+    from .interface_catalog import settings as interface_settings
+
+    result["interface"] = interface_settings(content.DATA)
+    result["forge_unlocked"] = forge.rosee_unlocked(party, me)
+    from . import narrative
+
+    if narrative.enabled():
+        result["narrative"] = narrative.view(party, me)
+        result["achievements"]["unlocked_titles"] = list(
+            dict.fromkeys(
+                result["achievements"]["unlocked_titles"]
+                + result["narrative"]["titles"]
+            )
+        )
+    result["forge_unlock_quest"] = forge.rosee_unlock_quest()
     result["endgame"] = content.endgame_view(party)
     hunt = content.HUNT or {
         "id": None,
@@ -308,6 +331,28 @@ def view(party, me, now):
         else 0
     )
     result["traveller"] = npc(now)
+    result["travel_progress"] = (
+        max(
+            0,
+            min(
+                1,
+                1
+                - result["travel_remaining_real_seconds"]
+                * progression.RATIO
+                / transit["total"],
+            ),
+        )
+        if transit and transit.get("total", 0) > 0
+        else 0
+    )
+    if transit:
+        result["travel_source_name"] = world.point_name(
+            transit.get("source") or party["position"]
+        )
+        result["travel_destination_name"] = world.point_name(transit["destination"])
+        result["travel_goal_name"] = world.point_name(
+            (party.get("journey") or [transit["destination"]])[-1]
+        )
     result["world"] = world.view(party, me, result["traveller"])
     result.pop("fields", None)
     fields.reveal(party)
@@ -392,6 +437,9 @@ def view(party, me, now):
                 )
                 or None,
                 "gear": list(party["equipment"].get(player_id, {}).values()),
+                "equipment_sets": forge.set_catalogue(
+                    party["equipment"].get(player_id, {})
+                ),
                 "forge": forge.catalogue(party, player_id),
                 "attack_range": progression.attack_range(character),
                 "cooldown_real_seconds": max(0, party["ready"][player_id] - now)
@@ -651,7 +699,7 @@ def _execute_talk(party, params, error):
     tutorial_quests = [
         quest
         for quest in content.DATA["quests"]
-        if quest.get("category") == "tutorial" and quest["npc"] == npc_id
+        if content.is_hunt(quest) and quest["npc"] == npc_id
     ]
     for quest in tutorial_quests:
         previous = before.get(quest["id"])
@@ -719,7 +767,8 @@ def migrate(party, now):
 
     if "hp_regen" not in party:
         progression.health_resources(party, now)
-    fields.migrate_terrain(party)
+    fields.migrate_terrain(party, now)
+    world.migrate_journey(party)
 
 
 def sync_mobs(party):
@@ -776,23 +825,23 @@ def arrive(party, destination, messages):
     messages.append(f"Vous arrivez à {world.point_name(destination)}.")
     if destination == "rosee" and party["step"] == "road":
         party["step"] = "village"
-    if destination in ("brume", "arrival") and party["step"] == "travel":
+    if destination in ("brume", "arrival"):
         party["step"] = "complete"
         party["journey"] = []
     world.record(party)
     if (
         party.get("field_mode")
         and not party.get("journey")
-        and destination in fields.MAPS
+        and (destination in fields.MAPS or destination in world.ZONE_ENTRIES)
     ):
         party["journey"] = []
         messages.extend(
             fields.enter(
                 party,
-                destination,
+                world.map_for_point(destination),
                 (party.get("transit") or {}).get("field_entry")
                 or fields.arrival_point(
-                    destination,
+                    world.map_for_point(destination),
                     party.get("transit", {}).get("source")
                     if party.get("transit")
                     else None,
@@ -867,7 +916,13 @@ def continue_journey(party, now, random, messages):
             "segment": first_segment,
             "hazard": dangerous,
         }
+        entry = world.travel_entry(source, destination)
+        if entry is not None:
+            party["transit"]["field_entry"] = entry
         messages.append(f"Vous partez vers {world.point_name(destination)}.")
+        if duration == 0:
+            # Instant Builder passages do not spend an extra polling interval.
+            continue_journey(party, now, random, messages)
 
 
 def proposed_path(start, destination, known, paths, error):
@@ -937,14 +992,15 @@ def redirect_journey(
             for point in route:
                 cost += world.walking_seconds(previous, point)
                 previous = point
-            candidates.append((cost, endpoint, duration, route))
+            detours = world.dungeon_detours(source, destination, [endpoint, *route])
+            candidates.append((detours, cost, endpoint, duration, route))
     if not candidates:
         raise error(
             "invalid_destination",
             "Ce point n'est pas accessible par les chemins connus.",
             409,
         )
-    _, endpoint, duration, route = min(candidates, key=lambda item: item[0])
+    _, _, endpoint, duration, route = min(candidates, key=lambda item: item[:2])
     reverse = endpoint == source
     segment = min(duration, max(0, transit["ready_at"] - now))
     party["journey"] = route
@@ -1020,7 +1076,10 @@ def _execute_travel(party, player_id, params, now, error, random):
     messages = []
     if party["battle"] or party["mobs"] or party["mob"]:
         raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
-    destination = params["destination"]
+    destination = params.get("destination")
+    if not isinstance(destination, str):
+        raise error("invalid_destination", "Destination invalide.", 409)
+    destination = world.ZONE_ENTRIES.get(destination, destination)
     known = {p["id"] for p in world.view(party, player_id)["places"]}
     paths = params.get("paths")
     sources = {party["position"]}
@@ -1052,6 +1111,16 @@ def execute(party, player_id, action, params, now, error, random):
     migrate(party, now)
     progression.resources(party, now)
     messages = []
+    from . import narrative
+
+    if narrative.enabled() and (
+        action == "story"
+        or action == "talk"
+        and params.get("npc") in narrative.catalogue()["npcs"]
+    ):
+        return narrative.interact(
+            party, player_id, params.get("npc"), params.get("choice", "open"), error
+        ), False
     if action == "enter_zone":
         return _enter_world_zone(party, now, error)
     if party.get("field_map") and action in ("talk", "craft", "upgrade", "buy", "sell"):
@@ -1142,6 +1211,9 @@ def advance(party, now, random):
     messages.extend(tactics.complete_casts(party, now, random))
     messages.extend(bleeding.advance(party, now, random))
     messages.extend(tactics.advance(party, now, random))
+    from . import narrative
+
+    messages.extend(narrative.combat_messages(party))
     fields.reveal(party)
     timed_units = [
         *(

@@ -4,6 +4,7 @@ from .gameplay_catalog import STATS, identifier
 
 SECTIONS = [
     ("recipes", "Forge / recettes"),
+    ("equipment_sets", "Panoplies"),
     ("materials", "Matériaux"),
     ("slots", "Équipement"),
     ("rules", "Règles du jeu"),
@@ -28,6 +29,7 @@ LABELS = {
     "start": "Apparition initiale du personnage",
 }
 FIELD_LABELS = {
+    "set_id": "Panoplie (facultatif)",
     "slot": "Emplacement d’équipement",
     "adjective": "Adjectif au niveau maximum",
     "quantity": "Quantité de matériau",
@@ -111,6 +113,11 @@ def catalog(project, section):
 
 def rows(project, section):
     values = catalog(project, section)
+    if section == "equipment_sets":
+        return [
+            (key, value["name"], "Paliers cumulés : 2 / 4 / 5 pièces")
+            for key, value in values.items()
+        ]
     if section == "rules":
         return [
             (
@@ -174,6 +181,12 @@ def rows(project, section):
 def references(project, section, key):
     gameplay = project.content["gameplay"]
     result = []
+    if section == "equipment_sets":
+        result.extend(
+            "recettes/" + name
+            for name, value in gameplay["recipes"].items()
+            if value.get("set_id") == key
+        )
     if section in ("materials", "slots"):
         result.extend(
             "recettes/" + name
@@ -203,7 +216,7 @@ def references(project, section, key):
         result.extend(
             "quêtes/" + value["id"]
             for value in project.content["quests"]
-            if value["kind"] == "craft" and value["target"] == key
+            if value["kind"] in ("craft", "upgrade") and value["target"] == key
         )
         result.extend(
             "succès/" + value["id"]
@@ -274,7 +287,13 @@ class ControllerGameplayMixin:
             ),
             "utilisé_par": references(self.project, section, key),
         }
-        if section == "recipes":
+        if section == "equipment_sets":
+            result["recettes"] = [
+                name
+                for name, recipe in self.project.content["gameplay"]["recipes"].items()
+                if recipe.get("set_id") == key
+            ]
+        elif section == "recipes":
             from .forge import piece, upgrade_cost
 
             maximum = self.project.content["gameplay"]["rules"]["forge"]["max_level"]
@@ -326,7 +345,24 @@ class ControllerGameplayMixin:
             if new
             else deepcopy(values[int(key)] if isinstance(values, list) else values[key])
         )
-        if section == "recipes":
+        if section == "equipment_sets":
+            result = self.form(
+                "Panoplie",
+                {"id": key or "", "name": (old or {}).get("name", "Nouvelle panoplie")},
+            )
+            if result is None:
+                return None
+            result["bonuses"] = {}
+            for threshold in (2, 4, 5):
+                initial = (old or {}).get("bonuses", {}).get(str(threshold), {})
+                bonus = self.form(
+                    f"Bonus ajouté à {threshold} pièces (cumulatif)",
+                    {stat: initial.get(stat, 0) for stat in STATS},
+                )
+                if bonus is None:
+                    return None
+                result["bonuses"][str(threshold)] = bonus
+        elif section == "recipes":
             initial = old or {
                 "name": "Nouvel équipement",
                 "slot": next(iter(catalog(self.project, "slots"))),
@@ -338,9 +374,13 @@ class ControllerGameplayMixin:
                 {
                     "id": key or "",
                     **{name: initial[name] for name in ("name", "slot", "adjective")},
+                    "set_id": initial.get("set_id", ""),
                     **{stat: initial.get(stat, 0) for stat in STATS},
                 },
-                {"slot": list(catalog(self.project, "slots"))},
+                {
+                    "slot": list(catalog(self.project, "slots")),
+                    "set_id": ["", *catalog(self.project, "equipment_sets")],
+                },
             )
             if result is None:
                 return None

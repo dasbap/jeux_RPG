@@ -7,7 +7,7 @@ function adjustFieldCamera(action, source = null) {
     const camera = worldCameras.get(node.dataset.map);
     if (action === "in") camera.zoom = Math.min(6, camera.zoom * 1.3);
     else if (action === "out") camera.zoom = Math.max(.45, camera.zoom / 1.3);
-    else if (action === "center") { camera.zoom = 1; camera.x = camera.width / 2; camera.y = camera.height / 2; }
+    else if (action === "center") { camera.zoom = 1; camera.x = camera.left+camera.width / 2; camera.y = camera.top+camera.height / 2; }
     else { camera.x += action === "left" ? -camera.width / camera.zoom / 5 : action === "right" ? camera.width / camera.zoom / 5 : 0; camera.y += action === "up" ? -camera.height / camera.zoom / 5 : action === "down" ? camera.height / camera.zoom / 5 : 0; }
     for (const rendered of document.querySelectorAll("#world-map > svg, #region-map > svg")) {
       if (rendered.dataset.map === node.dataset.map) installWorldCamera(rendered);
@@ -25,22 +25,74 @@ function adjustFieldCamera(action, source = null) {
   renderGame(session.tutorial);
 }
 for (const action of ["in", "out", "center"]) $(`field-${["in", "out"].includes(action) ? "zoom-" : ""}${action}`).addEventListener("click", () => adjustFieldCamera(action));
+for (const action of ["in", "out", "center"]) $(`region-${action}`)?.addEventListener("click", () => {
+  const maps=[...$("region-map").querySelectorAll("svg[data-map]")];
+  const node=maps.find(node=>node.dataset.map===activeWorldMap)||maps.at(-1);
+  if(node)adjustFieldCamera(action,node);
+});
+
+function releaseWorldCamera(node, event) {
+  const drag=node.worldCameraDrag;
+  if(!drag || event && event.pointerId!==drag.pointer)return;
+  node.worldCameraDrag=null;
+  node.classList.remove("world-camera-dragging");
+  if(drag.moved)node.worldSuppressClickUntil=Date.now()+500;
+  if(node.hasPointerCapture(drag.pointer))node.releasePointerCapture(drag.pointer);
+}
+
+function dragWorldCamera(node,event) {
+  const drag=node.worldCameraDrag;
+  if(!drag || event.pointerId!==drag.pointer)return;
+  const dx=event.clientX-drag.startX,dy=event.clientY-drag.startY;
+  if(!drag.moved && Math.hypot(dx,dy)<6)return;
+  if(!drag.moved){drag.moved=true;node.setPointerCapture(event.pointerId);}
+  event.preventDefault();
+  const camera=worldCameras.get(node.dataset.map);
+  camera.x=drag.x-dx*drag.matrix.a-dy*drag.matrix.c;
+  camera.y=drag.y-dx*drag.matrix.b-dy*drag.matrix.d;
+  node.worldSuppressClickUntil=Date.now()+500;
+  for(const rendered of document.querySelectorAll("#world-map > svg, #region-map > svg")) {
+    if(rendered.dataset.map===node.dataset.map)installWorldCamera(rendered);
+  }
+}
 
 function installWorldCamera(node) {
   const key = node.dataset.map;
-  if (!worldCameras.has(key)) {
-    const [, , width, height] = node.getAttribute("viewBox").split(" ").map(Number);
-    worldCameras.set(key, {width, height, zoom: 1, x: width / 2, y: height / 2});
+  const bounds=node.dataset.mapBounds || node.getAttribute("viewBox");
+  if (!worldCameras.has(key) || worldCameras.get(key).bounds!==bounds) {
+    const [left, top, width, height] = bounds.split(/\s+/).map(Number);
+    worldCameras.set(key, {left, top, width, height, bounds, zoom: 1, x: left+width / 2, y: top+height / 2});
   }
   const camera = worldCameras.get(key);
   const width = camera.width / camera.zoom, height = camera.height / camera.zoom;
-  if (width >= camera.width) camera.x = camera.width / 2;
-  else camera.x = Math.max(width / 2, Math.min(camera.width - width / 2, camera.x));
-  if (height >= camera.height) camera.y = camera.height / 2;
-  else camera.y = Math.max(height / 2, Math.min(camera.height - height / 2, camera.y));
+  const insetX=Math.min(width,camera.width)*.15,insetY=Math.min(height,camera.height)*.15;
+  camera.x = Math.max(camera.left+insetX,Math.min(camera.left+camera.width-insetX,camera.x));
+  camera.y = Math.max(camera.top+insetY,Math.min(camera.top+camera.height-insetY,camera.y));
   node.setAttribute("viewBox", `${camera.x - width / 2} ${camera.y - height / 2} ${width} ${height}`);
+  node.setAttribute("tabindex","0");
+  node.classList.toggle("world-camera-dragging",Boolean(node.worldCameraDrag?.moved));
   node.onclick = () => { activeWorldMap = key; };
   node.onwheel = event => { event.preventDefault(); activeWorldMap = key; adjustFieldCamera(event.deltaY > 0 ? "out" : "in", node); };
+  node.onpointerdown=event=>{
+    if(!event.isPrimary || event.button!==0 || node.worldCameraDrag)return;
+    const matrix=node.getScreenCTM();
+    if(!matrix)return;
+    activeWorldMap=key;
+    node.worldCameraDrag={pointer:event.pointerId,startX:event.clientX,startY:event.clientY,x:camera.x,y:camera.y,matrix:matrix.inverse(),moved:false};
+  };
+  node.onpointermove=event=>dragWorldCamera(node,event);
+  for(const name of ["onpointerup","onpointercancel","onlostpointercapture"])node[name]=event=>releaseWorldCamera(node,event);
+  node.onkeydown=event=>{
+    if(event.target!==node)return;
+    const action={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down","+":"in","=":"in","-":"out",Home:"center"}[event.key];
+    if(action){event.preventDefault();activeWorldMap=key;adjustFieldCamera(action,node);}
+  };
+  if(!node.worldCameraInstalled){
+    for(const name of ["click","dblclick"])node.addEventListener(name,event=>{
+      if(Date.now()<(node.worldSuppressClickUntil || 0)){event.preventDefault();event.stopImmediatePropagation();}
+    },true);
+    node.worldCameraInstalled=true;
+  }
 }
 
 function returnCameraToPlayer() {

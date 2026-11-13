@@ -12,7 +12,7 @@ async function until(check,label){for(let i=0;i<350;i++){if(await check())return
 async function rpc(dom,url,body){const r=await fetch(new URL(url,origin),{method:body?'POST':'GET',headers:{Authorization:'Bearer '+dom.window.sessionStorage.getItem('rpg-token'),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.message);return data;}
 (async()=>{
  const html=await(await fetch(origin)).text();
- const app=require('./client_source.cjs')();
+ const app=await(await fetch(new URL('/map_artwork.js',origin))).text()+'\n'+(await Promise.all(require('./client_source.cjs').files.map(async file=>await(await fetch(new URL('/'+file,origin))).text()))).join('\n');
  for(let index=0;index<4;index++){
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error.message));
   const dom=new JSDOM(html,{url:origin,runScripts:'outside-only',virtualConsole:console,pretendToBeVisual:true});clients.push(dom);

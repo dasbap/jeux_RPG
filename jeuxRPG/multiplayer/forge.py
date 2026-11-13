@@ -10,6 +10,36 @@ RARE_DROPS = rare_drops(GAMEPLAY)
 RULES = GAMEPLAY["rules"]["forge"]
 
 
+def rosee_unlock_quest():
+    from . import content
+
+    quests = content.DATA["quests"]
+    original = next(
+        (
+            quest
+            for quest in quests
+            if quest["id"] == "mira_hunt"
+            or "mira_hunt" in quest.get("previous_ids", [])
+        ),
+        None,
+    )
+    return original or next((quest for quest in quests if content.is_hunt(quest)), None)
+
+
+def rosee_unlocked(party, player=None):
+    from . import content
+
+    quest = rosee_unlock_quest()
+    from . import narrative
+
+    if player is not None and narrative.enabled():
+        return quest is None or narrative.completed(party, player, quest["id"])
+    return (
+        quest is None
+        or content.quest_states(party).get(quest["id"], {}).get("status") == "completed"
+    )
+
+
 def recipe_settings(recipe, gameplay):
     selected = gameplay or GAMEPLAY
     return selected["recipes"][recipe], selected["rules"]["forge"], selected
@@ -35,6 +65,7 @@ def piece(recipe, level=0, gameplay=None):
     definition, rules, _ = recipe_settings(recipe, gameplay)
     return {
         "recipe": recipe,
+        **({"set_id": definition["set_id"]} if definition.get("set_id") else {}),
         "slot": definition["slot"],
         "level": level,
         "name": definition["name"]
@@ -51,6 +82,70 @@ def piece(recipe, level=0, gameplay=None):
             for stat in BONUS_STATS
         },
     }
+
+
+def set_catalogue(equipment, gameplay=None):
+    selected = GAMEPLAY if gameplay is None else gameplay
+    recipes = RECIPES if gameplay is None else selected["recipes"]
+    result = []
+    for identifier, definition in selected.get("equipment_sets", {}).items():
+        slots = {
+            recipes[item["recipe"]]["slot"]
+            for item in equipment.values()
+            if isinstance(item, dict)
+            and item.get("recipe") in recipes
+            and recipes[item["recipe"]].get("set_id") == identifier
+        }
+        if not slots:
+            continue
+        tiers = [
+            {
+                "pieces": int(count),
+                "active": len(slots) >= int(count),
+                "bonuses": deepcopy(bonuses),
+            }
+            for count, bonuses in sorted(
+                definition["bonuses"].items(), key=lambda item: int(item[0])
+            )
+        ]
+        bonuses = {
+            stat: sum(tier["bonuses"].get(stat, 0) for tier in tiers if tier["active"])
+            for stat in BONUS_STATS
+        }
+        result.append(
+            {
+                "id": identifier,
+                "name": definition["name"],
+                "pieces": len(slots),
+                "tiers": tiers,
+                "bonuses": bonuses,
+            }
+        )
+    return result
+
+
+def sync_set_bonuses(party):
+    applied = party.setdefault("equipment_set_bonuses", {})
+    for player, character in party["characters"].items():
+        equipment = party.get("equipment", {}).get(player, {})
+        sets = set_catalogue(equipment if isinstance(equipment, dict) else {})
+        wanted = {
+            stat: sum(item["bonuses"][stat] for item in sets) for stat in BONUS_STATS
+        }
+        previous = applied.get(player, {})
+        for stat in BONUS_STATS:
+            delta = wanted[stat] - previous.get(stat, 0)
+            if not delta:
+                continue
+            values = character["stats"][stat]
+            alive = values["current"] > 0
+            values["max"] += delta
+            values["current"] = (
+                (max(0, min(values["max"], values["current"] + delta)) if alive else 0)
+                if stat == "hp"
+                else values["current"] + delta
+            )
+        applied[player] = wanted
 
 
 def migrate(party):
@@ -78,6 +173,7 @@ def migrate(party):
                     else values["current"] + delta
                 )
             equipment[slot] = new
+    sync_set_bonuses(party)
 
 
 def catalogue(party, player):
@@ -100,6 +196,9 @@ def catalogue(party, player):
             {
                 **deepcopy(definition),
                 "recipe": recipe,
+                "set_name": GAMEPLAY.get("equipment_sets", {})
+                .get(definition.get("set_id"), {})
+                .get("name"),
                 "max_level": RULES["max_level"],
                 "equipped": deepcopy(equipped),
                 "cost": cost,
@@ -119,6 +218,13 @@ def execute(party, player, action, recipe, error):
         raise error(
             "wrong_location",
             "Rejoignez la forge hors combat pour fabriquer ou améliorer une pièce.",
+            409,
+        )
+    if not rosee_unlocked(party, player):
+        quest = rosee_unlock_quest()
+        raise error(
+            "forge_locked",
+            f"La forge de Rosée se débloque en terminant la quête « {quest['name']} » auprès de Mira.",
             409,
         )
     if not isinstance(recipe, str) or recipe not in RECIPES:
@@ -166,14 +272,28 @@ def execute(party, player, action, recipe, error):
         )
     gear[slot] = new
     party["characters"][player] = pack(actor)
+    sync_set_bonuses(party)
     from . import content, world
 
     if action == "craft":
         from . import achievements
 
         achievements.event(party, "craft", recipe)
-        content.quest_event(party, "craft", recipe, world.zone_of(party["position"]))
+        content.quest_event(
+            party, "craft", recipe, world.zone_of(party["position"]), player=player
+        )
         content.endgame_event(party, "craft", recipe, world.zone_of(party["position"]))
+    elif action == "upgrade":
+        from . import content, world
+
+        content.quest_event(
+            party,
+            "upgrade",
+            recipe,
+            world.zone_of(party["position"]),
+            level=level,
+            player=player,
+        )
     previous_step = party["step"]
     if party["step"] == "craft" and all(
         "torso" in party["equipment"].get(key, {}) for key in party["characters"]

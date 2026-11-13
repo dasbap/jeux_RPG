@@ -153,7 +153,36 @@ def number(value, minimum, maximum):
 
 
 def is_hunt(quest):
-    return quest.get("category") == "tutorial"
+    return (
+        quest.get("category") == "tutorial"
+        or quest["id"] == "mira_hunt"
+        or "mira_hunt" in quest.get("previous_ids", [])
+    )
+
+
+QUEST_CATEGORIES = (
+    "hunt",
+    "boss",
+    "crafting",
+    "upgrade",
+    "standard",
+    "main",
+    "side",
+    "tutorial",
+    "investigation",
+    "exploration",
+    "service",
+    "encounter",
+    "dialogue",
+)
+QUEST_KINDS = ("kill", "craft", "upgrade", "story")
+QUEST_TYPES = ("main", "side", "tutorial")
+
+
+def quest_type(quest):
+    """Keep narrative importance separate from objective category and recurrence."""
+    category = quest.get("category")
+    return quest.get("quest_type", category if category in QUEST_TYPES else "side")
 
 
 def _validate_world_rules(data):
@@ -317,11 +346,9 @@ def _validate_objectives(data):
                 or len(set(aliases)) != len(aliases)
             ):
                 raise ValueError("Historique des identifiants invalide.")
-            if section == "quests" and item.get("category", "standard") not in (
-                "standard",
-                "main",
-                "side",
-                "tutorial",
+            if (
+                section == "quests"
+                and item.get("category", "standard") not in QUEST_CATEGORIES
             ):
                 raise ValueError("Catégorie de quête invalide.")
             for key in (
@@ -335,7 +362,8 @@ def _validate_objectives(data):
                     raise ValueError(f"{key} : texte requis.")
             if section == "quests":
                 if (
-                    item.get("kind") not in ("kill", "craft")
+                    item.get("kind") not in QUEST_KINDS
+                    or quest_type(item) not in QUEST_TYPES
                     or type(item.get("count")) is not int
                     or not 1 <= item["count"] <= 10000
                     or type(item.get("reward_xp")) is not int
@@ -343,6 +371,14 @@ def _validate_objectives(data):
                     or not isinstance(item.get("zone", ""), str)
                 ):
                     raise ValueError("Objectif ou récompense de quête invalide.")
+                if item.get("kind") == "upgrade" and (
+                    type(item.get("upgrade_level", 1)) is not int
+                    or not 1 <= item.get("upgrade_level", 1) <= 100
+                    or item["count"] != 1
+                ):
+                    raise ValueError(
+                        "Amélioration : palier entier de 1 à 100 et un équipement requis."
+                    )
             elif item.get("condition") not in CONDITIONS or not number(
                 item.get("threshold"), 0.01, 100000
             ):
@@ -405,6 +441,8 @@ def validate_content(data):
         "skills",
         "templates",
         "gameplay",
+        "narrative",
+        "interface",
     } != set(DEFAULTS):
         raise ValueError("Sections monde, quêtes et succès requises.")
     _validate_world_rules(data)
@@ -412,6 +450,9 @@ def validate_content(data):
     _validate_economy(data)
     _validate_objectives(data)
     _validate_quest_requirements(data)
+    from .narrative_catalog import validate as validate_narrative
+
+    validate_narrative(data)
     for section in ("classes", "skills"):
         if section in data and not isinstance(data[section], list):
             raise ValueError("Catalogue de classes/compétences invalide.")
@@ -425,6 +466,9 @@ def validate_content(data):
     from .gameplay_catalog import validate as validate_gameplay
 
     result = deepcopy(data)
+    from .interface_catalog import settings as interface_settings
+
+    result["interface"] = interface_settings(result)
     result["gameplay"] = validate_gameplay(result.get("gameplay", gameplay_defaults))
     return result
 
@@ -494,7 +538,7 @@ def quest_states(party):
                 if previous.get("status") == "completed":
                     current["status"] = "completed"
     for quest in DATA["quests"]:
-        if quest.get("category") != "tutorial":
+        if not is_hunt(quest):
             continue
         if quest["id"] not in states and party.get("quest") in ("active", "completed"):
             states[quest["id"]] = {
@@ -504,15 +548,26 @@ def quest_states(party):
     return states
 
 
-def quest_event(party, kind, target, zone=None):
+def quest_event(party, kind, target, zone=None, level=None, player=None):
+    from . import narrative
+
+    if narrative.enabled():
+        narrative.event(party, kind, target, zone, level, player)
+        return
     states = quest_states(party)
     for quest in DATA["quests"]:
         state = states.get(quest["id"])
         if (
             state
             and state["status"] == "active"
+            and not missing_quest_requirements(party, quest)
             and quest["kind"] == kind
             and quest["target"] == target
+            and (
+                kind != "upgrade"
+                or level is not None
+                and level >= quest.get("upgrade_level", 1)
+            )
             and (
                 not quest.get("zone")
                 or quest["zone"]
@@ -524,6 +579,16 @@ def quest_event(party, kind, target, zone=None):
             )
         ):
             state["progress"] = min(quest["count"], state["progress"] + 1)
+
+
+def missing_quest_requirements(party, quest):
+    states = quest_states(party)
+    definitions = {item["id"]: item for item in DATA["quests"]}
+    return [
+        "quête à terminer : " + definitions[identifier]["name"]
+        for identifier in quest.get("requirements", {}).get("quests", [])
+        if states.get(identifier, {}).get("status") != "completed"
+    ]
 
 
 def missing_requirements(party, quest):
@@ -544,14 +609,25 @@ def missing_requirements(party, quest):
         definition = definitions[identifier]
         if not achievements.unlocked(party, definition):
             missing.append("succès requis : " + definition["name"])
-    states = quest_states(party)
-    definitions = {item["id"]: item for item in DATA["quests"]}
-    for identifier in requirements.get("quests", []):
-        definition = definitions[identifier]
-        completed = states.get(identifier, {}).get("status") == "completed"
-        if not completed:
-            missing.append("quête à terminer : " + definition["name"])
+    missing.extend(missing_quest_requirements(party, quest))
     return missing
+
+
+def equipment_quest_progress(party, quest):
+    if quest["kind"] not in ("craft", "upgrade"):
+        return 0
+    matches = sum(
+        piece.get("recipe") == quest["target"]
+        and (
+            quest["kind"] == "craft"
+            or piece.get("level", 0) >= quest.get("upgrade_level", 1)
+        )
+        for equipment in party.get("equipment", {}).values()
+        if isinstance(equipment, dict)
+        for piece in equipment.values()
+        if isinstance(piece, dict)
+    )
+    return min(quest["count"], matches)
 
 
 def quest_dialogue(party, npc):
@@ -559,18 +635,45 @@ def quest_dialogue(party, npc):
 
     messages = []
     states = quest_states(party)
-    for quest in DATA["quests"]:
-        if quest["npc"] != npc:
-            continue
+    definitions = {quest["id"]: quest for quest in DATA["quests"]}
+    depths = {}
+
+    def depth(identifier):
+        if identifier not in depths:
+            depths[identifier] = 1 + max(
+                (
+                    depth(parent)
+                    for parent in definitions[identifier]
+                    .get("requirements", {})
+                    .get("quests", [])
+                ),
+                default=-1,
+            )
+        return depths[identifier]
+
+    offered = sorted(
+        (quest for quest in DATA["quests"] if quest["npc"] == npc),
+        key=lambda quest: depth(quest["id"]),
+    )
+    for quest in offered:
         state = states.get(quest["id"])
+        if state and state["status"] == "completed":
+            continue
+        missing = (
+            missing_requirements(party, quest)
+            if state is None
+            else missing_quest_requirements(party, quest)
+        )
+        if missing:
+            messages.append(f"{quest['name']} inaccessible : {' ; '.join(missing)}.")
+            continue
+        if state:
+            state["progress"] = max(
+                state["progress"], equipment_quest_progress(party, quest)
+            )
         if state is None:
-            missing = missing_requirements(party, quest)
-            if missing:
-                messages.append(
-                    f"{quest['name']} inaccessible : {' ; '.join(missing)}."
-                )
-                continue
-            states[quest["id"]] = {"status": "active", "progress": 0}
+            progress = equipment_quest_progress(party, quest)
+            states[quest["id"]] = {"status": "active", "progress": progress}
             messages.append(
                 f"Quête acceptée : {quest['name']} · {quest['description']}"
             )
@@ -592,13 +695,26 @@ def quest_dialogue(party, npc):
     return messages
 
 
-def quest_journal(party):
+def quest_journal(party, player=None):
+    from . import narrative
+
+    if player is not None and narrative.enabled():
+        return narrative.journal(party, player)
     quest_states(party)
     return [
         {
             **deepcopy(quest),
             **party.get("custom_quests", {}).get(
                 quest["id"], {"status": "available", "progress": 0}
+            ),
+            **(
+                {
+                    "status": "locked",
+                    "missing_requirements": missing_quest_requirements(party, quest),
+                }
+                if party["custom_quests"][quest["id"]]["status"] != "completed"
+                and missing_quest_requirements(party, quest)
+                else {}
             ),
         }
         for quest in DATA["quests"]
@@ -730,6 +846,9 @@ def claim_endgame(party, identifier, error):
 
 
 def validate_references(data, mobs, maps):
+    from .narrative_catalog import validate as validate_narrative
+
+    validate_narrative(data, maps)
     from .gameplay_catalog import DEFAULTS as gameplay_defaults
 
     RECIPES = data.get("gameplay", gameplay_defaults)["recipes"]
@@ -741,11 +860,11 @@ def validate_references(data, mobs, maps):
             raise ValueError(contract["name"] + " : espèce endgame inconnue.")
         if contract["kind"] == "craft" and contract["target"] not in RECIPES:
             raise ValueError(contract["name"] + " : recette endgame inconnue.")
-        if contract.get("zone") and contract["zone"] not in maps:
+        if contract.get("zone") and contract["zone"] not in maps.keys() | zones:
             raise ValueError(contract["name"] + " : zone endgame inconnue.")
     for definition in [*data["quests"], *data["achievements"]]:
         if definition.get("zone") and definition["zone"] not in (
-            maps if "kind" in definition else zones
+            maps.keys() | zones if "kind" in definition else zones
         ):
             raise ValueError(
                 definition["name"] + " : zone de rattachement introuvable."
@@ -765,9 +884,21 @@ def validate_references(data, mobs, maps):
     npcs = {site["id"] for value in maps.values() for site in value.get("sites", [])}
     for quest in data["quests"]:
         if quest["npc"] not in npcs or quest["target"] not in (
-            mobs if quest["kind"] == "kill" else RECIPES
+            mobs
+            if quest["kind"] == "kill"
+            else data.get("narrative", {}).get("facts", {})
+            if quest["kind"] == "story"
+            else RECIPES
         ):
             raise ValueError(quest["name"] + " : PNJ ou objectif de quête introuvable.")
+        if (
+            quest["kind"] == "upgrade"
+            and quest.get("upgrade_level", 1)
+            > data.get("gameplay", gameplay_defaults)["rules"]["forge"]["max_level"]
+        ):
+            raise ValueError(
+                quest["name"] + " : palier supérieur au maximum de la forge."
+            )
     quests = {item["id"] for item in data["quests"]}
     for definition in data["achievements"]:
         target = definition.get("target")

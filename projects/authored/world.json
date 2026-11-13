@@ -8490,23 +8490,38 @@
     "sites": [
       {
         "id": "clearing:0",
-        "name": "villageois",
-        "dialogue": "bonjour, si vous cherchez un village il y en a un après la foret, aurevoir.",
+        "name": "Maël · porteur de nouvelles",
+        "dialogue": "Rosée ? Suis le chemin jusqu’aux maisons. Si quelqu’un t’appelle dans les bois, regarde avant de répondre. Hier, la voix était la mienne.",
         "owner": "",
         "position": [
-          0,
+          2,
           3
         ]
+      },
+      {
+        "id": "rusk",
+        "name": "Rusk · déserteur gobelin",
+        "position": [
+          5,
+          3
+        ],
+        "dialogue": "Si tu viens pour le chef, je ne suis plus avec lui. Si tu viens pour ma couverture, c’est la seule chose que je possède."
+      },
+      {
+        "id": "borne_veille",
+        "name": "Borne fendue",
+        "position": [
+          83,
+          5
+        ],
+        "dialogue": "Sous la mousse, un mot demeure : « Écoute ». Trois sillons descendent sous la borne, vers les racines.",
+        "interaction": "inspect"
       }
     ],
     "spawns": [
       [
         17,
         10
-      ],
-      [
-        11,
-        3
       ],
       [
         52,
@@ -8528,7 +8543,8 @@
         "entry": [
           2,
           13
-        ]
+        ],
+        "world_exit": true
       },
       {
         "position": [
@@ -8537,7 +8553,8 @@
         ],
         "destination": null,
         "entry": null,
-        "name": "Porte de voyage"
+        "name": "Porte de voyage",
+        "world_exit": true
       }
     ],
     "zone_id": "foret_eveilles",
@@ -8566,34 +8583,6 @@
           [
             17,
             6
-          ]
-        ]
-      },
-      {
-        "mob_id": "goblin",
-        "level": 1,
-        "count": 1,
-        "name": "gobelin deserteur",
-        "position": [
-          11,
-          3
-        ],
-        "patrol": [
-          [
-            3,
-            3
-          ],
-          [
-            3,
-            15
-          ],
-          [
-            10,
-            12
-          ],
-          [
-            10,
-            3
           ]
         ]
       },
@@ -8838,7 +8827,10 @@
           ]
         }
       }
-    }
+    },
+    "retired_mob_names": [
+      "gobelin deserteur"
+    ]
   },
   "rosee": {
     "id": "field_rosee",
@@ -9749,7 +9741,8 @@
           13
         ],
         "link_id": "1e24ec0787504f2a9f2609a3b552cc22",
-        "travel_minutes": 0.5
+        "travel_minutes": 0.5,
+        "world_exit": true
       },
       {
         "position": [
@@ -9763,18 +9756,20 @@
         ],
         "name": "Prairies des Lucioles",
         "link_id": "passage_rosee_rosee_prairies",
-        "travel_minutes": 0
+        "travel_minutes": 0,
+        "world_exit": true
       }
     ],
     "spawns": [],
     "sites": [
       {
         "id": "mira",
-        "name": "Place · Mira",
+        "name": "Mira · responsable des patrouilles",
         "position": [
           32,
           20
-        ]
+        ],
+        "dialogue": "Les voyageurs arrivent sans leurs outils, les gardes rentrent sans sommeil, et chacun me demande quand cela va finir. Tu cherches du travail ou simplement une route ?"
       },
       {
         "id": "forge",
@@ -9783,8 +9778,17 @@
           44,
           12
         ],
-        "dialogue": "Bienvenue à la forge de Rosée. Apporte-moi tes matériaux et je pourrai fabriquer ou améliorer ton équipement.",
+        "dialogue": "Je peux regarder ton équipement. Pour utiliser l’atelier, rends d’abord « Protéger la lisière » à Mira : elle répartit notre réserve de charbon.",
         "merchant": true
+      },
+      {
+        "id": "seve",
+        "name": "Sève · soigneuse du verger",
+        "position": [
+          58,
+          17
+        ],
+        "dialogue": "Les lucioles viennent jusqu’aux paniers de récolte. Elles ne mangent rien. Elles attendent autour des pierres, puis attaquent la première main qui approche."
       }
     ],
     "water": [
@@ -14776,7 +14780,28 @@
         "name": "Porte de voyage"
       }
     ],
-    "spawns": [],
+    "spawns": [
+      [
+        18,
+        7
+      ],
+      [
+        15,
+        16
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        26,
+        19
+      ],
+      [
+        26,
+        5
+      ]
+    ],
     "sites": [],
     "water": [
       [
@@ -16458,7 +16483,63 @@
       }
     ],
     "zone_id": "zone_lisiere",
-    "spawners": [],
+    "spawners": [
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          26,
+          5
+        ]
+      },
+      {
+        "mob_id": "gobelin_apprenti",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          18,
+          7
+        ]
+      },
+      {
+        "mob_id": "gobelin_eclaireur",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          15,
+          16
+        ]
+      },
+      {
+        "mob_id": "gobelin_eclaireur",
+        "level": null,
+        "count": 1,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          26,
+          19
+        ]
+      },
+      {
+        "mob_id": "gobelin_archer",
+        "level": null,
+        "count": 1,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          5,
+          1
+        ]
+      }
+    ],
     "world_origin": [
       201,
       12
@@ -16468,7 +16549,8 @@
         578,
         39
       ]
-    }
+    },
+    "bridge_rotations": []
   },
   "hunt": {
     "id": "field_hunt",
@@ -17422,24 +17504,24 @@
         20
       ],
       [
-        21,
-        16
-      ],
-      [
-        29,
-        16
-      ],
-      [
-        29,
-        24
-      ],
-      [
-        21,
-        24
-      ],
-      [
         25,
         16
+      ],
+      [
+        21,
+        16
+      ],
+      [
+        29,
+        16
+      ],
+      [
+        29,
+        24
+      ],
+      [
+        21,
+        24
       ],
       [
         25,
@@ -17452,6 +17534,30 @@
       [
         16,
         20
+      ],
+      [
+        45,
+        3
+      ],
+      [
+        43,
+        37
+      ],
+      [
+        4,
+        33
+      ],
+      [
+        6,
+        4
+      ],
+      [
+        27,
+        22
+      ],
+      [
+        19,
+        16
       ]
     ],
     "sites": [],
@@ -22750,6 +22856,72 @@
             30
           ]
         ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 5,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          45,
+          3
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          43,
+          37
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          4,
+          33
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          6,
+          4
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": 1,
+        "count": 5,
+        "battlecry": "",
+        "name": "bebe gobelin",
+        "position": [
+          27,
+          22
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": 1,
+        "count": 5,
+        "battlecry": "",
+        "name": "bebe gobelin",
+        "position": [
+          19,
+          16
+        ]
       }
     ],
     "level": 3,
@@ -23249,7 +23421,8 @@
         "entry": [
           85,
           10
-        ]
+        ],
+        "world_exit": true
       },
       {
         "position": [
@@ -23263,7 +23436,8 @@
           20
         ],
         "link_id": "1e24ec0787504f2a9f2609a3b552cc22",
-        "travel_minutes": 0.5
+        "travel_minutes": 0.5,
+        "world_exit": true
       }
     ],
     "spawns": [
@@ -23276,7 +23450,18 @@
         16
       ]
     ],
-    "sites": [],
+    "sites": [
+      {
+        "id": "ancien_chargement",
+        "name": "Ancien chargement",
+        "position": [
+          4,
+          5
+        ],
+        "dialogue": "Des attaches de caisse portent une marque de forge. Une flèche gravée indique Brume et un mot gobelin traduit par Rusk : « la voix ».",
+        "interaction": "inspect"
+      }
+    ],
     "water": [
       [
         20,
@@ -28444,7 +28629,26 @@
       }
     ],
     "spawns": [],
-    "sites": [],
+    "sites": [
+      {
+        "id": "elyne",
+        "name": "Élyne · gardienne de Brume",
+        "position": [
+          10,
+          16
+        ],
+        "dialogue": "Les Veilleurs ont reçu l’ordre de ne laisser personne derrière. Ils obéissent toujours. Seulement, ils ne distinguent plus ceux qu’ils protègent de ceux qu’ils retiennent."
+      },
+      {
+        "id": "oriel",
+        "name": "Oriel · archiviste itinérante",
+        "position": [
+          4,
+          12
+        ],
+        "dialogue": "Bienvenue à Brume. Si quelqu’un te demande si tu as entendu les cloches, dis-lui d’abord à quelle heure. Ici, la différence compte."
+      }
+    ],
     "water": [
       [
         38,
@@ -31325,6 +31529,27 @@
         933,
         160
       ]
+    },
+    "village_streets": {
+      "square": "arrival",
+      "streets": [
+        {
+          "id": "brume_market",
+          "name": "Rue du marché",
+          "buildings": [
+            "brume_shop",
+            "brume_inn",
+            "elyne"
+          ]
+        },
+        {
+          "id": "brume_habitations",
+          "name": "Rue des habitations",
+          "buildings": [
+            "brume_house"
+          ]
+        }
+      ]
     }
   },
   "rosee_prairies": {
@@ -33324,6 +33549,18 @@
       [
         31,
         18
+      ],
+      [
+        19,
+        10
+      ],
+      [
+        22,
+        16
+      ],
+      [
+        27,
+        11
       ]
     ],
     "spawners": [
@@ -33400,6 +33637,51 @@
           [
             32,
             18
+          ]
+        ]
+      },
+      {
+        "position": [
+          19,
+          10
+        ],
+        "mob_id": "luciole_cuirassee",
+        "level": 1,
+        "count": 1,
+        "patrol": [
+          [
+            19,
+            10
+          ]
+        ]
+      },
+      {
+        "position": [
+          22,
+          16
+        ],
+        "mob_id": "luciole_cuirassee",
+        "level": 1,
+        "count": 1,
+        "patrol": [
+          [
+            22,
+            16
+          ]
+        ]
+      },
+      {
+        "mob_id": "luciole_cuirassee",
+        "level": 1,
+        "count": 1,
+        "position": [
+          27,
+          11
+        ],
+        "patrol": [
+          [
+            27,
+            11
           ]
         ]
       }
@@ -35712,6 +35994,18 @@
       [
         31,
         18
+      ],
+      [
+        19,
+        10
+      ],
+      [
+        23,
+        16
+      ],
+      [
+        26,
+        11
       ]
     ],
     "spawners": [
@@ -35788,6 +36082,51 @@
           [
             32,
             18
+          ]
+        ]
+      },
+      {
+        "position": [
+          19,
+          10
+        ],
+        "mob_id": "sanglier_roncier",
+        "level": 3,
+        "count": 1,
+        "patrol": [
+          [
+            19,
+            10
+          ]
+        ]
+      },
+      {
+        "position": [
+          23,
+          16
+        ],
+        "mob_id": "sanglier_roncier",
+        "level": 3,
+        "count": 1,
+        "patrol": [
+          [
+            23,
+            16
+          ]
+        ]
+      },
+      {
+        "mob_id": "sanglier_roncier",
+        "level": 3,
+        "count": 1,
+        "position": [
+          26,
+          11
+        ],
+        "patrol": [
+          [
+            26,
+            11
           ]
         ]
       }
@@ -40389,6 +40728,10 @@
       [
         31,
         18
+      ],
+      [
+        20,
+        12
       ]
     ],
     "spawners": [
@@ -40467,9 +40810,44 @@
             18
           ]
         ]
+      },
+      {
+        "position": [
+          20,
+          12
+        ],
+        "mob_id": "gardien_de_schiste",
+        "level": 5,
+        "count": 1,
+        "patrol": [
+          [
+            20,
+            12
+          ]
+        ]
       }
     ],
-    "sites": [],
+    "sites": [
+      {
+        "id": "neran",
+        "name": "Néran · ancien contremaître",
+        "position": [
+          3,
+          12
+        ],
+        "dialogue": "Parle depuis ce côté de l’abri. Le gardien a déjà transformé deux brouettes en cailloux plus petits."
+      },
+      {
+        "id": "inscription_veille",
+        "name": "Inscription des carriers",
+        "position": [
+          4,
+          15
+        ],
+        "dialogue": "« Trois coups, puis trois silences. Ne pas extraire la veine qui répond. » La fin a été rayée, mais elle reste lisible.",
+        "interaction": "inspect"
+      }
+    ],
     "exits": [
       {
         "position": [
@@ -42723,7 +43101,38 @@
         ]
       }
     ],
-    "sites": [],
+    "sites": [
+      {
+        "id": "stele_aline",
+        "name": "Stèle d’Aline",
+        "position": [
+          4,
+          11
+        ],
+        "dialogue": "Aline. Elle connaissait le nom de chaque voyageur. Relève : au troisième appel.",
+        "interaction": "inspect"
+      },
+      {
+        "id": "stele_tovan",
+        "name": "Stèle de Tovan",
+        "position": [
+          18,
+          11
+        ],
+        "dialogue": "Tovan. Il demeura au pont jusqu’au dernier départ. Relève : au troisième appel.",
+        "interaction": "inspect"
+      },
+      {
+        "id": "stele_isel",
+        "name": "Stèle d’Isel",
+        "position": [
+          34,
+          12
+        ],
+        "dialogue": "Isel. Elle conserva les noms lorsque les voix se turent. Relève : au troisième appel.",
+        "interaction": "inspect"
+      }
+    ],
     "exits": [
       {
         "position": [
@@ -45314,6 +45723,18 @@
       [
         31,
         6
+      ],
+      [
+        19,
+        10
+      ],
+      [
+        22,
+        16
+      ],
+      [
+        26,
+        12
       ]
     ],
     "spawners": [
@@ -45411,9 +45832,65 @@
             6
           ]
         ]
+      },
+      {
+        "position": [
+          19,
+          10
+        ],
+        "mob_id": "veilleur_des_brumes",
+        "level": 7,
+        "count": 1,
+        "patrol": [
+          [
+            19,
+            10
+          ]
+        ]
+      },
+      {
+        "position": [
+          22,
+          16
+        ],
+        "mob_id": "veilleur_des_brumes",
+        "level": 7,
+        "count": 1,
+        "patrol": [
+          [
+            22,
+            16
+          ]
+        ]
+      },
+      {
+        "mob_id": "veilleur_des_brumes",
+        "level": 7,
+        "count": 1,
+        "position": [
+          26,
+          12
+        ],
+        "patrol": [
+          [
+            26,
+            12
+          ]
+        ]
       }
     ],
-    "sites": [],
+    "sites": [
+      {
+        "id": "poste_veille",
+        "name": "Poste de la dernière garde",
+        "position": [
+          3,
+          12
+        ],
+        "dialogue": "L’ordre porte le sceau d’Élyne : « Ne laisser personne derrière. Attendre mon retour avant de lever la garde. » Aucune relève n’a été inscrite.",
+        "interaction": "inspect"
+      }
+    ],
     "exits": [
       {
         "position": [
@@ -49808,7 +50285,8 @@
             32,
             6
           ]
-        ]
+        ],
+        "battlecry": "Vos villages ont oublié comment se parler. Il suffit qu’une seule voix reste. La mienne fera l’affaire."
       }
     ],
     "sites": [],

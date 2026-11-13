@@ -281,14 +281,17 @@ class Project:
         from .gameplay_catalog import validate_start
 
         validate_start(self.content["gameplay"], self.maps)
+        zones = {
+            map_building.zone_of(self.maps, identifier) for identifier in self.maps
+        }
         for quest in self.content["quests"]:
             if (
                 quest["npc"] not in npcs
                 or quest.get("zone")
-                and quest["zone"] not in self.maps
+                and quest["zone"] not in self.maps.keys() | zones
                 or quest["kind"] == "kill"
                 and quest["target"] not in self.mobs
-                or quest["kind"] == "craft"
+                or quest["kind"] in ("craft", "upgrade")
                 and quest["target"] not in self.content["gameplay"]["recipes"]
             ):
                 raise ValueError(f"{quest['name']} : PNJ, zone ou cible introuvable.")
@@ -438,6 +441,22 @@ class Project:
         )
         item["id"] = replacement
         if section == "quests":
+
+            def update_narrative(value):
+                if isinstance(value, dict):
+                    for key, item in value.items():
+                        if key in ("requires", "excludes") and isinstance(item, list):
+                            value[key] = [
+                                replacement if entry == identifier else entry
+                                for entry in item
+                            ]
+                        else:
+                            update_narrative(item)
+                elif isinstance(value, list):
+                    for item in value:
+                        update_narrative(item)
+
+            update_narrative(self.content.get("narrative", {}))
             for success in self.content["achievements"]:
                 if (
                     success["condition"] == "quests"
@@ -516,6 +535,15 @@ class Project:
         for quest in self.content["quests"]:
             if quest["npc"] == identifier:
                 quest["npc"] = replacement
+        story = self.content.get("narrative", {})
+        if identifier in story.get("npcs", {}):
+            story["npcs"][replacement] = story["npcs"].pop(identifier)
+        self._rename_fact_references("npc", identifier, replacement)
+
+    def _rename_fact_references(self, field, identifier, replacement):
+        for fact in self.content.get("narrative", {}).get("facts", {}).values():
+            if fact.get(field) == identifier:
+                fact[field] = replacement
 
     def _rename_map(self, identifier, replacement, section):
         from .map_assembly import CORE
@@ -557,6 +585,7 @@ class Project:
         start = self.content["gameplay"]["rules"]["start"]
         if start["map"] == identifier:
             start["map"] = replacement
+        self._rename_fact_references("map", identifier, replacement)
 
     def _rename_unsupported(self, identifier, replacement, section):
         raise ValueError(

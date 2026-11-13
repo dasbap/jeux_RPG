@@ -1,5 +1,106 @@
 "use strict";
+function syncRegionTravel(adventure) {
+  const previous = regionTravelState;
+  const field = adventure.field_map || null;
+  regionTravelState = {session: session.id, field, moving: Boolean(adventure.moving)};
+  if (previous?.session === session.id && previous.field && !field && !adventure.moving) {
+    currentView = "map";
+    document.body.classList.add("hud-menu-open");
+    toggleGameMenu(false);
+  }
+  if (previous?.session === session.id && currentView === "map" &&
+      (adventure.moving && !previous.moving || field && previous.field !== field)) {
+    document.body.classList.remove("hud-menu-open");
+    toggleGameMenu(false);
+  }
+}
+function routeEndpoint(world, route, point) {
+  if (point === route.id) return .5;
+  if ([route.from,route.from_point,world.zone_entries?.[route.from]].some(id=>id!=null&&id===point)) return 0;
+  if ([route.to,route.to_point,world.zone_entries?.[route.to]].some(id=>id!=null&&id===point)) return 1;
+  return null;
+}
+function worldRoutePosition(adventure, route) {
+  const transit=adventure.transit;
+  if (!transit) return .5;
+  const source=routeEndpoint(adventure.world,route,transit.source),target=routeEndpoint(adventure.world,route,transit.destination);
+  if (source===null||target===null) return .5;
+  const progress=Math.max(0,Math.min(1,adventure.travel_progress ?? 0));
+  return source+(target-source)*progress;
+}
+function journeyRoutePresentation(adventure) {
+  const route=adventure.world?.routes?.find(route=>route.id===adventure.position),transit=adventure.transit;
+  if (!route||!transit) return null;
+  const goal=adventure.journey?.[adventure.journey.length-1] || transit.destination;
+  const end=routeEndpoint(adventure.world,route,goal),source=routeEndpoint(adventure.world,route,transit.source),target=routeEndpoint(adventure.world,route,transit.destination);
+  if (source===null||target===null||![0,1].includes(end)||end!==(target>source?1:0)) return null;
+  const progress=end===1?worldRoutePosition(adventure,route):1-worldRoutePosition(adventure,route);
+  const from=adventure.world.places.find(place=>place.id===(end===1?route.from:route.to));
+  const to=adventure.world.places.find(place=>place.id===(end===1?route.to:route.from));
+  if (!from||!to||!Number.isFinite(route.duration_real_seconds)) return null;
+  return {source:from.name,destination:to.name,progress,remaining:Math.max(0,(1-progress)*route.duration_real_seconds)};
+}
+function renderJourney(adventure) {
+  let panel = $("journey-view");
+  if (!panel) {
+    panel = document.createElement("section");panel.id="journey-view";
+    panel.setAttribute("aria-label","Déplacement en cours");
+    panel.innerHTML='<strong id="journey-title"></strong><p id="journey-route"></p><div class="journey-track"><span class="journey-start" aria-hidden="true">●</span><span id="journey-player"><svg viewBox="0 0 40 48" aria-hidden="true"><circle cx="20" cy="12" r="7"/><path d="M20 21v13m0-9-10 7m10-7 10 7M20 34l-9 11m9-11 9 11"/></svg><span>Vous</span></span><span class="journey-end" aria-hidden="true">⚑</span></div><progress id="journey-progress" max="1" aria-label="Progression du trajet"></progress><p id="journey-remaining" role="timer"></p>';
+    $("battle").append(panel);
+  }
+  panel.hidden = !adventure.moving || Boolean(adventure.battle);
+  if (panel.hidden) return;
+  const road=journeyRoutePresentation(adventure);
+  const progress = road?.progress ?? adventure.travel_progress ?? 0;
+  $("journey-title").textContent="Déplacement en cours";
+  $("journey-route").textContent=road?`${road.source} → ${road.destination}`:`${adventure.travel_source_name || adventure.location} → ${adventure.travel_goal_name || adventure.travel_destination_name || "Destination"}`;
+  $("journey-player").style.left=`${Math.max(0,Math.min(1,progress))*100}%`;
+  $("journey-progress").value=progress;
+  $("journey-remaining").textContent=`${Math.ceil(road?.remaining ?? adventure.travel_remaining_real_seconds)} s restantes ${road?"sur ce chemin":"pour cette étape"}`;
+}
+function worldRouteGroups(routes) {
+  const groups = new Map();
+  for (const route of routes) {
+    const key = [route.from,route.to].sort().join(":");
+    if (!groups.has(key)) groups.set(key,{key,routes:[]});
+    groups.get(key).routes.push(route);
+  }
+  return [...groups.values()].map(group => ({...group, name:[...new Set(group.routes.map(route=>route.name.replace(/^Retour\s+(?:(?:[àa·:—-]|vers)\s+)?/i,"").trim()))].join(" / ")}));
+}
+function worldRouteLabels(groups, places, width, height, measure = text => text.length * 7) {
+  const occupied = places.flatMap(place => [
+    {x:place.x-20,y:place.y-20,width:40,height:40},
+    {x:place.x-measure(place.name || "")/2-6,y:place.y+18,width:measure(place.name || "")+12,height:24},
+    {x:place.x-48,y:place.y-38,width:96,height:18},
+  ]);
+  const overlap = (a,b) => Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y));
+  return groups.map(group => {
+    const route=group.routes[0],from=places.find(place=>place.id===route.from),to=places.find(place=>place.id===route.to);
+    const lines=[];let line="";
+    for (const word of group.name.split(/\s+/)) {
+      if(line && measure(line+" "+word)>150) {lines.push(line);line="";}
+      if(line) line+=" ";
+      for(const char of word) {
+        if(line && measure(line+char)>150) {lines.push(line);line="";}
+        line+=char;
+      }
+    }
+    if(line) lines.push(line);
+    const boxWidth=Math.max(30,...lines.map(measure))+16,boxHeight=lines.length*16+10;
+    const dx=to.x-from.x,dy=to.y-from.y,length=Math.hypot(dx,dy)||1;
+    let best=null;
+    for(const fraction of [.5,.35,.65,.2,.8]) for(const side of [-1,1]) for(const gap of [10,28,48]) {
+      const offset=(Math.abs(dy/length)*boxWidth+Math.abs(dx/length)*boxHeight)/2+gap;
+      const candidate={x:Math.max(6,Math.min(width-boxWidth-6,from.x+dx*fraction-dy/length*offset*side-boxWidth/2)),y:Math.max(6,Math.min(height-boxHeight-6,from.y+dy*fraction+dx/length*offset*side-boxHeight/2)),width:boxWidth,height:boxHeight};
+      const score=occupied.reduce((total,box)=>total+overlap(candidate,box),0)*1000+Math.abs(fraction-.5)*length+gap+(side===1?2:0);
+      if(!best || score<best.score) best={...candidate,score};
+    }
+    occupied.push({x:best.x-4,y:best.y-4,width:best.width+8,height:best.height+8});
+    return {...best,lines,group};
+  });
+}
 function worldPaths(adventure, destination) {
+  destination = adventure.world.zone_entries?.[destination] || destination;
   const graph = adventure.world.graph;
   if (!graph) return null;
   const sources = new Set([adventure.position]);
@@ -14,6 +115,66 @@ function worldPaths(adventure, destination) {
     }
     return [source, null];
   }));
+}
+function renderNarrative(adventure) {
+  const story=adventure.narrative, conversation=story?.conversation;
+  let dialog=$("story-dialog");
+  if(!dialog && story) {
+    dialog=document.createElement("dialog");dialog.id="story-dialog";
+    dialog.setAttribute("aria-labelledby","story-speaker");
+    dialog.innerHTML='<div class="story-heading"><h2 id="story-speaker"></h2><button type="button" id="story-close" class="secondary">Fermer</button></div><p id="story-response" aria-live="polite"></p><div id="story-choices" class="story-choices"></div><h3>Parler de…</h3><div id="story-topics" class="actions"></div><div id="story-service" class="actions"></div><h3 id="story-quest-heading">Quêtes facultatives</h3><div id="story-quests"></div>';
+    $("battle").append(dialog);
+    const dismiss=()=>{dialog.dataset.dismissed="true";dialog.close();if(!busy)tutorialCommand("story",{npc:dialog.dataset.npc,choice:"close"});};
+    $("story-close").onclick=dismiss;
+    dialog.addEventListener("cancel",event=>{event.preventDefault();dismiss();});
+  }
+  if(dialog && !conversation) {if(dialog.open)dialog.close();delete dialog.dataset.dismissed;}
+  if(conversation) {
+    dialog.dataset.npc=conversation.npc;
+    if($("story-speaker").textContent!==conversation.name)$("story-speaker").textContent=conversation.name;
+    if($("story-response").textContent!==conversation.text)$("story-response").textContent=conversation.text;
+    const send=choice=>tutorialCommand("story",{npc:conversation.npc,choice});
+    function buttons(root,entries) {
+      const kept=new Set();
+      for(const entry of entries) {
+        let button=[...root.children].find(node=>node.dataset.storyKey===entry.id);
+        if(!button){button=document.createElement("button");button.type="button";button.dataset.storyKey=entry.id;root.append(button);}
+        if(button.textContent!==entry.label)button.textContent=entry.label;
+        button.disabled=busy || Boolean(entry.disabled);button.onclick=entry.click;kept.add(button);
+      }
+      for(const node of [...root.children])if(!kept.has(node))node.remove();
+    }
+    buttons($("story-topics"),conversation.topics.map(topic=>({id:topic.id,label:topic.label,click:()=>send("topic:"+topic.id)})));
+    buttons($("story-choices"),conversation.choices.map(choice=>({id:choice.id,label:choice.label+(choice.description?" — "+choice.description:""),click:()=>send("answer:"+choice.id)})));
+    buttons($("story-service"),conversation.service==="forge" ? [{id:"forge",label:adventure.forge_unlocked?"Utiliser la forge":"Forge : rendez la quête de Mira pour débloquer l’atelier",disabled:!adventure.forge_unlocked,click:async()=>{dialog.dataset.dismissed="true";dialog.close();await send("close");openForge();}}] : []);
+    $("story-quest-heading").hidden=!conversation.quests.length;
+    const kept=new Set();
+    for(const quest of conversation.quests) {
+      let card=[...$("story-quests").children].find(node=>node.dataset.quest===quest.id);
+      if(!card){card=document.createElement("article");card.className="story-quest";card.dataset.quest=quest.id;card.append(document.createElement("h4"),document.createElement("p"),document.createElement("p"),document.createElement("div"));$("story-quests").append(card);}
+      const [title,description,meta,actions]=card.children;
+      if(title.textContent!==quest.name)title.textContent=quest.name;
+      if(description.textContent!==quest.description)description.textContent=quest.description;
+      const text=`${quest.recommended_level?`Niveau conseillé : ${quest.recommended_level} · `:""}${quest.reward_xp} XP${quest.reward_title?" · Titre : "+quest.reward_title:""}${quest.missing_requirements.length?" · "+quest.missing_requirements.join(" ; "):""}${quest.status==="completed"?" · Terminée":""}`;
+      if(meta.textContent!==text)meta.textContent=text;
+      const ready=quest.status==="ready",available=quest.status==="available"||quest.status==="completed"&&quest.repeatable;
+      buttons(actions,quest.status==="completed"&&!quest.repeatable?[]:[{id:quest.id,label:ready?"Rendre la quête":available?(quest.repeatable&&quest.status==="completed"?"Reprendre ce contrat":"Accepter cette quête"):quest.status==="locked"?"Prérequis à remplir":`En cours : ${quest.progress}/${quest.count}`,disabled:!(ready||available),click:()=>send((ready?"claim:":"accept:")+quest.id)}]);
+      kept.add(card);
+    }
+    for(const card of [...$("story-quests").children])if(!kept.has(card))card.remove();
+    if(!dialog.open && !dialog.dataset.dismissed)dialog.showModal();
+  }
+  let notes=$("story-notes");
+  if(!notes && story){notes=document.createElement("details");notes.id="story-notes";const title=document.createElement("summary");title.textContent="Indices et histoire";notes.append(title,document.createElement("div"));$("quest-view").append(notes);}
+  if(notes){
+    notes.hidden=!story;
+    if(story && sectionChanged("story-notes",[session.id,story.notes,story.ending])) {
+      const list=notes.lastElementChild;list.replaceChildren();
+      for(const note of story.notes){const item=document.createElement("p");const title=document.createElement("strong");title.textContent=note.name+" : ";item.append(title,document.createTextNode(note.description));list.append(item);}
+      if(!story.notes.length){const empty=document.createElement("p");empty.textContent="Les témoignages et les inscriptions lus seront conservés ici.";list.append(empty);}
+      if(story.ending){const ending=document.createElement("p");ending.textContent=`${story.ending.name} : ${story.ending.text}`;list.append(ending);}
+    }
+  }
 }
 function tutorialCommand(action, params = {}) {
   if (["move", "travel"].includes(action) && session?.tutorial) {
@@ -31,6 +192,7 @@ function paragraphs(container, texts) {
   }
 }
 function mountWorldMap(source, container = $("world-map")) {
+  source.dataset.mapBounds = source.getAttribute("viewBox");
   const retained = [...container.children].find(node => node.dataset.map === source.dataset.map);
   if (!retained) { container.append(source); installWorldCamera(source); return source; }
   function update(target, fresh) {
@@ -52,59 +214,227 @@ function mountWorldMap(source, container = $("world-map")) {
   installWorldCamera(retained);
   return retained;
 }
-function hudQuestTarget(adventure) {
+function activeHudQuest(adventure) {
   const quests = adventure.quest_journal || [];
-  const active = quests.find(quest => quest.status === "active");
+  return quests.find(quest => quest.id === trackedQuestId && ["active","ready"].includes(quest.status)) || quests.find(quest => ["active","ready"].includes(quest.status));
+}
+function questDestination(adventure, quest) {
+  const ready = quest.progress >= quest.count;
+  const step = quest.steps?.find(step=>!step.done);
+  const destination = ready || ["craft","upgrade"].includes(quest.kind) ? quest.npc : step?.npc || quest.map || quest.zone;
+  const place = adventure.world.places.find(place => place.id === destination || place.points?.some(point => point.id === destination));
+  return {zone: place?.id || quest.zone || adventure.world.current, point: ready ? quest.npc : step?.npc || quest.map || (place?.id !== destination ? destination : null), label: ready ? `À rendre : ${quest.name}` : `${quest.name} · ${quest.progress}/${quest.count}`};
+}
+function hudQuestTarget(adventure) {
+  const active = activeHudQuest(adventure);
   if (active) {
-    const ready = active.progress >= active.count;
-    return {zone: ready ? adventure.world.current : active.zone || adventure.world.current, point: ready ? active.npc : active.map || null, label: ready ? `Rendre la quête : ${active.name}` : `${active.name} · ${active.progress}/${active.count}`};
+    return questDestination(adventure, active);
   }
   const contract = (adventure.endgame || []).find(item => item.status === "claimable") || (adventure.endgame || []).find(item => item.status === "active");
   if (contract) return {zone: contract.zone || adventure.world.current, point: null, label: `${contract.name} · ${contract.progress}/${contract.count}`};
   return {zone: adventure.world.current, point: null, label: adventure.objective || "Explorer"};
 }
+function localMapPositions(place) {
+  const entry = place.entry || [70, 110];
+  const positions = new Map([[place.id, {x: entry[0], y: entry[1]}]]);
+  const preferred = place.points.map((point, index) => ({id: point.id, x: point.x ?? (index % 2 ? 450 : 270), y: point.y ?? 65 + Math.floor(index / 2) * 110}));
+  const overlaps = (point, others) => [...others].some(other => Math.abs(point.x - other.x) < 80 && Math.abs(point.y - other.y) < 42);
+  for (const point of preferred) {
+    let position = {x: point.x, y: point.y};
+    let attempt = 0;
+    while (overlaps(position, positions.values())) {
+      do {
+        position = {x: point.x + attempt % 3 * 180, y: point.y + (Math.floor(attempt / 3) + 1) * 90};
+        attempt++;
+      } while (overlaps(position, preferred));
+    }
+    positions.set(point.id, position);
+  }
+  return positions;
+}
 function renderHudNavigation(adventure) {
   const svg = $("hud-minimap");
   if (!svg) return;
-  const ns = "http://www.w3.org/2000/svg", world = adventure.world, target = hudQuestTarget(adventure);
+  const ns = "http://www.w3.org/2000/svg", target = hudQuestTarget(adventure), battle = adventure.battle, map = battle?.map;
   $("hud-objective").textContent = target.label;
-  svg.replaceChildren();
-  const place = world.places.find(item => item.id === world.current);
-  if (!place) return;
-  const points = [{id: place.id, name: "Entrée", x: 20, y: 55}, ...(place.points || []).map((point, index) => ({...point, x: point.x ?? 55 + (index % 3) * 45, y: point.y ?? 25 + Math.floor(index / 3) * 38}))];
-  const scale = (values, min, max) => {
-    const low = Math.min(...values), high = Math.max(...values), span = Math.max(1, high - low);
-    return value => min + (value - low) / span * (max - min);
+  $("hud-objective").title = target.label;
+  $("minimap-location").textContent = map?.name || adventure.location;
+  $("minimap-location").title = map?.name || adventure.location;
+  svg.toggleAttribute("hidden", !map);
+  $("minimap-exits").hidden = !map;
+  $("minimap-world").hidden = Boolean(map);
+  $("minimap-toggle").disabled = !map;
+  $("hud-navigation").querySelector(".minimap-legend").hidden = !map;
+  if (!map) return;
+  const element = (tag, attrs = {}, text = "") => {
+    const node = document.createElementNS(ns, tag);
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+    if (text) node.textContent = text;
+    return node;
   };
-  const sx = scale(points.map(point => point.x), 18, 162), sy = scale(points.map(point => point.y), 18, 92);
-  const byId = new Map(points.map(point => [point.id, point]));
-  for (const source of points) for (const destination of world.graph?.[source.id] || []) {
-    const end = byId.get(destination);
-    if (!end || source.id > end.id) continue;
-    const line = document.createElementNS(ns, "line");
-    for (const [key,value] of Object.entries({x1:sx(source.x),y1:sy(source.y),x2:sx(end.x),y2:sy(end.y),class:"hud-mini-route"})) line.setAttribute(key, value);
-    svg.append(line);
+  svg.setAttribute("viewBox", `-2 -2 ${map.width + 4} ${map.height + 4}`);
+  svg.setAttribute("aria-label", `Carte de ${map.name}. Votre position, le terrain découvert et les sorties.`);
+  const explored = adventure.field_map ? new Set((battle.explored || []).map(point => point.join(","))) : null;
+  const discovered = point => !explored || explored.has(point.join(","));
+  if (sectionChanged("minimap-terrain", [session.id, map.id, map.terrain_version, map.width, map.height, map.paths, map.water, map.bridges, map.cover, map.blocked, map.decorations, battle.explored])) {
+    svg.replaceChildren();
+    svg.append(element("rect", {x:0,y:0,width:map.width,height:map.height,class:"mini-fog"}));
+    const sets = Object.fromEntries(["paths", "water", "bridges", "cover", "blocked"].map(key => [key, new Set((map[key] || []).map(point => point.join(",")))]));
+    const buildings = new Set((map.decorations || []).filter(item=>["house","camp"].includes(item.kind)).map(item=>item.position.join(",")));
+    const paths = {};
+    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+      if (!discovered([x,y])) continue;
+      const key = `${x},${y}`;
+      const kind = sets.bridges.has(key) ? "bridge" : sets.water.has(key) ? "water" : buildings.has(key) ? "building" : sets.cover.has(key) || sets.blocked.has(key) ? "wall" : sets.paths.has(key) ? "road" : "ground";
+      paths[kind] = (paths[kind] || "") + `M${x} ${y}h1v1h-1z`;
+    }
+    for (const [kind, d] of Object.entries(paths)) svg.append(element("path", {d,class:`mini-terrain mini-${kind}`}));
+    svg.append(element("g", {"data-mini-overlay":"true"}));
   }
-  for (const point of points) {
-    const circle = document.createElementNS(ns, "circle");
-    const current = point.id === adventure.position || point.id === adventure.field_map;
-    const objective = target.zone === world.current && target.point === point.id;
-    for (const [key,value] of Object.entries({cx:sx(point.x),cy:sy(point.y),r:current ? 6 : objective ? 5 : 3,class:current ? "hud-mini-player" : objective ? "hud-mini-objective" : "hud-mini-point"})) circle.setAttribute(key, value);
-    circle.dataset.miniPoint = point.id;
-    svg.append(circle);
+  const overlay = svg.querySelector("[data-mini-overlay]");
+  overlay.replaceChildren();
+  const radius = Math.max(map.width, map.height) / 65;
+  function mark(point, kind, label, id, glyph = "") {
+    const [x,y] = point.map(value => value + .5);
+    const markerRadius = kind === "exit" ? radius*2.2 : radius;
+    const node = element("g", {class:`mini-marker mini-${kind}`, "data-mini-point":id});
+    node.append(element("title", {}, label));
+    node.append(kind === "exit" ? element("rect", {x:x-markerRadius,y:y-markerRadius,width:markerRadius*2,height:markerRadius*2,rx:markerRadius*.2}) : element("circle", {cx:x,cy:y,r:markerRadius}));
+    if (glyph) node.append(element("text", {x,y:y+markerRadius*.4,"font-size":markerRadius*1.5,"text-anchor":"middle"},glyph));
+    overlay.append(node);
+    return node;
   }
-  if (target.zone !== world.current) {
-    const edge = document.createElementNS(ns, "text");
-    edge.setAttribute("x","90"); edge.setAttribute("y","104"); edge.setAttribute("class","hud-mini-target-label");
-    edge.textContent = `→ ${world.places.find(item => item.id === target.zone)?.name || target.zone}`;
-    svg.append(edge);
+  const quest = activeHudQuest(adventure), ready = quest && quest.progress >= quest.count;
+  const questHere = quest && (!quest.map || quest.map === adventure.field_map) && (!quest.zone || [adventure.world.current,adventure.field_map,adventure.position].includes(quest.zone));
+  const objective = node => {node.classList.add("mini-objective");node.dataset.miniObjective="true";};
+  for (const site of map.sites || []) if (discovered(site.position)) {
+    const node=mark(site.position,"site",site.name,site.id);
+    if (ready && site.id === quest.npc) objective(node);
+  }
+  for (const mob of adventure.mobs || []) if (mob.stats.hp.current > 0) {
+    const node=mark(mob.position,"enemy",mob.name,mob.combat_id);
+    if (questHere && !ready && quest.kind === "kill" && quest.target === mob.mob_id) objective(node);
+  }
+  for (const [index, exit] of (map.exits || []).entries()) mark(exit.position,"exit",exit.name,`exit-${index}`,String(index+1));
+  const actor = battle.players[session.me];
+  if (actor) {
+    const [x,y] = actor.position.map(value => value+.5);
+    const player = element("path", {d:`M${x} ${y-radius*2.3}l${radius*1.5} ${radius*3.5}l${-radius*1.5} ${-radius*.7}l${-radius*1.5} ${radius*.7}z`,class:"mini-player", "data-mini-point":"player"});
+    player.append(element("title", {}, "Vous êtes ici"));overlay.append(player);
+  }
+  const view = $("world-map").querySelector(".battle-map")?.getAttribute("viewBox")?.split(/\s+/).map(Number);
+  if (view?.length === 4) overlay.append(element("rect", {x:view[0]/40,y:view[1]/40,width:view[2]/40,height:view[3]/40,class:"mini-viewport"}));
+  if (sectionChanged("minimap-exits", [session.id, map.id, map.exits])) {
+    $("minimap-exits").replaceChildren();
+    for (const [index, exit] of (map.exits || []).entries()) {
+      const button = document.createElement("button");
+      button.type = "button";button.textContent = `${index+1} · ${exit.name}`;button.title = `Repérer : ${exit.name}`;
+      button.onclick = () => focusMinimapPoint(exit.position);
+      $("minimap-exits").append(button);
+    }
+  }
+  svg.onclick = event => {
+    const matrix = svg.getScreenCTM?.();
+    if (!matrix) return;
+    const point = svg.createSVGPoint();point.x = event.clientX;point.y = event.clientY;
+    const cell = point.matrixTransform(matrix.inverse());
+    if (cell.x >= 0 && cell.y >= 0 && cell.x < map.width && cell.y < map.height) focusMinimapPoint([cell.x,cell.y]);
+  };
+  svg.onkeydown = event => {if (["Enter"," "].includes(event.key)) {event.preventDefault();returnCameraToPlayer();}};
+}
+function focusMinimapPoint(point) {
+  const adventure = session?.tutorial;
+  if (!adventure?.battle || !fieldCamera) return;
+  clearTimeout(cameraReturnTimer);
+  fieldCamera.follow = false;[fieldCamera.x,fieldCamera.y] = point;
+  renderGame(adventure);
+  cameraReturnTimer = setTimeout(returnCameraToPlayer, 5000);
+}
+function questJournalType(quest) {
+  return quest.quest_type || (["main", "side", "tutorial"].includes(quest.category) ? quest.category : "side");
+}
+function matchesQuestType(quest, type) {
+  return !type || (type === "repeatable" ? Boolean(quest.repeatable) : questJournalType(quest) === type);
+}
+function renderQuestJournal(adventure) {
+  const quests = adventure.quest_journal || [], active = activeHudQuest(adventure);
+  const categories = {hunt:"Chasse",boss:"Créature d’élite",crafting:"Artisanat",upgrade:"Perfectionnement",standard:"Contrat",main:"Aventure",side:"Contrat",tutorial:"Découverte",investigation:"Enquête",exploration:"Exploration",service:"Service",encounter:"Rencontre",dialogue:"Dialogue"};
+  const types = {main:"Principale",side:"Secondaire",tutorial:"Découverte"};
+  let filters = $("quest-filters");
+  if (!filters) {
+    filters=document.createElement("div");filters.id="quest-filters";
+    for (const [id,title,options] of [
+      ["quest-category","Catégorie",[["","Toutes"],...Object.entries(categories)]],
+      ["quest-type","Type de quête",[["","Tous"],["main","Principales"],["side","Secondaires"],["repeatable","Répétables"],["tutorial","Découverte"]]],
+    ]) {
+      const label=document.createElement("label");label.className="quest-filter";label.textContent=title;
+      const select=document.createElement("select");select.id=id;
+      for (const [value,name] of options) {const option=document.createElement("option");option.value=value;option.textContent=name;select.append(option);}
+      select.onchange=()=>renderGame(session.tutorial);label.append(select);filters.append(label);
+    }
+    $("quest-description").after(filters);
+  }
+  const filter=$("quest-category"),typeFilter=$("quest-type");
+  let list = $("quest-list");
+  if (!list) {list=document.createElement("div");list.id="quest-list";filters.after(list);}
+  for (const option of filter.options) {
+    const hidden = Boolean(option.value && !quests.some(quest=>quest.category===option.value));
+    if(option.hidden !== hidden) option.hidden = hidden;
+  }
+  if (filter.selectedOptions[0]?.hidden) filter.value="";
+  $("quest-progress").hidden = true;$("quest-description").hidden = true;
+  const matches=quest=>Boolean(quest)&&(!filter.value||quest.category===filter.value)&&matchesQuestType(quest,typeFilter.value);
+  $("quest-actions").hidden = !matches(active);
+  if (!sectionChanged("quest-cards", [session.id, quests, active?.id,filter.value,typeFilter.value,adventure.players?.map(player=>player.gear)])) return;
+  list.replaceChildren();
+  const visible = quests.filter(matches);
+  if (!visible.length) {const text=document.createElement("p");text.textContent=quests.length?"Aucune quête ne correspond à ces filtres.":"Aucune quête acceptée. Les habitants proposent des contrats facultatifs.";list.append(text);}
+  for (const quest of visible) {
+    const card=document.createElement("article");card.className="quest-card";card.dataset.quest=quest.id;
+    card.classList.toggle("tracked",quest.id===active?.id);
+    const ready=quest.progress>=quest.count, completed=quest.status==="completed", locked=quest.status==="locked";
+    const heading=document.createElement("h4");heading.textContent=quest.name;
+    const header=document.createElement("div");header.className="quest-heading";header.append(heading);
+    const status=document.createElement("span");status.className="quest-status";status.textContent=`${categories[quest.category] || "Contrat"} · ${types[questJournalType(quest)] || "Secondaire"}${quest.repeatable?" · Répétable":""} · Facultative · ${completed?"Terminée":locked?"Prérequis à remplir":ready?"À rendre":"En cours"}`;
+    const description=document.createElement("p");description.textContent=quest.description;
+    if (quest.id===adventure.forge_unlock_quest?.id && !/forge (?:du village )?de Rosée/i.test(description.textContent)) description.textContent+=" Récompense d’accès : forge du village de Rosée.";
+    if(quest.requirements?.quests?.length)description.textContent+=` Suite de : ${quest.requirements.quests.map(id=>quests.find(previous=>previous.id===id)?.name || id).join(", ")}.`;
+    if(locked)description.textContent+=` ${quest.missing_requirements.join(" ; ")}.`;
+    const gearLevel=Math.max(0,...(adventure.players || []).flatMap(player=>(player.gear || []).filter(piece=>piece.recipe===quest.target).map(piece=>piece.level)));
+    const progress=document.createElement("progress");progress.max=quest.kind==="upgrade"?quest.upgrade_level || 1:quest.count;progress.value=quest.kind==="upgrade"?(ready?progress.max:gearLevel):quest.progress;progress.setAttribute("aria-label",`Progression : ${quest.name}`);
+    const details=document.createElement("p");details.className="quest-meta";details.textContent=`${quest.kind==="upgrade"?`Équipement +${ready?quest.upgrade_level || 1:gearLevel} / +${quest.upgrade_level || 1} requis`:`${quest.progress}/${quest.count}`} · ${quest.reward_xp} XP${ready&&!completed&&!locked?" · Retournez voir le donneur de quête":""}`;
+    const progressRow=document.createElement("div");progressRow.className="quest-progress-row";progressRow.append(progress,details);
+    card.append(header,status,description,progressRow);
+    if(quest.steps?.length) {
+      const steps=document.createElement("ul");steps.className="quest-steps";
+      for(const step of quest.steps) {const row=document.createElement("li");row.textContent=`${step.done?"✓":"○"} ${step.name}`;steps.append(row);}
+      card.append(steps);
+    }
+    if (!completed && !locked) {
+      const follow=document.createElement("button");follow.type="button";follow.dataset.trackQuest=quest.id;follow.textContent=quest.id===active?.id?"Suivie":"Suivre";follow.setAttribute("aria-label",`Suivre cette quête : ${quest.name}`);follow.setAttribute("aria-pressed",String(quest.id===active?.id));
+      follow.onclick=()=>{trackedQuestId=quest.id;renderGame(session.tutorial);};header.append(follow);
+    }
+    list.append(card);
   }
 }
 function equipmentBonuses(piece) {
   return [["hp", "PV"], ["endurance", "endurance"], ["force", "force"], ["intelligence", "intelligence"], ["sagesse", "sagesse"]].filter(([key]) => piece[key] > 0).map(([key, label]) => `+${piece[key]} ${label}`).join(" · ");
 }
-function renderWorld(adventure, me, mapContainer = $("world-map")) {
+function renderWorld(adventure, me, mapContainer = $("world-map"), {overview = true} = {}) {
   paragraphs("equipment-details", me.gear.length ? me.gear.map(p => `${p.name} +${p.level} · ${equipmentBonuses(p)}`) : ["Aucun équipement équipé. Les recettes disponibles sont proposées à la forge."]);
+  let setPanel=$("equipment-set-details");
+  if(!setPanel){setPanel=document.createElement("div");setPanel.id="equipment-set-details";$("equipment-details").after(setPanel);}
+  setPanel.replaceChildren();
+  for(const set of me.equipment_sets || []) {
+    const card=document.createElement("article");card.className="codex-card equipment-set";card.dataset.set=set.id;
+    const title=document.createElement("h4");title.textContent=`${set.name} · ${set.pieces} pièce(s) équipée(s)`;card.append(title);
+    for(const tier of set.tiers) {
+      const row=document.createElement("p");row.className="set-tier";row.classList.toggle("active",tier.active);row.dataset.pieces=tier.pieces;
+      row.textContent=`${tier.pieces} pièces · ${tier.active?"Actif":"Inactif"} · ${equipmentBonuses(tier.bonuses)}`;card.append(row);
+    }
+    const total=document.createElement("p");total.className="set-total";total.textContent=`Bonus cumulés : ${equipmentBonuses(set.bonuses) || "aucun palier actif"}`;card.append(total);
+    setPanel.append(card);
+  }
   const items = Object.entries(me.inventory).filter(([, quantity]) => quantity > 0);
   paragraphs("inventory-details", items.length ? items.map(([item, quantity]) => `${quantity} ${adventure.material_names?.[item] || item} · matériau pour la forge`) : ["Votre inventaire est vide."]);
   $("gold-balance").textContent = `Or : ${me.gold ?? 0}`;
@@ -145,14 +475,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   }
   if (!places.some(p => p.id === mapPlace)) mapPlace = places.find(p => p.id === world.current)?.id || places[0]?.id;
   const place = places.find(p => p.id === mapPlace);
-  $("map-place").replaceChildren();
-  for (const p of places) {
-    const option = document.createElement("option");
-    option.value = p.id;
-    option.textContent = `${p.name} · ${p.visited ? "visité" : "non visité"}`;
-    $("map-place").append(option);
-  }
-  $("map-place").value = mapPlace;
+  syncSelectOptions($("map-place"), places.map(p => [p.id, `${p.name} · ${p.visited ? "visité" : "non visité"}`]), mapPlace);
   const namespace = "http://www.w3.org/2000/svg";
   function svgElement(tag, attrs = {}, text = "") {
     const element = document.createElementNS(namespace, tag);
@@ -162,24 +485,32 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   }
   const generalWidth = Math.max(610, ...places.map(p => p.x + 130)), generalHeight = Math.max(260, ...places.map(p => p.y + 70));
   const svg = svgElement("svg", {viewBox: `0 0 ${generalWidth} ${generalHeight}`, role: "group", "aria-label": "Carte des lieux et chemins découverts", class: "zone-map"});
+  const routeGroups = worldRouteGroups(world.routes);
+  const drawnRoutes = new Set();
   for (const route of world.routes) {
     const from = places.find(p => p.id === route.from);
     const to = places.find(p => p.id === route.to);
-    svg.append(svgElement("line", {x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: route.destination ? "known-route accessible-route" : "known-route"}));
-    svg.append(svgElement("text", {x: (from.x + to.x) / 2 + (from.x === to.x ? 90 : 0), y: (from.y + to.y) / 2 + (from.x === to.x ? -3 : 38), class: "route-label"}, route.name));
+    const group = routeGroups.find(group=>group.routes.includes(route));
+    if (!drawnRoutes.has(group.key)) {
+      drawnRoutes.add(group.key);
+      svg.append(svgElement("line", {x1: from.x, y1: from.y, x2: to.x, y2: to.y, class: route.destination ? "known-route accessible-route" : "known-route"}));
+    }
     if (adventure.position === route.id) {
-      const half = route.distance_km / 6 * 3600 / 2;
-      const fraction = Math.max(0, Math.min(1, 1 - adventure.travel_remaining_real_seconds * 3 / half));
-      const forward = adventure.transit?.destination === route.id ? adventure.journey?.[0] === route.to : adventure.transit?.destination === route.to;
-      const progress = adventure.transit?.destination === route.id ? fraction / 2 : .5 + fraction / 2;
-      const endpoint = id => id === route.from ? 0 : id === route.to ? 1 : .5;
-      const transit = adventure.transit;
-      const proportion = transit?.source && [route.from,route.to,route.id].includes(transit.source) && [route.from,route.to,route.id].includes(transit.destination) ? endpoint(transit.source) + (endpoint(transit.destination) - endpoint(transit.source)) * Math.max(0,Math.min(1,1 - adventure.travel_remaining_real_seconds * 3 / transit.total)) : forward ? progress : 1 - progress;
+      const proportion = worldRoutePosition(adventure,route);
       const x = from.x + (to.x - from.x) * proportion;
       const y = from.y + (to.y - from.y) * proportion;
-      svg.append(svgElement("circle", {cx: x, cy: y, r: 8, class: "visited-node"}));
+      svg.append(svgElement("circle", {cx: x, cy: y, r: 8, class: "visited-node world-traveller", "data-route":route.id}));
       svg.append(svgElement("text", {x, y: y - 20, class: "place-label"}, "Vous êtes ici"));
     }
+  }
+  const context = typeof CanvasRenderingContext2D !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  if(context) context.font="600 12px system-ui";
+  for(const label of worldRouteLabels(routeGroups,places,generalWidth,generalHeight,context ? text=>context.measureText(text).width : undefined)) {
+    const group=svgElement("g",{class:"route-name","aria-label":label.group.name});
+    const text=svgElement("text",{"text-anchor":"middle"});
+    label.lines.forEach((line,index)=>text.append(svgElement("tspan",{x:label.x+label.width/2,y:label.y+17+index*16},line)));
+    group.append(svgElement("rect",{x:label.x,y:label.y,width:label.width,height:label.height,rx:6}),text,svgElement("title",{},label.group.name));
+    svg.append(group);
   }
   for (const p of places) {
     const group = svgElement("g", {role: "button", tabindex: "0", "aria-label": `${p.name}, ${p.visited ? "visité" : "non visité"}`, "aria-pressed": String(p.id === mapPlace), class: "map-node", "data-destination": p.id});
@@ -207,16 +538,18 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
     if (marker) svg.append(svgElement("circle", {cx: marker.x, cy: marker.y, r: 24, class: "objective-ring", "aria-label": "Objectif à découvrir ou rejoindre"}));
   }
   svg.dataset.map = "general";
-  const worldMapNodes = [mountWorldMap(svg, mapContainer)];
+  const worldMapNodes = overview ? [mountWorldMap(svg, mapContainer)] : [];
   if (place.points.length) {
     const entry = place.entry || [70, 110];
-    const localWidth = Math.max(610, entry[0] + 130, ...place.points.map(p => (p.x ?? 450) + 130)), localHeight = Math.max(220, entry[1] + 70, ...place.points.map(p => (p.y ?? 175) + 70));
-    const local = svgElement("svg", {viewBox: `0 0 ${localWidth} ${localHeight}`, role: "group", "aria-label": `Points de ${place.name}`, class: "zone-map"});
-    local.append(svgElement("text", {x: localWidth / 2, y: 20, class: "place-label"}, `Points de ${place.name}`));
+    const positions = localMapPositions(place);
+    const localPoints = [...positions.values()];
+    const localLeft = Math.min(0,...localPoints.map(point=>point.x-150)), localTop = Math.min(0,...localPoints.map(point=>point.y-45));
+    const localRight = Math.max(610,...localPoints.map(point=>point.x+150)), localBottom = Math.max(220,...localPoints.map(point=>point.y+70));
+    const local = svgElement("svg", {viewBox: `${localLeft} ${localTop} ${localRight-localLeft} ${localBottom-localTop}`, role: "group", "aria-label": `Points de ${place.name}`, class: "zone-map"});
+    local.append(svgElement("text", {x: (localLeft+localRight) / 2, y: localTop+20, class: "place-label"}, `Points de ${place.name}`));
     local.append(svgElement("circle", {cx: entry[0], cy: entry[1], r: 10, class: "visited-node"}));
     local.append(svgElement("text", {x: entry[0], y: entry[1] + 28, class: "place-label"}, "Entrée"));
     if (adventure.position === place.id) local.append(svgElement("text", {x: entry[0], y: entry[1] - 25, class: "place-label"}, "Vous êtes ici"));
-    const positions = new Map([[place.id, {x: entry[0], y: entry[1]}], ...place.points.map((point, index) => [point.id, {x: point.x ?? (index % 2 ? 450 : 270), y: point.y ?? (index < 2 ? 65 : 175)}])]);
     for (const [source, position] of positions) for (const destination of world.graph[source] || []) {
       const endpoint = positions.get(destination);
       if (endpoint && source < destination) local.append(svgElement("line", {x1: position.x, y1: position.y, x2: endpoint.x, y2: endpoint.y, class: "known-route"}));
@@ -244,7 +577,8 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   $("map-routes").replaceChildren();
   for (const route of world.routes.filter(r => r.from === place.id || r.to === place.id)) {
     const p = document.createElement("p");
-    p.textContent = `${route.name} · ${route.distance_km} km · ${(route.distance_km / 6 * 3600 / 3).toFixed(0)} s de marche : ${places.find(p => p.id === route.from).name} ${route.bidirectional === false ? "→" : "↔"} ${places.find(p => p.id === route.to).name}`;
+    const duration = route.kind === "passage" ? "Passage immédiat" : `${(route.duration_real_seconds ?? route.distance_km / 6 * 3600 / 3).toFixed(1)} s réelles de trajet`;
+    p.textContent = `${route.name} · ${duration} : ${route.from_map_name || places.find(p => p.id === route.from).name} ${route.bidirectional === false ? "→" : "↔"} ${route.to_map_name || places.find(p => p.id === route.to).name}`;
     $("map-routes").append(p);
 
   }
@@ -294,10 +628,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
   const damageTypes = {PHYSICAL: "physique", MAGIC: "magique", SACRED: "sacré"};
   const selectedMap = $("bestiary-map").value;
   const maps = [...new Map(world.bestiary.flatMap(m => m.spawn_maps || []).map(m => [m.id, m])).values()];
-  $("bestiary-map").replaceChildren();
-  const allMaps = document.createElement("option"); allMaps.value = ""; allMaps.textContent = "Toutes les cartes découvertes"; $("bestiary-map").append(allMaps);
-  for (const map of maps) { const option = document.createElement("option"); option.value = map.id; option.textContent = map.name; $("bestiary-map").append(option); }
-  $("bestiary-map").value = maps.some(m => m.id === selectedMap) ? selectedMap : "";
+  syncSelectOptions($("bestiary-map"), [["", "Toutes les cartes découvertes"], ...maps.map(map => [map.id, map.name])], selectedMap);
   $("bestiary-sort-label").hidden = maps.length < 2;
   const query = $("bestiary-search").value.trim().toLocaleLowerCase();
   const filtered = world.bestiary.filter(m => (!$("bestiary-map").value || m.spawn_maps.some(p => p.id === $("bestiary-map").value)) && `${m.name} ${m.loot.map(p => p.item).join(" ")} ${(m.rare_loot || []).map(p => p.item).join(" ")}`.toLocaleLowerCase().includes(query));
@@ -327,6 +658,7 @@ function renderWorld(adventure, me, mapContainer = $("world-map")) {
 function toggleGameMenu(open = $("game-menu-items").hidden) {
   $("game-menu-items").hidden = !open;
   $("game-menu-toggle").setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("gear-menu-open",open);
 }
 function openForge() {
   if (!session?.tutorial) return;
@@ -334,10 +666,10 @@ function openForge() {
   $("forge-feedback").textContent = "";
   if (!$("craft-view").open) $("craft-view").showModal();
 }
-function showView(view) {
+function showView(view, {toggle = true} = {}) {
   if (view === "craft") return tutorialCommand("talk", {npc: "forge"});
   toggleGameMenu(false);
-  if (currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderGame(session.tutorial);return;}
+  if (toggle && currentView === view && document.body.classList.contains("hud-menu-open")) {document.body.classList.remove("hud-menu-open");currentView = "map";if(session?.tutorial) renderGame(session.tutorial);return;}
   if (["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"].includes(view)) currentView = view;
   document.body.classList.toggle("hud-menu-open", Boolean(session?.tutorial));
   renderSocial();

@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from jeuxRPG.multiplayer import content, forge, realtime_store, state_bundles, tutorial
+from jeuxRPG.multiplayer import content, forge, narrative, realtime_store, state_bundles, tutorial
 from jeuxRPG.multiplayer.service import GameError, GameService
 from jeuxRPG.multiplayer.controller_project import Project
 
@@ -73,6 +73,9 @@ def test_crafting_advances_contract_and_compact_state(contracts):
     contracts[0].update(kind='craft', target='veste', count=1)
     value = party()
     value['inventory']['p'] = dict(forge.RECIPES['veste']['cost'])
+    quest = forge.rosee_unlock_quest()
+    states = narrative.state(value, 'p')['quests'] if narrative.enabled() else content.quest_states(value)
+    states[quest['id']] = {'status': 'completed', 'progress': quest['count']}
     before = realtime_store.progress_signature(value)
     forge.execute(value, 'p', 'craft', 'veste', GameError)
     assert content.endgame_view(value)[0]['status'] == 'claimable'

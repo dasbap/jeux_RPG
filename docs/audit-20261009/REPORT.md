@@ -1,6 +1,6 @@
 # Audit et optimisation du RPG — 9 octobre 2026
 
-> Rapport historique. L’état courant, les corrections et les réserves figurent dans [la clôture du 11 octobre](../audit-20261011/FINAL_REPORT.md). Les anciens blocages d’accès et de publication ci-dessous décrivent leur date d’observation.
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](../ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](../D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
 
 ## Mise à jour après accès Vercel et CI distante
 

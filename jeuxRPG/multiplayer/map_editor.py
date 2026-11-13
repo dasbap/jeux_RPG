@@ -26,6 +26,20 @@ class MapEditor:
             if self.path.is_dir():
                 self.path = None
         self.saved = deepcopy(self.maps)
+        from .content import DATA, load_content
+
+        directory = (
+            Path(path)
+            if path and Path(path).is_dir()
+            else Path(path).parent
+            if path
+            else None
+        )
+        self.catalog_content = (
+            load_content(directory / "content.json")
+            if directory and (directory / "content.json").is_file()
+            else DATA
+        )
         self.history = []
         self.size = 24
         self.tool = tk.StringVar(value="Sol")
@@ -342,11 +356,10 @@ class MapEditor:
                 "Suppression", "Cette carte est nécessaire au tutoriel."
             )
             return
-        from . import world
 
         if any(
             key in (r["from"], r["to"], r.get("combat_map"))
-            for r in self.maps["clearing"].get("travel_routes", world.ROUTES)
+            for r in self.maps["clearing"].get("travel_routes", [])
         ):
             self.messages.showerror(
                 "Suppression", "Retirez d’abord les trajets utilisant cette carte."
@@ -713,7 +726,9 @@ class MapEditor:
                 "mob_id": "goblin",
                 "level": "",
                 "count": 1,
+                "battlecry": "",
                 "name": "",
+                "hostile": "Espèce (par défaut)",
                 **{key: value for key, value in existing.items() if key != "patrol"},
             }
             result = self.form("Spawner", values)
@@ -725,6 +740,15 @@ class MapEditor:
                     count=int(result["count"]),
                     level=int(result["level"]) if result.get("level") else None,
                 )
+                from .mob_picker import spawner_hostility
+
+                behavior = spawner_hostility(
+                    result.get("hostile", "Espèce (par défaut)")
+                )
+                if behavior is None:
+                    result.pop("hostile", None)
+                else:
+                    result["hostile"] = behavior
                 if existing.get("patrol"):
                     result["patrol"] = deepcopy(existing["patrol"])
                 if (
@@ -816,6 +840,7 @@ class MapEditor:
                 "destination": None,
                 "entry": [1, 1],
                 "fast_destination": "",
+                "world_exit": False,
                 **(existing or {}),
                 "bidirectional": False,
                 "pick_points": True,
@@ -827,6 +852,7 @@ class MapEditor:
                 "dialogue": "Bonjour !",
                 "owner": "",
                 "merchant": False,
+                "interaction": "talk",
                 **(existing or {}),
             }
         )
@@ -889,6 +915,7 @@ class MapEditor:
         }
         if "travel_minutes" in result:
             gate["travel_minutes"] = float(result["travel_minutes"])
+        gate["world_exit"] = result.get("world_exit", False) in (True, "True", "1")
         previous = next(
             (item for item in source["exits"] if item["position"] == point), {}
         )
@@ -923,6 +950,7 @@ class MapEditor:
                 "position": reverse_point,
                 "destination": self.selected.get(),
                 "entry": return_entry,
+                "world_exit": gate["world_exit"],
             }
         source["exits"] = [
             item for item in source["exits"] if item["position"] != point
@@ -952,6 +980,7 @@ class MapEditor:
                 "to_zone": "Zone d’arrivée",
                 "distance_km": "Distance (km)",
                 "travel_minutes": "Durée à pied (minutes en jeu, prioritaire si modifiée)",
+                "world_exit": "Sortir vers la carte globale (destination à choisir)",
                 "street_id": "Identifiant de rue",
                 "buildings": "Bâtiments dans l’ordre (IDs séparés par virgules)",
                 "square": "Identifiant de la place",
@@ -985,11 +1014,41 @@ class MapEditor:
                 "dungeon_final": "Salle finale",
                 "dungeon_lock": "Verrouiller la salle suivante tant que des ennemis vivent",
                 "mob_id": "Espèce",
+                "hostile": "Comportement de ce spawner",
+                "battlecry": "Réplique au début du combat (facultatif)",
+                "interaction": "Interaction : talk = parler / inspect = examiner",
                 "count": "Nombre de créatures (1–5)",
             }
             ttk.Label(window, text=labels.get(key, key)).grid(
                 row=row, column=0, padx=8, pady=5
             )
+            if key == "mob_id":
+                from . import content
+                from .mob_picker import MobPicker
+
+                picker = MobPicker(
+                    window, MOBS, getattr(self, "catalog_content", content.DATA), value
+                )
+                picker.frame.grid(row=row, column=1, sticky="nsew", padx=8, pady=5)
+                entries[key] = picker
+                continue
+            if key == "hostile":
+                entry = ttk.Combobox(
+                    window,
+                    values=["Espèce (par défaut)", "Hostile", "Neutre"],
+                    state="readonly",
+                    width=48,
+                )
+                entry.set(
+                    "Hostile"
+                    if value is True
+                    else "Neutre"
+                    if value is False
+                    else value
+                )
+                entry.grid(row=row, column=1, padx=8, pady=5, sticky="w")
+                entries[key] = entry
+                continue
             if key in (
                 "bidirectional",
                 "pick_points",
@@ -1112,6 +1171,12 @@ class MapEditor:
 
         def accept():
             answer = {key: entry.get() for key, entry in entries.items()}
+            if "mob_id" in answer and answer["mob_id"] not in MOBS:
+                self.messages.showerror(
+                    "Spawner",
+                    "Sélectionnez une espèce ; élargissez les filtres si la liste est vide.",
+                )
+                return
             for endpoint in ("from", "to"):
                 entry_key, map_key = endpoint + "_entry", endpoint + "_map"
                 if entry_key in created_doors:
@@ -1238,6 +1303,24 @@ class MapEditor:
                 returning,
                 result.get("fast_destination"),
             )
+            for map_id, position in [(self.selected.get(), point)] + (
+                [(destination, reverse)] if reverse else []
+            ):
+                gate = next(
+                    gate
+                    for gate in updated[map_id]["exits"]
+                    if gate["position"] == position
+                )
+                gate["world_exit"] = result.get("world_exit", False) in (
+                    True,
+                    "True",
+                    "1",
+                )
+                if "travel_minutes" in result:
+                    gate["travel_minutes"] = float(result["travel_minutes"])
+            from .map_assets import validate
+
+            validate(updated)
             self.remember()
             self.maps = updated
             self.draw()

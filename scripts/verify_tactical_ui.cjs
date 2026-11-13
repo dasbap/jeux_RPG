@@ -365,7 +365,7 @@ try {
     for (const direction of ["left", "up", "down", "right"]) assert.equal(el(`field-${direction}`), null);
     el("field-center").click();
     assert.equal(el("npc-view").hidden, false);
-    assert.equal(el("npc-view").parentElement.id, "combat-action-panel");
+    assert.equal(el("npc-view").parentElement.id, "battle");
     assert.equal(el("target-controls").hidden, true);
   }
   if (fixtures.field_village) {
@@ -375,7 +375,7 @@ try {
     render(scene);
     const marker = el("world-map").querySelector(`[data-exit="${gate.position.join(",")}"]`);
     assert(marker, "Un passage doit avoir un repère visible même hors exploration et hors cadrage");
-    assert.match(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/app_battle.js"), "utf8"), /class: "exit-label".*"pointer-events": "none"/s);
+    assert.match(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/app_battle.js"), "utf8"), /class:\s*"exit-caption".*"pointer-events":\s*"none"/s);
     event(marker, "dblclick");
     assert(dom.window.uiTest.calls.some(call => call.action === "battle_move" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
     scene.battle.map.exits.push({...gate, position: [gate.position[0], gate.position[1] + 1], name: "Autre passage"});

@@ -3,6 +3,12 @@
 .env.*
 !.env.example
 *.keys/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 
 # Local agent instructions
 AGENTS.md
@@ -37,18 +43,30 @@ saves/
 .controller.lock
 *.log
 *.sqlite3
+*.sqlite3-*
+*.sqlite3.age
 *-private-import.sql
 d1-import.sql
 d1-migration-key.txt
 *.db
+*.db-*
+*.db.age
 pytest-of-root/
-*.sqlite3-journal
 .ui-test/
+node_modules/
+.deploy-tools/
+
+# Local UI automation and generated test captures
+/game-ui.ps1
+/game-screen.png
+/hud-captures/
 test/load/locust_results_*.txt
 
 # Generated documentation
 __doc__/mirror/
 __doc__/*.md
+!__doc__/USAGE.md
+__doc__/.generated-pages.json
 
 # Editor, OS, and temporary files
 .DS_Store
@@ -72,3 +90,11 @@ Thumbs.db
 .runtime-deps/
 
 .solo-test/
+desktop/assets/
+.toolchains/
+.signing/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/
+android/local.properties

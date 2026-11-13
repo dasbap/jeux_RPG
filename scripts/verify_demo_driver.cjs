@@ -24,7 +24,7 @@ dom.window.document.getElementById('battle').hidden = false;
 dom.window.document.getElementById('tutorial-panel').hidden = false;
 function scenario(equipped=false) {
   const adventure = JSON.parse(JSON.stringify(fixtures.field_village));
-  adventure.quest = 'completed'; adventure.step = 'craft';
+  adventure.quest = 'completed'; adventure.step = 'craft'; adventure.forge_unlocked = true;
   const me = adventure.players.find(p=>p.id==='p0');
   const forge = adventure.battle.map.sites.find(p=>p.id==='forge');
   adventure.battle.players.p0.position = [...forge.position];

@@ -30,6 +30,15 @@ function sectionChanged(name, value) {
   sectionSignatures.set(name, signature);
   return true;
 }
+function syncSelectOptions(select, entries, selected = select.value) {
+  if (select.options.length !== entries.length || entries.some(([value, label], index) => select.options[index].value !== value || select.options[index].textContent !== label)) {
+    select.replaceChildren(...entries.map(([value, label]) => {
+      const option = document.createElement("option");option.value = value;option.textContent = label;return option;
+    }));
+  }
+  const value = entries.some(([value]) => value === selected) ? selected : entries[0]?.[0] ?? "";
+  if (select.value !== value) select.value = value;
+}
 let pendingBattleMove = null;
 let fieldCamera = null;
 let cameraDrag = null;
@@ -39,6 +48,9 @@ let suppressMapClickUntil = 0;
 const worldCameras = new Map();
 let activeWorldMap = "general";
 let currentView = "map";
+let regionTravelState = null;
+let zoneBannerTimer = null;
+let trackedQuestId = "";
 let viewContext = "";
 let combatTarget = "";
 let combatFullscreenRequested = false;

@@ -518,7 +518,8 @@ def advance_summons(party, characters, now, random, messages):
             candidates = [
                 mob
                 for mob in party["mobs"]
-                if distance(unit["position"], mob["position"]) <= SUMMON_VISION
+                if mob_rules.is_hostile(mob)
+                and distance(unit["position"], mob["position"]) <= SUMMON_VISION
                 and sight(preset, unit["position"], mob["position"])
             ]
         if not candidates:
@@ -908,6 +909,7 @@ def unalerted_allies(party, mob):
         ally
         for ally in party["mobs"]
         if ally is not mob
+        and mob_rules.is_hostile(ally)
         and ally["combat_id"] in mob["allies"]
         and not ally.get("alerted", False)
         and distance(ally["position"], mob["position"]) < AI_RULES["ally_call_range"]
@@ -924,7 +926,7 @@ def exit_cell(party):
 
 
 def leave_field(party):
-    fleeing = bool(party["mobs"])
+    fleeing = any(mob_rules.is_hostile(mob) for mob in party["mobs"])
     if fleeing and party["combat_step"] == "first_fight":
         party["step"] = "clearing"
     party.update(battle=None, mobs=[], mob=None)
@@ -942,7 +944,7 @@ def view(party, now, player=None):
     result = {
         **deepcopy(battle),
         "map": json.loads(json.dumps(preset, separators=(",", ":"))),
-        "hostiles_alive": len(party["mobs"]),
+        "hostiles_alive": sum(mob_rules.is_hostile(mob) for mob in party["mobs"]),
         "exit": exit_cell(party),
     }
     result["map"]["sites"] = [
@@ -1021,6 +1023,7 @@ def can_hide(party, player, position=None, retaining=False):
             and mob.get("last_known") == unit["position"]
         )
         for mob in party["mobs"]
+        if mob_rules.is_hostile(mob)
     )
 
 
@@ -1171,6 +1174,7 @@ def execute(party, player, action, params, now, error):
 
 def damaged(party, mob, actor, now):
     battle = party["battle"]
+    mob["provoked"] = True
     mob["last_hit_by"] = (
         actor
         if actor in party["characters"]
@@ -1248,21 +1252,15 @@ def defeated(party, mob, now, random, messages):
         zone = world.zone_of(party["position"])
         kills = party.setdefault("zone_kills", {})
         kills[zone] = kills.get(zone, 0) + 1
-    if (
-        party["quest"] == "active"
-        and world.zone_of(party["position"]) == "lisiere"
-        and mob.get("mob_id", "goblin") == "goblin"
-    ):
-        party["kills"] = (
-            min(content.HUNT["count"], party["kills"] + 1)
-            if content.HUNT
-            else party["kills"] + 1
-        )
     if not party.get("training"):
-        achievements.event(party, "kills", mob.get("mob_id", "goblin"))
         content.quest_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
+        achievements.event(party, "kills", mob.get("mob_id", "goblin"))
+        if content.HUNT:
+            state = content.quest_states(party).get(content.HUNT["id"])
+            if state:
+                party["kills"] = state.get("progress", 0)
         content.endgame_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
@@ -1406,6 +1404,7 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
         (distance(mob["position"], unit["position"]), key)
         for key, unit in units.items()
         if characters[key].is_alive()
+        and mob_rules.is_hostile(mob)
         and sees(preset, mob, unit)
         and path(preset, mob["position"], unit["position"]) is not None
     ]
@@ -1540,7 +1539,9 @@ def advance(party, now, random):
             characters[key] = invocations[unit["index"]]
     for mob in party["mobs"]:
         if any(
-            characters[key].is_alive() and sees(preset, mob, unit)
+            mob_rules.is_hostile(mob)
+            and characters[key].is_alive()
+            and sees(preset, mob, unit)
             for key, unit in units.items()
         ):
             battle["enemy_alerted"] = True
