@@ -2,17 +2,30 @@
 
 import asyncio
 import os
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import uvicorn
+from dotenv import dotenv_values
 
 from .host import PersistentServer
 from .host_configuration import validate
 from .realtime import create_app
 
+SECRET_FILE = Path("/etc/secrets/rpg-runtime.env")
+SECRET_KEYS = {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN"}
+
 
 def configuration(environment):
     environment = dict(environment)
+    if SECRET_FILE.exists():
+        secrets = dotenv_values(SECRET_FILE, interpolate=False)
+        if set(secrets) != SECRET_KEYS:
+            raise ValueError("Le fichier secret Render doit contenir les deux jetons")
+        for key, value in secrets.items():
+            if environment.get(key) and environment[key] != value:
+                raise ValueError("Jeton Render défini avec deux valeurs différentes")
+            environment[key] = value
     # Render injects its generated hostname before the first start.
     if not environment.get("RPG_PUBLIC_ORIGIN") and environment.get(
         "RENDER_EXTERNAL_HOSTNAME"

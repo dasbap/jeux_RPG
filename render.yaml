@@ -20,10 +20,8 @@ services:
         value: preview
       - key: RPG_D1_WORKER_URL
         value: https://jeux-rpg-oracle-test.dasbap-jeux-rpg.workers.dev
-      - key: RPG_D1_SERVICE_TOKEN
-        sync: false
-      - key: RPG_ADMIN_TOKEN
-        generateValue: true
+      # Add RPG_D1_SERVICE_TOKEN and RPG_ADMIN_TOKEN only as a Secret File
+      # named rpg-runtime.env, mounted by Render under /etc/secrets/.
       - key: RPG_RUNTIME_REALMS
         value: '1'
       - key: WEB_CONCURRENCY
