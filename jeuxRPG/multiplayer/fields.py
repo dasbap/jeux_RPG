@@ -1,9 +1,9 @@
 import uuid
 from copy import deepcopy
 
-from . import content, progression, tactics, world
+from . import content, mob_rules, progression, tactics, world
 from .map_assets import configured
-from .map_building import create_mob, spawners
+from .map_building import create_mob, migrate_behavior, spawners
 
 
 def terrain(identifier, name, width, height, cover, exits, mobs=(), sites=()):
@@ -135,6 +135,9 @@ def enter(party, identifier, entry, now, pursuers=()):
                 }
             )
         tactics.begin(party, now, "explore")
+        from .field_spawners import manifest
+
+        party["battle"]["spawn_manifest"] = manifest(definition, MAPS, identifier)
         occupied = []
         for mob, config in zip(party["mobs"], configurations, strict=True):
             position = tactics.free_position(definition, config["position"], occupied)
@@ -205,6 +208,9 @@ def enter(party, identifier, entry, now, pursuers=()):
             awarded=False,
             started_at=now,
         )
+    from .field_spawners import sync
+
+    sync(party, identifier, now)
     identifiers = [mob["combat_id"] for mob in party["mobs"]]
     for mob in party["mobs"]:
         mob["allies"] = [key for key in identifiers if key != mob["combat_id"]]
@@ -240,7 +246,7 @@ def transition(party, gate, player, now):
         and current_dungeon["id"] == target_dungeon["id"]
         and target_dungeon["room"] > current_dungeon["room"]
         and current_dungeon["lock_until_clear"]
-        and party["mobs"]
+        and any(mob_rules.is_hostile(mob) for mob in party["mobs"])
     ):
         return [
             f"Le passage vers la salle {target_dungeon['room']} est verrouillé : éliminez les ennemis de cette salle."
@@ -342,7 +348,10 @@ def execute(party, player, action, params, now, error, random):
     if site not in {item["id"] for item in nearby}:
         raise error("wrong_location", "Approchez-vous du lieu pour interagir.", 409)
     unit = party["battle"]["players"][player]
-    if any(tactics.sees(MAPS[party["field_map"]], mob, unit) for mob in party["mobs"]):
+    if any(
+        mob_rules.is_hostile(mob) and tactics.sees(MAPS[party["field_map"]], mob, unit)
+        for mob in party["mobs"]
+    ):
         raise error(
             "in_combat", "Les ennemis vous menacent : impossible d’interagir.", 409
         )
@@ -451,7 +460,7 @@ def snapshot(party, now, mobs=None):
     }
 
 
-def repop(party, identifier, now, pursuers=()):
+def repop(party, identifier, now, pursuers=(), *, skip_origins=()):
     definition = MAPS[identifier]
     existing = list(party["mobs"]) + list(pursuers)
     existing.extend(arrival["mob"] for arrival in party["battle"].get("arrivals", []))
@@ -461,6 +470,7 @@ def repop(party, identifier, now, pursuers=()):
             arrival["mob"] for arrival in saved["battle"].get("arrivals", [])
         )
     origins = {mob["combat_id"].split(":repop:")[0] for mob in existing}
+    origins.update(skip_origins)
     count = 0
     for index, config in enumerate(spawners(definition)):
         position = config["position"]
@@ -533,7 +543,16 @@ def reachable_terrain(definition):
     return reachable
 
 
-def migrate_terrain(party):
+def migrate_terrain(party, now=0):
+    migrate_behavior(party, MAPS)
+    if (
+        party.get("battle")
+        and party.get("field_map") in MAPS
+        and party["battle"]["preset"] in tactics.PRESETS
+    ):
+        from .field_spawners import sync
+
+        sync(party, party["field_map"], now)
     retired = {
         name
         for definition in MAPS.values()

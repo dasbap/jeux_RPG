@@ -19,6 +19,9 @@ const fixture=JSON.parse(fs.readFileSync(path.join(root,".data/ux-audit/fixtures
     for(const id of ["registration","characters","lobby"])document.getElementById(id).hidden=true;
     for(const id of ["battle","tutorial-panel"])document.getElementById(id).hidden=false;
     const map=adventure.battle.map;
+    const rock=[Math.floor(map.width/2),Math.floor(map.height/2)];
+    map.decorations=[...(map.decorations || []),{kind:"rock",position:rock}];
+    adventure.battle.explored.push(rock);
     map.exits=[{position:[0,Math.floor(map.height/2)],name:"Retour vers le village de Rosée"},{position:[map.width-1,Math.floor(map.height/2)],name:"Prairies des Lucioles"},{position:[Math.floor(map.width/2),0],name:"Chemin vers la forêt des Éveillés"},{position:[Math.floor(map.width/2),map.height-1],name:"Entrée de la grotte des Oubliés"}];
     renderGame(adventure);
    },fixture);
@@ -47,7 +50,19 @@ const fixture=JSON.parse(fs.readFileSync(path.join(root,".data/ux-audit/fixtures
    await page.evaluate(()=>new Promise(requestAnimationFrame));
    assert(await marker.locator(".exit-caption").isVisible(),"Le nom apparaît au survol de l’icône : "+JSON.stringify(await marker.evaluate(node=>{const c=node.querySelector("circle").getBoundingClientRect();return {hover:node.matches(":hover"),caption:getComputedStyle(node.querySelector(".exit-caption")).visibility,hit:document.elementsFromPoint(c.x+c.width/2,c.y+c.height/2).map(e=>e.id||e.tagName)};})));
    assert.equal(await page.locator(".exit-caption:visible").count(),1,"Seul le nom survolé apparaît");
-   await page.evaluate(()=>renderGame(session.tutorial));
+   const retainedMarker=await marker.elementHandle();
+   for(let tick=0;tick<5;tick++) {
+    await page.evaluate(()=>renderGame(session.tutorial,true));
+    const layers=await page.locator("#world-map .battle-map").evaluate(svg=>{
+     const children=[...svg.children];
+     const scenery=children.filter(node=>node.matches(".terrain-decoration"));
+     const markers=children.filter(node=>node.matches(".exit-marker"));
+     return {decorations:scenery.length,above:markers.every(marker=>scenery.every(decor=>children.indexOf(decor)<children.indexOf(marker)))};
+    });
+    assert(layers.decorations>0,"Le test inclut un rocher visible");
+    assert(layers.above,"Les passages et leurs noms restent au-dessus du décor après chaque rafraîchissement");
+   }
+   assert(await marker.evaluate((node,retained)=>node===retained,retainedMarker),"Le survol conserve le même repère");
    assert(await marker.locator(".exit-caption").isVisible(),"Le nom reste visible pendant les rafraîchissements");
    await page.mouse.move(width/2,height/2);
    await marker.locator(".exit-caption").waitFor({state:"hidden",timeout:3000});

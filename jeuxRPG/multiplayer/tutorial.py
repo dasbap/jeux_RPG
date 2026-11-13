@@ -269,6 +269,9 @@ def view(party, me, now):
     )
     result["achievements"] = achievements.view(party)
     result["quest_journal"] = content.quest_journal(party, me)
+    from .interface_catalog import settings as interface_settings
+
+    result["interface"] = interface_settings(content.DATA)
     result["forge_unlocked"] = forge.rosee_unlocked(party, me)
     from . import narrative
 
@@ -764,7 +767,7 @@ def migrate(party, now):
 
     if "hp_regen" not in party:
         progression.health_resources(party, now)
-    fields.migrate_terrain(party)
+    fields.migrate_terrain(party, now)
     world.migrate_journey(party)
 
 

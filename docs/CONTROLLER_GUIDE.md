@@ -1,5 +1,7 @@
 # Contrôleur du projet RPG
 
+L’onglet **Interface** permet de régler les menus, les fiches de quête, la mini-carte, les couleurs, le texte et la durée du nom de zone, avec un aperçu schématique et un historique d’annulation. Voir [le guide de l’éditeur d’interface](INTERFACE_BUILDER.md).
+
 ## Démarrer
 
 Depuis le dépôt :
@@ -84,6 +86,14 @@ Les objectifs ne déclenchent pas de scripts libres, de nouvelles étapes de tut
 ## Espèces et matériaux
 
 Les modèles de base proviennent de **Classes / modèles**. Une espèce peut utiliser tout modèle non invocation, y compris un modèle personnalisé. Les caractéristiques héritées peuvent être remplacées par des formules de base et de croissance. Une espèce dispose de son nom, rang, dégâts, multiplicateur XP, matériaux et capacités. Le niveau et le nombre apparaissant ensemble se règlent par spawner dans le builder.
+
+Dans **Mobs → Modifier**, définir la **Race** et **Hostile par défaut**. Une race vide hérite de la race parente, puis du modèle de base pour les anciens catalogues. Les gobelins, orcs et monstres du catalogue restent hostiles ; rats des champs, scarabées des prés, corbeaux des bois et lucioles cuirassées sont neutres. Les neutres patrouillent, se défendent si on les attaque et ne répondent pas à l'appel d'un ennemi. Ils ne bloquent pas les dialogues ou la salle suivante d'un donjon ; les invocations du joueur les ignorent tant qu'ils ne sont pas provoqués, sauf ordre d'attaque explicite.
+
+Dans **Cartes / zones → Éditer la carte dans le builder → Spawner**, le sélecteur affiche les noms lisibles et combine la recherche par nom/identifiant (sans tenir compte des accents), la race, les attaques **Corps à corps / À distance**, les cases **Invocation**, **Buffs**, **Soins** et le comportement par défaut. Un compteur indique les résultats ; **Réinitialiser les filtres** rétablit la liste complète. Les capacités sont calculées depuis les compétences attribuées, tous niveaux de déblocage confondus, y compris les références natives et les compétences héritées. Une attaque de base CaC reste disponible aux lanceurs de sorts. Un nom comme « archer » ne suffit pas à attribuer une attaque à distance : il faut lui affecter une capacité offensive de portée supérieure à la portée CaC. Le filtre Invocation peut être vide : le moteur refuse actuellement d'attribuer aux mobs les invocations nécessitant un propriétaire joueur.
+
+**Comportement de ce spawner** propose **Espèce (par défaut)**, **Hostile** ou **Neutre**. Le premier choix suit la définition du mob, les deux autres la remplacent uniquement pour les créatures de ce spawner. Modifier les filtres n'enregistre rien ; valider conserve le niveau, le nombre, le nom personnalisé et la patrouille existante. Une liste vide empêche la validation jusqu'à la sélection d'une espèce.
+
+Après une modification enregistrée, reconstruire puis fermer et rouvrir le client solo. Les zones déjà visitées comparent leurs spawners avec le catalogue embarqué : les groupes ajoutés ou modifiés sont actualisés, les groupes supprimés disparaissent, et les groupes inchangés déjà vaincus restent vaincus jusqu'au repop habituel. L'XP, les quêtes, l'inventaire et le personnage sont conservés. La construction Windows met à jour les deux exécutables `dist/client/Jeux-RPG.exe` et `dist/windows/Jeux-RPG.exe` ; le multijoueur utilise le catalogue installé sur le serveur.
 
 Dans **Drops**, configurer pour chaque matériau la probabilité, les tirages indépendants, la quantité minimale/maximale et la rareté. Les décimales acceptent un point ou une virgule. Les matériaux sont récupérés en dépeçant le corps. **Aperçu / références** calcule la probabilité d’au moins un drop, la quantité moyenne et l’XP selon les deux niveaux sélectionnés.
 

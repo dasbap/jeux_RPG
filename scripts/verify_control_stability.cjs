@@ -82,13 +82,16 @@ const fixtures = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
     const rallyDestination=await page.locator("#rally-destination").inputValue();
     await stablePopup("rally-destination");
     assert.equal(await page.locator("#rally-destination").inputValue(),rallyDestination);
-    await page.evaluate(()=>{document.getElementById("chat-panel").hidden=false;document.body.classList.add("chat-open");});
-    for(const id of ["social-name","guild-name","chat-message"]) {
+    for(const id of ["social-name","guild-name"]) {
       await page.locator("#"+id).evaluate(node=>{node.value="Texte en cours";node.focus();node.setSelectionRange(3,7);});
       await page.evaluate(()=>{for(let tick=0;tick<10;tick++)window.tickControls();renderChat({online:[],global:[],group:[]});});
       assert.deepEqual(await page.locator("#"+id).evaluate(node=>[node.value,node.selectionStart,node.selectionEnd,document.activeElement===node]),["Texte en cours",3,7,true],id);
     }
-    await page.evaluate(()=>{document.getElementById("chat-panel").hidden=false;});
+    await page.locator("#back-view").click();
+    await page.evaluate(()=>{document.getElementById("chat-panel").hidden=false;document.body.classList.add("chat-open");});
+    await page.locator("#chat-message").evaluate(node=>{node.value="Texte en cours";node.focus();node.setSelectionRange(3,7);});
+    await page.evaluate(()=>{for(let tick=0;tick<10;tick++)window.tickControls();});
+    assert.deepEqual(await page.locator("#chat-message").evaluate(node=>[node.value,node.selectionStart,node.selectionEnd,document.activeElement===node]),["Texte en cours",3,7,true]);
     await stablePopup("chat-channel");
     await page.evaluate(()=>{
       document.body.classList.remove("combat-active","hud-menu-open");
@@ -115,6 +118,8 @@ const fixtures = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
       const forgeFixture=JSON.parse(fs.readFileSync(process.argv[3],"utf8")).unlocked;
       await page.evaluate(adventure=>{
         busy=false;session={id:"forge-audit",me:adventure.players[0].id,tutorial:adventure,events:[]};
+        document.getElementById("chat-panel").hidden=true;document.body.classList.remove("chat-open");
+        window.tickControls=()=>renderGame(session.tutorial);
         document.getElementById("tutorial-panel").hidden=false;
         renderGame(adventure);document.getElementById("craft-view").showModal();
         window.forgeAuditButton=document.querySelector("#forge-catalogue [data-action]");
@@ -126,6 +131,16 @@ const fixtures = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
         document.getElementById("craft-view").close();
         showView("quest",{toggle:false});
       });
+      await stablePopup("quest-category");
+      await stablePopup("quest-type");
+      await page.screenshot({path:path.join(__dirname,"../.data/quest-type-journal-desktop.png")});
+      await page.setViewportSize({width:390,height:844});
+      assert(await page.locator("#quest-type").isVisible(),"Le second filtre est visible sur petit écran");
+      const categoryBox=await page.locator("#quest-category").boundingBox(),typeBox=await page.locator("#quest-type").boundingBox();
+      assert(categoryBox.x+categoryBox.width<=typeBox.x,"La catégorie est à gauche du type, sans chevauchement");
+      assert(Math.abs(categoryBox.y-typeBox.y)<2,"Les deux filtres restent sur la même ligne sur petit écran");
+      await page.screenshot({path:path.join(__dirname,"../.data/quest-type-journal-mobile.png")});
+      await page.setViewportSize({width:1280,height:900});
       await page.locator("#quest-actions button").focus();
       await page.evaluate(()=>{
         const button=document.querySelector("#quest-actions button");button.focus();

@@ -212,7 +212,7 @@ def event(party, kind, target, zone=None, level=None, player=None):
 
 
 def accessible(party, player, npc):
-    from . import fields, tactics
+    from . import fields, mob_rules, tactics
 
     if (
         player not in party["characters"]
@@ -224,7 +224,8 @@ def accessible(party, player, npc):
         return npc in {
             site["id"] for site in fields.interactions(party, player)
         } and not any(
-            tactics.sees(fields.MAPS[party["field_map"]], mob, unit)
+            mob_rules.is_hostile(mob)
+            and tactics.sees(fields.MAPS[party["field_map"]], mob, unit)
             for mob in party["mobs"]
         )
     return (

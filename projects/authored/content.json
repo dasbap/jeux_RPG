@@ -35,7 +35,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "Les porteurs pourront passer avec une escorte plus légère. Je préviens Garrik : une part du charbon est désormais pour tes commandes."
         },
-        "recommended_level": 1
+        "recommended_level": 1,
+        "quest_type": "main"
       },
       {
         "id": "mira_hunt_2",
@@ -58,7 +59,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "Ils ont laissé la nourriture mais pris les outils. Garrik pourra peut-être reconnaître leur marque."
         },
-        "recommended_level": 3
+        "recommended_level": 3,
+        "quest_type": "main"
       },
       {
         "id": "hunt_luciole_cuirassee",
@@ -77,7 +79,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "Les cueilleurs pourront reprendre leur travail. Cette poudre ressemble à celle que Néran a rapportée de la carrière."
         },
-        "recommended_level": 1
+        "recommended_level": 1,
+        "quest_type": "side"
       },
       {
         "id": "craft_bottes_lucioles",
@@ -99,7 +102,8 @@
         "dialogue": {
           "accept": "Les carapaces restent souples si on les chauffe peu. Avec deux carapaces et une mesure de poudre lumineuse, je peux te fabriquer des bottes.",
           "complete": "Elles sont à toi. Reviens si tu veux renforcer la couture."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "upgrade_bottes_lucioles",
@@ -122,7 +126,8 @@
         "dialogue": {
           "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
           "complete": "Même lumière, meilleure couture. Le premier travail n’était pas mauvais ; celui-ci tiendra plus longtemps."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "hunt_sanglier_roncier",
@@ -141,7 +146,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "La récolte restante est sauvée pour aujourd’hui. Pour demain, il faudra comprendre ce qui les attire."
         },
-        "recommended_level": 3
+        "recommended_level": 3,
+        "quest_type": "side"
       },
       {
         "id": "craft_gants_ronciers",
@@ -163,7 +169,8 @@
         "dialogue": {
           "accept": "Les ronces blessent lorsqu’on les tient mal. Avec leur cuir et leurs épines, fabriquons des gants qui protègent tes mains.",
           "complete": "La ronce accroche encore. Maintenant, c’est ce que tu tiens qu’elle accroche."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "upgrade_gants_ronciers",
@@ -186,7 +193,8 @@
         "dialogue": {
           "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
           "complete": "Ferme le poing. Si tu peux le rouvrir sans tirer sur la couture, j’ai fait mon travail."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "hunt_gardien_de_schiste",
@@ -205,7 +213,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "Le poste de taille est dégagé. Regarde l’inscription près de l’abri si tu veux comprendre pourquoi nous hésitons à reprendre le travail."
         },
-        "recommended_level": 5
+        "recommended_level": 5,
+        "quest_type": "side"
       },
       {
         "id": "craft_casque_schiste",
@@ -227,7 +236,8 @@
         "dialogue": {
           "accept": "Le schiste de la Carrière peut renforcer un casque. Il faut écouter la pierre avant de la travailler.",
           "complete": "Néran appelle cela une pierre muette. Pose-la sur l’établi et attends."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "upgrade_casque_schiste",
@@ -250,7 +260,8 @@
         "dialogue": {
           "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
           "complete": "Il faut laisser du silence entre les coups. Je le savais déjà à l’époque. C’est cela qui me dérange."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "hunt_veilleur_des_brumes",
@@ -269,7 +280,8 @@
           "active": "Revenez me voir lorsque l’intervention sera terminée.",
           "complete": "Je ne vais pas appeler cela une victoire. Mais leur garde est terminée, et les voyageurs qu’ils retenaient peuvent repartir. Je conserverai leurs noms."
         },
-        "recommended_level": 7
+        "recommended_level": 7,
+        "quest_type": "side"
       },
       {
         "id": "craft_manteau_veille",
@@ -291,7 +303,8 @@
         "dialogue": {
           "accept": "Les étoffes des Veilleurs ont longtemps porté un ordre. Fabriquons un manteau pour qu’elles portent désormais quelqu’un.",
           "complete": "Il gardera une part de leur savoir. Pour le souvenir, je te laisse choisir ce qu’il signifie."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "upgrade_manteau_veille",
@@ -314,7 +327,8 @@
         "dialogue": {
           "accept": "Garde ta pièce : c’est elle que nous allons renforcer. Je reconnaîtrai le travail si tu l’as déjà fait.",
           "complete": "La couture tient. Ce souvenir peut désormais te protéger sans te retenir."
-        }
+        },
+        "quest_type": "side"
       },
       {
         "id": "derniere_borne",
@@ -335,7 +349,8 @@
         },
         "objectives": [
           "borne_lue"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "metal_outil",
@@ -361,7 +376,8 @@
         },
         "objectives": [
           "outil_lu"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "trois_silences",
@@ -383,7 +399,8 @@
         "objectives": [
           "inscription_lue",
           "garrik_inscription"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "prix_outil",
@@ -409,7 +426,8 @@
         },
         "objectives": [
           "garrik_aveu"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "rusk_rencontre",
@@ -431,7 +449,8 @@
         "objectives": [
           "rusk_parole",
           "mira_rusk"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "rusk_temoin",
@@ -458,7 +477,8 @@
         "objectives": [
           "chargement_lu",
           "oriel_rusk"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "noms_mousse",
@@ -481,7 +501,8 @@
           "stele_aline_lue",
           "stele_tovan_lue",
           "stele_isel_lue"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "garde_sans_releve",
@@ -507,7 +528,8 @@
         },
         "objectives": [
           "ordre_lu"
-        ]
+        ],
+        "quest_type": "main"
       },
       {
         "id": "ceux_qu_on_garde",
@@ -535,7 +557,8 @@
         "objectives": [
           "noms_confies"
         ],
-        "reward_title": "Porte-mémoire"
+        "reward_title": "Porte-mémoire",
+        "quest_type": "main"
       },
       {
         "id": "voix_commande",
@@ -560,7 +583,8 @@
           ]
         },
         "remember": true,
-        "map": "brume_sanctuaire"
+        "map": "brume_sanctuaire",
+        "quest_type": "main"
       },
       {
         "id": "accord_vivants",
@@ -590,7 +614,8 @@
           "avis_elyne",
           "accord_choisi"
         ],
-        "reward_title": "Témoin de la Veille"
+        "reward_title": "Témoin de la Veille",
+        "quest_type": "main"
       },
       {
         "id": "patrouille_veteran",
@@ -610,7 +635,8 @@
           "complete": "Un passage sécurisé pour aujourd’hui. Je te proposerai une autre patrouille si tu veux continuer."
         },
         "repeatable": true,
-        "previous_contract": "veteran_hunt"
+        "previous_contract": "veteran_hunt",
+        "quest_type": "side"
       }
     ],
     "achievements": [
@@ -2401,6 +2427,32 @@
             }
           ]
         }
+      }
+    },
+    "interface": {
+      "menus": {
+        "width_percent": 75,
+        "height_percent": 75,
+        "position": "center"
+      },
+      "quests": {
+        "card_min_width_px": 300,
+        "padding_px": 10,
+        "gap_px": 10,
+        "compact": true
+      },
+      "minimap": {
+        "width_px": 224,
+        "height_px": 126
+      },
+      "theme": {
+        "accent_color": "#b7a0ff",
+        "panel_color": "#13202f",
+        "text_color": "#eceef3",
+        "font_size_px": 16
+      },
+      "hud": {
+        "zone_banner_seconds": 3
       }
     }
   }

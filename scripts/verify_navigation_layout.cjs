@@ -69,19 +69,33 @@ const overlaps = (a,b) => a&&b&&a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.heig
    }
    for(const view of ["stats","equipment","inventory","quest","map","bestiary","achievements","social","options"]) {
     if(await page.locator("#game-menu-items").evaluate(el=>el.hidden))await page.locator("#game-menu-toggle").click();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const launcher=await box("game-menu-items");
+    assert(launcher.width<=280&&launcher.height<=height*.65+2,"La liste de l’engrenage reste compacte et défilante");
+    assert(Math.abs(width-launcher.x-launcher.width-12)<2&&launcher.y>=60,"La liste reste près de l’engrenage");
+    assert(await page.locator("#combat-player-panel").isVisible(),"Le HUD reste visible pendant le choix d’une option");
+    const enemyPanel=await box("combat-enemy-panel");
+    assert(!overlaps(launcher,enemyPanel),`La liste de l’engrenage ne recouvre pas les PV ennemis : ${JSON.stringify({launcher,enemyPanel})}`);
+    if(view==="stats")await page.screenshot({path:path.join(output,`launcher-${width}x${height}.png`)});
     await page.locator("#show-"+view).click();
     const content=page.locator(view==="map"?"#region-view":"#"+view+"-view");
     assert(await content.isVisible(),`Menu ${view} accessible`);
+    for(const id of ["combat-player-panel","combat-enemy-panel","combat-action-panel","hud-navigation","zone-banner","game-menu-toggle","mob-list-toggle","chat-toggle","touch-controls"])assert(!await page.locator("#"+id).isVisible(),`HUD ${id} masqué dans ${view}`);
     const back=await box("back-view");
     assert(back&&back.x>=0&&back.y>=0&&back.x+back.width<=width,"Retour accessible");
-    assert(!overlaps(back,await box("mob-list-toggle")),"Le bouton Retour ne couvre pas le cheval");
     assert(await page.locator("#back-view").evaluate(el=>el.scrollWidth<=el.clientWidth+1),"Le texte de retour tient dans le bouton");
     const frame=await page.locator(".adventure-grid").boundingBox();
-    assert(Math.abs(width-frame.x-frame.width)<=12,"Le panneau du menu est ancré à droite");
-    if(width>=1100)assert(frame.x>width/2,"Les informations du menu laissent le centre de l’écran libre");
-    assert(!overlaps(frame,await box("combat-player-panel")),"Les menus ne couvrent pas le joueur");
-    assert(!overlaps(frame,await box("combat-enemy-panel")),"Les menus ne couvrent pas les ennemis");
+    assert(Math.abs(frame.width-width*.75)<2&&Math.abs(frame.height-height*.75)<2,`Menu ${view} à 75 % de l’écran`);
+    assert(Math.abs(frame.x+frame.width/2-width/2)<2&&Math.abs(frame.y+frame.height/2-height/2)<2,`Menu ${view} centré horizontalement et verticalement`);
+    assert(!overlaps(frame,back),"Le bouton Retour reste en dehors du contenu du menu");
+    assert(await page.locator(".adventure-grid").evaluate(el=>el.scrollWidth<=el.clientWidth+1),`Menu ${view} sans débordement horizontal`);
     if(view==="quest") {
+     const cards=await page.locator("#quest-list .quest-card").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,height:box.height};}));
+     if(width>=1280&&cards.length>1) {
+      assert(Math.abs(cards[0].y-cards[1].y)<2&&cards[1].x>cards[0].x,"Les fiches se répartissent côte à côte sur grand écran");
+      assert(cards[0].height<180,"Une fiche simple reste compacte");
+      assert(cards[0].y-frame.y<230,"Le journal commence en haut du panneau, sans espace artificiel");
+     }
      const follow=page.locator("#quest-list [data-track-quest]");
      if(await follow.count()>1) {
       const id=await follow.nth(1).getAttribute("data-track-quest");
@@ -91,6 +105,17 @@ const overlaps = (a,b) => a&&b&&a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.heig
      }
     }
     if(["stats","quest","options"].includes(view))await page.screenshot({path:path.join(output,`${view}-${width}x${height}.png`)});
+    await page.locator("#back-view").click();
+    assert(await page.locator("#combat-player-panel").isVisible(),"Le HUD réapparaît à la fermeture du panneau");
+    assert(await page.locator("#game-menu-toggle").isVisible(),"L’engrenage réapparaît à la fermeture du panneau");
+   }
+   await page.evaluate(()=>{session.tutorial.battle=null;session.tutorial.field_map=null;renderGame(session.tutorial);});
+   for(const view of ["options","quest","map"]) {
+    if(await page.locator("#back-view").isVisible())await page.locator("#back-view").click();
+    await page.locator("#game-menu-toggle").click();await page.locator("#show-"+view).click();
+    const frame=await page.locator(".adventure-grid").boundingBox();
+    assert(Math.abs(frame.width-width*.75)<2&&Math.abs(frame.height-height*.75)<2,`Menu ${view} à 75 % sur la carte globale`);
+    assert(Math.abs(frame.x+frame.width/2-width/2)<2&&Math.abs(frame.y+frame.height/2-height/2)<2,`Menu ${view} centré sur la carte globale : ${JSON.stringify(frame)}`);
     await page.locator("#back-view").click();
    }
    await page.addScriptTag({content:require("../.ui-test/node_modules/axe-core").source});

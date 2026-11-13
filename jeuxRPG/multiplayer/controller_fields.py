@@ -1,4 +1,9 @@
 RANKS = ("SSS", "SS", "S", "AA", "A", "B", "C", "D", "E")
+QUEST_TYPE_LABELS = {
+    "main": "Principale",
+    "side": "Secondaire",
+    "tutorial": "Découverte",
+}
 
 
 DECIMAL_FIELDS = {
@@ -21,7 +26,27 @@ DECIMAL_FIELDS = {
 }
 
 
+def form_choices(values, choices):
+    result = dict(choices or {})
+    for key, value in values.items():
+        if type(value) is bool:
+            result[key] = ["Oui", "Non"]
+        elif key == "quest_type":
+            result[key] = list(QUEST_TYPE_LABELS.values())
+    return result
+
+
+def display_field(key, value):
+    if type(value) is bool:
+        return "Oui" if value else "Non"
+    return QUEST_TYPE_LABELS.get(value, value) if key == "quest_type" else value
+
+
 def parse_field(key, value, initial):
+    if key == "quest_type":
+        return {
+            label: identifier for identifier, label in QUEST_TYPE_LABELS.items()
+        }.get(value, value)
     if isinstance(initial, (dict, list)):
         import json
 

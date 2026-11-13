@@ -187,3 +187,35 @@ test("only visible targets of the tracked quest are highlighted",()=>{
   assert(document.querySelector('[data-mini-point="boss-1"][data-mini-objective]'));
   assert.equal(document.querySelector('[data-mini-point="guard-1"][data-mini-objective]'),null);
 });
+
+test("travel markers follow physical endpoints across logical zone aliases in both directions",()=>{
+  const {context}=setup();
+  const route={id:"road",from:"village-zone",to:"woods-zone",from_point:"village-map",to_point:"woods-map",duration_real_seconds:40};
+  const world={zone_entries:{"village-zone":"village-map","woods-zone":"woods-map"},routes:[route],places:[{id:"village-zone",name:"Village"},{id:"woods-zone",name:"Lisière"}]};
+  for(const reverse of [false,true]) {
+    const origin=reverse?"woods-map":"village-map",goal=reverse?"village-map":"woods-map";
+    const samples=[];
+    for(const secondHalf of [false,true]) for(const fraction of [0,.25,.5,.75,1]) {
+      const adventure={position:"road",world,transit:{source:secondHalf?"road":origin,destination:secondHalf?goal:"road"},journey:secondHalf?[]:[goal],travel_progress:fraction};
+      const expected=(secondHalf?.5:0)+fraction/2;
+      assert.equal(context.worldRoutePosition(adventure,route),reverse?1-expected:expected);
+      const popup=context.journeyRoutePresentation(adventure);
+      assert.equal(popup.progress,expected);
+      assert.equal(popup.source,reverse?"Lisière":"Village");assert.equal(popup.destination,reverse?"Village":"Lisière");
+      samples.push(popup.progress);
+    }
+    assert(samples.every((value,index)=>!index||value>=samples[index-1]),"La progression ne revient pas à zéro entre les deux étapes");
+  }
+});
+
+test("route marker supports older bundles and a mid-route turnaround without a position jump",()=>{
+  const {context}=setup(),route={id:"road",from:"village-zone",to:"woods-zone"};
+  const world={zone_entries:{"village-zone":"village-map","woods-zone":"woods-map"}};
+  const outward={world,transit:{source:"village-map",destination:"road"},travel_progress:.3};
+  const returnTrip={world,transit:{source:"road",destination:"village-map"},travel_progress:.7};
+  assert(Math.abs(context.worldRoutePosition(outward,route)-.15)<1e-9);
+  assert(Math.abs(context.worldRoutePosition(returnTrip,route)-.15)<1e-9);
+  returnTrip.travel_progress=.9;
+  assert(context.worldRoutePosition(returnTrip,route)<.15);
+  assert.equal(context.worldRoutePosition({world,transit:null},route),.5);
+});

@@ -1,5 +1,9 @@
 # Quêtes et équipements facultatifs
 
+Le journal propose deux filtres cumulables : **Catégorie** (chasse, artisanat, enquête…) et **Type de quête** (principales, secondaires, répétables, découverte). Le type principal/secondaire/découverte est éditable dans le Builder, champ **Type** de la quête (`quest_type`). La case **Répétable** reste indépendante : un contrat secondaire peut donc apparaître dans les deux sélections. Une quête principale raconte la trame du jeu et reste facultative.
+
+Dans le Builder : **Quêtes → sélectionner une quête → Modifier** (ou double-cliquer). Les champs **Catégorie d’objectif**, **Type de quête** et **Répétable : Oui/Non** sont modifiables. Les choix de type sont affichés en français. Cliquer **Appliquer**, valider les prérequis, puis **Enregistrer** le projet pour conserver ces réglages. Le type et la répétabilité apparaissent dans la colonne **Détails** et peuvent être recherchés. La prochaine construction Windows reprend ces données du Builder.
+
 L’exploration et l’accès aux régions ne nécessitent pas de terminer une quête. La quête « Protéger la lisière » de Mira débloque spécifiquement **la forge du village de Rosée** après remise de la quête. Un objectif rempli sans retour auprès de Mira ne suffit pas. Ce verrou est appliqué côté serveur, pour fabriquer comme pour améliorer.
 
 Le projet contient 26 quêtes : les 14 contrats de combat et d’artisanat réécrits, plus 12 quêtes de récit, d’exploration et de service. Parler à un personnage ouvre une conversation ; chaque contrat s’accepte et se rend séparément. Le journal permet de filtrer et de suivre les objectifs, et conserve les indices. Les suites restent facultatives : les perfectionnements demandent la remise de la fabrication correspondante, et la chasse au chef demande la remise de la première quête de Mira. Ces dépendances ne verrouillent pas l’exploration. Voir [l’histoire intégrée](HISTOIRE_IMPLEMENTATION.md).

@@ -76,7 +76,12 @@ def _visible_routes(known, step, fighting, moving):
                 )
     for definition in definitions:
         if zone_of(definition["from"]) in known and zone_of(definition["to"]) in known:
-            route = {**definition, "destination": None}
+            route = {
+                **definition,
+                "destination": None,
+                "from_point": definition["from"],
+                "to_point": definition["to"],
+            }
             route["duration_game_seconds"] = definition.get(
                 "duration_game_seconds",
                 definition["distance_km"]

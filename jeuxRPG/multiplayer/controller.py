@@ -4,13 +4,14 @@ from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
-from .content import CONDITIONS, QUEST_CATEGORIES
+from .content import CONDITIONS, QUEST_CATEGORIES, QUEST_TYPES, quest_type
 from .controller_editors import ControllerEditorsMixin
-from .controller_fields import RANKS
+from .controller_fields import RANKS, display_field, form_choices
 from .controller_fields import parse_field as parse_field
 from .controller_gameplay import FIXED as GAMEPLAY_FIXED
 from .controller_gameplay import SECTIONS as GAMEPLAY_SECTIONS
 from .controller_gameplay import ControllerGameplayMixin
+from .controller_interface import ControllerInterfaceMixin
 from .controller_narrative import ControllerNarrativeMixin
 from .controller_project import Project
 from .map_building import zone_of
@@ -19,7 +20,10 @@ from .mob_rules import validate_mobs as validate_mobs
 
 
 class Controller(
-    ControllerNarrativeMixin, ControllerGameplayMixin, ControllerEditorsMixin
+    ControllerInterfaceMixin,
+    ControllerNarrativeMixin,
+    ControllerGameplayMixin,
+    ControllerEditorsMixin,
 ):
     def __init__(self, root, project):
         import tkinter as tk
@@ -156,6 +160,7 @@ class Controller(
                     page,
                     text="Trajets, rues, raccords et placements : bouton Builder → Assemblage / Trajets et rues.\nLe temps, les déplacements et la régénération se règlent dans Règles du jeu.",
                 ).pack(anchor="w")
+        self.create_interface_tab(notebook)
         navigation = ttk.Frame(root, padding=8)
         navigation.pack(fill="x", before=notebook)
         ttk.Label(navigation, text="Catalogue").pack(side="left")
@@ -354,6 +359,9 @@ class Controller(
                 if table.exists(key):
                     table.selection_set(key)
 
+        if only is None and hasattr(self, "interface_fields"):
+            self.refresh_interface()
+
     def label(self, key):
         from .controller_gameplay import FIELD_LABELS
 
@@ -366,7 +374,8 @@ class Controller(
         return {
             "id": "Identifiant",
             "name": "Nom",
-            "category": "Catégorie (toutes les quêtes sont facultatives)",
+            "category": "Catégorie d’objectif (toutes les quêtes sont facultatives)",
+            "quest_type": "Type de quête",
             "upgrade_level": "Palier d’amélioration requis (+N)",
             "npc": "PNJ donneur",
             "kind": "Type d’objectif",
@@ -417,6 +426,8 @@ class Controller(
             "xp_multiplier": "Multiplicateur XP",
             "damage_growth": "Dégâts ajoutés par niveau",
             "parent": "Espèce parente",
+            "race": "Race (vide = héritée ou classe de base)",
+            "hostile": "Hostile par défaut (sinon neutre, se défend si attaqué)",
             "item": "Matériau",
             "chance": "Probabilité (0–1)",
             "attempts": "Nombre de tirages indépendants",
@@ -475,7 +486,7 @@ class Controller(
         )
         fields = {}
         labels = {}
-        choices = choices or {}
+        choices = form_choices(values, choices)
         for row, (key, value) in enumerate(values.items()):
             labels[key] = self.ttk.Label(
                 window,
@@ -487,8 +498,6 @@ class Controller(
                 ),
             )
             labels[key].grid(row=row, column=0, padx=8, pady=5, sticky="w")
-            if type(value) is bool:
-                choices[key] = ["Oui", "Non"]
             multiline = (
                 isinstance(value, (dict, list))
                 or isinstance(value, str)
@@ -516,9 +525,7 @@ class Controller(
                     else value,
                 )
             elif key in choices:
-                widget.set(
-                    "Oui" if value is True else "Non" if value is False else value
-                )
+                widget.set(display_field(key, value))
             else:
                 widget.insert(0, str(value))
             widget.grid(row=row, column=1, padx=8, pady=5)
@@ -824,6 +831,8 @@ class Controller(
         public = {
             "id": key or "",
             "name": old["name"],
+            "race": old.get("race", ""),
+            "hostile": old.get("hostile", True),
             "class_name": old["class_name"],
             "rank": old["rank"],
             "damage": old["damage"],
@@ -902,6 +911,8 @@ class Controller(
             p.rename("mobs", key, identifier)
         if not values["parent"]:
             values.pop("parent")
+        if not values["race"].strip():
+            values.pop("race")
         history = p.mobs.get(identifier, {}).get("previous_ids", []) if not new else []
         p.mobs[identifier] = {
             **({"previous_ids": history} if history else {}),
@@ -1025,6 +1036,7 @@ class Controller(
         )
         choices = {
             "category": list(QUEST_CATEGORIES),
+            "quest_type": list(QUEST_TYPES),
             "npc": sorted(
                 {site["id"] for data in p.maps.values() for site in data["sites"]}
             ),
@@ -1037,13 +1049,16 @@ class Controller(
             old = {"target": "", "zone": "", "map": "", **old}
         else:
             old = {
+                "id": old["id"],
+                "name": old["name"],
                 "category": "side",
+                "quest_type": quest_type(old),
+                "repeatable": False,
                 "map": "",
                 "upgrade_level": 1,
                 "recommended_level": 1,
                 "objectives": [],
                 "remember": False,
-                "repeatable": False,
                 "dialogue": {},
                 **old,
             }
@@ -1259,6 +1274,7 @@ class Controller(
         try:
             editor = map_editor.MapEditor(window, self.project.directory / "world.json")
             editor.gameplay = self.project.content["gameplay"]
+            editor.catalog_content = self.project.content
             editor.maps = deepcopy(self.project.maps)
             editor.saved = deepcopy(editor.maps)
             chosen = self.tables["maps"].selection()

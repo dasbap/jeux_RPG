@@ -2,6 +2,7 @@ import json
 from copy import deepcopy
 
 from . import content, map_building, mob_rules
+from .controller_fields import QUEST_TYPE_LABELS
 
 
 def catalog_rows(project, section):
@@ -28,7 +29,7 @@ def catalog_rows(project, section):
             (
                 key,
                 mob_rules.resolve(p.mobs, key)["name"],
-                f"{mob_rules.resolve(p.mobs, key)['class_name']} · rang {mob_rules.resolve(p.mobs, key)['rank']} · parent {item.get('parent') or 'aucun'}",
+                f"{mob_rules.resolve(p.mobs, key).get('race', mob_rules.resolve(p.mobs, key)['class_name'])} · {'hostile' if mob_rules.resolve(p.mobs, key).get('hostile', True) else 'neutre'} · {mob_rules.resolve(p.mobs, key)['class_name']} · rang {mob_rules.resolve(p.mobs, key)['rank']} · parent {item.get('parent') or 'aucun'}",
             )
             for key, item in p.mobs.items()
         ]
@@ -37,7 +38,7 @@ def catalog_rows(project, section):
             (
                 q["id"],
                 q["name"],
-                f"{q.get('category', 'standard')} · {q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP",
+                f"{QUEST_TYPE_LABELS[content.quest_type(q)]} · {'Répétable' if q.get('repeatable') else 'Unique'} · {q.get('category', 'standard')} · {q['npc']} · {q['kind']} {q['target']} × {q['count']} · {q.get('zone') or 'toutes zones'} · {q['reward_xp']} XP",
             )
             for q in p.content[section]
         ]

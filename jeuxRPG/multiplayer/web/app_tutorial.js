@@ -19,7 +19,33 @@ function renderCombatFeedback(adventure) {
   for (const row of [...log.children]) if (!retained.has(row)) row.remove();
   if (followLatest) log.scrollTop = log.scrollHeight;
 }
+function interfaceNumber(value, fallback, low, high) {
+  return Math.min(high,Math.max(low,Number.isFinite(value)?value:fallback));
+}
+function applyInterface(value = {}) {
+  if (!sectionChanged("interface-settings",value)) return;
+  const menu=value.menus || {},quests=value.quests || {},mini=value.minimap || {},theme=value.theme || {};
+  const width=interfaceNumber(menu.width_percent,75,40,95),height=interfaceNumber(menu.height_percent,75,35,95);
+  const position=["left","right"].includes(menu.position)?menu.position:"center";
+  const properties={
+    "--ui-menu-width":`${width}vw`,"--ui-menu-height":`${height}dvh`,"--ui-menu-top":`${(100-height)/2}dvh`,
+    "--ui-menu-left":position==="right"?"auto":position==="left"?"12px":`${(100-width)/2}vw`,
+    "--ui-menu-right":position==="right"?"12px":"auto",
+    "--ui-quest-min-width":`${interfaceNumber(quests.card_min_width_px,300,200,600)}px`,
+    "--ui-quest-padding":`${interfaceNumber(quests.padding_px,10,4,24)}px`,
+    "--ui-quest-gap":`${interfaceNumber(quests.gap_px,10,4,24)}px`,
+    "--ui-minimap-width":`${interfaceNumber(mini.width_px,224,120,360)}px`,
+    "--ui-minimap-height":`${interfaceNumber(mini.height_px,126,60,240)}px`,
+    "--ui-font-size":`${interfaceNumber(theme.font_size_px,16,12,22)}px`,
+  };
+  for(const [key,fallback] of [["accent_color","#b7a0ff"],["panel_color","#13202f"],["text_color","#eceef3"]]) {
+    properties[`--ui-${key.replace("_color","")}`]=/^#[0-9a-f]{6}$/i.test(theme[key] || "")?theme[key]:fallback;
+  }
+  for(const [key,setting] of Object.entries(properties))document.documentElement.style.setProperty(key,setting);
+  document.body.classList.toggle("ui-relaxed-quests",quests.compact===false);
+}
 function renderGame(adventure, preserveBattle = false) {
+  applyInterface(adventure.interface);
   syncRegionTravel(adventure);
   renderJourney(adventure);
   if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
@@ -105,7 +131,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("combat-view").hidden = !fighting;
   $("npc-view").hidden = !canTalk;
   if (!atForge && $("craft-view").open) $("craft-view").close();
-  for (const id of ["npc-view"]) { const parent = fighting ? $("combat-action-panel") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
+  for (const id of ["npc-view"]) { const parent = fighting ? $("battle") : document.querySelector(".zone-actions"); if ($(id).parentElement !== parent) parent.append($(id)); }
   const questParent = document.querySelector(".quest-box");
   if ($("quest-view").parentElement !== questParent) questParent.append($("quest-view"));
   $("standby-view").hidden = fighting || canTalk || atForge;
@@ -134,7 +160,7 @@ function renderGame(adventure, preserveBattle = false) {
     $("zone-banner").classList.remove("zone-arrival");
     void $("zone-banner").offsetWidth;
     $("zone-banner").classList.add("zone-arrival");
-    zoneBannerTimer = setTimeout(() => {$("zone-banner").hidden = true;}, 3000);
+    zoneBannerTimer = setTimeout(() => {$("zone-banner").hidden = true;}, interfaceNumber(adventure.interface?.hud?.zone_banner_seconds,3,1,15)*1000);
   }
   $("zone-name").textContent = fighting ? adventure.battle.map.name : adventure.location;
   $("zone-level").textContent = `Niv. ${currentZone?.level ?? me.level}`;
@@ -218,7 +244,7 @@ function renderGame(adventure, preserveBattle = false) {
   }
   }
   }
-  $("mob-name").textContent = fighting ? `${(adventure.mobs || []).length} ennemi(s) visible(s)` : "";
+  $("mob-name").textContent = fighting ? `${(adventure.mobs || []).length} créature(s) visible(s)` : "";
   $("mob-hp").textContent = fighting ? (adventure.mobs || [adventure.mob]).map(m => `${m.name} : ${m.stats.hp.current}/${m.stats.hp.max} PV`).join(" · ") : "";
   const enemies = fighting ? (adventure.mobs ?? (adventure.mob ? [{...adventure.mob, combat_id: "mob"}] : [])).map(m => ({id: m.combat_id, name: m.name, position: m.position, hp: m.stats.hp.current, max_hp: m.stats.hp.max, enemy: true})) : [];
   const mob = enemies[0] || null;

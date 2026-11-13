@@ -23,6 +23,7 @@ assert([...el("forge-catalogue").querySelectorAll("[data-action]")].every(button
 render(fixtures.unlocked);
 assert([...el("forge-catalogue").querySelectorAll("[data-action]")].every(button=>!button.disabled),"Les recettes abordables sont disponibles après déblocage");
 const category=el("quest-category"),categoryLabel=category.parentElement;
+const type=el("quest-type"),typeLabel=type.parentElement;
 category.focus();
 const observer=new dom.window.MutationObserver(()=>{});
 observer.observe(categoryLabel.parentElement,{childList:true});
@@ -32,6 +33,12 @@ const changes=observer.takeRecords();observer.disconnect();
 assert(!changes.some(change=>[...change.removedNodes].includes(categoryLabel)),"Le filtre reste attaché au DOM pendant les rafraîchissements");
 assert(!changes.some(change=>change.type==="attributes"),"Les options inchangées ne sont pas modifiées pendant l’ouverture du filtre");
 assert.equal(dom.window.document.activeElement,category,"Le filtre conserve le focus pendant les rafraîchissements");
+type.focus();
+const typeObserver=new dom.window.MutationObserver(()=>{});
+typeObserver.observe(typeLabel.parentElement,{childList:true});typeObserver.observe(type,{attributes:true,subtree:true});
+for(let tick=0;tick<10;tick++)render(fixtures.unlocked);
+assert.equal(typeObserver.takeRecords().length,0,"Le filtre de type reste intact pendant les rafraîchissements");typeObserver.disconnect();
+assert.equal(dom.window.document.activeElement,type,"Le type conserve le focus pendant les rafraîchissements");
 el("quest-category").value="upgrade";el("quest-category").dispatchEvent(new dom.window.Event("change"));
 assert.equal(el("quest-list").querySelectorAll(".quest-card").length,4);
 assert([...el("quest-list").querySelectorAll(".quest-status")].every(node=>/Perfectionnement.*Facultative/.test(node.textContent)));
@@ -53,6 +60,31 @@ assert(lockedCard.querySelector(".quest-status").textContent.includes("Prérequi
 assert(lockedCard.textContent.includes("Suite de :"));
 assert(lockedCard.textContent.includes("quête à terminer : Casque de Schiste"));
 assert.equal(lockedCard.querySelector("[data-track-quest]"),null);
+const mixedTypes=JSON.parse(JSON.stringify(fixtures.unlocked));
+const template=mixedTypes.quest_journal[0];
+mixedTypes.quest_journal=[
+  {...template,id:"main-hunt",name:"Chasse principale",category:"hunt",quest_type:"main",repeatable:false},
+  {...template,id:"side-hunt",name:"Patrouille répétable",category:"hunt",quest_type:"side",repeatable:true},
+  {...template,id:"side-craft",name:"Artisanat secondaire",category:"crafting",quest_type:"side",repeatable:false},
+  {...template,id:"discovery",name:"Découverte",category:"tutorial",quest_type:"tutorial",repeatable:false},
+];
+const choose=(id,value)=>{el(id).value=value;el(id).dispatchEvent(new dom.window.Event("change"));};
+const questIds=()=>[...el("quest-list").querySelectorAll(".quest-card")].map(card=>card.dataset.quest);
+render(mixedTypes);choose("quest-category","");choose("quest-type","");
+assert.equal(questIds().length,4);
+choose("quest-type","main");assert.deepEqual(questIds(),["main-hunt"]);
+assert(el("quest-list").textContent.includes("Principale"));
+choose("quest-category","crafting");assert.deepEqual(questIds(),[]);
+assert(el("quest-list").textContent.includes("Aucune quête ne correspond"));
+choose("quest-type","side");assert.deepEqual(questIds(),["side-craft"]);
+choose("quest-category","");assert.deepEqual(questIds(),["side-hunt","side-craft"]);
+choose("quest-type","repeatable");assert.deepEqual(questIds(),["side-hunt"]);
+assert(el("quest-list").textContent.includes("Répétable"));
+choose("quest-category","hunt");assert.deepEqual(questIds(),["side-hunt"]);
+for(let tick=0;tick<10;tick++)render(mixedTypes);
+assert.equal(el("quest-category").value,"hunt");assert.equal(el("quest-type").value,"repeatable");
+choose("quest-category","");choose("quest-type","tutorial");assert.deepEqual(questIds(),["discovery"]);
+choose("quest-type","");
 render(fixtures.panoplie);
 const panoplie=el("equipment-set-details").querySelector('[data-set="lisiere"]');
 assert(panoplie.textContent.includes("5 pièce(s) équipée(s)"));

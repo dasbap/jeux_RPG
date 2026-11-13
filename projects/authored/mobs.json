@@ -48,7 +48,9 @@
           "max": 1,
           "rare": false
         }
-      ]
+      ],
+      "race": "Gobelin",
+      "hostile": true
     },
     "orc": {
       "class_name": "Orc",
@@ -81,7 +83,9 @@
           "max": 1,
           "rare": true
         }
-      ]
+      ],
+      "race": "Orc",
+      "hostile": true
     },
     "dragon_whelp": {
       "class_name": "DragonWhelp",
@@ -114,7 +118,9 @@
           "max": 1,
           "rare": true
         }
-      ]
+      ],
+      "race": "Dragon",
+      "hostile": true
     },
     "gobelin_boss": {
       "name": "chef gobelin",
@@ -207,7 +213,9 @@
           "damage_multiplier": 1.5
         }
       ],
-      "level": 3
+      "level": 3,
+      "race": "Gobelin",
+      "hostile": true
     },
     "rat_des_champs": {
       "name": "Rat des champs",
@@ -268,7 +276,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Rat",
+      "hostile": false
     },
     "slime_vert": {
       "name": "Slime vert",
@@ -329,7 +339,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Slime",
+      "hostile": true
     },
     "scarabee_des_pres": {
       "name": "Scarabée des prés",
@@ -390,7 +402,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Scarabée",
+      "hostile": false
     },
     "corbeau_des_bois": {
       "name": "Corbeau des bois",
@@ -451,7 +465,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Corbeau",
+      "hostile": false
     },
     "gobelin_eclaireur": {
       "name": "Gobelin éclaireur",
@@ -512,7 +528,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "garde_gobelin": {
       "name": "Garde gobelin",
@@ -573,7 +591,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "araignee_des_bois": {
       "name": "Araignée des bois",
@@ -634,7 +654,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Araignée",
+      "hostile": true
     },
     "chauve_souris": {
       "name": "Chauve-souris",
@@ -695,7 +717,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Chauve-souris",
+      "hostile": true
     },
     "slime_bleu": {
       "name": "Slime bleu",
@@ -756,7 +780,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Slime",
+      "hostile": true
     },
     "gobelin_apprenti": {
       "name": "Gobelin apprenti",
@@ -830,7 +856,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "loup_gris": {
       "name": "Loup gris",
@@ -891,7 +919,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Loup",
+      "hostile": true
     },
     "sanglier_des_bois": {
       "name": "Sanglier des bois",
@@ -952,7 +982,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Sanglier",
+      "hostile": true
     },
     "gobelin_archer": {
       "name": "Gobelin archer",
@@ -1013,7 +1045,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "squelette_errant": {
       "name": "Squelette errant",
@@ -1074,7 +1108,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Squelette",
+      "hostile": true
     },
     "champignon_anime": {
       "name": "Champignon animé",
@@ -1148,7 +1184,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Végétal",
+      "hostile": true
     },
     "gobelin_chamane": {
       "name": "Gobelin chamane",
@@ -1222,7 +1260,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "kobold_mineur": {
       "name": "Kobold mineur",
@@ -1283,7 +1323,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Kobold",
+      "hostile": true
     },
     "scorpion_des_roches": {
       "name": "Scorpion des roches",
@@ -1344,7 +1386,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Scorpion",
+      "hostile": true
     },
     "ronce_vivante": {
       "name": "Ronce vivante",
@@ -1405,7 +1449,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Végétal",
+      "hostile": true
     },
     "chef_des_rats": {
       "name": "Chef des rats",
@@ -1485,7 +1531,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Rat",
+      "hostile": true
     },
     "gobelin_berserker": {
       "name": "Gobelin berserker",
@@ -1559,7 +1607,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Gobelin",
+      "hostile": true
     },
     "orc_eclaireur": {
       "name": "Orc éclaireur",
@@ -1620,7 +1670,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Orc",
+      "hostile": true
     },
     "golem_d_argile": {
       "name": "Golem d’argile",
@@ -1681,7 +1733,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Golem",
+      "hostile": true
     },
     "spectre_des_brumes": {
       "name": "Spectre des brumes",
@@ -1755,7 +1809,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Spectre",
+      "hostile": true
     },
     "matriarche_araignee": {
       "name": "Matriarche araignée",
@@ -1835,7 +1891,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Araignée",
+      "hostile": true
     },
     "orc_guerrier": {
       "name": "Orc guerrier",
@@ -1896,7 +1954,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Orc",
+      "hostile": true
     },
     "loup_alpha": {
       "name": "Loup alpha",
@@ -1970,7 +2030,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Loup",
+      "hostile": true
     },
     "squelette_archer": {
       "name": "Squelette archer",
@@ -2031,7 +2093,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Squelette",
+      "hostile": true
     },
     "feu_follet": {
       "name": "Feu follet",
@@ -2105,7 +2169,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Feu follet",
+      "hostile": true
     },
     "roi_des_slimes": {
       "name": "Roi des slimes",
@@ -2185,7 +2251,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Slime",
+      "hostile": true
     },
     "orc_chamane": {
       "name": "Orc chamane",
@@ -2259,7 +2327,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Orc",
+      "hostile": true
     },
     "golem_de_pierre": {
       "name": "Golem de pierre",
@@ -2333,7 +2403,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Golem",
+      "hostile": true
     },
     "harpie_des_collines": {
       "name": "Harpie des collines",
@@ -2394,7 +2466,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Harpie",
+      "hostile": true
     },
     "salamandre_de_braise": {
       "name": "Salamandre de braise",
@@ -2455,7 +2529,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Salamandre",
+      "hostile": true
     },
     "chef_kobold": {
       "name": "Chef kobold",
@@ -2535,7 +2611,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Kobold",
+      "hostile": true
     },
     "troll_des_marais": {
       "name": "Troll des marais",
@@ -2609,7 +2687,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Troll",
+      "hostile": true
     },
     "necromancien_errant": {
       "name": "Nécromancien errant",
@@ -2683,7 +2763,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Humain",
+      "hostile": true
     },
     "garde_orc": {
       "name": "Garde orc",
@@ -2744,7 +2826,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Orc",
+      "hostile": true
     },
     "basilic_juvenile": {
       "name": "Basilic juvénile",
@@ -2805,7 +2889,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Basilic",
+      "hostile": true
     },
     "reine_scorpion": {
       "name": "Reine scorpion",
@@ -2885,7 +2971,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Scorpion",
+      "hostile": true
     },
     "ogre_des_collines": {
       "name": "Ogre des collines",
@@ -2959,7 +3047,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Ogre",
+      "hostile": true
     },
     "chevalier_squelette": {
       "name": "Chevalier squelette",
@@ -3020,7 +3110,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Squelette",
+      "hostile": true
     },
     "elementaire_de_braise": {
       "name": "Élémentaire de braise",
@@ -3094,7 +3186,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Élémentaire",
+      "hostile": true
     },
     "griffon_juvenile": {
       "name": "Griffon juvénile",
@@ -3168,7 +3262,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Griffon",
+      "hostile": true
     },
     "chef_orc": {
       "name": "Chef orc",
@@ -3248,7 +3344,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Orc",
+      "hostile": true
     },
     "dragonnet_rouge": {
       "name": "Dragonnet rouge",
@@ -3322,7 +3420,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Dragon",
+      "hostile": true
     },
     "golem_runique": {
       "name": "Golem runique",
@@ -3396,7 +3496,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Golem",
+      "hostile": true
     },
     "liche_apprentie": {
       "name": "Liche apprentie",
@@ -3470,7 +3572,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Liche",
+      "hostile": true
     },
     "gardien_du_bosquet": {
       "name": "Gardien du bosquet",
@@ -3531,7 +3635,9 @@
         }
       ],
       "abilities": [],
-      "phases": []
+      "phases": [],
+      "race": "Esprit",
+      "hostile": true
     },
     "seigneur_gobelin": {
       "name": "Seigneur gobelin",
@@ -3611,7 +3717,9 @@
           "hp_multiplier": 0.5,
           "damage_multiplier": 1.3
         }
-      ]
+      ],
+      "race": "Gobelin",
+      "hostile": true
     },
     "luciole_cuirassee": {
       "parent": "scarabee_des_pres",
@@ -3658,7 +3766,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Scarabée",
+      "hostile": false
     },
     "sanglier_roncier": {
       "parent": "sanglier_des_bois",
@@ -3705,7 +3815,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Sanglier",
+      "hostile": true
     },
     "gardien_de_schiste": {
       "parent": "golem_d_argile",
@@ -3752,7 +3864,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Golem",
+      "hostile": true
     },
     "veilleur_des_brumes": {
       "parent": "spectre_des_brumes",
@@ -3799,7 +3913,9 @@
           "concentration": true
         }
       ],
-      "phases": []
+      "phases": [],
+      "race": "Spectre",
+      "hostile": true
     }
   }
 }

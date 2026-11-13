@@ -26,6 +26,20 @@ class MapEditor:
             if self.path.is_dir():
                 self.path = None
         self.saved = deepcopy(self.maps)
+        from .content import DATA, load_content
+
+        directory = (
+            Path(path)
+            if path and Path(path).is_dir()
+            else Path(path).parent
+            if path
+            else None
+        )
+        self.catalog_content = (
+            load_content(directory / "content.json")
+            if directory and (directory / "content.json").is_file()
+            else DATA
+        )
         self.history = []
         self.size = 24
         self.tool = tk.StringVar(value="Sol")
@@ -714,6 +728,7 @@ class MapEditor:
                 "count": 1,
                 "battlecry": "",
                 "name": "",
+                "hostile": "Espèce (par défaut)",
                 **{key: value for key, value in existing.items() if key != "patrol"},
             }
             result = self.form("Spawner", values)
@@ -725,6 +740,15 @@ class MapEditor:
                     count=int(result["count"]),
                     level=int(result["level"]) if result.get("level") else None,
                 )
+                from .mob_picker import spawner_hostility
+
+                behavior = spawner_hostility(
+                    result.get("hostile", "Espèce (par défaut)")
+                )
+                if behavior is None:
+                    result.pop("hostile", None)
+                else:
+                    result["hostile"] = behavior
                 if existing.get("patrol"):
                     result["patrol"] = deepcopy(existing["patrol"])
                 if (
@@ -990,6 +1014,7 @@ class MapEditor:
                 "dungeon_final": "Salle finale",
                 "dungeon_lock": "Verrouiller la salle suivante tant que des ennemis vivent",
                 "mob_id": "Espèce",
+                "hostile": "Comportement de ce spawner",
                 "battlecry": "Réplique au début du combat (facultatif)",
                 "interaction": "Interaction : talk = parler / inspect = examiner",
                 "count": "Nombre de créatures (1–5)",
@@ -997,6 +1022,33 @@ class MapEditor:
             ttk.Label(window, text=labels.get(key, key)).grid(
                 row=row, column=0, padx=8, pady=5
             )
+            if key == "mob_id":
+                from . import content
+                from .mob_picker import MobPicker
+
+                picker = MobPicker(
+                    window, MOBS, getattr(self, "catalog_content", content.DATA), value
+                )
+                picker.frame.grid(row=row, column=1, sticky="nsew", padx=8, pady=5)
+                entries[key] = picker
+                continue
+            if key == "hostile":
+                entry = ttk.Combobox(
+                    window,
+                    values=["Espèce (par défaut)", "Hostile", "Neutre"],
+                    state="readonly",
+                    width=48,
+                )
+                entry.set(
+                    "Hostile"
+                    if value is True
+                    else "Neutre"
+                    if value is False
+                    else value
+                )
+                entry.grid(row=row, column=1, padx=8, pady=5, sticky="w")
+                entries[key] = entry
+                continue
             if key in (
                 "bidirectional",
                 "pick_points",
@@ -1119,6 +1171,12 @@ class MapEditor:
 
         def accept():
             answer = {key: entry.get() for key, entry in entries.items()}
+            if "mob_id" in answer and answer["mob_id"] not in MOBS:
+                self.messages.showerror(
+                    "Spawner",
+                    "Sélectionnez une espèce ; élargissez les filtres si la liste est vide.",
+                )
+                return
             for endpoint in ("from", "to"):
                 entry_key, map_key = endpoint + "_entry", endpoint + "_map"
                 if entry_key in created_doors:

@@ -14780,7 +14780,28 @@
         "name": "Porte de voyage"
       }
     ],
-    "spawns": [],
+    "spawns": [
+      [
+        18,
+        7
+      ],
+      [
+        15,
+        16
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        26,
+        19
+      ],
+      [
+        26,
+        5
+      ]
+    ],
     "sites": [],
     "water": [
       [
@@ -16462,7 +16483,63 @@
       }
     ],
     "zone_id": "zone_lisiere",
-    "spawners": [],
+    "spawners": [
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          26,
+          5
+        ]
+      },
+      {
+        "mob_id": "gobelin_apprenti",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          18,
+          7
+        ]
+      },
+      {
+        "mob_id": "gobelin_eclaireur",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          15,
+          16
+        ]
+      },
+      {
+        "mob_id": "gobelin_eclaireur",
+        "level": null,
+        "count": 1,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          26,
+          19
+        ]
+      },
+      {
+        "mob_id": "gobelin_archer",
+        "level": null,
+        "count": 1,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          5,
+          1
+        ]
+      }
+    ],
     "world_origin": [
       201,
       12
@@ -16472,7 +16549,8 @@
         578,
         39
       ]
-    }
+    },
+    "bridge_rotations": []
   },
   "hunt": {
     "id": "field_hunt",
@@ -17456,6 +17534,30 @@
       [
         16,
         20
+      ],
+      [
+        45,
+        3
+      ],
+      [
+        43,
+        37
+      ],
+      [
+        4,
+        33
+      ],
+      [
+        6,
+        4
+      ],
+      [
+        27,
+        22
+      ],
+      [
+        19,
+        16
       ]
     ],
     "sites": [],
@@ -22753,6 +22855,72 @@
             13,
             30
           ]
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 5,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          45,
+          3
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          43,
+          37
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 2,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          4,
+          33
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": null,
+        "count": 3,
+        "battlecry": "",
+        "name": "",
+        "position": [
+          6,
+          4
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": 1,
+        "count": 5,
+        "battlecry": "",
+        "name": "bebe gobelin",
+        "position": [
+          27,
+          22
+        ]
+      },
+      {
+        "mob_id": "goblin",
+        "level": 1,
+        "count": 5,
+        "battlecry": "",
+        "name": "bebe gobelin",
+        "position": [
+          19,
+          16
         ]
       }
     ],

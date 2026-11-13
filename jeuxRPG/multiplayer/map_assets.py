@@ -281,6 +281,8 @@ def _validate_map_spawners(maps):
             ):
                 raise ValueError(f"{key} : groupe de 1 à 5 créatures.")
             level = config.get("level")
+            if "hostile" in config and type(config["hostile"]) is not bool:
+                raise ValueError(f"{key} : hostilité du spawner invalide.")
             if level is not None and (type(level) is not int or not 1 <= level <= 100):
                 raise ValueError(f"{key} : niveau du spawner entre 1 et 100.")
             patrol = config.get("patrol", [])

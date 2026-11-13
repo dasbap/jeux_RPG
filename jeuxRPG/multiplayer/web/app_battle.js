@@ -485,7 +485,11 @@ function renderBattle(adventure, me) {
       return retained;
     });
     for (const child of [...previousMap.children]) if (!nodes.includes(child)) child.remove();
-    for (const child of nodes) if (child.parentElement !== previousMap) previousMap.append(child);
+    // SVG paint order matters: refreshed scenery must stay below retained markers.
+    // Insert missing layers in place so hovered/focused markers keep their identity.
+    for (const [index, child] of nodes.entries()) {
+      if (previousMap.children[index] !== child) previousMap.insertBefore(child, previousMap.children[index] || null);
+    }
     previousMap.onwheel = svg.onwheel;
   } else $("world-map").replaceChildren(svg);
   const retainedCards = new Set();
@@ -497,13 +501,15 @@ function renderBattle(adventure, me) {
     card.classList.toggle("selected", focusedMob === mob.combat_id);
     card.setAttribute("aria-label", `${mob.name}, niveau ${mob.level}, rang ${mob.rank}, ${mob.stats.hp.current} sur ${mob.stats.hp.max} PV`);
     let quote=card.querySelector(".mob-quote");
+    const behavior=mob.hostile===false?(mob.provoked?"Provoqué":"Neutre"):"Hostile";
     if(mob.battlecry){if(!quote){quote=document.createElement("p");quote.className="mob-quote";card.append(quote);}if(quote.textContent!==mob.battlecry)quote.textContent=mob.battlecry;}
     else if(quote)quote.remove();
     let intent = card.querySelector(".mob-intent");
     if (!intent) {intent=document.createElement("p");intent.className="mob-intent";card.append(intent);}
     const intention = battle.intents.find(item=>item.id===mob.combat_id);
-    intent.textContent = intention ? `${intention.action}${intention.remaining_seconds>0&&/Entaille|Appel/.test(intention.action)?` · ${intention.remaining_seconds.toFixed(1)} s`:""}` : mob.intent || "";
-    intent.title = intent.textContent;
+    const action = intention ? `${intention.action}${intention.remaining_seconds>0&&/Entaille|Appel/.test(intention.action)?` · ${intention.remaining_seconds.toFixed(1)} s`:""}` : mob.intent || "";
+    intent.textContent = `${behavior}${action?" · "+action:""}`;
+    intent.title = `${intent.textContent}${behavior==="Neutre"?" · Se défend si attaqué":""}`;
     let quick = card.querySelector(".mob-quick-actions");
     if (!quick) {quick = document.createElement("div");quick.className = "mob-quick-actions";card.append(quick);}
     quick.ondblclick = event => event.stopPropagation();

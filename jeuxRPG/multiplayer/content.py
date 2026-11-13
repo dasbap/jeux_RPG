@@ -176,6 +176,13 @@ QUEST_CATEGORIES = (
     "dialogue",
 )
 QUEST_KINDS = ("kill", "craft", "upgrade", "story")
+QUEST_TYPES = ("main", "side", "tutorial")
+
+
+def quest_type(quest):
+    """Keep narrative importance separate from objective category and recurrence."""
+    category = quest.get("category")
+    return quest.get("quest_type", category if category in QUEST_TYPES else "side")
 
 
 def _validate_world_rules(data):
@@ -356,6 +363,7 @@ def _validate_objectives(data):
             if section == "quests":
                 if (
                     item.get("kind") not in QUEST_KINDS
+                    or quest_type(item) not in QUEST_TYPES
                     or type(item.get("count")) is not int
                     or not 1 <= item["count"] <= 10000
                     or type(item.get("reward_xp")) is not int
@@ -434,6 +442,7 @@ def validate_content(data):
         "templates",
         "gameplay",
         "narrative",
+        "interface",
     } != set(DEFAULTS):
         raise ValueError("Sections monde, quêtes et succès requises.")
     _validate_world_rules(data)
@@ -457,6 +466,9 @@ def validate_content(data):
     from .gameplay_catalog import validate as validate_gameplay
 
     result = deepcopy(data)
+    from .interface_catalog import settings as interface_settings
+
+    result["interface"] = interface_settings(result)
     result["gameplay"] = validate_gameplay(result.get("gameplay", gameplay_defaults))
     return result
 
