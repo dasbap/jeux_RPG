@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: jeux-rpg-render-test
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: migration/render-single-d1
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    # Build/test automation is prepared; avoid overlapping engine deployments.
+    autoDeployTrigger: off
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - key: RPG_RUNTIME_MODE
+        value: single
+      - key: RPG_DATABASE_BACKEND
+        value: d1
+      - key: RPG_DEPLOYMENT_STAGE
+        value: preview
+      - key: RPG_D1_WORKER_URL
+        value: https://jeux-rpg-oracle-test.dasbap-jeux-rpg.workers.dev
+      - key: RPG_D1_SERVICE_TOKEN
+        sync: false
+      - key: RPG_ADMIN_TOKEN
+        generateValue: true
+      - key: RPG_RUNTIME_REALMS
+        value: '1'
+      - key: WEB_CONCURRENCY
+        value: '1'

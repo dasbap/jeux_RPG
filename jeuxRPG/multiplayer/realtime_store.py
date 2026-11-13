@@ -7,6 +7,7 @@ from copy import deepcopy
 from .d1_client import D1Client
 from .distributed import PresenceRegistry
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
+from .runtime_configuration import account_auth_required
 from .schema import initialize
 from .serverless import Application, RemoteGameService
 from .storage_configuration import database_backend
@@ -136,7 +137,7 @@ class RuntimeStore:
             clock=clock,
             presence_registry=PresenceRegistry(),
         )
-        self.service.legacy_auth = not bool(environment.get("VERCEL"))
+        self.service.legacy_auth = not account_auth_required(environment)
         self.service.realm_count = max(
             1, min(3, int(environment.get("RPG_RUNTIME_REALMS", "1")))
         )

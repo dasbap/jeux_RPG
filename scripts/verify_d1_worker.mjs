@@ -78,6 +78,14 @@ try {
   assert.equal(inspected.status, 200);
   assert.deepEqual((await inspected.json()).sequences, []);
   assert.equal(db.prepare("SELECT value FROM meta WHERE key='runtime_fence'").get().value, "22");
+  const claimed = await request({ operation: "claim_snapshot" });
+  assert.equal(claimed.status, 200);
+  assert.equal((await claimed.json()).data.meta.find(row => row.key === "runtime_fence").value, "23");
+  const claimedAgain = await request({ operation: "claim_snapshot" });
+  assert.equal((await claimedAgain.json()).data.meta.find(row => row.key === "runtime_fence").value, "24");
+  const oldEngine = await request({ operation: "persist_checkpoint", fence: 23, changes: [] });
+  assert.equal(oldEngine.status, 409);
+  assert.equal((await oldEngine.json()).error, "stale_runtime_fence");
   db.exec("DROP TRIGGER reject_stale_runtime_fence_update");
   assert.equal((await request({ operation: "health" })).status, 503);
   console.log("Worker D1 : relations différées, rollback et rejet des anciens moteurs vérifiés sur SQLite local.");

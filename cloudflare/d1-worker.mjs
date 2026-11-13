@@ -62,6 +62,13 @@ export default {
     const batch=await session.batch([...TABLES.map(t=>session.prepare("SELECT * FROM "+t)),session.prepare("SELECT name,seq FROM sqlite_sequence")]);
     return reply({data:Object.fromEntries(TABLES.map((t,i)=>[t,batch[i].results])),sequences:batch[TABLES.length].results});
    }
+   if(body.operation==="claim_snapshot"){
+    const session=env.DB.withSession("first-primary");
+    // Atomic allocation, independent of VM clocks and preserved across restarts.
+    const claim=session.prepare("INSERT INTO meta(key,value) VALUES('runtime_fence','1') ON CONFLICT(key) DO UPDATE SET value=CAST(CAST(meta.value AS INTEGER)+1 AS TEXT)");
+    const batch=await session.batch([claim,...TABLES.map(t=>session.prepare("SELECT * FROM "+t))]);
+    return reply({data:Object.fromEntries(TABLES.map((t,i)=>[t,batch[i+1].results]))});
+   }
    if(body.operation==="load_snapshot"){
     if(!validFence(body.fence)) return reply({error:"invalid_fence"},400);
     const session=env.DB.withSession("first-primary");

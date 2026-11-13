@@ -1,0 +1,15 @@
+{
+  "name": "jeux-rpg-oracle-test",
+  "main": "d1-worker.mjs",
+  "account_id": "f95afeda8a89102a14ed5d7eeabd068c",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jeux-rpg-preview",
+      "database_id": "bf29ab72-c4a8-440b-a106-da6badde250c"
+    }
+  ]
+}

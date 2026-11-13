@@ -2,6 +2,10 @@
 
 Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une interface HTML/JavaScript et un monde éditable dans le Builder. La production utilise FastAPI sur Vercel, Redis pour la coordination et **Cloudflare D1 pour les données durables**. Le serveur local utilise un fichier SQLite ; le solo conserve sa sauvegarde sur le client.
 
+La [recette sur Render Free](docs/RENDER.md) remplace le projet Oracle abandonné faute de capacité. Le mode expérimental `single` utilise D1 sans service Redis. La production Vercel reste inchangée pendant la recette isolée.
+Une [première recette à 40 WebSockets](docs/oracle-test-20261113/REPORT.md) a réussi avec un moteur local et D1 distant isolé ; la capacité CPU, RAM et réseau sur Render reste à mesurer.
+Le conteneur Render utilise le HTTPS de la plateforme, sans Caddy, DuckDNS ni contrôleur de réveil. Les validations et sauvegardes indépendantes sont préparées dans GitHub Actions ; aucun service Render n'est encore déployé.
+
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Les duels simplifiés restent des démonstrations historiques ; le PvP est désactivé en production.
 
 L’[architecture actuelle](docs/ARCHITECTURE.md) est la référence pour les modes d’exécution, le stockage et la capacité. La [migration D1](docs/D1_PRODUCTION.md) est terminée depuis le 6 novembre 2026. Le réglage de 40 joueurs n’est pas une garantie de capacité : les anciens essais HTTP locaux ne mesurent pas 40 WebSockets sur Vercel/Redis/D1.

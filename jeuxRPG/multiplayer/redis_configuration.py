@@ -7,6 +7,10 @@ class RedisConfigurationError(RuntimeError):
 
 
 def redis_url(environment):
+    from .runtime_configuration import runtime_mode
+
+    if runtime_mode(environment) == "single":
+        return None
     configured = environment.get("REDIS_URLS")
     if not configured:
         return environment.get("REDIS_URL") or environment.get("KV_URL")

@@ -1,0 +1,18 @@
+# Allow only application source and package metadata into the build context.
+**
+!pyproject.toml
+!constraints.txt
+!jeuxRPG/
+!jeuxRPG/**
+!deploy/
+!deploy/render/
+!deploy/render/Dockerfile
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.sqlite3
+**/*.db
+**/*.log
