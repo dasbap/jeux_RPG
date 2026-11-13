@@ -1,4 +1,4 @@
-# Déploiement Vercel et stockage D1/Turso
+# Déploiement Vercel et stockage Cloudflare D1
 
 Le projet cible est `dasbaps-projects/jeux-rpg`. `fleet-test` ne doit pas être modifié.
 
@@ -11,7 +11,7 @@ L’application déployée expose `app:app`, une application FastAPI/ASGI créé
 
 ## Variables Vercel
 
-- `RPG_DATABASE_BACKEND` : `d1` pour Cloudflare D1, `turso` pour le stockage historique. Sans valeur, les déploiements existants restent sur Turso jusqu'à la bascule validée.
+- `RPG_DATABASE_BACKEND=d1` : valeur active et requise pour la production actuelle. Le code conserve un défaut historique `turso` si cette variable manque ; ne pas l’omettre dans un environnement D1.
 - En mode `d1` : `RPG_D1_WORKER_URL` et `RPG_D1_SERVICE_TOKEN`, identiques à ceux du Worker privé. Aucun identifiant Turso n'est requis.
 - En mode `turso` : `TURSO_DATABASE_URL` (URL libSQL ou HTTPS) et `TURSO_AUTH_TOKEN` (lecture et écriture).
 - `RPG_ADMIN_TOKEN` : secret aléatoire distinct, au moins 32 caractères, pour le panneau administrateur.
@@ -20,7 +20,7 @@ L’application déployée expose `app:app`, une application FastAPI/ASGI créé
 - `REDIS_URLS` : liste JSON facultative d'URL Redis ; a priorité sur les deux variables précédentes.
 - `RPG_REDIS_ACTIVE_INDEX` : index de l'instance active dans cette liste, à partir de 0. Le moteur et les autres services Redis utilisent tous cet index.
 
-Configurer ces valeurs pour les environnements réellement déployés. Les previews doivent utiliser une base distincte pour isoler les données. Les secrets GitHub ne sont pas transmis automatiquement à Vercel.
+Configurer ces valeurs pour les environnements réellement déployés. La variable GitHub `RPG_DATABASE_BACKEND` et les paramètres D1 sont dans l’environnement `production`, pas nécessairement au niveau du dépôt. Les workflows conservent aussi un repli historique `turso` si la variable manque. Les previews doivent utiliser une base et un Worker distincts. Le workflow synchronise les paramètres nécessaires vers Vercel ; les secrets GitHub ne sont pas transmis automatiquement en dehors de cette procédure.
 
 ## Initialiser et contrôler le stockage
 
@@ -28,7 +28,7 @@ Dans GitHub Actions, sélectionner **Administration du stockage**, puis **Run wo
 
 Le workflow de publication sur `prod` crée une sauvegarde du backend actif, vérifie sa restauration, la chiffre avec age et conserve uniquement sa copie chiffrée pendant trente jours dans GitHub. Il vérifie ensuite la base avant le build et la publication. Les variables du backend sont limitées aux étapes qui en ont besoin.
 
-`TURSO_DATABASE_URL` doit être un secret ou une variable GitHub Actions ; `TURSO_AUTH_TOKEN` doit être un secret Actions. Un jeton de base donne accès à une base existante ; il ne permet pas de créer une nouvelle base dans une organisation Turso.
+En production D1, renseigner `RPG_D1_WORKER_URL` et le secret `RPG_D1_SERVICE_TOKEN` dans l’environnement GitHub `production`. Les variables `TURSO_DATABASE_URL` et `TURSO_AUTH_TOKEN` ne concernent que l’ancien adaptateur et ses outils d’export ; elles ne sont pas requises par le moteur D1.
 
 Pour Turso, l'initialisation transactionnelle existante intervient après la sauvegarde. Pour D1, le schéma et les triggers doivent être installés sur la cible avant publication ; le contrôle refuse un schéma incompatible et ne migre pas silencieusement la base. La procédure et les preuves de l'import réel sont dans [D1_PREPRODUCTION.md](D1_PREPRODUCTION.md).
 
@@ -44,16 +44,16 @@ Le jeu dispose désormais de comptes nom d’utilisateur/mot de passe avec plusi
 
 La production utilise un moteur temps réel coordonné par Redis avec WebSocket sur `/api/ws`. Un propriétaire actif maintient l’état en mémoire, publie les changements et persiste les checkpoints vers le backend sélectionné avec fencing ; les autres instances relaient les requêtes via Redis. Les moteurs D1 utilisent un espace de coordination distinct par URL de Worker. Aucun état durable n’est sauvegardé sur le disque Vercel.
 
-Le contrôle avant build vérifie les fichiers et les variables sans afficher les secrets. Il ne valide pas la connexion distante. Après déploiement, vérifier inscription, reprise de partie, chargement de tous les modules frontend, WebSocket, combat, chat entre deux navigateurs, suspension/rétablissement et conservation des données après redéploiement. La CI contient également un smoke test de charge configurable ; les limites réelles du plan Turso/Redis doivent encore être validées sur une preview de production.
+Le contrôle avant build vérifie les fichiers et les variables sans afficher les secrets. Il ne valide pas la connexion distante. Après déploiement, vérifier inscription, reprise de partie, chargement de tous les modules frontend, WebSocket, combat, chat entre deux navigateurs, suspension/rétablissement et conservation des données après redéploiement. La CI contient également un smoke test de charge configurable ; la capacité à 40 WebSockets sur Vercel/Redis/D1 et la consommation Workers/D1 restent à mesurer sur un environnement de recette isolé. Les anciens tests HTTP locaux ne valident pas cette capacité ; voir [ARCHITECTURE.md](ARCHITECTURE.md#mesures-disponibles-et-limites).
 
 ## Branche de publication
 
 `master` contient le code intégré. `prod` est la branche publiée par le workflow **Publication Vercel jeux-rpg** à chaque push, ainsi que lors d'un lancement manuel sur cette branche.
 
-Pour configurer plusieurs instances, ajouter le secret `REDIS_URLS` et la variable `RPG_REDIS_ACTIVE_INDEX` dans l'environnement GitHub `production`. Le workflow les synchronise vers Vercel et restaure les secrets CI pour le build local, car les secrets Vercel récupérés par `vercel pull` sont remplacés par `[SENSITIVE]`. La procédure de bascule et la reprise depuis Turso sont décrites dans [realtime.md](realtime.md#plusieurs-url-redis).
+Pour configurer plusieurs instances, ajouter le secret `REDIS_URLS` et la variable `RPG_REDIS_ACTIVE_INDEX` dans l'environnement GitHub `production`. Le workflow les synchronise vers Vercel et restaure les secrets CI pour le build local, car les secrets Vercel récupérés par `vercel pull` sont remplacés par `[SENSITIVE]`. La procédure de bascule et la reprise depuis D1 sont décrites dans [realtime.md](realtime.md#plusieurs-url-redis).
 
 Le workflow exécute les tests et contrôles du stockage, prépare un déploiement de production avec `--skip-domain`, contrôle son URL exacte et son `RPG_RELEASE_SHA`, puis promeut ce même déploiement. Le domaine public reste sur la précédente version tant que la vérification échoue. `VERCEL_TOKEN`, les accès du backend sélectionné et les accès Redis doivent correspondre au projet existant. Pour un déploiement protégé, fournir le secret `VERCEL_AUTOMATION_BYPASS_SECRET` au vérificateur.
 
 Avant de lancer un workflow utilisant les secrets, protéger la branche et faire relire le code, ou configurer un reviewer requis de l’environnement GitHub `production` qui approuve le commit exact. La création de la branche ne configure pas ces règles et ne modifie pas le site public.
 
-Les dépendances de CI sont contraintes par `constraints.txt`. Les limites mesurées localement ne constituent pas une capacité garantie du plan Vercel. Conserver une sauvegarde Turso avant les migrations et vérifier la restauration sur une base distincte.
+Les dépendances de CI sont contraintes par `constraints.txt`. Les limites mesurées localement ne constituent pas une capacité garantie du plan Vercel. Conserver une sauvegarde du D1 actif avant les migrations et vérifier sa restauration sur une base distincte. Ne pas promouvoir l’ancienne base Turso après des écritures D1 sans conserver cette progression.

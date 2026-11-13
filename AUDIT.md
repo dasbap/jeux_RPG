@@ -1,5 +1,7 @@
 # Audit du moteur RPG — 30 septembre 2026
 
+> **Archive historique — état observé à la date du rapport.** Les mentions de Turso, de branches retirées, de blocages et de tests ne décrivent pas nécessairement la production actuelle. Voir [l’architecture actuelle](docs/ARCHITECTURE.md) et [la bascule D1 terminée le 6 novembre 2026](docs/D1_PRODUCTION.md). Les mesures ci-dessous gardent leur révision et leur périmètre ; les essais HTTP locaux à 40 utilisateurs ne valident pas 40 WebSockets sur Vercel/Redis/D1.
+
 Révision de départ : `21e8d2be74b1fc3d5490a946878ce7d2ded57378`.
 
 ## Résultats locaux

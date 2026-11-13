@@ -3,9 +3,16 @@
 ## État
 
 **Bascule terminée et vérifiée.** Le site public
-[jeux-rpg.vercel.app](https://jeux-rpg.vercel.app/) utilise D1. Son
-[healthcheck](https://jeux-rpg.vercel.app/health) annonce `database_backend=d1`
-et le SHA `86368f282af7fb0975bd21da5d79d6afa3adf021`.
+[jeux-rpg.vercel.app](https://jeux-rpg.vercel.app/) utilise D1. Lors de la bascule
+du 6 novembre, son [healthcheck](https://jeux-rpg.vercel.app/health) annonçait
+`database_backend=d1` et le SHA `86368f282af7fb0975bd21da5d79d6afa3adf021`.
+Ce SHA désigne cette publication historique, pas chaque déploiement ultérieur.
+
+Le 13 novembre 2026, le healthcheck public a été relu : `status=ok` et
+`database_backend=d1`. L’environnement GitHub `production` sélectionne toujours
+`RPG_DATABASE_BACKEND=d1`. L’[architecture actuelle](ARCHITECTURE.md) précise
+les modes d’exécution, les fréquences de synchronisation et les limites des tests
+à 40 joueurs ; ces vérifications de disponibilité ne sont pas un test de charge.
 
 ## Transfert final
 
