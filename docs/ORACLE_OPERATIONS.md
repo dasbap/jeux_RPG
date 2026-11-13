@@ -1,3 +1,9 @@
+# Archive : Oracle abandonné le 14 novembre 2026
+
+Le dossier `deploy/oracle` a été supprimé. Ce document conserve le plan initial ;
+ne pas exécuter ses instructions. La recette active est décrite dans [RENDER.md](RENDER.md).
+
+
 # Installation et automatisation Oracle
 
 ## État au 13 novembre 2026
@@ -218,8 +224,3 @@ La VM ARM64, le certificat réel, le déploiement SSH et l'exécution des nouvea
 workflows sur GitHub restent à vérifier après création des comptes et mise à
 disposition de l'hôte. Le [test de 40 sockets déjà réalisé](oracle-test-20261113/REPORT.md)
 utilise toujours le moteur local et D1 distant, pas une VM Oracle.
-# Archive : Oracle abandonné le 14 novembre 2026
-
-Le dossier `deploy/oracle` a été supprimé. Ce document conserve le plan initial ;
-ne pas exécuter ses instructions. La recette active est décrite dans [RENDER.md](RENDER.md).
-

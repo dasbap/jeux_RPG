@@ -1,3 +1,9 @@
+# Archive : Oracle abandonné le 14 novembre 2026
+
+Le moteur mono-instance D1 reste réutilisé. Les instructions Oracle ci-dessous sont
+historiques ; voir [la recette Render Free](RENDER.md) pour la cible active.
+
+
 # Migration Oracle : moteur et recette D1
 
 Branche de travail : `migration/oracle-single-d1`. La production reste sur
@@ -153,8 +159,3 @@ node scripts/verify_d1_worker.mjs
 La capacité à 40 joueurs en production, la disponibilité Always Free et le réveil
 ne sont pas validés par cette recette locale avec D1 distant. Les données présentes seulement en RAM
 restent exposées à une panne brutale.
-# Archive : Oracle abandonné le 14 novembre 2026
-
-Le moteur mono-instance D1 reste réutilisé. Les instructions Oracle ci-dessous sont
-historiques ; voir [la recette Render Free](RENDER.md) pour la cible active.
-
