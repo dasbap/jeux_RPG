@@ -251,7 +251,7 @@ async function main() {
     assert(el(first, "quest-view").hidden);
     assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     const selected = el(first, "map-place").value;
-    el(first, "quest-actions").querySelector("button").click();
+    await first.window.demoRefresh();
     assert.equal(el(first, "map-place").value, selected);
     assert(el(first, "map-details").open && !el(first, "region-view").hidden);
     assert(!el(first, "world-map").querySelector(".objective-ring"));
@@ -339,6 +339,8 @@ async function main() {
     await command(first, "talk", {npc: "mira"});
     await move(first, "forge");
     await waitFor(() => /Garrik/.test(el(first, "npc-title").textContent) && /Garrik/.test(el(second, "npc-title").textContent), "forge partagée");
+    el(first, "npc-actions").querySelector("button").click();
+    await waitFor(() => el(first, "craft-view").open, "ouverture de la forge après le retour");
     assert.equal(el(first, "forge-catalogue").children.length, 6);
     assert(el(first, "forge-catalogue").textContent.includes("+2 intelligence"));
     assert(el(first, "forge-catalogue").textContent.includes("+2 force"));

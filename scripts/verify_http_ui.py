@@ -70,6 +70,10 @@ def main():
                 next(iter(necromancer["battle"]["summons"].values()))["position"] = [10, 1]
                 field_village = tutorial.new_party([{ "id": "p0", "name": "Test", "class_name": "Knight"}])
                 next(site for site in tutorial.fields.MAPS["rosee"]["sites"] if site["id"] == "mira")["dialogue"] = "Bienvenue au village."
+                next(site for site in tutorial.world.WORLD_MAP_DATA["rosee"]["sites"] if site["id"] == "mira")["dialogue"] = "Bienvenue au village."
+                from jeuxRPG.multiplayer.world_topology import compile_world
+                for name, value in zip(("PLACES", "VILLAGE_STREETS", "ROUTES", "LEVELS", "POINT_MAPS", "ZONE_ENTRIES", "EDGES"), compile_world(tutorial.world.WORLD_MAP_DATA), strict=True):
+                    setattr(tutorial.world, name, value)
                 tutorial.fields.start(field_village, 0)
                 field_village["step"] = "road"
                 tutorial.fields.enter(field_village, "rosee", [32, 20], 0)
