@@ -183,7 +183,6 @@ class LayoutEditor:
         self.draw()
 
     def draw(self):
-        from . import world
 
         self.canvas.delete("all")
         self.places = layout_places(self.editor.maps)
@@ -192,7 +191,7 @@ class LayoutEditor:
         if general:
             for key, place in self.places.items():
                 self.nodes[key] = (place["x"], place["y"], place["name"])
-            routes = self.editor.maps["clearing"].get("travel_routes", world.ROUTES)
+            routes = self.editor.maps["clearing"].get("travel_routes", [])
             edges = [(r["from"], r["to"]) for r in routes]
             edges.extend(
                 (key, gate["destination"])
@@ -435,9 +434,7 @@ class LayoutEditor:
             )
             return
         candidate = deepcopy(self.editor.maps)
-        routes = candidate["clearing"].setdefault(
-            "travel_routes", deepcopy(world.ROUTES)
-        )
+        routes = candidate["clearing"].setdefault("travel_routes", [])
         routes.append(
             {
                 "id": "link_" + uuid.uuid4().hex[:16],

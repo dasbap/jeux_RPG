@@ -4,6 +4,24 @@ Un tutoriel RPG jouable seul ou en coopération à deux dans le navigateur, avec
 
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Un duel simplifié reste disponible comme démonstration optionnelle.
 
+## Application Windows
+
+Construire le client `.exe` à partir de la version web, depuis Windows :
+
+```powershell
+.\build-client.cmd
+```
+
+Résultat : `dist/client/Jeux-RPG.exe`, également mis à jour dans `dist/windows/Jeux-RPG.exe`. Le solo est embarqué et fonctionne hors
+ligne ; le multijoueur se connecte au site. Node.js 22.12+ et Python 3.11+ sont
+requis pour construire, aucun des deux n'est nécessaire pour jouer avec le `.exe`.
+Voir [le guide du client Windows](docs/CLIENT_WINDOWS.md) pour les sauvegardes et
+les mises à jour.
+
+## Windows, Linux et Android
+
+`build-distribution.cmd` construit les trois formats dans `dist/windows`, `dist/linux` et `dist/mobile` : exécutable Windows, AppImage et archive Linux, APK Android signé. Le contenu du Builder et le solo hors ligne sont embarqués sur chaque plateforme. Voir [les instructions de construction](docs/CONSTRUCTION_MULTIPLATEFORME.md) et [les instructions pour jouer](docs/DISTRIBUTION_LIREMOI.md).
+
 ## Démarrer en local
 
 Python **3.11 ou plus récent** est requis. Aucun compte externe, bot Discord ou service de base de données n'est nécessaire.

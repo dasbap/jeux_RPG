@@ -126,6 +126,8 @@ def create_mob(maps, identifier, config, index, first=False):
     return {
         **tutorial.pack(actor),
         "mob_id": config["mob_id"],
+        "hostile": config.get("hostile", definition.get("hostile", True)),
+        "race": definition.get("race", definition["class_name"]),
         "rank": definition["rank"],
         "attack_damage": round(
             definition["damage"] + (level - 1) * definition["damage_growth"]
@@ -149,6 +151,44 @@ def create_mob(maps, identifier, config, index, first=False):
         "xp_multiplier": definition.get("xp_multiplier", 1),
         **({"xp_class": definition["xp_class"]} if "xp_class" in definition else {}),
     }
+
+
+def migrate_behavior(party, maps):
+    """Give pre-Builder-hostility saves the species/spawner defaults once."""
+    for map_id, snapshot in [
+        (party.get("field_map"), party),
+        *party.get("fields", {}).items(),
+    ]:
+        configurations = spawners(maps[map_id]) if map_id in maps else []
+        for mob in snapshot.get("mobs", []):
+            if "hostile" in mob:
+                continue
+            definition = (
+                resolve(MOBS, mob["mob_id"]) if mob.get("mob_id") in MOBS else {}
+            )
+            config = next(
+                (
+                    config
+                    for index, config in enumerate(configurations)
+                    if mob.get("combat_id") == f"{map_id}-mob-{index}"
+                ),
+                {},
+            )
+            if not definition and not config:
+                continue
+            mob["hostile"] = config.get("hostile", definition.get("hostile", True))
+            if not mob["hostile"]:
+                mob["provoked"] = bool(mob.get("last_hit_by"))
+                if not mob["provoked"]:
+                    mob.update(
+                        alerted=False,
+                        target=None,
+                        state="patrol",
+                        last_known=None,
+                        calling_until=None,
+                        windup_until=None,
+                    )
+                    mob.pop("ability_cast", None)
 
 
 def sync_overlap(maps, identifier):

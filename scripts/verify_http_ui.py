@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from pathlib import Path
 import subprocess
 import tempfile
@@ -8,6 +9,8 @@ import time
 from types import SimpleNamespace
 
 reference_world = Path(__file__).resolve().parent.parent / "test" / "fixtures" / "reference_world"
+if os.environ.get("RPG_REQUIRE_INSTALLED") != "1":
+    sys.path.insert(0, str(reference_world.parents[2]))
 if reference_world.is_dir():
     os.environ.setdefault("RPG_MAPS_FILE", str(reference_world))
 
@@ -66,6 +69,11 @@ def main():
                 necromancer["mobs"][0]["position"] = [12, 1]
                 next(iter(necromancer["battle"]["summons"].values()))["position"] = [10, 1]
                 field_village = tutorial.new_party([{ "id": "p0", "name": "Test", "class_name": "Knight"}])
+                next(site for site in tutorial.fields.MAPS["rosee"]["sites"] if site["id"] == "mira")["dialogue"] = "Bienvenue au village."
+                next(site for site in tutorial.world.WORLD_MAP_DATA["rosee"]["sites"] if site["id"] == "mira")["dialogue"] = "Bienvenue au village."
+                from jeuxRPG.multiplayer.world_topology import compile_world
+                for name, value in zip(("PLACES", "VILLAGE_STREETS", "ROUTES", "LEVELS", "POINT_MAPS", "ZONE_ENTRIES", "EDGES"), compile_world(tutorial.world.WORLD_MAP_DATA), strict=True):
+                    setattr(tutorial.world, name, value)
                 tutorial.fields.start(field_village, 0)
                 field_village["step"] = "road"
                 tutorial.fields.enter(field_village, "rosee", [32, 20], 0)

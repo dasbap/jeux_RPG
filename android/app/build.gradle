@@ -1,0 +1,39 @@
+plugins { id 'com.android.application' }
+
+def signing = new Properties()
+def signingFile = rootProject.file('../.signing/android/signing.properties')
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
+
+android {
+    namespace 'fr.jeuxrpg.mobile'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'fr.jeuxrpg.mobile'
+        minSdk 29
+        targetSdk 35
+        versionCode 11000
+        versionName '0.11.0'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            if (!signing.isEmpty()) {
+                storeFile rootProject.file(signing['storeFile'])
+                storePassword signing['storePassword']
+                keyAlias signing['keyAlias']
+                keyPassword signing['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.debug'; versionNameSuffix '-debug' }
+        release { signingConfig signingConfigs.release; minifyEnabled false; debuggable false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    androidResources { noCompress += ['wasm', 'zip'] }
+}
+
+dependencies { implementation 'androidx.webkit:webkit:1.14.0' }

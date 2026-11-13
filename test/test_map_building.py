@@ -7,18 +7,16 @@ import pytest
 
 from jeuxRPG.multiplayer import fields, map_assets, map_building, tactics, tutorial, world
 from jeuxRPG.multiplayer.map_editor import MapEditor
+from jeuxRPG.multiplayer.world_topology import compile_world
 
 
 @pytest.fixture(autouse=True)
 def stable_builder_scenarios(monkeypatch):
     data = json.loads((Path(__file__).parent / 'fixtures' / 'fields.json').read_text(encoding='utf-8'))
     monkeypatch.setattr(fields, 'MAPS', data)
-    places = deepcopy(world.PLACES)
-    for key, definition in data.items():
-        zone = fields.zone_of(data, key)
-        if key != zone and not any(point['id'] == key for place in places.values() for point in place['points']):
-            places[zone]['points'].append({'id': key, 'name': definition['name'], 'kind': 'field'})
-    monkeypatch.setattr(world, 'PLACES', places)
+    monkeypatch.setattr(world, 'WORLD_MAP_DATA', data)
+    for name, value in zip(('PLACES', 'VILLAGE_STREETS', 'ROUTES', 'LEVELS', 'POINT_MAPS', 'ZONE_ENTRIES', 'EDGES'), compile_world(data), strict=True):
+        monkeypatch.setattr(world, name, value)
     for definition in data.values():
         monkeypatch.setitem(tactics.PRESETS, definition['id'], definition)
 

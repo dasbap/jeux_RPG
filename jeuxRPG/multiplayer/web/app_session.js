@@ -70,7 +70,10 @@ async function command(action, params = {}) {
         if (error.code !== "stale_revision" || !currentParams.session_id || attempt === 4) throw error;
         const state = await api("/api/state");
         if (!state.session || state.session.id !== currentParams.session_id) throw error;
-        if (!session || session.id !== state.session.id || state.session.revision >= session.revision) session = state.session;
+        // After an explicit rejection, the server snapshot is authoritative even
+        // if its revision went backwards (for example after a server restart).
+        stateEpoch++;
+        session = state.session;
         currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
         if (["move", "travel"].includes(action)) { const paths = worldPaths(session.tutorial, currentParams.destination); if (paths) currentParams.paths = paths; }
         if (action === "battle_move" && session.tutorial?.battle) {
@@ -87,8 +90,9 @@ async function command(action, params = {}) {
       if (session?.id === data.session.id && data.session.revision >= session.revision) session = {...session, revision: data.session.revision, state: data.session.state};
     } else if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
     if (!session) return;
+    if (action === "talk") $("story-dialog")?.removeAttribute("data-dismissed");
     if (action === "talk") message(data.session.events?.at(-1)?.message || "Dialogue mis à jour dans le journal de quête.");
-    if (action === "talk" && params.npc === "forge") openForge();
+    if (action === "talk" && params.npc === "forge" && !session.tutorial?.narrative) openForge();
     if (["craft", "upgrade"].includes(action)) $("forge-feedback").textContent = data.session.events?.at(-1)?.message || "Équipement mis à jour.";
     sessionId = session.id;
     remember();
@@ -154,9 +158,9 @@ $("restore-form").addEventListener("submit", async event => {
   finally { busy = false; }
 });
 for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
-$("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map"); });
+$("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map", {toggle: false}); });
 $("game-menu-toggle").addEventListener("click", () => toggleGameMenu());
-document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial || $("craft-view").open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
+document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial || $("craft-view").open || $("story-dialog")?.open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
 $("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderGame(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;

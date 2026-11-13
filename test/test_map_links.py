@@ -62,8 +62,14 @@ def test_fast_route_without_portals_supports_independent_directions(monkeypatch)
     one_way = remove_link(result, 'clearing', 'route', len(routes)-1)
     route = one_way['clearing']['travel_routes'][-1]
     assert (route['from'], route['to'], route['bidirectional']) == ('new_zone', 'clearing', False)
-    monkeypatch.setattr(world, 'ROUTES', one_way['clearing']['travel_routes'])
-    monkeypatch.setitem(world.PLACES, 'new_zone', {'name': 'Zone', 'points': []})
+    from jeuxRPG.multiplayer.world_topology import compile_world
+    compiled = compile_world(one_way)
+    monkeypatch.setattr(world, 'WORLD_MAP_DATA', one_way)
+    for name, value in zip(
+        ('PLACES', 'VILLAGE_STREETS', 'ROUTES', 'LEVELS', 'POINT_MAPS', 'ZONE_ENTRIES', 'EDGES'), compiled
+    ):
+        monkeypatch.setattr(world, name, value)
+    monkeypatch.setattr(world, 'ROAD_POINTS', {r['id']: {'zone': r['from'], 'name': r['name']} for r in compiled[2]})
     graph = world.graph(['clearing', 'new_zone'])
     assert route['id'] not in graph['clearing']
     assert route['id'] in graph['new_zone']

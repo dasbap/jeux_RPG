@@ -19,6 +19,10 @@ def finite(value, low, high):
     return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
 
 
+def is_hostile(mob):
+    return mob.get("hostile", True) or mob.get("provoked", False)
+
+
 def resolve(mobs, identifier, visited=None):
     visited = set() if visited is None else visited
     if identifier not in mobs or identifier in visited:
@@ -159,6 +163,13 @@ def validate_mobs(mobs, classes=None, xp_classes=None):
         if raw.get("parent") is not None and not isinstance(raw["parent"], str):
             raise ValueError("Parent invalide.")
         item = resolve(mobs, identifier)
+        if "race" in item and (
+            not isinstance(item["race"], str)
+            or not 1 <= len(item["race"].strip()) <= 64
+        ):
+            raise ValueError("Race du mob : texte de 1 à 64 caractères requis.")
+        if type(item.get("hostile", True)) is not bool:
+            raise ValueError("Hostilité du mob : booléen requis.")
         if "level" in item and (
             type(item["level"]) is not int or not 1 <= item["level"] <= 100
         ):

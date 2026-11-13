@@ -1,5 +1,6 @@
 "use strict";
-if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")) {
+const rpgRealtimeUrl = globalThis.document?.querySelector?.('meta[name="rpg-realtime-url"]')?.content;
+if (typeof WebSocket === "function" && (location.hostname.endsWith(".vercel.app") || rpgRealtimeUrl)) {
   globalThis.rpgRealtime = (() => {
     let socket = null;
     let opening = null;
@@ -32,8 +33,8 @@ if (typeof WebSocket === "function" && location.hostname.endsWith(".vercel.app")
       if (connected && socket?.readyState === WebSocket.OPEN) return Promise.resolve(socket);
       if (Date.now() < retryAt) return Promise.reject(new Error("Reconnexion temporisée."));
       opening = new Promise((resolve, reject) => {
-        const endpoint = new URL("/api/ws", location.href);
-        endpoint.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const endpoint = new URL(rpgRealtimeUrl || "/api/ws", location.href);
+        endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
         const connection = new WebSocket(endpoint);
         socket = connection;
         const deadline = setTimeout(() => { reject(new Error("Connexion temps réel trop lente.")); connection.close(); }, 5000);

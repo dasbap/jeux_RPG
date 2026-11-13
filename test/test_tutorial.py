@@ -179,9 +179,11 @@ def test_rejects_locked_skill_external_target_and_skipped_steps(game):
     player = game.register("Mage", "Mage")
     outsider = game.register("Autre", "Mage")
     command(game, player["token"], "tutorial")
-    for action, params in [("travel", {"destination": "brume"}), ("craft", {"recipe": "veste"}), ("talk", {"npc": "mira"})]:
+    for action, params in [("travel", {"destination": "unknown"}), ("craft", {"recipe": "veste"})]:
+        state = game.state(player["token"])["session"]
         with pytest.raises(GameError):
-            command(game, player["token"], action, **params)
+            game.command(player["token"], uuid.uuid4().hex, action,
+                         session_id=state["id"], revision=state["revision"], **params)
     command(game, player["token"], "explore")
     for name, target in [("Thunder", "mob"), ("Heal", player["player"]["id"]), ("Fire Ball", outsider["player"]["id"])]:
         before = game.state(player["token"])["session"]
@@ -368,8 +370,9 @@ def test_map_and_bestiary_discoveries_are_progressive(game):
     player = game.register("Voyageur", "Mage")
     state = command(game, player["token"], "tutorial")
     world = state["tutorial"]["world"]
-    assert [p["id"] for p in world["places"]] == ["clearing"]
-    assert world["routes"] == []
+    assert {p["id"] for p in world["places"]} == {"clearing", "rosee", "lisiere", "brume"}
+    assert all(not p["visited"] for p in world["places"] if p["id"] != "clearing")
+    assert {"clearing_rosee", "rosee_lisiere", "rosee_brume"} <= {r["id"] for r in world["routes"]}
     assert world["bestiary"] == []
     state = command(game, player["token"], "explore")
     assert state["tutorial"]["world"]["bestiary"][0]["name"] == "Gobelin des bois"
@@ -516,9 +519,10 @@ def test_coop_move_accepts_slow_snapshot_without_teleport(game):
     snapshot = game.state(second)["session"]
     game.clock.value = 6
     game.tick()
-    result = game.command(second, uuid.uuid4().hex, "move", session_id=snapshot["id"], revision=snapshot["revision"], world_context=snapshot["tutorial"]["world_context"], destination="clearing_fight")
-    assert result["session"]["tutorial"]["transit"]["destination"] == "clearing_fight"
-    assert result["session"]["tutorial"]["position"] == "clearing"
+    result = game.command(second, uuid.uuid4().hex, "move", session_id=snapshot["id"], revision=snapshot["revision"], world_context=snapshot["tutorial"]["world_context"], destination="rosee")
+    assert result["session"]["tutorial"]["transit"]["destination"] == "clearing_rosee"
+    assert result["session"]["tutorial"]["transit"]["source"] == "clearing"
+    assert result["session"]["tutorial"]["position"] != "rosee"
 
 
 def test_client_world_route_is_validated_without_server_search(game, monkeypatch):

@@ -34,8 +34,9 @@ def add_travel_door(maps, map_id, point, name="Porte de voyage"):
     )
 
 
-def world_metadata(maps, streets, routes):
-    streets, routes = deepcopy(streets), deepcopy(routes)
+def world_metadata(maps, streets=None, routes=None):
+    # Empty/removed project metadata must never inherit another world's roads.
+    streets, routes = {}, []
     for key, data in maps.items():
         if "village_streets" in data:
             layout = data["village_streets"]

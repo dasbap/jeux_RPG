@@ -105,3 +105,48 @@ def test_catalogue_does_not_require_any_tutorial_quest():
     data = deepcopy(content.DEFAULTS)
     data['quests'] = []
     assert content.validate_content(data)['quests'] == []
+
+
+def equipment_chain(monkeypatch):
+    data = deepcopy(content.DEFAULTS)
+    craft = {**quest('craft_veste'), 'kind':'craft', 'target':'veste', 'npc':'forge', 'name':'Fabriquer la veste'}
+    upgrade = {**quest('upgrade_veste', {'quests':['craft_veste']}), 'kind':'upgrade', 'target':'veste', 'npc':'forge', 'upgrade_level':1}
+    # Builder ordering must not affect the dependency order.
+    data['quests'] = [upgrade, craft]
+    monkeypatch.setattr(content, 'DATA', data)
+    return craft, upgrade
+
+
+def test_equipment_already_owned_unlocks_chain_only_after_turn_in(monkeypatch):
+    craft, upgrade = equipment_chain(monkeypatch)
+    p = party()
+    p['equipment'] = {'p': {'torso': {'recipe':'veste', 'level':1}}}
+    content.quest_dialogue(p, 'forge')
+    assert p['custom_quests'][craft['id']] == {'status':'active', 'progress':1}
+    assert upgrade['id'] not in p['custom_quests']
+    messages = content.quest_dialogue(p, 'forge')
+    assert p['custom_quests'][craft['id']]['status'] == 'completed'
+    assert p['custom_quests'][upgrade['id']] == {'status':'active', 'progress':1}
+    assert sum(line.startswith('Quête terminée') for line in messages) == 1
+    assert sum(line.startswith('Quête terminée') for line in content.quest_dialogue(p, 'forge')) == 1
+    assert content.quest_dialogue(p, 'forge') == []
+
+
+def test_existing_followup_cannot_progress_or_reward_before_prerequisite(monkeypatch):
+    craft, upgrade = equipment_chain(monkeypatch)
+    p = party()
+    p['custom_quests'] = {
+        craft['id']: {'status':'active','progress':1},
+        upgrade['id']: {'status':'active','progress':0},
+    }
+    content.quest_event(p, 'upgrade', 'veste', level=1)
+    assert p['custom_quests'][upgrade['id']]['progress'] == 0
+    locked = next(q for q in content.quest_journal(p) if q['id'] == upgrade['id'])
+    assert locked['status'] == 'locked'
+    assert 'Fabriquer la veste' in locked['missing_requirements'][0]
+    p['equipment'] = {'p': {'torso': {'recipe':'veste', 'level':1}}}
+    messages = content.quest_dialogue(p, 'forge')
+    completed = [message for message in messages if message.startswith('Quête terminée')]
+    assert len(completed) == 2
+    assert 'Fabriquer la veste' in completed[0]
+    assert all(state['status']=='completed' for state in p['custom_quests'].values())

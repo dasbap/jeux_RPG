@@ -165,7 +165,10 @@ def test_graphical_controller_exposes_every_gameplay_catalog(tmp_path):
         root.update_idletasks()
         assert all(section in screen.tables for section, _ in controller_gameplay.SECTIONS)
         for section, _ in controller_gameplay.SECTIONS:
-            assert screen.tables[section].get_children()
+            if section != 'equipment_sets':
+                assert screen.tables[section].get_children()
+            else:
+                assert len(screen.tables[section].get_children()) == len(screen.project.content['gameplay']['equipment_sets'])
         screen.root.update()
         assert all(screen.label(key) != key for group in screen.project.content['gameplay']['rules'].values() for key in group if key not in ('map','x','y'))
     finally:

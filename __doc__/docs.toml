@@ -1,0 +1,31 @@
+[documentation]
+output = "__doc__"
+# Seuls ces fichiers sont documentés. Les dossiers parents sont ajoutés automatiquement.
+# Les motifs sont relatifs à la racine ; ** signifie « à toute profondeur ».
+include = [
+  "*.py", "*.md", "*.toml", "*.ini", "*.cmd", "requirements*.txt",
+  ".gitignore", ".vercelignore", "vercel.json",
+  "jeuxRPG/**/*.py", "jeuxRPG/**/*.json",
+  "jeuxRPG/multiplayer/web/*.js", "jeuxRPG/multiplayer/web/*.css",
+  "jeuxRPG/multiplayer/web/*.html", "jeuxRPG/multiplayer/migrations/*.sql",
+  "scripts/*.py", "scripts/*.cjs", "scripts/*.sh", "scripts/*.ps1",
+  "test/**/*.py", "test/fixtures/**/*.json", "docs/**/*.md",
+  "projects/authored/*.json",
+  "desktop/*.cjs", "desktop/package.json", "desktop/package-lock.json",
+  "desktop/test/*.cjs",
+  "android/*.gradle", "android/gradle.properties", "android/mobile_bridge.js",
+  "android/app/build.gradle", "android/app/src/main/AndroidManifest.xml",
+  "android/app/src/main/java/**/*.java", "android/app/src/main/res/**/*.xml",
+  "cloudflare/*.mjs", "cloudflare/*.sql", "cloudflare/*.md",
+  ".github/workflows/*.yml",
+]
+
+[documentation.descriptions]
+jeuxRPG = "Moteur du jeu, données et interface web."
+projects = "Projets éditables du Builder."
+"projects/authored" = "Contenu de référence : cartes, PNJ, dialogues, quêtes et équipements."
+desktop = "Client de bureau Electron pour Windows et Linux."
+android = "Hôte Android du client et configuration de construction de l’APK."
+scripts = "Outils de construction, export, vérification et maintenance."
+docs = "Guides et documentation du projet."
+test = "Tests automatisés et données de référence."

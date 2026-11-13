@@ -12,13 +12,15 @@ from jeuxRPG.multiplayer.service import GameError, GameService
 @pytest.fixture(autouse=True)
 def stable_field_scenarios(monkeypatch):
     maps = json.loads((Path(__file__).parent / "fixtures" / "fields.json").read_text(encoding="utf-8"))
+    maps["clearing"]["travel_routes"] = deepcopy(world.ROUTES)
+    from jeuxRPG.multiplayer.world_topology import compile_world
+    compiled = compile_world(maps)
+    monkeypatch.setattr(world, "WORLD_MAP_DATA", maps)
+    for name, value in zip(
+        ("PLACES", "VILLAGE_STREETS", "ROUTES", "LEVELS", "POINT_MAPS", "ZONE_ENTRIES", "EDGES"), compiled
+    ):
+        monkeypatch.setattr(world, name, value)
     monkeypatch.setattr(fields, "MAPS", maps)
-    places = deepcopy(world.PLACES)
-    for key, definition in maps.items():
-        zone = fields.zone_of(maps, key)
-        if key != zone and not any(point['id'] == key for place in places.values() for point in place['points']):
-            places[zone]['points'].append({'id': key, 'name': definition['name'], 'kind': 'field'})
-    monkeypatch.setattr(world, 'PLACES', places)
     for definition in maps.values():
         monkeypatch.setitem(tactics.PRESETS, definition["id"], definition)
 
@@ -377,6 +379,29 @@ def test_timed_map_link_waits_and_arrives_at_chosen_cell():
     assert data['field_map'] == 'rosee'
     assert data['battle']['players']['p']['position'] == [3, 20]
     assert data['transit'] is None
+
+
+@pytest.mark.parametrize("kind", ["world", "adjacent", "timed"])
+def test_physical_exit_discards_previous_automatic_itinerary(kind):
+    data = party()
+    data.update(journey=["rosee", "lisiere"], transit={
+        "source": "clearing", "destination": "rosee", "remaining": 60,
+        "total": 60, "segment": 60, "started_at": 0, "ready_at": 60,
+        "hazard": False,
+    })
+    gate = {"position": [0, 10], "name": "Sortie", "destination": None, "entry": None}
+    if kind != "world":
+        gate.update(destination="rosee", entry=[3, 20], travel_minutes=2 if kind == "timed" else 0)
+    fields.transition(data, gate, "p", 1)
+    assert data["journey"] == []
+    if kind == "timed":
+        assert data["transit"]["ready_at"] == 121
+        assert data["transit"]["field_entry"] == [3, 20]
+    else:
+        assert data["transit"] is None
+        tutorial.advance(data, 1000, lambda: .99)
+        assert data["transit"] is None and data["journey"] == []
+        assert data["position"] == ("rosee" if kind == "adjacent" else "clearing")
 
 
 def test_custom_npc_quest_requires_proximity_and_rewards_once(monkeypatch):

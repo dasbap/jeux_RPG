@@ -8,4 +8,13 @@ sys.path.insert(0, str(repo_root))
 
 import os
 
+import pytest
+
 os.environ.setdefault("RPG_MAPS_FILE", str(Path(__file__).parent / "fixtures" / "reference_world"))
+
+
+@pytest.fixture
+def gui_display():
+    if sys.platform != "win32" and not os.environ.get("DISPLAY"):
+        pytest.skip("Les tests Tk sont exécutés par le job Builder Windows.")
+    pytest.importorskip("tkinter")

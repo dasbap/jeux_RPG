@@ -132,20 +132,22 @@ def test_trip_stops_at_each_encounter_and_resumes_after_victory(service, monkeyp
             state = service.state(player["token"])["session"]
         else:
             break
-    assert set(stops) == {"rosee_lisiere", "lisiere"}
+    # The Builder's zero-duration passages do not roll a travel encounter.
+    assert set(stops) == {"rosee_lisiere"}
     assert state["tutorial"]["position"] == "hunt"
     assert state["tutorial"]["journey"] == []
     assert state["tutorial"]["transit"] is None
-    assert 1 <= state["tutorial"]["kills"] <= 3
+    assert state["tutorial"]["players"][0]["exp"] > 0
 
 
 def test_server_rejects_remote_actions_and_unknown_paths(service):
     player = service.register("Knight", "Knight")
     act(service, player, "tutorial")
-    for action, params in (("talk", {"npc": "mira"}), ("craft", {"recipe": "veste"}), ("move", {"destination": "brume"}), ("move", {"destination": []})):
+    for action, params in (("talk", {"npc": "mira"}), ("craft", {"recipe": "veste"}), ("move", {"destination": "unknown_zone"}), ("move", {"destination": []})):
         with pytest.raises(GameError):
             act(service, player, action, **params)
     assert service.state(player["token"])["session"]["tutorial"]["position"] == "clearing"
+    assert act(service, player, "move", destination="brume")["tutorial"]["moving"]
 
 
 def test_old_single_enemy_save_migrates_and_keeps_cooldown():
@@ -222,7 +224,8 @@ def test_village_routes_pass_through_square_street_and_successive_buildings():
     known = {"rosee", "brume"}
     nodes = world.graph(known)
     assert {"mira", "rosee_brume"} <= set(nodes["rosee"])
-    assert all(point in nodes["rosee"] for point in ("forest", "cave_1"))
+    assert "rosee_lisiere" in nodes["rosee"]
+    assert not {"forest", "cave_1"} & set(nodes["rosee"])
     assert world.path("rosee", "training", known) == ["mira", "rosee_artisans", "forge", "training"]
     assert world.path("forge", "rosee_inn", known) == ["rosee_artisans", "mira", "rosee_habitations", "rosee_house", "rosee_inn"]
     assert world.path("brume", "brume_inn", known) == ["arrival", "brume_market", "brume_shop", "brume_inn"]

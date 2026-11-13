@@ -74,7 +74,6 @@ def connect_maps(
     ):
         raise ValueError("Un trajet demande une durée positive.")
     if mode == "rapide":
-        from . import world
         from .map_building import zone_of
 
         if zone_of(maps, source) == zone_of(maps, destination):
@@ -82,7 +81,7 @@ def connect_maps(
                 "Les chemins rapides relient deux zones différentes. Pour une même zone, choisissez un passage ou un trajet."
             )
         result = deepcopy(maps)
-        routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
+        routes = result["clearing"].setdefault("travel_routes", [])
         routes.append(
             {
                 "id": "link_" + uuid.uuid4().hex[:16],
@@ -118,14 +117,13 @@ def connect_maps(
 
 
 def links_from(maps, source):
-    from . import world
 
     links = [
         ("gate", index, gate["destination"], gate["name"])
         for index, gate in enumerate(maps[source]["exits"])
         if gate.get("destination")
     ]
-    for index, route in enumerate(maps["clearing"].get("travel_routes", world.ROUTES)):
+    for index, route in enumerate(maps["clearing"].get("travel_routes", [])):
         if route["from"] == source:
             links.append(("route", index, route["to"], route["name"]))
         elif route["to"] == source and route.get("bidirectional", True):
@@ -134,7 +132,6 @@ def links_from(maps, source):
 
 
 def remove_link(maps, source, kind, index, both=False):
-    from . import world
 
     result = deepcopy(maps)
     if kind == "gate":
@@ -155,7 +152,7 @@ def remove_link(maps, source, kind, index, both=False):
                 )
             ]
     elif kind == "route":
-        routes = result["clearing"].setdefault("travel_routes", deepcopy(world.ROUTES))
+        routes = result["clearing"].setdefault("travel_routes", [])
         route = routes[index]
         if both or not route.get("bidirectional", True):
             routes.pop(index)
