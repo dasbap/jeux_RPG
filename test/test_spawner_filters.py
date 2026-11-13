@@ -105,6 +105,7 @@ def test_species_defaults_and_spawner_overrides_persist(tmp_path, monkeypatch):
         map_assets.validate(loaded.maps)
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_real_picker_combines_filters_handles_empty_results_and_keeps_selected_id(
     tmp_path,
 ):
@@ -199,6 +200,7 @@ def test_old_catalogue_profiles_keep_compatible_defaults():
     assert rows and all("melee" in row["roles"] for row in rows)
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_real_spawner_form_selects_by_name_and_saves_override(tmp_path, monkeypatch):
     import tkinter as tk
     from tkinter import ttk

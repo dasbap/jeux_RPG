@@ -50,6 +50,7 @@ def test_interface_settings_are_sent_in_full_and_bundled_state(monkeypatch):
     assert split["session/tutorial/interface"] == data["interface"]
 
 
+@pytest.mark.usefixtures("gui_display")
 def test_real_interface_tab_applies_undoes_saves_and_restores(tmp_path, monkeypatch):
     import tkinter as tk
     from tkinter import ttk
