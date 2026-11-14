@@ -5,6 +5,9 @@ on:
       timezone: Europe/Paris
   workflow_dispatch:
   workflow_call:
+    secrets:
+      render_test_d1_token:
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -32,7 +35,7 @@ jobs:
     env:
       RPG_DATABASE_BACKEND: d1
       RPG_D1_WORKER_URL: https://jeux-rpg-oracle-test.dasbap-jeux-rpg.workers.dev
-      RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
+      RPG_D1_SERVICE_TOKEN: ${{ secrets.render_test_d1_token || secrets.RENDER_TEST_D1_SERVICE_TOKEN || secrets.RPG_D1_SERVICE_TOKEN }}
       RPG_BACKUP_RECIPIENT: ${{ vars.RPG_BACKUP_RECIPIENT }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

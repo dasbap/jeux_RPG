@@ -30,6 +30,8 @@ jobs:
   backup:
     if: github.event_name == 'workflow_dispatch' && inputs.backup
     uses: ./.github/workflows/render-operations.yml
+    secrets:
+      render_test_d1_token: ${{ secrets.RENDER_TEST_D1_SERVICE_TOKEN }}
   validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
