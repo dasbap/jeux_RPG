@@ -8,6 +8,10 @@ class D1StorageError(sqlite3.OperationalError):
     pass
 
 
+class StaleRuntimeError(RuntimeError):
+    pass
+
+
 class D1Client:
     def __init__(self, environment):
         self.url = environment["RPG_D1_WORKER_URL"]
@@ -44,7 +48,7 @@ class D1Client:
                     isinstance(detail, dict)
                     and detail.get("error") == "stale_runtime_fence"
                 ):
-                    raise RuntimeError("Moteur remplacé") from error
+                    raise StaleRuntimeError("Moteur remplacé") from error
             raise D1StorageError("Opération D1 refusée") from error
         except (urllib.error.URLError, TimeoutError, ValueError) as error:
             raise D1StorageError("Opération D1 indisponible") from error
@@ -54,6 +58,23 @@ class D1Client:
 
     def load_snapshot(self, fence):
         return self._snapshot(self.request("load_snapshot", fence=fence))
+
+    def claim_snapshot(self):
+        """Allocate a generation and load its snapshot in one primary batch."""
+        data = self._snapshot(self.request("claim_snapshot"))
+        try:
+            fence = int(
+                next(
+                    row["value"]
+                    for row in data["meta"]
+                    if row["key"] == "runtime_fence"
+                )
+            )
+        except (StopIteration, KeyError, TypeError, ValueError) as error:
+            raise D1StorageError("Génération D1 invalide") from error
+        if not 0 < fence <= 9_007_199_254_740_991:
+            raise D1StorageError("Génération D1 invalide")
+        return fence, data
 
     def read_snapshot(self):
         """Inspect durable state without taking over the running engine's fence."""

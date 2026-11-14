@@ -1,0 +1,18 @@
+{
+  "before_restart": {
+    "password_login": true,
+    "character_selection": true,
+    "game_rendered": true,
+    "websocket_connected": true,
+    "page_errors": 0,
+    "server_errors": 0
+  },
+  "after_restart": {
+    "password_login": true,
+    "character_selection": true,
+    "game_rendered": true,
+    "websocket_connected": true,
+    "page_errors": 0,
+    "server_errors": 0
+  }
+}

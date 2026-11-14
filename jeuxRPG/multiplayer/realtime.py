@@ -21,6 +21,7 @@ from .distributed import build_rate_limiter
 from .json_protocol import object_json
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .realtime_store import KEYS, RuntimeStore
+from .runtime_configuration import account_auth_required, runtime_mode
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
@@ -348,7 +349,7 @@ class Coordinator:
 
             async with self.auth_slots:
                 async with self.lock:
-                    if self.owner():
+                    if self.owner() and not getattr(self, "draining", False):
                         store = self.store
                 if store is not None:
                     accepted = await self.memory_call(
@@ -379,7 +380,12 @@ class Coordinator:
                             "body": {"error": error.code, "message": str(error)},
                         }
         async with self.lock:
-            if not self.owner() or store is not None and self.store is not store:
+            if (
+                not self.owner()
+                or getattr(self, "draining", False)
+                or store is not None
+                and self.store is not store
+            ):
                 return {
                     "status": 503,
                     "headers": {},
@@ -463,7 +469,7 @@ class Coordinator:
                 continue
             try:
                 async with self.lock:
-                    if not self.owner():
+                    if not self.owner() or getattr(self, "draining", False):
                         continue
                     await self.memory_call(self.store.tick)
                     if (
@@ -536,7 +542,11 @@ class Coordinator:
 def _socket_origin_allowed(websocket, environment):
     host = websocket.headers.get("host", "")
     origin = websocket.headers.get("origin")
-    scheme = "https" if environment.get("VERCEL") else "http"
+    scheme = (
+        "https"
+        if environment.get("VERCEL")
+        else websocket.url.scheme.replace("ws", "http", 1)
+    )
     allowed = {
         value
         for value in (
@@ -642,7 +652,7 @@ async def _socket_connection(websocket, coordinator, environment, trusted):
     authenticated = None
     try:
         await websocket.accept()
-        if environment.get("VERCEL"):
+        if account_auth_required(environment):
             authenticated = await _authenticate_socket(websocket, coordinator, trusted)
             if authenticated is None:
                 return
@@ -807,7 +817,9 @@ def _trusted_request(connection, path, method, body, headers, environment):
         "headers": forwarded,
         "host": host,
         "peer": connection.client.host if connection.client else "unknown",
-        "scheme": "https" if environment.get("VERCEL") else "http",
+        "scheme": "https"
+        if environment.get("VERCEL")
+        else connection.url.scheme.replace("ws", "http", 1),
     }
 
 
@@ -843,15 +855,28 @@ def _static_response(request, path, result, content):
     return Response(content, status_code=result["status"], headers=result["headers"])
 
 
+def build_coordinator(environment):
+    if runtime_mode(environment) == "single":
+        from .single_runtime import SingleCoordinator
+
+        return SingleCoordinator(environment)
+    return Coordinator(environment)
+
+
 def create_app(environment=None, coordinator=None):
     environment = dict(os.environ if environment is None else environment)
-    coordinator = coordinator or Coordinator(environment)
+    mode = runtime_mode(environment)
+    coordinator = coordinator or build_coordinator(environment)
     static = Application(environment=environment)
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await coordinator.close()
+        if mode == "single":
+            await coordinator.start()
+        try:
+            yield
+        finally:
+            await coordinator.close()
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.coordinator = coordinator
@@ -886,6 +911,18 @@ def create_app(environment=None, coordinator=None):
 
     _register_socket(app, coordinator, environment, trusted)
 
+    @app.get("/ready")
+    async def readiness():
+        available = (
+            coordinator.owner()
+            and not getattr(coordinator, "draining", False)
+            and not coordinator.store.last_save_error
+        )
+        return JSONResponse(
+            {"status": "ready" if available else "unavailable"},
+            status_code=200 if available else 503,
+        )
+
     @app.api_route("/{path:path}", methods=["GET", "POST"])
     async def http(request: Request, path: str):
         if path == "api/classes":
@@ -896,8 +933,11 @@ def create_app(environment=None, coordinator=None):
             validate_request_origin(
                 environment,
                 {
-                    "HTTP_" + key.upper().replace("-", "_"): value
-                    for key, value in request.headers.items()
+                    "wsgi.url_scheme": request.url.scheme,
+                    **{
+                        "HTTP_" + key.upper().replace("-", "_"): value
+                        for key, value in request.headers.items()
+                    },
                 },
                 "/" + path,
                 request.method,
@@ -959,7 +999,9 @@ def create_app(environment=None, coordinator=None):
             "PATH_INFO": "/" + path,
             "REQUEST_METHOD": request.method,
             "HTTP_HOST": request.headers.get("host", ""),
-            "wsgi.url_scheme": "https" if environment.get("VERCEL") else "http",
+            "wsgi.url_scheme": "https"
+            if environment.get("VERCEL")
+            else request.url.scheme,
         }
         for key, value in request.headers.items():
             environment_wsgi["HTTP_" + key.upper().replace("-", "_")] = value

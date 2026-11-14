@@ -2,6 +2,10 @@
 
 Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une interface HTML/JavaScript et un monde éditable dans le Builder. La production utilise FastAPI sur Vercel, Redis pour la coordination et **Cloudflare D1 pour les données durables**. Le serveur local utilise un fichier SQLite ; le solo conserve sa sauvegarde sur le client.
 
+La [recette sur Render Free](docs/RENDER.md) remplace le projet Oracle abandonné faute de capacité. Le mode expérimental `single` utilise D1 sans service Redis. La production Vercel reste inchangée pendant la recette isolée.
+La [recette Render](docs/render-test-20261114/REPORT.md) confirme 40 connexions de joueurs distincts sous une charge légère, mais un p95 de 5,6 secondes ne valide pas les combats rapides à 40 joueurs. Le premier essai local avec D1 distant reste [documenté séparément](docs/oracle-test-20261113/REPORT.md).
+Le [service Render de test](https://jeux-rpg-render-test.onrender.com) est déployé sur Free à Francfort, avec un D1 fictif distinct de la production. Les jetons sont dans **Secret Files**. La construction Docker et la sauvegarde indépendante chiffrée sont vérifiées dans GitHub Actions ; la planification quotidienne attend l'intégration du workflow dans la branche par défaut. Aucun changement de routage du site Vercel n'est effectué.
+
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Les duels simplifiés restent des démonstrations historiques ; le PvP est désactivé en production.
 
 L’[architecture actuelle](docs/ARCHITECTURE.md) est la référence pour les modes d’exécution, le stockage et la capacité. La [migration D1](docs/D1_PRODUCTION.md) est terminée depuis le 6 novembre 2026. Le réglage de 40 joueurs n’est pas une garantie de capacité : les anciens essais HTTP locaux ne mesurent pas 40 WebSockets sur Vercel/Redis/D1.

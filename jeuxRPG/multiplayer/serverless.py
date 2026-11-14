@@ -354,6 +354,14 @@ class Application:
                 )
                 if name == "index.html":
                     payload = self._render_class_options(payload)
+                    from .runtime_configuration import runtime_mode
+
+                    if runtime_mode(self.environment) == "single":
+                        payload = payload.replace(
+                            b"<head>",
+                            b'<head><meta name="rpg-realtime-url" content="/api/ws">',
+                            1,
+                        )
             else:
                 service = self.service()
                 limiter = self.redis_limiter or DatabaseLimiter(service)
