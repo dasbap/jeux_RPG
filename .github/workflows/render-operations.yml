@@ -4,6 +4,7 @@ on:
     - cron: '35 4 * * *'
       timezone: Europe/Paris
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 concurrency:

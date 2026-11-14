@@ -4,7 +4,7 @@ Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une 
 
 La [recette sur Render Free](docs/RENDER.md) remplace le projet Oracle abandonné faute de capacité. Le mode expérimental `single` utilise D1 sans service Redis. La production Vercel reste inchangée pendant la recette isolée.
 Une [première recette à 40 WebSockets](docs/oracle-test-20261113/REPORT.md) a réussi avec un moteur local et D1 distant isolé ; la capacité CPU, RAM et réseau sur Render reste à mesurer.
-Le conteneur Render utilise le HTTPS de la plateforme, sans Caddy, DuckDNS ni contrôleur de réveil. Les validations et sauvegardes indépendantes sont préparées dans GitHub Actions ; aucun service Render n'est encore déployé.
+Le [service Render de test](https://jeux-rpg-render-test.onrender.com) est déployé sur Free à Francfort, avec un D1 fictif distinct de la production. Les jetons sont dans **Secret Files**. La construction Docker est validée dans GitHub Actions ; les sauvegardes indépendantes restent à activer. Aucun changement de routage du site Vercel n'est effectué.
 
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Les duels simplifiés restent des démonstrations historiques ; le PvP est désactivé en production.
 

@@ -11,16 +11,25 @@ on:
       - 'pyproject.toml'
       - 'constraints.txt'
       - 'scripts/prepare_render_preview.py'
+      - 'scripts/verify_render_live.py'
       - 'test/test_render_host.py'
       - 'render.yaml'
       - '.github/workflows/render-preview.yml'
   workflow_dispatch:
+    inputs:
+      backup:
+        description: Executer aussi la sauvegarde D1 isolee chiffree
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: render-validation-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  backup:
+    if: github.event_name == 'workflow_dispatch' && inputs.backup
+    uses: ./.github/workflows/render-operations.yml
   validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

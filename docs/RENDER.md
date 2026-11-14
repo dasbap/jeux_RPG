@@ -4,6 +4,13 @@ Oracle est abandonné faute de capacité. Northflank n'a reçu aucun secret du p
 La recette choisie utilise un seul moteur Python sur Render Free et le D1 fictif
 existant. Vercel et les données de production restent inchangés.
 
+Le service `jeux-rpg-render-test` est déployé à Francfort depuis le 14 novembre
+2026 : [jouer sur la recette](https://jeux-rpg-render-test.onrender.com),
+[tableau de bord](https://dashboard.render.com/web/srv-dbrq9rei0phs73b65dag).
+Le parcours navigateur a confirmé compte, personnage, aventure et WebSocket,
+sans erreur JavaScript ni réponse serveur 5xx. Une lecture indépendante du D1
+isolé a confirmé la sauvegarde du compte, du personnage et de l'aventure.
+
 ## Installation
 
 1. Connecter Render au profil GitHub qui possède `dasbap/jeux_RPG`.
@@ -30,9 +37,12 @@ Pour un import manuel des variables, après attribution de l'adresse :
 .venv-reprise/Scripts/python.exe -m scripts.prepare_render_preview --origin https://ADRESSE.onrender.com
 ```
 
-Le fichier créé `.data/render/runtime.env` est ignoré par Git. La commande refuse
-un remplacement de fichier, une autre base ou un domaine hors Render. Elle
-vérifie D1 en lecture seule, sans prendre possession du moteur.
+Les fichiers créés sont ignorés par Git : `runtime-public.env` pour les réglages
+ordinaires et `rpg-runtime.json` pour la rubrique **Secret Files**. Le fichier
+local `runtime.env` conserve les valeurs d'origine ; ne pas l'importer parmi
+les variables ordinaires. La commande refuse un remplacement de fichier, une
+autre base ou un domaine hors Render. Elle vérifie D1 en lecture seule, sans
+prendre possession du moteur.
 
 ## Automatisation
 
@@ -45,7 +55,10 @@ vérifie D1 en lecture seule, sans prendre possession du moteur.
   `RENDER_AUTOMATION_ENABLED=true`, l'environnement `render-preview`, le secret
   `RPG_D1_SERVICE_TOKEN` et la clé publique `RPG_BACKUP_RECIPIENT`.
   Les déclenchements planifiés exigent que le workflow existe sur la branche
-  par défaut. Les workflows locaux ne sont pas encore exécutés.
+  par défaut. La construction de l'image et les tests ont réussi sur GitHub
+  Actions ; le workflow de sauvegarde reste désactivé.
+  Pour lancer sa recette depuis la branche de migration, le workflow
+  `render-preview.yml` accepte un déclenchement manuel avec `backup=true`.
 - Les redéploiements automatiques sont désactivés pour la recette. Le fencing
   protège contre les écritures d'un ancien moteur, mais ne transfère pas les
   changements RAM encore non sauvegardés. Un remplacement contrôlé doit donc
@@ -69,6 +82,10 @@ D1 temporaire déclenche un redémarrage qui détruirait des changements en RAM.
 
 Le trafic WebSocket sortant compte dans le quota réseau. Render peut également
 suspendre un service gratuit qui appelle excessivement une base externe.
+L'interface Render réserve ses graphiques CPU et mémoire aux instances payantes ;
+la recette Free ne permet donc pas de conclure sur leur marge à partir de ces
+graphiques. Les tailles reçues mesurées par les sondes sont des octets applicatifs,
+pas une mesure de bande passante facturée après compression.
 Sans moyen de paiement, les dépassements entraînent une suspension plutôt qu'un
 achat automatique ; ne pas passer à un plan payant pour contourner une limite.
 

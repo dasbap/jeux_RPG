@@ -8,7 +8,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from jeuxRPG.multiplayer.container_host import configuration
 from jeuxRPG.multiplayer.host_configuration import TEST_WORKER
-from scripts.prepare_render_preview import prepare
+from scripts.prepare_render_preview import prepare, render_files
 
 PREVIEW = {
     **ENV,
@@ -103,6 +103,17 @@ def test_private_environment_does_not_copy_other_secrets(tmp_path, d1):  # noqa:
     saved = dotenv_values(destination, interpolate=False)
     assert saved["RPG_D1_SERVICE_TOKEN"] == PREVIEW["RPG_D1_SERVICE_TOKEN"]
     assert "DUCKDNS_TOKEN" not in saved and "REDIS_URLS" not in saved
+    public, private = render_files(destination)
+    public_values = dotenv_values(public, interpolate=False)
+    assert "RPG_D1_SERVICE_TOKEN" not in public_values
+    assert "RPG_ADMIN_TOKEN" not in public_values
+    assert "RPG_PUBLIC_ORIGIN" not in public_values
+    assert set(json.loads(private.read_text())) == {
+        "RPG_D1_SERVICE_TOKEN",
+        "RPG_ADMIN_TOKEN",
+    }
+    with pytest.raises(FileExistsError):
+        render_files(destination)
     assert d1["fence"] == 0
     with pytest.raises(FileExistsError):
         prepare(PREVIEW["RPG_PUBLIC_ORIGIN"], source, destination)
