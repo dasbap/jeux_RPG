@@ -10,6 +10,9 @@ Le service `jeux-rpg-render-test` est déployé à Francfort depuis le 14 novemb
 Le parcours navigateur a confirmé compte, personnage, aventure et WebSocket,
 sans erreur JavaScript ni réponse serveur 5xx. Une lecture indépendante du D1
 isolé a confirmé la sauvegarde du compte, du personnage et de l'aventure.
+Le [rapport de recette](render-test-20261114/REPORT.md) détaille la charge
+progressive, les latences trop élevées à 40 joueurs et la reprise après
+redémarrage avec 41 comptes, personnages et aventures conservés.
 
 ## Installation
 
@@ -53,10 +56,14 @@ prendre possession du moteur.
   indépendante du moteur, restaurée pour contrôle et chiffrée avec `age` avant
   stockage en artifact pendant 14 jours. Elle exige la variable GitHub
   `RENDER_AUTOMATION_ENABLED=true`, l'environnement `render-preview`, le secret
-  `RPG_D1_SERVICE_TOKEN` et la clé publique `RPG_BACKUP_RECIPIENT`.
+  GitHub Actions `RENDER_TEST_D1_SERVICE_TOKEN` et la clé publique
+  `RPG_BACKUP_RECIPIENT`. Ces paramètres de test sont configurés.
   Les déclenchements planifiés exigent que le workflow existe sur la branche
   par défaut. La construction de l'image et les tests ont réussi sur GitHub
-  Actions ; le workflow de sauvegarde reste désactivé.
+  Actions. La sauvegarde manuelle a réussi : export de 41 comptes, restauration
+  contrôlée, réouverture du moteur, chiffrement `age` et artifact dont la somme
+  de contrôle a été vérifiée après téléchargement. Le planificateur quotidien
+  attend l'intégration dans la branche par défaut.
   Pour lancer sa recette depuis la branche de migration, le workflow
   `render-preview.yml` accepte un déclenchement manuel avec `backup=true`.
 - Les redéploiements automatiques sont désactivés pour la recette. Le fencing

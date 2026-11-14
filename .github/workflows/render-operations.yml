@@ -8,6 +8,10 @@ on:
     secrets:
       render_test_d1_token:
         required: false
+      RENDER_TEST_D1_SERVICE_TOKEN:
+        required: false
+      RPG_D1_SERVICE_TOKEN:
+        required: false
 permissions:
   contents: read
 concurrency:
