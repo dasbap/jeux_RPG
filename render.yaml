@@ -21,7 +21,7 @@ services:
       - key: RPG_D1_WORKER_URL
         value: https://jeux-rpg-oracle-test.dasbap-jeux-rpg.workers.dev
       # Add RPG_D1_SERVICE_TOKEN and RPG_ADMIN_TOKEN only as a Secret File
-      # named rpg-runtime.env, mounted by Render under /etc/secrets/.
+      # named rpg-runtime.json, mounted by Render under /etc/secrets/.
       - key: RPG_RUNTIME_REALMS
         value: '1'
       - key: WEB_CONCURRENCY

@@ -1,26 +1,26 @@
 """Render preview entrypoint, one authoritative process and remote D1."""
 
 import asyncio
+import json
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import uvicorn
-from dotenv import dotenv_values
 
 from .host import PersistentServer
 from .host_configuration import validate
 from .realtime import create_app
 
-SECRET_FILE = Path("/etc/secrets/rpg-runtime.env")
+SECRET_FILE = Path("/etc/secrets/rpg-runtime.json")
 SECRET_KEYS = {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN"}
 
 
 def configuration(environment):
     environment = dict(environment)
     if SECRET_FILE.exists():
-        secrets = dotenv_values(SECRET_FILE, interpolate=False)
-        if set(secrets) != SECRET_KEYS:
+        secrets = json.loads(SECRET_FILE.read_text(encoding="utf-8"))
+        if not isinstance(secrets, dict) or set(secrets) != SECRET_KEYS:
             raise ValueError("Le fichier secret Render doit contenir les deux jetons")
         for key, value in secrets.items():
             if environment.get(key) and environment[key] != value:

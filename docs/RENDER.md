@@ -10,12 +10,12 @@ existant. Vercel et les données de production restent inchangés.
 2. Utiliser la branche `migration/render-single-d1` et son `render.yaml`.
    Le Blueprint prévoit uniquement un service web **Free** à Francfort, sans
    base Render, disque, Redis ni autre ressource payante.
-3. Ajouter dans **Secret Files** un fichier `rpg-runtime.env` contenant uniquement
-   `RPG_D1_SERVICE_TOKEN` et `RPG_ADMIN_TOKEN` au format `.env`. Le jeton D1
+3. Ajouter dans **Secret Files** un fichier `rpg-runtime.json` contenant uniquement
+   `RPG_D1_SERVICE_TOKEN` et `RPG_ADMIN_TOKEN` au format JSON. Le jeton D1
    existe localement dans le fichier ignoré
    `.data/oracle-test/runtime.env` ; ne jamais l'afficher ni le mettre dans Git.
    Le nom historique du Worker ne désigne pas une ressource Oracle.
-4. Le moteur lit les jetons depuis `/etc/secrets/rpg-runtime.env`, sans les
+4. Le moteur lit les jetons depuis `/etc/secrets/rpg-runtime.json`, sans les
    inclure dans l'image Docker. Il déduit son origine HTTPS de
    `RENDER_EXTERNAL_HOSTNAME`, écoute sur `PORT` et sert directement l'interface
    de test sur son adresse `onrender.com`. Le site Vercel n'est pas encore relié

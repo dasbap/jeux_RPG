@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from dotenv import dotenv_values
 from fastapi.testclient import TestClient
@@ -114,20 +116,17 @@ def test_missing_credentials_never_create_runtime_file(tmp_path):
 
 
 def test_render_secret_file_is_loaded_only_for_runtime_tokens(tmp_path, monkeypatch):
-    secret_file = tmp_path / "rpg-runtime.env"
+    secret_file = tmp_path / "rpg-runtime.json"
     monkeypatch.setattr("jeuxRPG.multiplayer.container_host.SECRET_FILE", secret_file)
     environment = {
         key: value
         for key, value in PREVIEW.items()
         if key not in {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN"}
     }
-    secret_file.write_text(
-        "\n".join(
-            f"{key}={PREVIEW[key]}"
-            for key in ("RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN")
-        ),
-        encoding="utf-8",
-    )
+    secret_values = {
+        key: PREVIEW[key] for key in ("RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN")
+    }
+    secret_file.write_text(json.dumps(secret_values), encoding="utf-8")
     config = configuration(environment)
     assert (
         config.app.state.coordinator.environment["RPG_D1_SERVICE_TOKEN"]
@@ -135,7 +134,7 @@ def test_render_secret_file_is_loaded_only_for_runtime_tokens(tmp_path, monkeypa
     )
     with pytest.raises(ValueError, match="deux valeurs"):
         configuration({**environment, "RPG_ADMIN_TOKEN": "different-" * 5})
-    with secret_file.open("a", encoding="utf-8") as stream:
-        stream.write("\nRPG_D1_WORKER_URL=https://production.invalid\n")
+    secret_values["RPG_D1_WORKER_URL"] = "https://production.invalid"
+    secret_file.write_text(json.dumps(secret_values), encoding="utf-8")
     with pytest.raises(ValueError, match="deux jetons"):
         configuration(environment)
