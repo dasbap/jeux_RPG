@@ -1,0 +1,14 @@
+{
+  "origin": "forest",
+  "destination": "rosee",
+  "progress_before": 0.8630248715825545,
+  "progress_after": 1,
+  "remaining_before": "2 s restantes pour cette Ã©tape",
+  "remaining_after": "0 s restantes pour cette Ã©tape",
+  "websocket_progress_packets": 14,
+  "page_errors": 0,
+  "arrival_confirmed": true,
+  "journey_panel_hidden": true,
+  "arrival_saved_in_isolated_d1": true,
+  "deployed_commit": "578daea"
+}
