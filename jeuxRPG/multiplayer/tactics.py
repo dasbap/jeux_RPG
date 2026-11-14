@@ -1174,15 +1174,21 @@ def execute(party, player, action, params, now, error):
 
 def damaged(party, mob, actor, now):
     battle = party["battle"]
+    if actor in party["characters"] or actor in battle.get("summons", {}):
+        mob["player_assisted"] = True
     mob["provoked"] = True
     mob["last_hit_by"] = (
         actor
         if actor in party["characters"]
-        else battle.get("summons", {}).get(actor, {}).get("owner")
+        else battle.get("summons", {}).get(actor, {}).get("owner") or actor
     )
     if mob.get("ability_cast", {}).get("concentration"):
         mob.pop("ability_cast", None)
-    unit = battle["players"].get(actor) or battle.get("summons", {}).get(actor)
+    unit = (
+        battle["players"].get(actor)
+        or battle.get("summons", {}).get(actor)
+        or battle.get("guard_patrol", {}).get("members", {}).get(actor)
+    )
     unit["hidden"] = False
     unit["route"] = []
     was_calling = mob["calling_until"] is not None
@@ -1212,7 +1218,7 @@ def damaged(party, mob, actor, now):
         mob["intent"] = "Étourdi : aucune action"
 
 
-def defeated(party, mob, now, random, messages):
+def defeated(party, mob, now, random, messages, credited=True):
     from . import world
     from .tutorial import pack, unpack
 
@@ -1222,7 +1228,7 @@ def defeated(party, mob, now, random, messages):
     )
     reward = (
         0
-        if party.get("training")
+        if party.get("training") or not credited
         else mob_rules.experience(mob, killer_data["level"], content.WORLD["mob_xp"])
     )
     for key, data in party["characters"].items():
@@ -1234,7 +1240,11 @@ def defeated(party, mob, now, random, messages):
         mob if "loot" in mob or "drops" in mob else {"loot": world.GOBLIN["loot"]},
         forge.RARE_DROPS,
     )
-    loot = {} if party.get("training") else mob_rules.roll_drops(rules, random)
+    loot = (
+        {}
+        if party.get("training") or not credited
+        else mob_rules.roll_drops(rules, random)
+    )
     party["battle"]["corpses"].append(
         {
             "id": mob["combat_id"],
@@ -1246,13 +1256,14 @@ def defeated(party, mob, now, random, messages):
     )
     if (
         party.get("field_mode")
+        and credited
         and not party.get("training")
         and mob.get("mob_id", "goblin") == "goblin"
     ):
         zone = world.zone_of(party["position"])
         kills = party.setdefault("zone_kills", {})
         kills[zone] = kills.get(zone, 0) + 1
-    if not party.get("training"):
+    if not party.get("training") and credited:
         content.quest_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
@@ -1264,7 +1275,8 @@ def defeated(party, mob, now, random, messages):
         content.endgame_event(
             party, "kill", mob.get("mob_id", "goblin"), world.zone_of(party["position"])
         )
-    achievements.victory(party, now)
+    if credited:
+        achievements.victory(party, now)
     messages.append(
         f"{mob['name']} vaincu : {reward} XP. Approchez-vous pour le dépecer."
     )
@@ -1278,7 +1290,13 @@ def _resolve_mob_intent(
     from .tutorial import unpack
 
     battle = party["battle"]
-    if target and visible[0][0] <= AI_RULES["melee_range"]:
+    attack_range = mob.get("attack_range", AI_RULES["melee_range"])
+    attack_name = mob.get("attack_name", "Entaille")
+    if (
+        target
+        and distance(mob["position"], units[target]["position"]) <= attack_range
+        and sight(preset, mob["position"], units[target]["position"])
+    ):
         if mob["windup_until"] is not None and mob["windup_until"] <= now:
             enemy = unpack(mob)
             actor = characters[target]
@@ -1289,7 +1307,7 @@ def _resolve_mob_intent(
                 for invocation in actor.invocations.get_all()
             )
             actor.lose_hp(enemy, max(1, mob.get("attack_damage", 3)))
-            if (
+            if target not in battle.get("guard_patrol", {}).get("members", {}) and (
                 actor.hp.current_value < before_hp
                 or sum(i.hp.current_value for i in actor.invocations.get_all())
                 < before_invocations_hp
@@ -1306,12 +1324,12 @@ def _resolve_mob_intent(
                 + random() * AI_RULES["mob_attack_random_seconds"]
             )
             messages.append(
-                f"{mob['name']} utilise Entaille contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}."
+                f"{mob['name']} utilise {attack_name} contre {actor.name} : {max(0, before_hp - actor.hp.current_value)} PV perdus{' · ' + str(max(0, before_invocations_hp - sum(invocation.hp.current_value for invocation in actor.invocations.get_all()))) + ' PV perdus par ses invocations' if before_invocations_hp else ''}."
             )
         elif mob["windup_until"] is None and mob["next_attack"] <= now:
             mob["windup_until"] = now + AI_RULES["mob_windup_seconds"]
         mob["intent"] = (
-            "Va utiliser Entaille"
+            f"Va utiliser {attack_name}"
             if mob["windup_until"]
             else "Prépare sa prochaine attaque"
         )
@@ -1421,7 +1439,11 @@ def _advance_mob(party, mob, characters, units, preset, now, random, messages):
         mob["last_known"] = units[target]["position"][:]
         if mob["state"] == "patrol" or previous != target:
             mob["needs_call"] = True
-        if mob.get("previous_distance", 0) <= AI_RULES["melee_range"] < visible[0][0]:
+        if (
+            mob.get("previous_distance", 0)
+            <= mob.get("attack_range", AI_RULES["melee_range"])
+            < visible[0][0]
+        ):
             mob["needs_call"] = True
         mob["previous_distance"] = visible[0][0]
         mob["state"] = "chase"
@@ -1537,6 +1559,13 @@ def advance(party, now, random):
         invocations = characters[unit["owner"]].invocations.get_all()
         if unit["index"] < len(invocations):
             characters[key] = invocations[unit["index"]]
+    from . import guard_patrols
+
+    guard_actors, guard_units = guard_patrols.prepare(
+        party, characters, preset, now, random, messages
+    )
+    characters.update(guard_actors)
+    units.update(guard_units)
     for mob in party["mobs"]:
         if any(
             mob_rules.is_hostile(mob)
@@ -1548,6 +1577,8 @@ def advance(party, now, random):
             mob["alerted"] = True
     for mob in party["mobs"]:
         _advance_mob(party, mob, characters, units, preset, now, random, messages)
+        guard_patrols.react(battle.get("guard_patrol"), guard_actors, now, messages)
+    guard_patrols.finish(party, battle.get("guard_patrol"), guard_actors, now, messages)
     party["characters"] = {key: pack(characters[key]) for key in party["characters"]}
     sync_summons(party, now)
     if not any(characters[key].is_alive() for key in party["characters"]):

@@ -1,5 +1,5 @@
 "use strict";
-for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderGame(session.tutorial); });
+for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).addEventListener(id === "bestiary-search" ? "input" : "change", () => { if (session?.tutorial) renderBestiary(session.tutorial); });
 
 const touchControls = globalThis.createRpgTouchControls?.({
   state: () => {

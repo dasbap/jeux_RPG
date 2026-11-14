@@ -19,6 +19,8 @@ def test_solo_tutorial_survives_local_save():
         token,
     )
     session_id = result["session"]["id"]
+    life = result["session"]["tutorial"]["living_world"]
+    assert life["towns"] and life["merchant"]["stock"]
     saved = game.save()
     game.close()
     restored = SoloGame(saved)
@@ -26,6 +28,8 @@ def test_solo_tutorial_survives_local_save():
     state = restored.dispatch("/api/state", token=token)
     assert state["session"]["id"] == session_id
     assert state["session"]["tutorial"]
+    assert state["session"]["tutorial"]["living_world"]["towns"] == life["towns"]
+    assert restored.service.world_life is not None
     restored.close()
 
 
@@ -47,6 +51,8 @@ def test_solo_archive_contains_engine_without_runtime_secrets():
     with zipfile.ZipFile(io.BytesIO(engine_archive())) as archive:
         names = archive.namelist()
     assert "jeuxRPG/multiplayer/browser_solo.py" in names
+    for module in ("living_world", "living_world_catalog", "living_world_service"):
+        assert f"jeuxRPG/multiplayer/{module}.py" in names
     assert all(name.endswith((".py", ".json", ".sql")) for name in names)
     assert all(name.startswith("jeuxRPG/") for name in names)
     assert "wasm-unsafe-eval" in client_csp("/solo_worker.js")

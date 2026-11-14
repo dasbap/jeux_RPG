@@ -268,6 +268,10 @@ def view(party, me, traveller=None):
 
     for creature in bestiary:
         definition = resolve(MOBS, creature["id"])
+        creature["attack_range"] = definition.get(
+            "attack_range", content.DATA["gameplay"]["rules"]["ai"]["melee_range"]
+        )
+        creature["attack_name"] = definition.get("attack_name", "Entaille")
         rules = drop_rules(definition, RARE_DROPS)
         creature["loot"] = [
             {

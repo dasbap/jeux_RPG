@@ -29,8 +29,10 @@ function selectEntity(id) {
   for (const group of $("world-map").querySelectorAll("[data-unit]")) {
     group.querySelector(".objective-ring")?.remove();
     if (group.dataset.unit === focusedMob) {
-      const source = group.querySelector("circle"), ring = document.createElementNS(ns, "circle");
-      for (const attr of ["cx", "cy"]) ring.setAttribute(attr, source.getAttribute(attr));
+      const position = entityPosition(session.tutorial, group.dataset.unit);
+      if(!position)continue;
+      const ring = document.createElementNS(ns, "circle");
+      ring.setAttribute("cx",position[0]*40+20);ring.setAttribute("cy",position[1]*40+20);
       ring.setAttribute("r", "18"); ring.setAttribute("class", "objective-ring"); group.append(ring);
     }
   }
@@ -355,7 +357,9 @@ function renderBattle(adventure, me) {
   for (const site of map.sites || []) {
     if (!inView(site.position) || explored && !explored.has(site.position.join(","))) continue;
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id, role: "button", tabindex: "0", "aria-label": site.id === "forge" ? "Parler à Garrik · ouvrir la forge" : site.name});
-    if(site.interaction==="inspect") {
+    const siteSprite=adventure.sprites&&entitySprite(adventure,[`npc:${site.id}`],element,site.position);
+    if(siteSprite) node.append(siteSprite);
+    else if(site.interaction==="inspect") {
       const x=site.position[0]*40+20,y=site.position[1]*40+20;
       node.classList.add("field-clue");node.setAttribute("aria-label",`Examiner ${site.name}`);
       node.append(element("path",{d:`M ${x} ${y-13} l 13 13 -13 13 -13 -13 Z`}));
@@ -376,18 +380,33 @@ function renderBattle(adventure, me) {
   }
   for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   for (const step of unit.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
-  const draw = (id, position, label, className) => {
+  const draw = (id, position, label, className, spriteKeys=[]) => {
     if (!inView(position)) return null;
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
-    group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
-    group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
+    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position);
+    group.append(picture || element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
+    group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + (picture?45:25)}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
     group.onclick = () => selectEntity(id);
     group.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, id); if (current) approachEntity(current); };
     svg.append(group);
     return group;
   };
-  for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
+  for (const actor of adventure.living_world?.nearby || []) {
+    if (actor.map !== map.id || !inView(actor.position)) continue;
+    const [x,y] = actor.position.map(value => value * 40 + 20);
+    const group = element("g", {class:`world-life-actor world-life-${actor.kind}`,"data-unit":`world:${actor.id}`,"pointer-events":"none"});
+    const picture=adventure.sprites&&entitySprite(adventure,[`npc:${actor.id}`,`ambient:${actor.kind}`],element,actor.position);
+    group.append(picture||element("circle",{cx:x,cy:y,r:10}),element("title",{},`${actor.name} · ${actor.activity}`));
+    if(!picture)group.append(element("text",{x,y:y+4},actor.kind==="merchant"?"¤":actor.kind==="resident"?"•":actor.kind==="guards"?"◆":"!"));
+    if(actor.max_hp) {
+      const percent=Math.max(0,Math.min(1,actor.hp/actor.max_hp));
+      group.append(element("rect",{x:x-16,y:y-23,width:32,height:4,rx:1,fill:"#263343"}),element("rect",{x:x-16,y:y-23,width:32*percent,height:4,rx:1,fill:percent<=.3?"#ef7373":percent<.8?"#e6c86a":"#75d6a6"}));
+      group.append(element("title",{},`${actor.name} · ${actor.hp}/${actor.max_hp} PV · ${actor.activity}`));
+    }
+    svg.append(group);
+  }
+  for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player", [`class:${player.class_name}`]);
   for (const player of presenceState?.nearby || []) {
     if (!player.position || player.map !== adventure.field_map && player.map !== battle.map.id || adventure.players.some(member => member.id === player.id)) continue;
     const x = Math.round(player.position[0]), y = Math.round(player.position[1]);
@@ -398,11 +417,11 @@ function renderBattle(adventure, me) {
     group.append(element("title", {}, `${player.name} · ${player.ally ? "Allié" : "Joueur"} · PvP désactivé`));
     svg.append(group);
   }
-  for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit"); }
+  for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit",[`mob:${mob.mob_id}`]); }
   for (const [id, summon] of Object.entries(alliedUnits(adventure))) {
     const number = id.match(/:summon:(\d+)$/);
     const label = battle.companions?.[id] ? "F" : number ? `S${Number(number[1]) + 1}` : "S";
-    const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
+    const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit",[`mob:${summon.mob_id}`,`class:${summon.class_name}`]);
     summonNode?.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
@@ -474,8 +493,8 @@ function renderBattle(adventure, me) {
       const children = [...node.children].map((child, index) => {
         const oldChild = retained.children[index];
         if (!oldChild || oldChild.tagName !== child.tagName) return child;
-        for (const attr of [...oldChild.attributes]) oldChild.removeAttribute(attr.name);
-        for (const attr of child.attributes) oldChild.setAttribute(attr.name, attr.value);
+        for (const attr of [...oldChild.attributes]) if(!child.hasAttribute(attr.name))oldChild.removeAttribute(attr.name);
+        for (const attr of child.attributes) if(oldChild.getAttribute(attr.name)!==attr.value)oldChild.setAttribute(attr.name, attr.value);
         oldChild.textContent = child.textContent;
         return oldChild;
       });

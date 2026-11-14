@@ -129,6 +129,10 @@ def create_mob(maps, identifier, config, index, first=False):
         "hostile": config.get("hostile", definition.get("hostile", True)),
         "race": definition.get("race", definition["class_name"]),
         "rank": definition["rank"],
+        "attack_range": definition.get(
+            "attack_range", DATA["gameplay"]["rules"]["ai"]["melee_range"]
+        ),
+        "attack_name": definition.get("attack_name", "Entaille"),
         "attack_damage": round(
             definition["damage"] + (level - 1) * definition["damage_growth"]
         )
@@ -161,6 +165,19 @@ def migrate_behavior(party, maps):
     ]:
         configurations = spawners(maps[map_id]) if map_id in maps else []
         for mob in snapshot.get("mobs", []):
+            if mob.get("mob_id") in MOBS and (
+                "attack_range" not in mob or "attack_name" not in mob
+            ):
+                from .content import DATA
+
+                attack = MOBS.get(mob.get("mob_id"), {})
+                mob.setdefault(
+                    "attack_range",
+                    attack.get(
+                        "attack_range", DATA["gameplay"]["rules"]["ai"]["melee_range"]
+                    ),
+                )
+                mob.setdefault("attack_name", attack.get("attack_name", "Entaille"))
             if "hostile" in mob:
                 continue
             definition = (

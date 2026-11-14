@@ -48,6 +48,8 @@ function renderGame(adventure, preserveBattle = false) {
   applyInterface(adventure.interface);
   syncRegionTravel(adventure);
   renderJourney(adventure);
+  if (adventure.living_world || $("world-life-view")) renderLivingWorld(adventure);
+  if (currentView === "bestiary") renderBestiary(adventure);
   if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
@@ -214,7 +216,7 @@ function renderGame(adventure, preserveBattle = false) {
     if (!adventure.moving && !adventure.world.routes.some(route => route.id === adventure.position)) action("tutorial-actions", "Explorer à pied", "enter_zone");
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
+  if (!fighting) { if (currentView !== "bestiary" && sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-title").textContent = nearbyNpc ? `${nearbyNpc.interaction==="inspect"?"Examiner":"Parler à"} ${nearbyNpc.name}` : "Dialogue";
   $("npc-dialogue").textContent = nearbyNpc ? `${nearbyNpc.name} : ${adventure.narrative?.greetings?.[nearbyNpc.id] || nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : "Approchez-vous d'un PNJ pour lui parler.";
   if (canTalk && nearbyNpc) action("npc-actions", nearbyNpc.interaction==="inspect"?"Examiner":nearbyNpc.id === "forge" ? "Parler à Garrik" : "Parler", "talk", {npc: nearbyNpc.id});
@@ -275,7 +277,7 @@ function renderGame(adventure, preserveBattle = false) {
     const playerUnit = adventure.battle.players[me.id];
     if (playerUnit.hidden && playerUnit.route.length) $("combat-status").textContent = "Déplacement discret : vitesse réduite, dissimulation maintenue tant que vous restez couvert.";
   }
-  if (fighting && !preserveBattle) renderBattle(adventure, me);
+  if (fighting && !preserveBattle && !(currentView === "bestiary" && document.body.classList.contains("hud-menu-open"))) renderBattle(adventure, me);
   if (fighting) {
     renderUnitControls(adventure, me, action);
     renderSelection(adventure, me);
@@ -311,7 +313,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("region-view").querySelector("h3").textContent = fighting ? "Carte de la région" : "Destination";
   const detailsParent = regionOpen ? $("region-view") : $("map-view");
   if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
-  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.equipment_sets, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.equipment_sets, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, busy])) {
     renderWorld(adventure, me, $("region-map"), {overview: fighting});
     renderAchievements(adventure.achievements);
     if (regionJustOpened) $("map-details").open = true;

@@ -242,7 +242,7 @@ def status_view(party, key, effects, now):
     ]
 
 
-def view(party, me, now):
+def view(party, me, now, traveller=None):
     party = json.loads(json.dumps(party, ensure_ascii=False, separators=(",", ":")))
     migrate(party, now)
     progression.resources(party, now)
@@ -330,7 +330,12 @@ def view(party, me, now):
         if transit
         else 0
     )
-    result["traveller"] = npc(now)
+    from .sprite_catalog import catalog as sprite_catalog
+
+    sprites = sprite_catalog(content.DATA)
+    if sprites["assets"]:
+        result["sprites"] = sprites
+    result["traveller"] = npc(now) if traveller is None else traveller
     result["travel_progress"] = (
         max(
             0,

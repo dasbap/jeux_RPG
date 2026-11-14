@@ -25,4 +25,4 @@ def client_csp(path):
     if path.split("?", 1)[0] == "/solo_worker.js":
         return f"default-src 'none'; script-src 'self' 'wasm-unsafe-eval' {PYODIDE_URL}; connect-src 'self' {PYODIDE_URL}; worker-src 'self'; base-uri 'none'"
     # Developer tools fetch Pyodide source maps using the document's policy.
-    return f"default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; connect-src 'self' {PYODIDE_URL}; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    return f"default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; connect-src 'self' {PYODIDE_URL}; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"

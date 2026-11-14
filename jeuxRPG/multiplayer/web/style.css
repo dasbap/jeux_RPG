@@ -596,6 +596,7 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 #region-camera .muted{font-size:.8rem}
 
 /* Nearby NPC text has its own space, separate from combat controls. */
+.world-life{margin-top:16px;padding-top:12px;border-top:1px solid #667d8b}.world-life-towns{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.world-life article{padding:10px;border:1px solid #667d8b;border-radius:8px}.world-life h4{margin:4px 0}.world-life progress{width:100%;height:12px}.world-life ol{max-height:180px;overflow:auto}.world-life-actor circle{fill:#78bca0;stroke:#142230;stroke-width:2}.world-life-actor text{fill:#142230;text-anchor:middle;font-size:12px}.world-life-monsters circle,.world-life-raiders circle{fill:#d89078}.world-life-merchant circle{fill:#e5c370}
 .combat-active .combat-mode > #npc-view{position:fixed;z-index:66;left:50%;bottom:16px;transform:translateX(-50%);width:clamp(240px,calc(100vw - 660px),520px);max-height:min(45dvh,360px);display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid #667d8b;border-radius:14px;background:#142230;color:#e6eff7;box-shadow:0 8px 24px #0005;overflow:hidden;pointer-events:auto}
 .combat-active .combat-mode > #npc-view[hidden]{display:none}
 .combat-active .combat-mode > #npc-view #npc-title{flex:none;margin:0;font-size:.95rem;line-height:1.4;overflow-wrap:anywhere}

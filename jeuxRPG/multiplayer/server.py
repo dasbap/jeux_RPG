@@ -21,6 +21,7 @@ from .service import GameError, GameService, digest
 from .state_bundles import encode
 
 CLIENT_MODULES = (
+    "sprites.js",
     "app_core.js",
     "app_world.js",
     "app_skills.js",

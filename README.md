@@ -56,6 +56,12 @@ Si le venv est déjà créé et activé, reprendre à `python -m pip install .`.
 
 Ouvrir **http://127.0.0.1:8080**.
 
+Pour essayer le monde vivant dans une base séparée (PNJ, caravane, patrouilles,
+attaques et reconstruction des villes), suivre la [recette locale](docs/LIVING_WORLD.md).
+
+Le Builder propose aussi un [Sprite Maker](docs/SPRITES.md) pour dessiner et animer
+des sprites, importer/exporter des PNG et les associer aux entités du jeu.
+
 1. Créer un compte, puis créer ou sélectionner son personnage et démarrer l’aventure.
 2. Explorer les cartes écrites dans le Builder. Un double clic permet de se déplacer ; les passages affichent leur nom au survol.
 3. Sortir du village ou de la forêt ouvre la carte globale pour choisir la destination. Le déplacement suit les chemins et durées définis dans le Builder.

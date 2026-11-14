@@ -1,4 +1,63 @@
 "use strict";
+function renderLivingWorld(adventure) {
+  const life = adventure.living_world;
+  let panel = $("world-life-view");
+  if (!life) { if (panel) panel.hidden = true; return; }
+  if (!panel) {
+    panel = document.createElement("section"); panel.id = "world-life-view";
+    panel.className = "world-life";
+    panel.innerHTML = '<h3>Vie du monde</h3><p id="world-life-status" role="status"></p><div id="world-life-towns" class="world-life-towns"></div><h4 id="world-life-merchant"></h4><p id="world-life-market-status"></p><div id="world-life-market" class="actions"></div><p id="world-life-nearby"></p><details><summary>Nouvelles des terres</summary><ol id="world-life-events"></ol></details>';
+    $("region-view").append(panel);
+  }
+  panel.hidden = false;
+  $("world-life-status").textContent = life.catching_up ? "Les nouvelles des terres sont en cours de mise à jour…" : "Les habitants poursuivent leurs activités.";
+  const statuses = {peaceful:"Paisible",warning:"Attaque annoncée",siege:"Ville assiégée",rebuilding:"Reconstruction"};
+  const root = $("world-life-towns"), retained = new Set();
+  for (const town of life.towns) {
+    retained.add(town.id);
+    let row = [...root.children].find(child => child.dataset.town === town.id);
+    if (!row) {
+      row = document.createElement("article"); row.dataset.town = town.id;
+      row.innerHTML = '<h4></h4><p class="life-reserves"></p><progress max="100" aria-label="État de la ville"></progress><div class="actions"></div>';
+      for (const [kind, label] of [["defend","Renforcer la garde"],["rebuild","Reconstruire"],["supply","Ravitailler"]]) {
+        const button = document.createElement("button"); button.type = "button"; button.dataset.kind = kind;
+        button.textContent = `${label} · 10 or`;
+        button.onclick = () => tutorialCommand("world_help", {town:town.id,kind});
+        row.querySelector(".actions").append(button);
+      }
+      root.append(row);
+    }
+    row.querySelector("h4").textContent = `${town.name} · ${statuses[town.status] || town.status}`;
+    row.querySelector(".life-reserves").textContent = `État ${town.integrity}/100 · ${town.guards} gardes · Vivres ${town.food} · Bois ${town.wood} · Pierre ${town.stone}`;
+    row.querySelector("progress").value = town.integrity;
+    for (const button of row.querySelectorAll("button")) {
+      button.disabled = busy || life.catching_up || life.local_town !== town.id || (button.dataset.kind === "defend" && !town.raid) || (button.dataset.kind === "rebuild" && (town.raid || town.integrity === 100));
+      button.title = life.local_town === town.id ? "Cette aide coûte 10 or." : "Rejoignez cette ville pour lui apporter votre aide.";
+    }
+  }
+  for (const child of [...root.children]) if (!retained.has(child.dataset.town)) child.remove();
+  const merchant = life.merchant, market = $("world-life-market"), offers = new Set();
+  $("world-life-merchant").textContent = merchant.location ? `${merchant.name} · ${merchant.location}` : `${merchant.name} · ${merchant.phase === "waiting" ? "Attend la fin du siège" : "En route"}`;
+  $("world-life-market-status").textContent = life.can_trade ? "La caravane propose ses marchandises." : "Approchez-vous de la caravane dans sa ville d'étape pour commercer.";
+  for (const offer of merchant.stock) {
+    offers.add(offer.id);
+    let button = [...market.children].find(child => child.dataset.item === offer.id);
+    if (!button) { button = document.createElement("button");button.type="button";button.dataset.item=offer.id;market.append(button); }
+    button.textContent = `${offer.name} · ${offer.unit_price} or · stock ${offer.quantity}`;
+    button.disabled = busy || life.catching_up || !life.can_trade || offer.quantity < 1;
+    button.onclick = () => tutorialCommand("world_buy",{item:offer.id,quantity:1,unit_price:offer.unit_price});
+  }
+  for (const child of [...market.children]) if (!offers.has(child.dataset.item)) child.remove();
+  $("world-life-nearby").textContent = life.nearby.map(actor => `${actor.name} : ${actor.activity}${actor.max_hp?` · ${actor.hp}/${actor.max_hp} PV`:""}`).join(" · ");
+  const events = $("world-life-events"), ids = new Set();
+  for (const event of life.events) {
+    ids.add(event.id);
+    let row = [...events.children].find(child => child.dataset.event === event.id);
+    if (!row) {row=document.createElement("li");row.dataset.event=event.id;events.append(row);}
+    row.textContent = event.message;
+  }
+  for (const child of [...events.children]) if (!ids.has(child.dataset.event)) child.remove();
+}
 function syncRegionTravel(adventure) {
   const previous = regionTravelState;
   const field = adventure.field_map || null;
@@ -623,37 +682,48 @@ function renderWorld(adventure, me, mapContainer = $("world-map"), {overview = t
     button.addEventListener("click", () => point.action === "explore" ? tutorialCommand("explore") : point.action === "dialogue" ? tutorialCommand("talk", {npc: point.id}) : showView("craft"));
     $("point-actions").append(button);
   }
-  $("bestiary-details").replaceChildren();
-  if (!world.bestiary.length) paragraphs("bestiary-details", ["Aucun monstre rencontré. Le bestiaire se complète à chaque découverte."]);
+}
+function renderBestiary(adventure) {
+  const bestiary = adventure.world?.bestiary || [];
   const damageTypes = {PHYSICAL: "physique", MAGIC: "magique", SACRED: "sacré"};
   const selectedMap = $("bestiary-map").value;
-  const maps = [...new Map(world.bestiary.flatMap(m => m.spawn_maps || []).map(m => [m.id, m])).values()];
+  const maps = [...new Map(bestiary.flatMap(m => m.spawn_maps || []).map(m => [m.id, m])).values()];
   syncSelectOptions($("bestiary-map"), [["", "Toutes les cartes découvertes"], ...maps.map(map => [map.id, map.name])], selectedMap);
   $("bestiary-sort-label").hidden = maps.length < 2;
   const query = $("bestiary-search").value.trim().toLocaleLowerCase();
-  const filtered = world.bestiary.filter(m => (!$("bestiary-map").value || m.spawn_maps.some(p => p.id === $("bestiary-map").value)) && `${m.name} ${m.loot.map(p => p.item).join(" ")} ${(m.rare_loot || []).map(p => p.item).join(" ")}`.toLocaleLowerCase().includes(query));
-  if (world.bestiary.length && !filtered.length) paragraphs("bestiary-details", ["Aucun mob découvert ne correspond à ces filtres."]);
+  const map = $("bestiary-map").value, sort = $("bestiary-sort").value;
+  if (!sectionChanged("bestiary", [session.id, bestiary, map, query, sort, adventure.sprites])) return;
+  const filtered = bestiary.filter(m => (!map || (m.spawn_maps || []).some(p => p.id === map)) && `${m.name} ${m.loot.map(p => p.item).join(" ")} ${(m.rare_loot || []).map(p => p.item).join(" ")}`.toLocaleLowerCase().includes(query));
+  const cards = document.createDocumentFragment();
+  if (!bestiary.length || !filtered.length) {
+    const empty = document.createElement("p");
+    empty.textContent = bestiary.length ? "Aucun mob découvert ne correspond à ces filtres." : "Aucun monstre rencontré. Le bestiaire se complète à chaque découverte.";
+    cards.append(empty);
+  }
   for (const mob of filtered) {
     const card = document.createElement("article");
     card.className = "codex-card";
+    if(adventure.sprites) {const thumbnail=spriteThumbnail(adventure,[`mob:${mob.id}`]);if(thumbnail)card.append(thumbnail);}
     const title = document.createElement("h4");
     title.textContent = `${mob.name} · rang ${mob.rank}`;
     card.append(title);
     for (const text of [mob.description,
       `PV : ${mob.hp.first_encounter} au premier combat, ${mob.hp.hunt} en chasse ou entraînement.`,
+      ...(mob.attack_range === undefined ? [] : [`Attaque de base : ${mob.attack_name || "Attaque"} · portée maximale ${mob.attack_range} cases, avec ligne de vue.`]),
       `Force ${mob.stats.force} · Endurance ${mob.stats.endurance} · Intelligence ${mob.stats.intelligence} · Sagesse ${mob.stats.sagesse}`,
       `Faiblesses : ${mob.weaknesses.map(t => damageTypes[t] || t).join(", ") || "aucune"}`,
       `Résistances : ${mob.resistances.map(t => damageTypes[t] || t).join(", ") || "aucune"}`,
       `Matériaux donnés par victoire : ${mob.loot.map(item => `${item.quantity === item.max_quantity ? item.quantity : `${item.quantity}–${item.max_quantity}`} ${item.item} (${(100 * item.chance).toFixed(1)} %, ${item.attempts} tirage(s))`).join(", ")}`,
       `Expérience de référence au niveau 1 : ${mob.xp.hunt} XP. Varie selon le niveau du mob et du joueur qui porte le dernier coup. Entraînement : aucun butin ni XP.`,
-      `Cartes de spawn découvertes : ${[...(mob.spawn_maps || [])].sort((a, b) => a.name.localeCompare(b.name) * ($("bestiary-sort").value === "desc" ? -1 : 1)).map(p => p.name).join(", ")}`,
+      `Cartes de spawn découvertes : ${[...(mob.spawn_maps || [])].sort((a, b) => a.name.localeCompare(b.name) * (sort === "desc" ? -1 : 1)).map(p => p.name).join(", ")}`,
       `Matériaux rares au dépeçage : ${(mob.rare_loot || []).map(p => `${p.item} (${(100 * p.chance).toFixed(1)} %, ${p.attempts} tirage(s), ${p.min}–${p.max} par réussite)`).join(", ")}`, `Capacités : ${(mob.abilities || []).map(a => `${a.name} (niveau ${a.level})`).join(", ") || "attaque classique"}`, mob.materials_usage]) {
       const p = document.createElement("p");
       p.textContent = text;
       card.append(p);
     }
-    $("bestiary-details").append(card);
+    cards.append(card);
   }
+  $("bestiary-details").replaceChildren(cards);
 }
 function toggleGameMenu(open = $("game-menu-items").hidden) {
   $("game-menu-items").hidden = !open;

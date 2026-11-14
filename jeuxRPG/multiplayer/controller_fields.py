@@ -11,6 +11,7 @@ DECIMAL_FIELDS = {
     "threshold",
     "xp_multiplier",
     "damage_growth",
+    "attack_range",
     "power",
     "growth",
     "cooldown",

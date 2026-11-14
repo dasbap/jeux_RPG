@@ -170,6 +170,15 @@ def validate_mobs(mobs, classes=None, xp_classes=None):
             raise ValueError("Race du mob : texte de 1 à 64 caractères requis.")
         if type(item.get("hostile", True)) is not bool:
             raise ValueError("Hostilité du mob : booléen requis.")
+        if "attack_range" in item and not finite(item["attack_range"], 0.5, 20):
+            raise ValueError(
+                "Portée de l'attaque : nombre entre 0,5 et 20 cases requis."
+            )
+        if "attack_name" in item and (
+            not isinstance(item["attack_name"], str)
+            or not 1 <= len(item["attack_name"].strip()) <= 80
+        ):
+            raise ValueError("Nom d'attaque : texte de 1 à 80 caractères requis.")
         if "level" in item and (
             type(item["level"]) is not int or not 1 <= item["level"] <= 100
         ):

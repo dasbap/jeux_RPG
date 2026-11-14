@@ -1047,7 +1047,9 @@
       "abilities": [],
       "phases": [],
       "race": "Gobelin",
-      "hostile": true
+      "hostile": true,
+      "attack_range": 6.0,
+      "attack_name": "Tir de fl?che"
     },
     "squelette_errant": {
       "name": "Squelette errant",
@@ -2095,7 +2097,9 @@
       "abilities": [],
       "phases": [],
       "race": "Squelette",
-      "hostile": true
+      "hostile": true,
+      "attack_range": 6.0,
+      "attack_name": "Tir de fl?che"
     },
     "feu_follet": {
       "name": "Feu follet",

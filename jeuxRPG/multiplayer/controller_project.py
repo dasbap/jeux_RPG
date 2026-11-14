@@ -224,6 +224,9 @@ class Project:
             raise
 
     def _validate(self):
+        from .sprite_catalog import validate_references as validate_sprite_references
+
+        validate_sprite_references(self.content, self.mobs, self.maps)
         validate_mobs(
             self.mobs,
             classes=[

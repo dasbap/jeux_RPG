@@ -443,6 +443,7 @@ def validate_content(data):
         "gameplay",
         "narrative",
         "interface",
+        "sprites",
     } != set(DEFAULTS):
         raise ValueError("Sections monde, quêtes et succès requises.")
     _validate_world_rules(data)
@@ -453,6 +454,10 @@ def validate_content(data):
     from .narrative_catalog import validate as validate_narrative
 
     validate_narrative(data)
+    from .sprite_catalog import catalog as sprite_catalog
+    from .sprite_catalog import validate as validate_sprites
+
+    validate_sprites(sprite_catalog(data))
     for section in ("classes", "skills"):
         if section in data and not isinstance(data[section], list):
             raise ValueError("Catalogue de classes/compétences invalide.")

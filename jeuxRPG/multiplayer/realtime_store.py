@@ -136,6 +136,9 @@ class RuntimeStore:
             log_directory="-",
             clock=clock,
             presence_registry=PresenceRegistry(),
+            living_world=environment.get("RPG_LIVING_WORLD") == "1",
+            world_speed=float(environment.get("RPG_WORLD_SPEED", "1")),
+            world_seed=environment.get("RPG_WORLD_SEED", "jeux-rpg-living-world-v1"),
         )
         self.service.legacy_auth = not account_auth_required(environment)
         self.service.realm_count = max(
@@ -253,6 +256,23 @@ class RuntimeStore:
 
     def capture(self, now=None, dirty_only=False):
         now = time.monotonic() if now is None else now
+        old_world = {
+            row["key"]: row
+            for row in self.durable["meta"]
+            if row["key"].startswith("world_life:")
+        }
+        for raw in self.db.execute(
+            "SELECT key,value FROM meta WHERE substr(key,1,11)='world_life:'"
+        ):
+            row = dict(raw)
+            if old_world.get(row["key"]) != row:
+                self.pending[("meta", (row["key"],))] = row
+                old_world[row["key"]] = row
+        self.durable["meta"] = [
+            row
+            for row in self.durable["meta"]
+            if not row["key"].startswith("world_life:")
+        ] + list(old_world.values())
         social_tables = SOCIAL_TABLES if self.service.persistent_social_changed else ()
         self.service.persistent_social_changed = False
         changed_journals = set()

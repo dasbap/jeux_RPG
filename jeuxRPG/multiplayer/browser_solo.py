@@ -16,7 +16,10 @@ class SoloGame:
         if saved:
             self.db.deserialize(bytes(saved))
         self.service = GameService(
-            connection=self.db, log_directory="-", presence_registry=PresenceRegistry()
+            connection=self.db,
+            log_directory="-",
+            presence_registry=PresenceRegistry(),
+            living_world=True,
         )
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS browser_characters(player_id TEXT PRIMARY KEY, token TEXT NOT NULL)"

@@ -25,6 +25,8 @@ def split(state):
                 "field_interactions",
                 "merchant",
                 "traveller",
+                "living_world",
+                "sprites",
                 "achievements",
                 "battle",
                 "control_credit",

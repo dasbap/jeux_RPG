@@ -101,7 +101,9 @@ def advance(party, mob, target, characters, units, preset, now, messages):
             invocations_after = sum(
                 invoc.hp.current_value for invoc in actor.invocations.get_all()
             )
-            if (
+            if key not in party["battle"].get("guard_patrol", {}).get(
+                "members", {}
+            ) and (
                 actor.hp.current_value < before
                 or invocations_after < invocations_before
             ):
