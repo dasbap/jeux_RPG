@@ -820,6 +820,8 @@ def spawn(party, now, random, messages, origin="travel"):
 
 def arrive(party, destination, messages):
     party["position"] = destination
+    # Arrival must persist even when both points belong to the same zone.
+    party["autosave_checkpoint"] = party.get("autosave_checkpoint", 0) + 1
     zone = world.zone_of(destination)
     party["visited"] = sorted(set(party["visited"]) | {zone})
     messages.append(f"Vous arrivez à {world.point_name(destination)}.")
