@@ -134,3 +134,11 @@ def test_builder_changes_and_renames_only_the_equipment_layer(pack):
             maker.window.after_cancel(maker.timer)
             maker.window.destroy()
         root.destroy()
+
+
+def test_reptiles_have_their_own_body_instead_of_wolf_geometry(pack):
+    _, data = pack
+    lizard = data["assets"]["corps_lizard"]
+    assert lizard["frames"] != data["assets"]["corps_wolf"]["frames"]
+    for mob in ("salamandre_de_braise", "basilic_juvenile"):
+        assert data["bindings"][f"mob:{mob}"] == "corps_lizard"

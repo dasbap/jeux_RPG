@@ -813,6 +813,8 @@ class GameService(AccountMixin, LivingWorldMixin):
             "world_help": {"session_id", "revision", "town", "kind"},
             "world_buy": {"session_id", "revision", "item", "quantity", "unit_price"},
             "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
+            "walk": {"session_id", "revision", "encounter", "x", "y", "path"},
+            "move_axis": {"session_id", "revision", "encounter", "x", "y"},
             "stop_move": {"session_id", "revision", "encounter"},
             "hide": {"session_id", "revision"},
             "harvest": {"session_id", "revision", "target"},
@@ -830,6 +832,8 @@ class GameService(AccountMixin, LivingWorldMixin):
             "leave_battle": {"session_id", "revision"},
         }
         tactical_actions = {
+            "walk",
+            "move_axis",
             "battle_move",
             "stop_move",
             "unit_order",
@@ -851,6 +855,14 @@ class GameService(AccountMixin, LivingWorldMixin):
                 and not (
                     action in tactical_actions
                     and set(params) == allowed[action] - {"encounter"}
+                )
+                and not (
+                    action in ("move_axis", "stop_move")
+                    and set(params)
+                    in (
+                        allowed[action] | {"position"},
+                        (allowed[action] - {"encounter"}) | {"position"},
+                    )
                 )
                 and not (
                     action in ("move", "travel")
@@ -991,6 +1003,8 @@ class GameService(AccountMixin, LivingWorldMixin):
             "endgame_claim",
             "buy",
             "sell",
+            "walk",
+            "move_axis",
             "battle_move",
             "stop_move",
             "hide",
@@ -1000,6 +1014,7 @@ class GameService(AccountMixin, LivingWorldMixin):
             "unit_order",
             "unit_skill",
         ):
+            # Directions and free paths share the existing authenticated adventure flow.
             return self._execute_adventure(player, action, params, now, compact)
         if action in ("create", "join") and self._active(player_id):
             raise GameError(

@@ -153,7 +153,7 @@ function moveControlled(adventure, me, destination) {
   if (unit.route.length && unit.route.at(-1).join(",") === destination.join(",")) return;
   const path = gridPath(adventure.battle.map, unit.position, destination);
   if (path === null) return message("Ce chemin est inaccessible : vérifiez les passages sur la carte.", true);
-  if (path.length) return tutorialCommand("battle_move", {x, y, path});
+  if (path.length) return tutorialCommand(adventure.battle.movement_model==="continuous-v1"?"walk":"battle_move", {x, y, path});
 }
 function canPayControl(adventure, me, unit) {
   const cost = unit.control_cost;
@@ -238,8 +238,8 @@ function renderSelection(adventure, me) {
   paragraphs("selected-unit-stats", selected ? [selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
-  let [x, y] = source;
-  const [tx, ty] = target;
+  let [x, y] = source.map(Math.round);
+  const [tx, ty] = target.map(Math.round);
   const dx = Math.abs(tx - x), dy = Math.abs(ty - y), sx = x < tx ? 1 : -1, sy = y < ty ? 1 : -1;
   let error = dx - dy;
   while (x !== tx || y !== ty) {
@@ -257,6 +257,7 @@ function battleAllowed(adventure, player, target, range) {
   return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
 }
 function gridPath(map, source, destination) {
+  source=source.map(Math.round);destination=destination.map(Math.round);
   const obstacles = new Set([...(map.cover || []), ...(map.blocked || [])].map(p => p.join(",")));
   const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || obstacles.has(`${x},${y}`);
   if (blocked(...destination)) return null;
@@ -302,10 +303,9 @@ function exitCaptionLayout(name, x, y, view, pixel, measure) {
     x:Math.max(view.left+padding,Math.min(view.right-padding-width,toRight?x+gap:x-gap-width)),
     y:Math.max(view.top+padding,Math.min(view.bottom-padding-height,y-height/2)),pixel};
 }
-function renderBattle(adventure, me) {
-  const battle = adventure.battle, map = battle.map;
-  const unit = battle.players[me.id];
-  const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
+function renderBattleMapSvg(adventure, me) {
+  const battle=adventure.battle,map=battle.map,unit=battle.players[me.id];
+  const disabled=Boolean(me.casting)||me.hp<=0||me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   if (fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: Math.min(map.width, 24), x: unit.position[0], y: unit.position[1], follow: true};
@@ -383,7 +383,9 @@ function renderBattle(adventure, me) {
   const draw = (id, position, label, className, spriteKeys=[]) => {
     if (!inView(position)) return null;
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
-    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position);
+    const actor=battle.players[id]||alliedUnits(adventure)[id]||adventure.mobs.find(mob=>mob.combat_id===id)||{position};
+    const target=entityPosition(adventure,actor.target);
+    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position,36,spriteFacing(adventure,id,actor,target));
     group.append(picture || element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
     group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + (picture?45:25)}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
@@ -396,7 +398,7 @@ function renderBattle(adventure, me) {
     if (actor.map !== map.id || !inView(actor.position)) continue;
     const [x,y] = actor.position.map(value => value * 40 + 20);
     const group = element("g", {class:`world-life-actor world-life-${actor.kind}`,"data-unit":`world:${actor.id}`,"pointer-events":"none"});
-    const picture=adventure.sprites&&entitySprite(adventure,[`npc:${actor.id}`,`ambient:${actor.kind}`],element,actor.position);
+    const picture=adventure.sprites&&entitySprite(adventure,[`npc:${actor.id}`,`ambient:guard_${actor.role}`,`ambient:${actor.kind}`],element,actor.position,36,spriteFacing(adventure,actor.id,actor,actor.aim));
     group.append(picture||element("circle",{cx:x,cy:y,r:10}),element("title",{},`${actor.name} · ${actor.activity}`));
     if(!picture)group.append(element("text",{x,y:y+4},actor.kind==="merchant"?"¤":actor.kind==="resident"?"•":actor.kind==="guards"?"◆":"!"));
     if(actor.max_hp) {
@@ -510,7 +512,16 @@ function renderBattle(adventure, me) {
       if (previousMap.children[index] !== child) previousMap.insertBefore(child, previousMap.children[index] || null);
     }
     previousMap.onwheel = svg.onwheel;
-  } else $("world-map").replaceChildren(svg);
+  } else if(previousMap && $("world-map").querySelector(".rpg-canvas3d")) previousMap.replaceWith(svg);
+  else $("world-map").replaceChildren(svg);
+}
+function renderBattle(adventure, me) {
+  const battle = adventure.battle, map = battle.map;
+  const unit = battle.players[me.id];
+  const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
+  if(fieldCamera?.map!==map.id)fieldCamera={map:map.id,span:24,x:unit.position[0],y:unit.position[1],follow:true};
+  const drawn=battle.movement_model==="continuous-v1" && globalThis.renderRpgScene3D?.(adventure,me);
+  if(!drawn)renderBattleMapSvg(adventure,me);
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
     const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("article"); retainedCards.add(card); card.className = "mob-card"; card.tabIndex = 0; card.setAttribute("role", "group"); card.dataset.mob = mob.combat_id;

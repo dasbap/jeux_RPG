@@ -80,11 +80,7 @@ class WorldSimulation:
             zones.setdefault(definition["zone"], []).append(key)
         for zone, maps in sorted(zones.items(), key=lambda item: str(item[0])):
             for kind in ("guards", "monsters"):
-                choices = [
-                    key
-                    for key in maps
-                    if self.catalog["maps"][key]["town"] == (kind == "guards")
-                ]
+                choices = [key for key in maps if self._patrol_allowed(kind, key)]
                 if not choices:
                     continue
                 key = f"{kind}:{zone}"
@@ -95,6 +91,17 @@ class WorldSimulation:
                     "strength": 5 + roll(state["seed"], key, 6),
                 }
                 schedule(state, origin + self.rules["patrol_period"], "patrol", key, 0)
+        for map_id, definition in self.catalog["maps"].items():
+            if not definition.get("garrison") or definition["town"]:
+                continue
+            key = f"guards:{map_id}"
+            state["patrols"][key] = {
+                "kind": "guards",
+                "map": map_id,
+                "since": origin,
+                "strength": 6,
+            }
+            schedule(state, origin + self.rules["patrol_period"], "patrol", key, 0)
         if state["towns"]:
             town = sorted(state["towns"])[0]
             state["merchant"] = {
@@ -129,6 +136,37 @@ class WorldSimulation:
             for event in state["queue"]
         ):
             raise ValueError("Calendrier du monde invalide")
+
+    def migrate_catalog(self, state):
+        """Upgrade an explicitly supported geography without resetting the realm."""
+        if state.get("catalog") == self.identity:
+            return state
+        if state.get("version") != 1 or state.get("catalog") not in self.catalog.get(
+            "previous_catalogs", []
+        ):
+            self.validate(state)
+        updated = deepcopy(state)
+        fresh = self.create(state["time"], state["realm"])
+        if set(state["towns"]) != set(fresh["towns"]):
+            raise ValueError(
+                "La migration géographique ne peut pas remplacer les villes."
+            )
+        updated["catalog"] = self.identity
+        for key in set(updated["patrols"]) - set(fresh["patrols"]):
+            del updated["patrols"][key]
+        for key in fresh["patrols"].keys() - updated["patrols"].keys():
+            updated["patrols"][key] = fresh["patrols"][key]
+            schedule(
+                updated, state["time"] + self.rules["patrol_period"], "patrol", key, 0
+            )
+        updated["queue"] = [
+            event
+            for event in updated["queue"]
+            if event[2] != "patrol" or event[3] in updated["patrols"]
+        ]
+        heapq.heapify(updated["queue"])
+        self.validate(updated)
+        return self._repair_patrols(updated)
 
     def advance(self, state, target, budget=None):
         self.validate(state)
@@ -165,7 +203,9 @@ class WorldSimulation:
 
     def _patrol_allowed(self, kind, map_id):
         definition = self.catalog["maps"].get(map_id)
-        return definition is not None and definition["town"] == (kind == "guards")
+        return definition is not None and bool(
+            definition.get("garrison", definition["town"])
+        ) == (kind == "guards")
 
     def _repair_patrols(self, state):
         invalid = [
@@ -206,7 +246,11 @@ class WorldSimulation:
                 for map_id in self.catalog["neighbours"].get(patrol["map"], [])
                 if self._patrol_allowed(patrol["kind"], map_id)
             ]
-            if choices and not patrol.get("squad"):
+            if (
+                choices
+                and not patrol.get("squad")
+                and not self.catalog["maps"][patrol["map"]].get("garrison")
+            ):
                 patrol["map"] = choices[roll(state["seed"], identity, len(choices))]
             patrol["since"] = at
             schedule(state, at + self.rules["patrol_period"], kind, entity, cycle + 1)
@@ -568,6 +612,13 @@ class LivingWorld:
         cached = self.cache.get(realm)
         if cached is None or cached[0] != raw:
             state = json.loads(raw)
+            migrated = self.simulation.migrate_catalog(state)
+            if migrated is not state:
+                self.save(realm, migrated)
+                raw = json.dumps(
+                    migrated, sort_keys=True, separators=(",", ":"), allow_nan=False
+                )
+                state = migrated
             self.simulation.validate(state)
             self.cache[realm] = (raw, state)
         return self.cache[realm][1]

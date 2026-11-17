@@ -9,7 +9,9 @@ pas les passages pour poursuivre un ennemi dans un camp hostile.
 ## Comportement
 
 - Une patrouille contient **trois gardes**, chacun avec **45 PV** et un sprite.
-- Ils détectent les ennemis à **six cases** et les frappent au corps à corps.
+- Elle comporte deux **chevaliers** et un **archer**. Ils détectent les ennemis
+  à **six cases** ; les chevaliers frappent au corps à corps et l'archer tire
+  jusqu'à six cases avec ligne de vue (cadence de 4,5 secondes de jeu).
   Les ennemis peuvent les prendre pour cible et leur infliger dégâts ou altérations.
 - Dès qu'un membre atteint **30 % de ses PV ou moins**, toute la patrouille cesse
   l'offensive et rejoint son point de ralliement. Les gardes évitent de distancer
@@ -19,6 +21,13 @@ pas les passages pour poursuivre un ennemi dans un camp hostile.
   quand **tous les membres atteignent au moins 80 % de leurs PV**.
 - Si toute la patrouille est hors combat, un remplacement arrive au village après
   **180 secondes de jeu**, soit une minute réelle avec l'horloge habituelle.
+
+Pendant un raid actif contre leur village (phase **siège**), les gardes tiennent
+leur position et combattent même à faible vie : aucun repli ni soin de groupe.
+Un repli ou des soins déjà commencés sont interrompus. Ils peuvent poursuivre
+les ennemis dans toute la carte du village, sans franchir ses passages. La simple
+alerte avant le raid conserve les règles habituelles, qui s'appliquent de nouveau
+dès la fin du siège. Les gardes tombés restent hors combat.
 
 Leurs barres de vie et leur activité (combat, repli, soins, hors combat) apparaissent
 sur la carte et dans **Carte → Vie du monde**. Les soldats ne sont pas des unités

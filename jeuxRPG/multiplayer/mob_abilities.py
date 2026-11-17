@@ -110,6 +110,24 @@ def advance(party, mob, target, characters, units, preset, now, messages):
                 party["battle"]["damage_received"] = True
                 if units[key].get("casting", {}).get("concentration"):
                     units[key].pop("casting", None)
+        from .combat_visuals import emit
+
+        if "combat_id" in mob:
+            emit(
+                party,
+                mob["combat_id"],
+                mob["combat_id"] if own else key,
+                now,
+                "skill",
+                "HEAL"
+                if own
+                else "DAMAGE"
+                if ability["type"] == "damage"
+                else "DEBUFF",
+                ability["name"],
+                ability["range"],
+                before - actor.hp.current_value,
+            )
         mob.pop("ability_cast", None)
         mob.setdefault("ability_ready", {})[ability["name"]] = (
             now + ability["cooldown"] * progression.RATIO

@@ -30,6 +30,22 @@ test("sprite URI cache survives snapshots and changes when a pixel changes",()=>
   assert.equal(context.spriteDataUri(JSON.parse(JSON.stringify(sprite))),first);
   sprite.frames[0][0]="11";assert.notEqual(context.spriteDataUri(sprite),first);
 });
+
+test("each actor faces its own movement or target, retaining direction while idle",()=>{
+  const {context,adventure,element}=setup();
+  adventure.field_map="rosee";
+  const facing=(id,position,route=[],target=null)=>context.spriteFacing(adventure,id,{position,route},target);
+  assert.equal(facing("hero",[4,4],[[3,4]]),"left");
+  assert.equal(facing("hero",[3,4]),"left");
+  assert.equal(facing("hero",[3,4]),"left");
+  assert.equal(facing("other",[3,4],[],[9,4]),"right");
+  const left=context.entitySprite(adventure,["class:Knight"],element,[3,4],36,"left");
+  assert.equal(left.getAttribute("transform"),"translate(280 0) scale(-1 1)");
+  assert.equal(left.getAttribute("data-facing"),"left");
+  assert.equal(facing("hero",[4,4]),"right");
+  adventure.field_map="forest";
+  assert.equal(facing("hero",[1,4]),"right");
+});
 test("weapon and tint changes reuse body pixels and generate separate cached compositions",()=>{
   const {context,adventure,element,sprite}=setup();
   // A real body palette has dedicated primary and highlight slots.
@@ -44,4 +60,19 @@ test("weapon and tint changes reuse body pixels and generate separate cached com
   assert.equal(node.getAttribute("data-weapon"),"sword");assert.equal(JSON.stringify(sprite),original);
   delete adventure.sprites.equipment["class:Knight"];
   assert.notEqual(context.entitySprite(adventure,["class:Knight"],element,[0,0]).getAttribute("href"),node.getAttribute("href"));
+});
+
+
+test("a specific body never inherits fallback weapons or colors",()=>{
+  const {context,adventure,element,sprite}=setup();
+  adventure.sprites.assets.unarmed={...sprite,name:"Unarmed"};
+  adventure.sprites.bindings["npc:unarmed"]="unarmed";
+  adventure.sprites.assets.sword={...sprite,layer:"weapon"};
+  adventure.sprites.equipment={"class:Knight":"sword"};
+  adventure.sprites.colors={"class:Knight":"#ff0000"};
+  const node=context.entitySprite(adventure,["npc:unarmed","class:Knight"],element,[0,0]);
+  assert.equal(node.getAttribute("data-sprite"),"unarmed");
+  assert.equal(node.getAttribute("data-weapon"),"");assert.equal(node.getAttribute("data-tint"),"");
+  adventure.sprites.bindings["npc:broken"]="missing";
+  assert.equal(context.entitySprite(adventure,["npc:broken","class:Knight"],element,[0,0]).getAttribute("data-sprite"),"hero");
 });

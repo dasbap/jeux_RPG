@@ -385,7 +385,9 @@ def reveal(party):
         if unit["hp"] > 0
         and party["characters"][unit["owner"]]["stats"]["hp"]["current"] > 0
     )
-    positions = [[unit["position"], radius] for unit, radius in observers]
+    from .free_movement import cell
+
+    positions = [[cell(unit["position"]), radius] for unit, radius in observers]
     if positions == battle.get("explored_positions"):
         return
     definition = MAPS[party["field_map"]]

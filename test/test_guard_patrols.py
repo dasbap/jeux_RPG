@@ -219,8 +219,10 @@ def test_offscreen_recovery_is_bounded_and_idempotent(arena):
     assert not guard_patrols.settle_offscreen(group, 180)
 
 
-def test_damage_during_a_monster_turn_immediately_orders_every_guard_to_retreat(arena):
+@pytest.mark.parametrize("raid", [False, True])
+def test_damage_during_a_monster_turn_only_orders_retreat_outside_raids(arena, raid):
     data, squad, _ = arena
+    squad["defending_raid"] = raid
     for member in squad["members"].values():
         member["next_attack"] = 10000
     first = next(iter(squad["members"]))
@@ -229,7 +231,7 @@ def test_damage_during_a_monster_turn_immediately_orders_every_guard_to_retreat(
         target=first, windup_until=0, next_attack=0, attack_damage=40, needs_call=False
     )
     tactics.advance(data, 0, lambda: 0.5)
-    assert squad["mode"] == "retreat"
+    assert squad["mode"] == ("combat" if raid else "retreat")
     assert (
         min(
             guard_patrols.health(member)["current"]
@@ -257,6 +259,46 @@ def test_same_timestamp_cannot_duplicate_guard_attacks(arena):
     for _ in range(10):
         tactics.advance(data, 0, lambda: 0.5)
     assert data["mobs"][0]["stats"]["hp"]["current"] == remaining
+
+
+@pytest.mark.parametrize("mode", ["patrol", "retreat", "recover"])
+def test_raid_defenders_keep_fighting_even_when_wounded(arena, mode):
+    data, squad, _ = arena
+    squad.update(defending_raid=True, mode=mode, origin=[25, 17])
+    first = next(iter(squad["members"].values()))
+    guard_patrols.health(first)["current"] = 5
+    tactics.advance(data, 0, lambda: 0.5)
+    assert squad["mode"] == "combat"
+    assert data["mobs"][0]["stats"]["hp"]["current"] < 100
+    assert guard_patrols.health(first)["current"] == 5
+    squad["defending_raid"] = False
+    tactics.advance(data, 1, lambda: 0.5)
+    assert squad["mode"] in ("retreat", "recover")
+
+
+def test_raid_does_not_make_fallen_guards_keep_fighting(arena):
+    data, squad, _ = arena
+    squad["defending_raid"] = True
+    for member in squad["members"].values():
+        guard_patrols.health(member)["current"] = 0
+    tactics.advance(data, 0, lambda: 0.5)
+    assert squad["mode"] == "down"
+    assert data["mobs"][0]["stats"]["hp"]["current"] == 100
+
+
+@pytest.mark.parametrize(
+    "phase, expected", [("warning", False), ("siege", True), (None, False)]
+)
+def test_only_active_raid_in_the_patrol_village_disables_retreat(game, phase, expected):  # noqa: F811
+    _, session, town = town_party(game)
+    with game._transaction():
+        state = deepcopy(game.world_life.load(1, 0))
+        state["towns"][town]["raid"] = {"phase": phase} if phase else None
+        game.world_life.save(1, state)
+        data = party_of(game, session)
+        context = guard_patrols.attach(game, data, session["id"], 0)
+        assert context["squad"]["defending_raid"] is expected
+        guard_patrols.commit(game, data, context, session["id"], 0)
 
 
 def test_guards_and_adventure_checkpoint_use_the_same_durable_batch(d1):  # noqa: F811

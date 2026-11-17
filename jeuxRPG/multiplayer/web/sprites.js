@@ -1,6 +1,19 @@
 "use strict";
 // Pixel data is validated in the project catalogue; no remote images are used.
 const spriteImages = new Map();
+const spriteDirections = new Map();
+function spriteFacing(adventure, id, unit, target=null) {
+  const position=unit.position, key=`${adventure.field_map||adventure.battle?.map?.id||""}:${id}`;
+  const previous=spriteDirections.get(key);
+  const moved=previous && (position[0]!==previous.position[0]||position[1]!==previous.position[1]);
+  const aim=moved?position:unit.route?.[0]||target;
+  const origin=moved?previous.position:position;
+  const dx=aim?aim[0]-origin[0]:0;
+  const facing=dx<0?"left":dx>0?"right":previous?.facing||"right";
+  spriteDirections.set(key,{position:[...position],facing});
+  if(spriteDirections.size>256)spriteDirections.delete(spriteDirections.keys().next().value);
+  return facing;
+}
 function spriteDataUri(sprite, weapon=null, tint=null) {
   const key=JSON.stringify([sprite,weapon,tint]);
   if(spriteImages.has(key))return spriteImages.get(key);
@@ -28,14 +41,17 @@ function spriteDataUri(sprite, weapon=null, tint=null) {
   spriteImages.set(key,value);if(spriteImages.size>64)spriteImages.delete(spriteImages.keys().next().value);
   return value;
 }
-function entitySprite(adventure, keys, element, position, size=36) {
+function entitySprite(adventure, keys, element, position, size=36, facing="right") {
   const catalog=adventure.sprites;
-  const id=keys.map(key=>catalog?.bindings[key]).find(Boolean), sprite=catalog?.assets[id];
+  const target=keys.find(key=>catalog?.assets[catalog?.bindings?.[key]]);
+  const id=catalog?.bindings?.[target], sprite=catalog?.assets[id];
   if(!sprite)return null;
   const width=size*sprite.width/Math.max(sprite.width,sprite.height),height=size*sprite.height/Math.max(sprite.width,sprite.height);
-  const weaponId=keys.map(key=>catalog?.equipment?.[key]).find(Boolean),weapon=catalog?.assets[weaponId];
-  const tint=keys.map(key=>catalog?.colors?.[key]).find(Boolean);
-  return element("image",{href:spriteDataUri(sprite,weapon||null,tint||null),x:position[0]*40+20-width/2,y:position[1]*40+20-height/2,width,height,"data-sprite":id,"data-weapon":weaponId||"","data-tint":tint||"","aria-label":sprite.name,"image-rendering":"pixelated"});
+  const weaponId=catalog?.equipment?.[target],weapon=catalog?.assets[weaponId];
+  const tint=catalog?.colors?.[target];
+  const attrs={href:spriteDataUri(sprite,weapon||null,tint||null),x:position[0]*40+20-width/2,y:position[1]*40+20-height/2,width,height,"data-sprite":id,"data-weapon":weaponId||"","data-tint":tint||"","data-facing":facing,"aria-label":sprite.name,"image-rendering":"pixelated"};
+  if(facing==="left")attrs.transform=`translate(${position[0]*80+40} 0) scale(-1 1)`;
+  return element("image",attrs);
 }
 function spriteThumbnail(adventure,keys) {
   const element=(tag,attrs)=>{const node=document.createElementNS("http://www.w3.org/2000/svg",tag);for(const[key,value]of Object.entries(attrs))node.setAttribute(key,value);return node;};

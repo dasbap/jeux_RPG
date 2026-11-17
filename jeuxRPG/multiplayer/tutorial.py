@@ -583,6 +583,9 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
                 409,
             )
         before_hp = target.hp.current_value
+        from .free_movement import attacking
+
+        attacking(party, player_id, now)
         target.lose_hp(actor, progression.simple_damage(actor))
         messages.append(
             f"{actor.name} termine son attaque simple contre {target.name} : {max(0, before_hp - target.hp.current_value)} dégâts."
@@ -617,7 +620,13 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
         if not resolved:
             timing = progression.casting(skill)
             unit = party["battle"]["players"][player_id]
-            unit["route"] = []
+            from .free_movement import attacking
+
+            attacking(
+                party, player_id, now, now + timing["seconds"] * progression.RATIO
+            )
+            if not unit.get("free_motion"):
+                unit["route"] = []
             unit["hidden"] = False
             unit["casting"] = {
                 "skill_name": skill.name,
@@ -633,6 +642,19 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
             )
             party["ready"][player_id] = (
                 now + progression.ACTION_SECONDS * progression.RATIO
+            )
+            from .combat_visuals import emit
+
+            emit(
+                party,
+                player_id,
+                target_id,
+                now,
+                "cast",
+                skill.skill_type.name,
+                skill.name,
+                progression.attack_range(actor, skill),
+                duration=timing["seconds"],
             )
             return [
                 f"{actor.name} commence {skill.name} ({timing['seconds']:g} s)."
@@ -658,6 +680,19 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
         party["effect_at"][target_id] = (
             now + progression.ACTION_SECONDS * progression.RATIO
         )
+    from .combat_visuals import emit
+
+    emit(
+        party,
+        player_id,
+        target_id,
+        now,
+        action,
+        skill.skill_type.name if skill else "DAMAGE",
+        skill.name if skill else "",
+        progression.attack_range(actor, skill),
+        before_hp - target.hp.current_value,
+    )
     party["characters"] = {key: pack(c) for key, c in characters.items()}
     tactics.sync_summons(party, now)
     defeated = _attack_survivors(
@@ -1136,7 +1171,15 @@ def execute(party, player_id, action, params, now, error, random):
         return _execute_travel(party, player_id, params, now, error, random)
     if action in ("control_units", "unit_order", "unit_skill"):
         return tactics.control(party, player_id, action, params, now, error), False
-    if action in ("battle_move", "stop_move", "hide", "harvest", "leave_battle"):
+    if action in (
+        "walk",
+        "move_axis",
+        "battle_move",
+        "stop_move",
+        "hide",
+        "harvest",
+        "leave_battle",
+    ):
         messages = tactics.execute(party, player_id, action, params, now, error)
         if action == "leave_battle":
             continue_journey(party, now, random, messages)

@@ -15,6 +15,7 @@ async function launch() {
   const args = packaged ? [] : [path.join(root, "desktop")];
   if (process.platform === "linux") args.push("--no-sandbox", "--ozone-platform=headless");
   const app = await _electron.launch({executablePath, args, env, timeout: 60000});
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.setBackgroundThrottling(false));
   await app.evaluate(({session}) => {
     // Block native requests too, including the main process API bridge.
     session.fromPartition("persist:jeux-rpg").webRequest.onBeforeRequest({urls: ["https://*/*", "http://*/*", "wss://*/*", "ws://*/*"]}, (_details, callback) => callback({cancel: true}));
@@ -42,22 +43,40 @@ async function launch() {
     await page.waitForFunction(() => Boolean(session?.tutorial), null, {timeout: 30000});
     const world = await page.evaluate(() => session.tutorial.world);
     const livingWorld = await page.evaluate(() => session.tutorial.living_world);
-    const sprite = page.locator('image[data-sprite="chevalier_original"]').first();
-    await sprite.waitFor();
-    assert.equal(await sprite.getAttribute("data-weapon"),"arme_sword_shield");
+    await page.waitForFunction(()=>document.querySelector(".rpg-canvas3d")?.scene3D.stats.frames>2).catch(async error=>{
+      console.error(await page.evaluate(()=>({hidden:document.hidden,model:session?.tutorial?.battle?.movement_model,renderer:document.getElementById("world-map").dataset.renderer,canvas:!!document.querySelector(".rpg-canvas3d"),stats:document.querySelector(".rpg-canvas3d")?.scene3D.stats})));
+      throw error;
+    });
+    assert(await page.evaluate(()=>{const scene=document.querySelector(".rpg-canvas3d").scene3D;return scene.items.find(a=>a.hero)?.look.weapon==="arme_sword_shield"&&scene.stats.vertices>1000&&scene.stats.cameraLocked;}));
+    const sprite = page.locator('.scene3d-label').filter({hasText:"Vous"}).first();
     assert(await page.evaluate(()=>{
       const data=session.tutorial.sprites;
       return data.bindings["mob:gobelin_archer"]===data.bindings["mob:garde_gobelin"]&&data.equipment["mob:gobelin_archer"]==="arme_bow"&&data.equipment["mob:garde_gobelin"]==="arme_sword_shield";
     }),"Les variantes de gobelins réutilisent le corps et changent seulement l'arme");
     assert(await page.evaluate(async () => {
-      const source=document.querySelector('image[data-sprite="chevalier_original"]').getAttribute("href");
+      const data=session.tutorial.sprites;
+      const source=spriteDataUri(data.assets.chevalier_original,data.assets.arme_sword_shield);
       const image=new Image();image.src=source;
       try {await image.decode();return image.naturalWidth===session.tutorial.sprites.assets.chevalier_original.width;}catch{return false;}
     }),"Le sprite embarqué se décode hors ligne avec la politique CSP du client");
     await sprite.click();
     await page.waitForFunction(()=>focusedMob===session.me);
-    assert(await page.locator(`[data-unit] .objective-ring`).count()>0,"Un personnage avec sprite reste sélectionnable");
+    await page.locator('.scene3d-label.selected').waitFor();
+    assert(await page.locator('.scene3d-label.selected').count()>0,"Un personnage 3D reste sélectionnable");
     await sprite.click();
+    const movement=await page.evaluate(()=>{
+      const a=session.tutorial,p=a.battle.players[session.me].position;
+      for(const [axis,code] of [[[1,0],"ArrowRight"],[[0,1],"ArrowDown"],[[-1,0],"ArrowLeft"],[[0,-1],"ArrowUp"]]){
+        const path=gridPath(a.battle.map,p,p.map((v,i)=>Math.round(v)+axis[i]));if(path?.length===1)return {code,position:[...p]};
+      }
+    });
+    assert(movement);
+    await page.locator(".rpg-canvas3d").focus();await page.keyboard.down(movement.code);
+    await page.waitForFunction(before=>{const p=session.tutorial.battle.players[session.me].position;return Math.hypot(p[0]-before[0],p[1]-before[1])>.02;},movement.position);
+    const fractional=await page.evaluate(()=>session.tutorial.battle.players[session.me].position.some(v=>v!==Math.round(v)));
+    await page.keyboard.up(movement.code);
+    await page.waitForFunction(()=>session.tutorial.battle.players[session.me].motion_axis?.every(v=>v===0));
+    assert(fractional,"Le moteur Python embarqué avance entre les cases.");
     assert(livingWorld?.towns.length > 0,"Le monde vivant est actif dans le moteur solo embarqué");
     assert(livingWorld.merchant.stock.length > 0,"La caravane dispose de son stock partagé local");
     assert.equal(world.zone_entries.zone_rosee, "rosee");

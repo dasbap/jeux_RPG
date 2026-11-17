@@ -7,6 +7,8 @@ DIGITS = "0123456789abcdef"
 AMBIENT = {
     "resident": "Habitants",
     "guards": "Patrouilles de gardes",
+    "guard_knight": "Gardes chevaliers",
+    "guard_archer": "Gardes archers",
     "monsters": "Groupes de monstres",
     "merchant": "Caravane",
     "raiders": "Assaillants",

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from contextlib import ExitStack
 from pathlib import Path
@@ -28,10 +29,109 @@ def advance_guard_clock(service, town, clock, action):
                 break
 
 
+def advance_fixture(service, session, clock, message):
+    if message.get("scene_fixture"):
+        from jeuxRPG.multiplayer import free_movement
+
+        with service._transaction():
+            data = json.loads(
+                service.db.execute(
+                    "SELECT data FROM tutorials WHERE session_id=?", (session["id"],)
+                ).fetchone()[0]
+            )
+            player = next(iter(data["characters"]))
+            unit = data["battle"]["players"][player]
+            unit.update(
+                position=[32.75, 20] if message["scene_fixture"] != "far" else [32, 20],
+                hidden=False,
+            )
+            unit.pop("casting", None)
+            free_movement.stop(unit, clock.value)
+            data["ready"][player] = 0
+            data["skill_ready"][player] = {}
+            for energy in data["characters"][player]["energies"]:
+                energy["current"] = energy["max"]
+            mob = data["mobs"][0]
+            mob.update(
+                position=[34, 20],
+                next_attack=10000,
+                next_move=10000,
+                calling_until=None,
+                needs_call=False,
+            )
+            mob["stats"]["hp"]["current"] = 100
+            if message["scene_fixture"] == "chase":
+                mob.update(
+                    position=[36, 20],
+                    next_move=clock.value,
+                    target=player,
+                    state="chase",
+                    alerted=True,
+                    last_known=unit["position"][:],
+                )
+            service.db.execute(
+                "UPDATE tutorials SET data=? WHERE session_id=?",
+                (json.dumps(data), session["id"]),
+            )
+    with service._transaction():
+        clock.value = message["advance"]
+    service.tick()
+    row = service.db.execute(
+        "SELECT data FROM tutorials WHERE session_id=?", (session["id"],)
+    ).fetchone()
+    data = json.loads(row[0])
+    return {
+        "clock": clock.value,
+        "players": data["battle"]["players"],
+        "errors": bool(service._tick_errors),
+        "mobs": [mob["position"] for mob in data["mobs"]],
+    }
+
+
+def browser_script(guard, scene, jitter, zones=False):
+    if zones:
+        return "scripts/verify_zone_transitions_browser.cjs"
+    if jitter:
+        return "scripts/verify_reconciliation_browser.cjs"
+    if scene:
+        return "scripts/verify_scene3d_browser.cjs"
+    return (
+        "scripts/verify_guard_patrols_browser.cjs"
+        if guard
+        else "scripts/verify_living_world_browser.cjs"
+    )
+
+
+def prepare_jitter(party, enabled, zones=False):
+    if enabled:
+        party.update(mobs=[], mob=None)
+        for unit in party["battle"]["players"].values():
+            unit["hidden"] = False
+            unit["position"] = [44, 1] if zones else [35, 28]
+
+
+def start_ticker(service, cleanup, enabled):
+    if not enabled:
+        return
+    stopped = threading.Event()
+
+    def run():
+        while not stopped.wait(0.05):
+            service.tick()
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    cleanup.callback(thread.join, 2)
+    cleanup.callback(stopped.set)
+
+
 def main():
     root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(root))
-    guard_scenario = "--guards" in sys.argv
+    zones_scenario = "--zone-transitions" in sys.argv
+    jitter_scenario = "--jitter" in sys.argv or zones_scenario
+    scene_scenario = "--3d" in sys.argv or jitter_scenario
+    guard_scenario = "--guards" in sys.argv or scene_scenario
     for key in list(os.environ):
         if any(
             part in key.upper()
@@ -54,9 +154,12 @@ def main():
     class Clock:
         value = 0
         ratio = 3
+        started = time.monotonic()
 
         def now(self):
-            return self.value
+            return self.value + (
+                (time.monotonic() - self.started) * self.ratio if jitter_scenario else 0
+            )
 
     environment = {
         **os.environ,
@@ -86,7 +189,11 @@ def main():
         session = service.command(account["token"], uuid.uuid4().hex, "tutorial")[
             "session"
         ]
-        town = sorted(service.world_life.simulation.catalog["towns"])[0]
+        town = (
+            "rosee"
+            if "--rosee" in sys.argv or scene_scenario
+            else sorted(service.world_life.simulation.catalog["towns"])[0]
+        )
         anchor = service.world_life.simulation.catalog["maps"][town]["route"][0]
         if guard_scenario:
             route = service.world_life.simulation.catalog["maps"][town]["route"]
@@ -124,6 +231,7 @@ def main():
                 party["battle"]["players"][player_id]["position"] = (
                     tactics.free_position(fields.MAPS[town], [anchor[0], anchor[1] + 4])
                 )
+            prepare_jitter(party, jitter_scenario, zones_scenario)
             party["gold"][player_id] = 1000
             service.db.execute(
                 "UPDATE tutorials SET data=? WHERE session_id=?",
@@ -132,6 +240,7 @@ def main():
         server = RPGServer(("127.0.0.1", 0), service)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
+        start_ticker(service, cleanup, jitter_scenario)
         process = None
         try:
             process = subprocess.Popen(
@@ -139,10 +248,8 @@ def main():
                     "node",
                     str(
                         root
-                        / (
-                            "scripts/verify_guard_patrols_browser.cjs"
-                            if guard_scenario
-                            else "scripts/verify_living_world_browser.cjs"
+                        / browser_script(
+                            guard_scenario, scene_scenario, jitter_scenario, zones_scenario
                         )
                     ),
                 ],
@@ -209,10 +316,8 @@ def main():
                     process.stdin.write("{}\n")
                     process.stdin.flush()
                 elif "advance" in message:
-                    with service._transaction():
-                        clock.value = message["advance"]
-                    service.tick()
-                    process.stdin.write("{}\n")
+                    result = advance_fixture(service, session, clock, message)
+                    process.stdin.write(json.dumps(result) + "\n")
                     process.stdin.flush()
                 else:
                     print(json.dumps(message, ensure_ascii=True), flush=True)
@@ -228,7 +333,9 @@ def main():
                 )
                 assert squad["mode"] == "patrol"
                 print(
-                    "Guard combat, group retreat, recovery and local SQLite persistence verified."
+                    "3D, continuous movement, attack range and combat effects verified locally."
+                    if scene_scenario
+                    else "Guard combat, group retreat, recovery and local SQLite persistence verified."
                 )
             else:
                 assert saved["processed"] > 0

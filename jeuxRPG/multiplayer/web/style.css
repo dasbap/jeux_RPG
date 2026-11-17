@@ -605,3 +605,14 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .combat-active .combat-mode > #npc-view #npc-actions button{min-height:44px;width:auto}
 .combat-active.hud-menu-open #npc-view{display:none!important}
 @media(max-width:700px){.combat-active .combat-mode > #npc-view{width:calc(100vw - 24px);bottom:190px;max-height:min(40dvh,calc(100dvh - 270px));padding:12px}}
+.terrain-mountain{fill:#565e68;stroke:#737d88}
+.has-scene3d{position:relative;isolation:isolate}
+.has-scene3d>svg.battle-map{position:absolute!important;width:1px!important;height:1px!important;opacity:0;pointer-events:none;overflow:hidden}
+.rpg-scene3d{position:absolute;inset:0;overflow:hidden;background:#1b3033;touch-action:none;border-radius:8px}
+.rpg-canvas3d{display:block;width:100%;height:100%;outline:none;touch-action:none}
+.scene3d-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.scene3d-label{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;border:0!important;background:#233d3cc4!important;color:#fff7dc!important;border-radius:8px!important;padding:3px 7px!important;min-height:0!important;font-size:11px!important;box-shadow:0 2px 4px #10202155;cursor:pointer}
+.scene3d-label.scene3d-enemy{background:#713b3acc!important;color:#ffe6d6!important}
+.scene3d-attack{position:absolute;right:24px;bottom:24px;border:2px solid #e7d7a7!important;border-radius:50%!important;width:102px;height:102px;background:#455e63ed!important;box-shadow:0 6px 0 #243c43,0 8px 18px #10202166;color:#fff4d4!important;font-weight:700;white-space:normal}
+.scene3d-help{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;color:#fbf1d2;background:#203a3ac4;padding:4px 9px;border-radius:10px;pointer-events:none}
+@media(max-width:750px){.scene3d-help{display:none}.scene3d-attack{width:84px;height:84px;right:12px;bottom:18px}.scene3d-label{max-width:155px;font-size:10px!important}}

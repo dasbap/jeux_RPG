@@ -23,6 +23,12 @@ function decorateMap(svg, map, element, view, explored = null) {
       group.append(element("ellipse", {cx: 22, cy: 34, rx: 15, ry: 4, fill: "#102f23", opacity: .55}), element("rect", {x: 17, y: 17, width: 7, height: 18, fill: "#856342"}), element("circle", {cx: 13, cy: 17, r: 11, fill: "#335d3b"}), element("circle", {cx: 26, cy: 17, r: 12, fill: "#497e4d"}), element("circle", {cx: 20, cy: 10, r: 10, fill: "#76a867"}));
     } else if (decoration.kind === "house") {
       group.append(element("rect", {x: 4, y: 16, width: 32, height: 21, fill: "#c0a27b"}), element("path", {d: "M1 18 L20 2 L39 18 Z", fill: "#9a5645", stroke: "#5f3733", "stroke-width": 2}), element("rect", {x: 17, y: 25, width: 8, height: 12, fill: "#493d35"}));
+    } else if (decoration.kind === "roof") {
+      group.append(element("rect",{width:40,height:40,fill:"#9a5645"}),element("path",{d:"M0 10H40M0 25H40M10 0V10M30 10V25M10 25V40",stroke:"#693c35","stroke-width":2}));
+    } else if (decoration.kind === "bed") {
+      group.append(element("rect",{x:6,y:3,width:28,height:34,rx:3,fill:"#755039"}),element("rect",{x:9,y:6,width:22,height:9,fill:"#e4dcc0"}),element("rect",{x:9,y:17,width:22,height:16,fill:"#608677"}));
+    } else if (decoration.kind === "rack") {
+      group.append(element("path",{d:"M7 36V5H33V36M5 18H35",stroke:"#89613f","stroke-width":4,fill:"none"}),element("path",{d:"M14 7V29M24 7V29",stroke:"#b7ced9","stroke-width":3,fill:"none"}));
     } else if (decoration.kind === "barricade") {
       group.append(element("path", {d: "M5 4L35 36M35 4L5 36M3 20H37", stroke: "#9a7048", "stroke-width": 6, "stroke-linecap": "round"}));
     } else if (decoration.kind === "wall") {

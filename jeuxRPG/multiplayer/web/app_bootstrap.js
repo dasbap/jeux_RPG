@@ -4,19 +4,23 @@ for (const id of ["bestiary-map", "bestiary-search", "bestiary-sort"]) $(id).add
 const touchControls = globalThis.createRpgTouchControls?.({
   state: () => {
     const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];
-    return {active: Boolean(actor), busy, key: `${session?.id}:${adventure?.encounter_number}`, actor};
+    return {active: Boolean(actor), busy:adventure?.battle?.movement_model==="continuous-v1"?false:busy, continuous:adventure?.battle?.movement_model==="continuous-v1", key: `${session?.id}:${adventure?.encounter_number}`, actor};
   },
   move: direction => {
     const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];
     const me = adventure?.players.find(player => player.id === session.me);
-    if (!actor || busy || me.hp <= 0 || me.stunned || me.casting) return false;
+    if (!actor || me.hp <= 0 || me.stunned) return false;
+    if(adventure.battle.movement_model==="continuous-v1") {
+      if(globalThis.RPGMotion)RPGMotion.set(direction);else tutorialCommand("move_axis",{x:direction[0],y:direction[1]});return true;
+    }
+    if(busy||me.casting)return false;
     const destination = actor.position.map((value, i) => value + direction[i]);
     const path = gridPath(adventure.battle.map, actor.position, destination);
     if (!path?.length || path.length > 2) return false;
     tutorialCommand("battle_move", {x: destination[0], y: destination[1], path});
     return true;
   },
-  stop: () => tutorialCommand("stop_move"),
+  stop: () => globalThis.RPGMotion&&session?.tutorial?.battle?.movement_model==="continuous-v1"?RPGMotion.set([0,0]):tutorialCommand("stop_move"),
   actions: () => []
 });
 

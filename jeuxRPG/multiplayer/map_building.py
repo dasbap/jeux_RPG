@@ -76,7 +76,7 @@ def spawners(definition):
 def create_mob(maps, identifier, config, index, first=False):
     from jeuxRPG._class.character import Character
 
-    from . import tutorial, world
+    from . import tactics, tutorial, world
 
     definition = resolve(MOBS, config["mob_id"])
     from .content import DATA
@@ -129,9 +129,7 @@ def create_mob(maps, identifier, config, index, first=False):
         "hostile": config.get("hostile", definition.get("hostile", True)),
         "race": definition.get("race", definition["class_name"]),
         "rank": definition["rank"],
-        "attack_range": definition.get(
-            "attack_range", DATA["gameplay"]["rules"]["ai"]["melee_range"]
-        ),
+        "attack_range": definition.get("attack_range", tactics.AI_RULES["melee_range"]),
         "attack_name": definition.get("attack_name", "Entaille"),
         "attack_damage": round(
             definition["damage"] + (level - 1) * definition["damage_growth"]

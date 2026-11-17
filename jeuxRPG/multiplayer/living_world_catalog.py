@@ -71,6 +71,12 @@ def build_catalog(seed="jeux-rpg-living-world-v1", speed=1):
             "route": [list(start), *route],
             "town": definition.get("biome") in ("village", "town", "city"),
         }
+        if definition.get("settlement"):
+            maps[key].update(
+                settlement=definition["settlement"],
+                garrison=True,
+                town=key == definition["settlement"],
+            )
     towns = {
         key: {"id": key, "name": value["name"], "zone": value["zone"]}
         for key, value in maps.items()
@@ -112,7 +118,7 @@ def build_catalog(seed="jeux-rpg-living-world-v1", speed=1):
     }
     # A small stock prevents the shared-world payload from growing with every item.
     goods = dict(list(goods.items())[:8])
-    return {
+    result = {
         "version": 1,
         "seed": seed,
         "speed": speed,
@@ -123,3 +129,7 @@ def build_catalog(seed="jeux-rpg-living-world-v1", speed=1):
         "neighbours": neighbours,
         "goods": goods,
     }
+    previous = world.WORLD_MAP_DATA.get("clearing", {}).get("previous_world_catalogs")
+    if previous:
+        result["previous_catalogs"] = list(previous)
+    return result

@@ -1,5 +1,5 @@
 "use strict";
-let python, database, activeToken = "", subscribed = false, dirty = false;
+let python, database, activeToken = "", subscribed = false, dirty = false, stateQueued = false;
 let queue = Promise.resolve();
 function transaction(mode, operation) {
   return new Promise((resolve, reject) => {
@@ -62,11 +62,12 @@ onmessage = event => {
   });
 };
 setInterval(() => {
-  if (!python || !subscribed || !activeToken) return;
+  if (!python || !subscribed || !activeToken || stateQueued) return;
+  stateQueued=true;
   queue = queue.then(() => {
     const result = request({path: "/api/state", token: activeToken});
     dirty = true;
     postMessage({type: "state", result});
-  }).catch(error => postMessage({type: "error", error: String(error)}));
-}, 250);
+  }).catch(error => postMessage({type: "error", error: String(error)})).finally(()=>{stateQueued=false;});
+}, 100);
 setInterval(() => { if (python) queue = queue.then(save).catch(error => postMessage({type: "error", error: String(error)})); }, 5000);

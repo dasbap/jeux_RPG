@@ -240,7 +240,7 @@ function tutorialCommand(action, params = {}) {
     const paths = worldPaths(session.tutorial, params.destination);
     if (paths) params = {...params, paths};
   }
-  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
+  if (session) return command(action, {session_id: session.id, revision: session.revision, ...(["walk", "move_axis", "battle_move", "stop_move", "unit_order", "strike", "skill", "hide", "harvest", "control_units", "unit_skill", "leave_battle"].includes(action) ? {encounter: session.tutorial.encounter_number} : {}), ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial.world_context ? {world_context: session.tutorial.world_context} : {}), ...params});
 }
 function paragraphs(container, texts) {
   $(container).replaceChildren();

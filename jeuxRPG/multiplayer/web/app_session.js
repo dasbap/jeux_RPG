@@ -16,13 +16,14 @@ async function refresh(force = false) {
       if (accountState && !accountState.selected) { renderCharacters(); return; }
     }
     const state = await api("/api/state");
-    if (epoch !== stateEpoch || (state.session && session && state.session.id === session.id && state.session.revision < session.revision)) return;
+    if (epoch !== stateEpoch) return;
+    if(globalThis.RPGMotion?RPGMotion.accept(session,state.session)===false:(state.session&&session&&state.session.id===session.id&&state.session.revision<session.revision))return;
     if (state.session) {
       session = state.session;
       sessionId = session.id;
     } else if (sessionId) {
       const updated = await api(`/api/sessions/${sessionId}`);
-      if (epoch !== stateEpoch || (updated.id === session?.id && updated.revision < session.revision)) return;
+      if (epoch !== stateEpoch || (globalThis.RPGMotion?RPGMotion.accept(session,updated)===false:(updated.id === session?.id && updated.revision < session.revision))) return;
       session = updated;
     } else session = null;
     remember();
@@ -73,10 +74,11 @@ async function command(action, params = {}) {
         // After an explicit rejection, the server snapshot is authoritative even
         // if its revision went backwards (for example after a server restart).
         stateEpoch++;
+        globalThis.RPGMotion?.rebase();
         session = state.session;
         currentParams = {...currentParams, revision: session.revision, ...(["move", "travel", "explore", "talk"].includes(action) && session.tutorial?.world_context ? {world_context: session.tutorial.world_context} : {})};
         if (["move", "travel"].includes(action)) { const paths = worldPaths(session.tutorial, currentParams.destination); if (paths) currentParams.paths = paths; }
-        if (action === "battle_move" && session.tutorial?.battle) {
+        if (["walk", "battle_move"].includes(action) && session.tutorial?.battle) {
           const battle = session.tutorial.battle;
           currentParams.path = gridPath(battle.map, battle.players[session.me].position, [currentParams.x, currentParams.y]);
         }
@@ -88,7 +90,7 @@ async function command(action, params = {}) {
     }
     if (data.session.acknowledged) {
       if (session?.id === data.session.id && data.session.revision >= session.revision) session = {...session, revision: data.session.revision, state: data.session.state};
-    } else if (!session || session.id !== data.session.id || data.session.revision >= session.revision) session = data.session;
+    } else if (globalThis.RPGMotion?RPGMotion.accept(session,data.session):(!session || session.id !== data.session.id || data.session.revision >= session.revision)) session = data.session;
     if (!session) return;
     if (action === "talk") $("story-dialog")?.removeAttribute("data-dismissed");
     if (action === "talk") message(data.session.events?.at(-1)?.message || "Dialogue mis à jour dans le journal de quête.");
@@ -225,6 +227,7 @@ function refreshInterval() {
   if (!token || !$("characters").hidden || gameMode !== "solo" && globalThis.navigator?.onLine === false) return 30000;
   if (document.hidden || globalThis.rpgRealtime?.connected) return 20000;
   const tutorial = session?.tutorial;
+  if(tutorial?.battle?.movement_model==="continuous-v1"&&!document.body.classList.contains("hud-menu-open"))return 250;
   const activeBattle = tutorial?.battle && (!tutorial.field_map || tutorial.mobs?.some(mob => mob.alerted && mob.stats?.hp?.current > 0) || [...Object.values(tutorial.battle.players || {}), ...Object.values(tutorial.battle.summons || {})].some(unit => unit.route?.length || unit.casting));
   if (activeBattle || tutorial?.transit) return location.hostname === "localhost" || location.hostname === "127.0.0.1" ? 250 : 1000;
   if (!session?.tutorial) return 5000;
@@ -253,7 +256,7 @@ function bindTransport() {
     if (boundTransport !== globalThis.rpgRealtime || !token || result.status !== 200 || !$("characters").hidden) return;
     const state = result.body;
     if (lastPlayer && state.player?.id !== lastPlayer.id) return;
-    if (state.session && session && state.session.id === session.id && state.session.revision < session.revision) return;
+    if(globalThis.RPGMotion?RPGMotion.accept(session,state.session)===false:(state.session&&session&&state.session.id===session.id&&state.session.revision<session.revision))return;
     session = state.session || null;
     sessionId = session?.id || "";
     bundleHashes = result.hashes || {};

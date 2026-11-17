@@ -40,7 +40,7 @@ def prepare():
     )
     # Only assets referenced by the public client, never admin pages or local files.
     index = (web / "index.html").read_text(encoding="utf-8")
-    names = set(re.findall(r'(?:src|href)="/([a-z_]+\.(?:js|css))"', index))
+    names = set(re.findall(r'(?:src|href)="/([a-z0-9_]+\.(?:js|css))"', index))
     names.update(("solo_worker.js", "index.html"))
     hashes = {}
     for name in sorted(names):

@@ -158,6 +158,19 @@ def humanoid(p, frame, kind):
 
 def quadruped(p, frame, kind):
     bob = frame % 2
+    if kind == "lizard":
+        p.outlined(12, 16 + bob, 7, 3, "3")
+        p.outlined(19, 13 + bob, 4, 2, "3")
+        p.line(6, 16 + bob, 1, 15, "3")
+        p.line(1, 15, 0, 12 + bob, "4")
+        for index, x in enumerate((8, 16)):
+            stride = 1 if (frame + index) % 4 < 2 else -1
+            p.line(x, 16 + bob, x - 3, 20, "1")
+            p.line(x - 3, 20, x + stride, 21, "4")
+            p.line(x, 14 + bob, x - 2, 11 + bob, "1")
+        p.dot(19, 12 + bob, "7")
+        p.line(21, 15 + bob, 23, 15 + bob, "1")
+        return
     skin = "3"
     p.outlined(11, 14 + bob, 7, 4, skin)
     p.outlined(17, 10 + bob, 4, 4, skin)
@@ -536,6 +549,10 @@ def populate(project):
         definition = resolve(project.mobs, identifier)
         assign(f"mob:{identifier}", *mob_appearance(identifier, definition, families))
     npcs = {
+        "capitaine_rosee": ("chevalier_original", "sword_shield"),
+        "guetteur_rosee": ("corps_archer", "bow"),
+        "armurier_rosee": ("marchand_original", "hammer"),
+        "intendant_rosee": ("garde_original", None),
         "mira": ("garde_original", "spear"),
         "forge": ("marchand_original", "hammer"),
         "rusk": (families["Gobelin"], "dagger"),
@@ -561,6 +578,8 @@ def populate(project):
     ambient = {
         "resident": ("marchand_original", None),
         "guards": ("garde_original", "spear"),
+        "guard_knight": ("chevalier_original", "sword_shield"),
+        "guard_archer": ("corps_archer", "bow"),
         "merchant": ("marchand_original", None),
         "monsters": (families["Loup"], None),
         "raiders": (families["Gobelin"], "axe"),

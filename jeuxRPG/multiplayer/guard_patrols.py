@@ -30,12 +30,13 @@ def create(identifier, definition, preset, now):
     members = {}
     occupied = []
     for index in range(SIZE):
+        role = "archer" if index == 1 else "knight"
         key = f"{identifier}:soldier:{index}"
         actor = tutorial.create_character(
             {
                 "id": key,
-                "name": f"Garde {index + 1} · {definition['name']}",
-                "class_name": "Knight",
+                "name": f"Garde {'archer' if role == 'archer' else 'chevalier'} {index + 1} · {definition['name']}",
+                "class_name": "Archer" if role == "archer" else "Knight",
             }
         )
         actor.hp.value = MAX_HP
@@ -44,6 +45,7 @@ def create(identifier, definition, preset, now):
         occupied.append(home)
         members[key] = {
             "id": key,
+            "role": role,
             "character": tutorial.pack(actor),
             "position": home[:],
             "home": home,
@@ -111,9 +113,12 @@ def public_members(group, display_id):
             "activity": modes[squad["mode"]],
             "mode": squad["mode"],
             "position": member["position"][:],
+            "next_move": member["next_move"],
             "map": display_id,
             "hp": health(member)["current"],
             "max_hp": health(member)["max"],
+            "role": member.get("role", "knight"),
+            "aim": member.get("aim"),
         }
         for member in squad["members"].values()
     ]
@@ -133,6 +138,15 @@ def react(squad, actors, now, messages):
             squad.update(mode="down", fallback_at=now + OFFSCREEN_RECOVERY)
             messages.append(
                 "La patrouille est hors combat ; des renforts sont attendus au village."
+            )
+        return
+    if squad.get("defending_raid"):
+        if squad["mode"] in ("retreat", "recover"):
+            squad.update(mode="combat", target=None)
+            for member in squad["members"].values():
+                member["route"] = []
+            messages.append(
+                "Le village est attaqué : les gardes reprennent sa défense."
             )
         return
     if squad["mode"] in ("patrol", "combat") and _low(actors):
@@ -257,7 +271,10 @@ def _fight(party, squad, actors, players, enemies, preset, now, random, messages
         squad["origin"] = leader["position"][:]
     squad["mode"] = "combat"
     target = enemies[0]
-    if tactics.distance(target["position"], squad["origin"]) > LEASH:
+    if (
+        not squad.get("defending_raid")
+        and tactics.distance(target["position"], squad["origin"]) > LEASH
+    ):
         squad.update(mode="retreat", target=None)
         return
     squad["target"] = target["combat_id"]
@@ -268,7 +285,10 @@ def _fight(party, squad, actors, players, enemies, preset, now, random, messages
         if target not in party["mobs"]:
             break
         distance = tactics.distance(member["position"], target["position"])
-        if distance <= tactics.AI_RULES["melee_range"] and tactics.sight(
+        archer = member.get("role") == "archer"
+        reach = DETECTION if archer else tactics.AI_RULES["melee_range"]
+        member["aim"] = target["position"][:]
+        if distance <= reach and tactics.sight(
             preset, member["position"], target["position"]
         ):
             if member["next_attack"] > now:
@@ -276,10 +296,20 @@ def _fight(party, squad, actors, players, enemies, preset, now, random, messages
             enemy = tutorial.unpack(target)
             enemy.drop_xp = lambda killer: ""
             before = enemy.hp.current_value
-            enemy.lose_hp(actor, 5)
+            enemy.lose_hp(actor, 4 if archer else 5)
             target.update(tutorial.pack(enemy))
+            from .combat_visuals import emit
+
+            emit(
+                party,
+                key,
+                target["combat_id"],
+                now,
+                reach=reach,
+                amount=before - enemy.hp.current_value,
+            )
             tactics.damaged(party, target, key, now)
-            member["next_attack"] = now + 3
+            member["next_attack"] = now + (4.5 if archer else 3)
             messages.append(
                 f"{actor.name} attaque {target['name']} : {max(0, before - enemy.hp.current_value)} dégâts."
             )
@@ -447,6 +477,12 @@ def attach(service, party, session_id, now):
     if owner and owner != session_id and squad.get("lease_until", 0) > now:
         return None
     squad.update(owner=session_id, lease_until=now + LEASE)
+    settlement = simulation.catalog["maps"][map_id].get("settlement", map_id)
+    raid = state["towns"].get(settlement, {}).get("raid")
+    squad["defending_raid"] = bool(raid and raid["phase"] == "siege")
+    for index, member in enumerate(squad["members"].values()):
+        member.setdefault("role", "archer" if index == 1 else "knight")
+    _repair_positions(squad, fields.MAPS[map_id])
     # Geometry is ephemeral; it must not be copied into every world checkpoint.
     squad["route_definition"] = {"route": simulation.catalog["maps"][map_id]["route"]}
     party["battle"]["guard_patrol"] = squad
@@ -459,6 +495,19 @@ def attach(service, party, session_id, now):
         "map": map_id,
         "claimed": has_threat(party, squad, fields.MAPS[map_id]),
     }
+
+
+def _repair_positions(squad, preset):
+    """Keep saved soldiers usable after the Builder moves a wall or a house."""
+    from . import tactics
+
+    occupied = []
+    for member in squad["members"].values():
+        for field in ("position", "home"):
+            if not tactics.walkable(preset, member[field]):
+                member[field] = tactics.free_position(preset, member[field], occupied)
+                member["route"] = []
+        occupied.append(member["position"])
 
 
 def commit(service, party, context, session_id, now):
