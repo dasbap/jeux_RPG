@@ -1,4 +1,48 @@
 "use strict";
+// A modal also blocks focus and keyboard navigation behind the rotation notice.
+globalThis.RPGLandscape = (() => {
+  if (typeof matchMedia !== "function") return {blocked: false};
+  const portrait = matchMedia("(pointer: coarse) and (orientation: portrait)");
+  let blocked = false, panel, previousFocus;
+  const update = () => {
+    if (portrait.matches === blocked) return;
+    blocked = portrait.matches;
+    document.body.classList.toggle("landscape-blocked", blocked);
+    if (blocked) {
+      previousFocus = document.activeElement;
+      globalThis.RPGMotion?.set([0, 0]);
+      window.dispatchEvent(new Event("blur"));
+      if (!panel) {
+        panel = document.createElement("dialog");
+        panel.id = "landscape-required";
+        panel.setAttribute("aria-labelledby", "landscape-title");
+        panel.setAttribute("aria-describedby", "landscape-description");
+        panel.innerHTML = '<div><span aria-hidden="true">↻</span><h2 id="landscape-title">Tournez votre téléphone</h2><p id="landscape-description">Le jeu se joue en mode paysage.</p></div>';
+        panel.addEventListener("cancel", event => event.preventDefault());
+        document.body.append(panel);
+      }
+      panel.showModal();
+    } else {
+      panel?.close();
+      if (previousFocus?.isConnected && !previousFocus.closest("[inert], [hidden]")) previousFocus.focus();
+    }
+  };
+  portrait.addEventListener("change", update);
+  window.addEventListener("resize", update);
+  document.addEventListener("fullscreenchange", () => {
+    if (blocked) { panel.close(); panel.showModal(); }
+  });
+  for (const type of ["keydown", "keyup", "pointerdown", "pointermove", "pointerup", "click", "dblclick", "touchstart", "touchmove", "submit"]) {
+    window.addEventListener(type, event => {
+      if (!blocked) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, {capture: true, passive: false});
+  }
+  update();
+  return {get blocked() { return blocked; }};
+})();
+
 globalThis.createRpgTouchControls = api => {
   const panel = document.createElement("section");
   panel.id = "touch-controls";

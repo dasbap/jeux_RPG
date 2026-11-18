@@ -405,3 +405,13 @@ Enregistrez le projet et redémarrez le serveur pour appliquer ces changements a
 Dans les formulaires de trajet, le bouton « Créer / choisir sur la carte » ouvre une grille interactive pour chaque porte. Cliquez une case praticable : les coordonnées sont remplies automatiquement et une nouvelle porte sera créée à la validation du trajet (ou à « Appliquer » dans Trajets / rues). Une porte existante peut être réutilisée ; un passage ou un PNJ n’est pas remplacé. Annuler le formulaire ne crée aucune porte.
 
 Le projet éditable livré avec cette branche se trouve dans `projects/authored/`. Ouvrez ce dossier dans le controller pour modifier ce catalogue. Les données du jeu installé restent dans `jeuxRPG/maps/`.
+
+Les tests de structure du monde n’imposent pas un nombre de zones ou de cartes.
+Une nouvelle zone est acceptée dès que ses cartes sont accessibles depuis le
+départ et disposent d’un chemin de retour. Un passage à sens unique est valide
+si un autre chemin permet de revenir. Les destinations, les portes d’arrivée,
+les chemins praticables et l’affichage des cartes dans leur zone sont vérifiés.
+Les scénarios particuliers (quête, boss, labyrinthe) conservent leurs règles.
+
+Après ajout et export du projet vers `jeuxRPG/maps/`, vérifier ces invariants avec
+`python -m pytest test/test_world_connectivity.py test/test_builder_zone_views.py test/test_logical_zones.py test/test_region_extensions.py -q`.

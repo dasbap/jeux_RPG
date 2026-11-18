@@ -614,6 +614,10 @@ a:focus:not(:focus-visible),button:focus:not(:focus-visible),.card:focus:not(:fo
 .rpg-scene3d[data-biome="cave"]{background:#0c1420}.rpg-scene3d[data-biome="cave"]::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;box-shadow:inset 0 0 100px 25px #03071180}.rpg-scene3d[data-biome="cave"] :is(.scene3d-labels,.scene3d-attack,.scene3d-help){z-index:2}.rpg-scene3d[data-biome="cave"] .scene3d-help{background:#101a2dd9;color:#cbd5dd}
 /* Adventure menus: shared ink, brass and vellum details. */
 .atlas-menu{--atlas-gold:#e4c386;--atlas-muted:#a2b2ba;--atlas-line:#9d866538;--atlas-panel:#18252b;color:#e8ece8;animation:atlas-arrive .28s ease-out}
+#landscape-required[open]{display:grid;place-items:center;position:fixed;inset:0;width:100dvw;height:100dvh;max-width:none;max-height:none;margin:0;padding:24px;box-sizing:border-box;border:0;background:#171827;color:#fff;text-align:center;z-index:2147483647}
+#landscape-required span{display:block;font-size:64px;color:#bca7ff}
+#landscape-required h2{font-size:24px}
+#landscape-required::backdrop{background:#171827}
 .combat-active .combat-mode > #npc-view.atlas-menu{animation-name:npc-dialogue-arrive}
 @keyframes npc-dialogue-arrive{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 .atlas-menu .atlas-heading h2,.atlas-menu .forge-header h2{font:500 clamp(1.7rem,3vw,2.5rem) Georgia,serif;color:#f6e6c4;margin:5px 0 10px;letter-spacing:-.025em}

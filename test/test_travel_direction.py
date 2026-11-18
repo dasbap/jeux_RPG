@@ -14,7 +14,7 @@ from jeuxRPG.multiplayer.state_bundles import encode
     ("origin", "goal"), [("rosee", "lisiere"), ("lisiere", "rosee")]
 )
 @pytest.mark.usefixtures("story")
-def test_builder_trip_reaches_requested_endpoint_with_preserved_display_mapping(
+def test_instant_builder_trip_reaches_requested_endpoint_with_preserved_display_mapping(
     origin, goal
 ):
     party = tutorial.new_party([{"id": "p", "name": "Trajet", "class_name": "Knight"}])
@@ -34,22 +34,19 @@ def test_builder_trip_reaches_requested_endpoint_with_preserved_display_mapping(
         route for route in first["world"]["routes"] if route["id"] == "rosee_lisiere"
     )
     assert route["from"] == "zone_rosee" and route["to"] == "zone_lisiere"
-    assert route["from_point"] == "rosee" and route["to_point"] == "lisiere"
-    assert first["transit"]["source"] == origin
-    assert first["journey"][-1] == goal
-    for _ in range(20):
-        if not party["transit"]:
-            break
-        tutorial.advance(party, party["transit"]["ready_at"], lambda: 1)
+    assert route["from_point"] == "rosee_remparts" and route["to_point"] == "lisiere"
+    assert route["kind"] == "passage" and route["duration_game_seconds"] == 0
+    assert not first["moving"] and first["transit"] is None
     assert party["position"] == goal
     assert not party["journey"] and party["transit"] is None
     definition = next(route for route in world.ROUTES if route["id"] == "rosee_lisiere")
-    assert definition["from"] == "rosee" and definition["to"] == "lisiere"
+    assert definition["from"] == "rosee_remparts" and definition["to"] == "lisiere"
 
 
 @pytest.mark.parametrize("origin,goal", [("rosee", "lisiere"), ("lisiere", "rosee")])
-@pytest.mark.usefixtures("story")
-def test_websocket_deltas_preserve_progress_and_labels_during_a_real_trip(origin, goal):
+def test_websocket_deltas_preserve_progress_and_labels_during_a_legacy_timed_trip(
+    origin, goal
+):
     party = tutorial.new_party([{"id": "p", "name": "Trajet", "class_name": "Knight"}])
     party.update(
         position=origin,
@@ -63,6 +60,7 @@ def test_websocket_deltas_preserve_progress_and_labels_during_a_real_trip(origin
     )
     tutorial.execute(party, "p", "move", {"destination": goal}, 0, GameError, lambda: 1)
     initial_view = tutorial.view(party, "p", 0)
+    assert initial_view["moving"] and initial_view["transit"]["source"] == origin
     initial = encode({"session": {"id": "trip", "tutorial": initial_view}})
     for name in (
         "travel_progress",

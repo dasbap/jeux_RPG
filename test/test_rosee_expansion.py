@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 from test_guard_patrols import arena  # noqa: F401
 from test_living_world import no_network  # noqa: F401
+from world_checks import assert_connected_world
 
 from jeuxRPG.multiplayer import fields, guard_patrols, tactics, world
 from jeuxRPG.multiplayer.living_world import LivingWorld, WorldSimulation
@@ -44,7 +45,8 @@ def expanded(monkeypatch):
 
 def test_city_districts_forest_and_mountains_are_reachable_and_separate(expanded):
     maps, catalog = expanded
-    assert len(maps) == 27
+    assert_connected_world(maps)
+    assert set(catalog["maps"]) == set(maps)
     assert maps["rosee"]["width"] > 64 and maps["rosee"]["height"] > 40
     assert not issues(maps)
     for target in (
@@ -62,7 +64,7 @@ def test_city_districts_forest_and_mountains_are_reachable_and_separate(expanded
     assert catalog["maps"]["rosee"]["zone"] == "zone_rosee"
     assert catalog["maps"]["forest"]["zone"] == "forets_rosee"
     assert catalog["maps"]["rosee_carriere"]["zone"] == "monts_rosee"
-    assert set(catalog["towns"]) == {"rosee", "brume"}
+    assert {"rosee", "brume"} <= set(catalog["towns"])
     assert all(
         item["position"] in maps["rosee"]["cover"]
         for item in maps["rosee"]["decorations"]

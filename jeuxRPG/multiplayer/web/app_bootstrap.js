@@ -7,7 +7,7 @@ for(const id of ["inventory-kind","inventory-search"])$(id).addEventListener(id=
 const touchControls = globalThis.createRpgTouchControls?.({
   state: () => {
     const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];
-    return {active: Boolean(actor)&&!document.body.classList.contains("rpg-loading"), busy:adventure?.battle?.movement_model==="continuous-v1"?false:busy, continuous:adventure?.battle?.movement_model==="continuous-v1", key: `${session?.id}:${adventure?.encounter_number}`, actor};
+    return {active: Boolean(actor)&&!globalThis.RPGLandscape?.blocked&&!document.body.classList.contains("rpg-loading"), busy:adventure?.battle?.movement_model==="continuous-v1"?false:busy, continuous:adventure?.battle?.movement_model==="continuous-v1", key: `${session?.id}:${adventure?.encounter_number}`, actor};
   },
   move: direction => {
     const adventure = session?.tutorial, actor = adventure?.battle?.players[session.me];

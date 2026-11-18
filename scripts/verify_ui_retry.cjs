@@ -39,7 +39,7 @@ async function checkLateSnapshot() {
   let resolveRead;
   let renders = 0;
   const context = {gameMode: "online", token: "token", accountState: {selected: "p0"}, polling: false, busy: false, tacticalInteractionUntil: 0, stateEpoch: 0,
-    sessionId: "room", session: {id: "room", revision: 1}, Date, nextRefreshAt: 0, refreshFailures: 0,
+    sessionId: "room", session: {id: "room", revision: 1}, lastPlayer: {id: "p0"}, Date, nextRefreshAt: 0, refreshFailures: 0,
     api: () => new Promise(resolve => {resolveRead = resolve;}), remember: () => {},
     render: () => {renders++;}, scheduleRefresh: () => {}, $: () => ({hidden: true}), message: () => {}};
   vm.createContext(context);

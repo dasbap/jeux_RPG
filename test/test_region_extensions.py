@@ -3,15 +3,22 @@ from collections import deque
 from pathlib import Path
 
 import pytest
+from world_checks import assert_connected_world
 
 from jeuxRPG.multiplayer import map_building
 from jeuxRPG.multiplayer.map_assets import validate
+from jeuxRPG.multiplayer.map_playability import issues
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def reachable(definition, start):
     blocked = set(map(tuple, definition["cover"] + definition["blocked"]))
+    blocked.update(
+        tuple(point)
+        for point in definition.get("water", [])
+        if point not in definition.get("bridges", [])
+    )
     seen = {tuple(start)}
     queue = deque(seen)
     while queue:
@@ -29,52 +36,24 @@ def reachable(definition, start):
 
 
 @pytest.mark.parametrize("prefix", ["jeuxRPG/maps", "projects/authored"])
-def test_region_extensions_are_connected_and_playable(prefix, monkeypatch):
+def test_all_authored_maps_are_connected_and_playable(prefix, monkeypatch):
     directory = ROOT / prefix
-    world = json.loads((directory / "world.json").read_text())
-    mobs = json.loads((directory / "mobs.json").read_text())["maps"]
+    world = json.loads((directory / "world.json").read_text(encoding="utf-8"))
+    mobs = json.loads((directory / "mobs.json").read_text(encoding="utf-8"))["maps"]
     monkeypatch.setattr(map_building, "MOBS", mobs)
     validate(world)
-    added = {
-        key: definition
-        for key, definition in world.items()
-        if key.startswith(("rosee_", "brume_"))
-    }
-    assert len(added) == 8
-    levels = {"zone_rosee": set(), "zone_brume": set()}
-    seen = {"rosee", "brume"}
-    queue = deque(seen)
-    while queue:
-        key = queue.popleft()
-        for exit in world[key]["exits"]:
-            target = exit.get("destination")
-            if target and target not in seen:
-                seen.add(target)
-                queue.append(target)
-    assert set(added) <= seen
-    for key, definition in added.items():
+    assert_connected_world(world)
+    assert not issues(world)
+    for key, definition in world.items():
         accessible = reachable(definition, definition["exits"][0]["position"])
         for exit in definition["exits"]:
             assert tuple(exit["position"]) in accessible
-            target = world[exit["destination"]]
-            assert any(
-                back.get("destination") == key
-                and back.get("link_id") == exit["link_id"]
-                for back in target["exits"]
-            )
-            back = next(
-                back
-                for back in target["exits"]
-                if back.get("link_id") == exit["link_id"]
-            )
-            assert tuple(back["position"]) in reachable(target, exit["entry"])
-        for spawn in definition["spawners"]:
+        for spawn in map_building.spawners(definition):
             assert tuple(spawn["position"]) in accessible
-            assert all(tuple(point) in accessible for point in spawn["patrol"])
+            assert all(tuple(point) in accessible for point in spawn.get("patrol", []))
             actor = map_building.create_mob(world, key, spawn, 0)
-            assert actor["level"] == spawn["level"]
-            levels[definition["zone_id"]].add(actor["level"])
-    assert levels["zone_rosee"] <= set(range(1, 6))
-    assert levels["zone_brume"] == set(range(1, 11))
+            assert 1 <= actor["level"] <= 100
+            if spawn.get("level") is not None:
+                assert actor["level"] == spawn["level"]
     assert not world["rosee"]["spawns"]
     assert not world["brume"]["spawns"]

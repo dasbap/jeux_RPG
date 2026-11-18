@@ -7,6 +7,12 @@ exécute volontairement son propre moteur local.
 
 ## Répartition actuelle
 
+Sur téléphone, le jeu exige le mode paysage. Le client web affiche un dialogue
+« Tournez votre téléphone » en portrait, bloque les commandes et arrête le
+déplacement en cours. La rotation en paysage rend les commandes accessibles.
+L'application Android déclare `sensorLandscape` pour autoriser les deux sens
+du paysage. Les fenêtres d'ordinateur restent libres de leur orientation.
+
 | Travail | Client | Serveur |
 | --- | --- | --- |
 | Carte, caméra, sprites, animation, orientation | Calcule et affiche | Fournit les données du catalogue et l'état réel |

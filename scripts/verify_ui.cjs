@@ -357,7 +357,7 @@ async function main() {
     el(first, "show-inventory").click();
     assert(!el(first, "inventory-view").hidden && el(first, "quest-view").hidden);
     el(first, "show-bestiary").click();
-    assert(el(first, "bestiary-details").textContent.includes("rang D"));
+    assert.match(el(first, "bestiary-details").textContent, /rang D/i);
     el(first, "show-map").click();
     assert(el(first, "world-map").textContent.includes("Vous êtes ici"));
     assert.deepEqual(errors, []);

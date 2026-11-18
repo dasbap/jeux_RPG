@@ -5,6 +5,7 @@ import test_coaches
 from test_coaches import at_stop
 
 from jeuxRPG.multiplayer import tactics
+from jeuxRPG.multiplayer.map_building import zone_of
 from jeuxRPG.multiplayer.map_playability import issues
 from jeuxRPG.multiplayer.zone_navigation import passages, zone_passages
 from scripts.refine_lisiere import author
@@ -28,13 +29,16 @@ def network(coach_network, monkeypatch):
 def test_lisiere_has_returns_and_cave_entrance_never_bypasses_labyrinth(network):
     maps = network.maps
     assert not issues(maps)
-    assert {g["destination"] for g in maps["lisiere"]["exits"]} == {
+    required = {
         "rosee_remparts",
         "hunt",
         "cave_1",
         "rosee_col",
     }
+    assert required <= {g["destination"] for g in maps["lisiere"]["exits"]}
     for gate in maps["lisiere"]["exits"]:
+        if gate["destination"] not in required:
+            continue
         assert any(
             back["destination"] == "lisiere"
             for back in maps[gate["destination"]]["exits"]
@@ -52,11 +56,17 @@ def test_lisiere_has_returns_and_cave_entrance_never_bypasses_labyrinth(network)
 
 def test_red_passages_are_physical_crossings_not_interior_connections(network):
     maps = network.maps
-    assert {p["destination"] for p in passages(maps, "lisiere")} == {
+    expected = {
+        gate["destination"]
+        for gate in maps["lisiere"]["exits"]
+        if zone_of(maps, gate["destination"]) != zone_of(maps, "lisiere")
+    }
+    assert {p["destination"] for p in passages(maps, "lisiere")} == expected
+    assert {
         "rosee_remparts",
         "cave_1",
         "rosee_col",
-    }
+    } <= expected
     assert any(
         p["source"] == "clearing"
         and p["destination"] == "cave_1"
@@ -78,11 +88,13 @@ def test_red_passages_are_physical_crossings_not_interior_connections(network):
 def test_local_map_marks_cross_zone_exits_without_marking_ordinary_passages(network):
     party = at_stop(network, "arret_lisiere")
     data = tactics.view(party, 100, "p")["map"]
-    assert {g["destination"] for g in data["exits"] if g["changes_zone"]} == {
-        "rosee_remparts",
-        "cave_1",
-        "rosee_col",
+    expected = {
+        gate["destination"]
+        for gate in network.maps["lisiere"]["exits"]
+        if zone_of(network.maps, gate["destination"])
+        != zone_of(network.maps, "lisiere")
     }
+    assert {g["destination"] for g in data["exits"] if g["changes_zone"]} == expected
     assert all(g["destination_zone_name"] for g in data["exits"] if g["changes_zone"])
     assert not next(g for g in data["exits"] if g["destination"] == "hunt")[
         "changes_zone"
