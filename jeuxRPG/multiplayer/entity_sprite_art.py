@@ -64,6 +64,24 @@ class Pixels:
     def frame(self):
         return ["".join(row) for row in self.rows]
 
+    def shade(self):
+        """Sculpt primary-color masses with a fixed upper-left light.
+
+        Only replace primary pixels: outlines, eyes, skin and equipment accents
+        retain their original colors. Index e supplies the recolorable shadow.
+        """
+        original = self.frame()
+        for y in range(1, 23):
+            for x in range(1, 23):
+                if original[y][x] != "3":
+                    continue
+                above, left = original[y - 1][x], original[y][x - 1]
+                below, right = original[y + 1][x], original[y][x + 1]
+                if above in "012" or left in "012":
+                    self.dot(x, y, "4")
+                elif below in "012" or right in "012":
+                    self.dot(x, y, "e")
+
 
 def humanoid(p, frame, kind):
     bob = frame % 2
@@ -364,6 +382,10 @@ def make_sprite(name, family, color="#638d62", weapon=False):
         f"{round(int(color[index : index + 2], 16) * 0.7 + 255 * 0.3):02x}"
         for index in (1, 3, 5)
     )
+    palette[14] = "#" + "".join(
+        f"{int(int(color[index : index + 2], 16) * 0.65 + 0.5):02x}"
+        for index in (1, 3, 5)
+    )
     frames = []
     for frame in range(4):
         pixels = Pixels()
@@ -381,6 +403,7 @@ def make_sprite(name, family, color="#638d62", weapon=False):
             object_art(pixels, frame, family)
         else:
             humanoid(pixels, frame, family)
+        pixels.shade()
         frames.append(pixels.frame())
     return {
         "name": name,
@@ -477,11 +500,14 @@ def mob_appearance(identifier, definition, families):
     return body, preferred_weapon(identifier, race), color
 
 
-def populate(project):
+def populate(project, *, preserve_bindings=False):
     """Assign all current entities, preserving additional user assets and bindings."""
     from .mob_rules import resolve
 
     data = deepcopy(project.content.get("sprites", {"assets": {}, "bindings": {}}))
+    associations = {
+        key: deepcopy(data.get(key, {})) for key in ("bindings", "equipment", "colors")
+    }
     assets, bindings = data["assets"], data["bindings"]
     equipment = data.setdefault("equipment", {})
     colors = data.setdefault("colors", {})
@@ -587,6 +613,8 @@ def populate(project):
     for kind in AMBIENT:
         body, weapon = ambient[kind]
         assign(f"ambient:{kind}", body, weapon)
+    if preserve_bindings:
+        data.update(associations)
     validate(data)
     project.content["sprites"] = data
     project.validate()

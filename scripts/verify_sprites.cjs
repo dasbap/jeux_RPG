@@ -76,3 +76,24 @@ test("a specific body never inherits fallback weapons or colors",()=>{
   adventure.sprites.bindings["npc:broken"]="missing";
   assert.equal(context.entitySprite(adventure,["npc:broken","class:Knight"],element,[0,0]).getAttribute("data-sprite"),"hero");
 });
+
+test("generated body shadows follow tints while custom palette colors stay intact",()=>{
+ const {context,sprite}=setup();
+ const palette=[null,"#202435","#414958","#638d62","#a2c791","#e2b58c","#755039","#f0d269","#e4dcc0","#b7ced9","#93694b","#d69e45","#bf6064","#9476bb","#405c40","#f4f4e9"];
+ const body={...sprite,palette,frames:[["e"]],width:1,height:1};
+ const tinted=decodeURIComponent(context.spriteDataUri(body,null,"#ff0000"));
+ assert(tinted.includes('fill="#a60000"'));
+ body.palette=[...palette];body.palette[14]="#123456";
+ assert(decodeURIComponent(context.spriteDataUri(body,null,"#ff0000")).includes('fill="#123456"'));
+});
+
+test("an equipped weapon layer changes without changing the class body or tint",()=>{
+ const {context,adventure,element,sprite}=setup();
+ adventure.sprites.assets.arme_staff={...sprite,layer:"weapon"};
+ const player={gear:[{slot:"weapon",weapon_type:"staff"}]};
+ const weapon=context.equippedWeaponSprite(player);
+ const image=context.entitySprite(adventure,["class:Knight"],element,[0,0],36,"right",weapon);
+ assert.equal(image.getAttribute("data-sprite"),"hero");assert.equal(image.getAttribute("data-weapon"),"arme_staff");
+ adventure.sprites.assets.arme_staff.width=16;
+ assert.equal(context.entitySprite(adventure,["class:Knight"],element,[0,0],36,"right",weapon).getAttribute("data-weapon"),"");
+});

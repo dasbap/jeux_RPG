@@ -5,6 +5,9 @@ from copy import deepcopy
 STATS = ("hp", "endurance", "force", "intelligence", "sagesse")
 DEFAULTS = {
     "equipment_sets": {},
+    "coach_stations": {},
+    "coach_routes": {},
+    "respawn_profiles": {},
     "materials": {
         key: {"name": name, "rare_chance": chance}
         for key, name, chance in [
@@ -532,7 +535,17 @@ def validate_recipes(data):
         raise ValueError("Emplacements d’équipement invalides.")
     for value in data["recipes"].values():
         if (
-            set(value) - {"name", "slot", "adjective", "cost", "set_id", *STATS}
+            set(value)
+            - {
+                "name",
+                "slot",
+                "adjective",
+                "cost",
+                "set_id",
+                "classes",
+                "weapon_type",
+                *STATS,
+            }
             or value.get("slot") not in slots
             or not isinstance(value.get("adjective"), str)
             or len(value["adjective"]) > 100
@@ -544,6 +557,28 @@ def validate_recipes(data):
             and value["set_id"] not in data["equipment_sets"]
         ):
             raise ValueError("Recette : panoplie inconnue.")
+        allowed = value.get("classes")
+        if allowed is not None and (
+            not isinstance(allowed, list)
+            or not allowed
+            or len(allowed) > 64
+            or any(
+                not isinstance(name, str) or not name or len(name) > 64
+                for name in allowed
+            )
+            or len(set(allowed)) != len(allowed)
+        ):
+            raise ValueError("Recette : liste de classes autorisees invalide.")
+        if "weapon_type" in value and (
+            value["weapon_type"] not in ("sword", "bow", "staff")
+            or value["slot"] != "weapon"
+            or allowed is None
+        ):
+            raise ValueError(
+                "Arme : type, emplacement ou classes autorisees invalides."
+            )
+        if value["slot"] == "weapon" and "weapon_type" not in value:
+            raise ValueError("Arme : choisissez un type et ses classes autorisees.")
         costs = value.get("cost")
         if (
             not isinstance(costs, dict)
@@ -594,8 +629,17 @@ def validate(data):
     if isinstance(data, dict):
         data = deepcopy(data)
         data.setdefault("equipment_sets", {})
+        data.setdefault("coach_stations", {})
+        data.setdefault("coach_routes", {})
+        data.setdefault("respawn_profiles", {})
     if not isinstance(data, dict) or set(data) != set(DEFAULTS):
         raise ValueError("Catalogues de gameplay incomplets ou inconnus.")
+    from .coaches import validate_data as validate_coaches
+
+    validate_coaches(data)
+    from .spawn_cycles import validate_profiles
+
+    validate_profiles(data["respawn_profiles"])
     named_catalog(data["materials"], "Matériaux")
     for value in data["materials"].values():
         if set(value) != {"name", "rare_chance"} or not numeric(

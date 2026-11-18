@@ -12,6 +12,37 @@ function setup({wall=false,casting=false}={}){
   const motion=context.RPGMotion;motion.sync(adventure,me,time);motion.sample(adventure,me,time);
   return {motion,adventure,me,calls,resolves,rejects,context,setTime:v=>{time=v;},frame:()=>motion.sample(adventure,me,time),tick:()=>interval?.()};
 }
+
+test("retreating beyond melee range cannot attack from the last acknowledged position",()=>{
+ const s=setup();s.context.busy=false;s.me.attack_range=1.5;
+ s.adventure.players=[s.me];s.adventure.mobs=[{combat_id:"enemy",position:[5,4],stats:{hp:{current:20}}}];
+ s.context.gridSight=()=>true;
+ const battle=fs.readFileSync("jeuxRPG/multiplayer/web/app_battle.js","utf8");
+ vm.runInContext(battle.slice(battle.indexOf("function battleAllowed("),battle.indexOf("function gridPath(")),s.context);
+ s.motion.set([-1,0]);
+ for(let time=116;time<800;time+=16){s.setTime(time);s.frame();}
+ assert.equal(s.context.battleAllowed(s.adventure,"hero","enemy",1.5),false);
+});
+
+test("combat position reports are exact copies and share ordering with movement packets",async()=>{
+ const s=setup();s.motion.set([1,0]);s.setTime(116);const local=s.frame();
+ const action=s.motion.report();assert.deepEqual(Array.from(action.position),Array.from(local));assert(action.position_seq>s.calls[0].params.position_seq);
+ action.position[0]=999;assert(s.motion.position(s.adventure,"hero")[0]<5);
+ s.resolves[0]({session:{id:"test",revision:2,acknowledged:true}});await new Promise(resolve=>setImmediate(resolve));
+ s.motion.set([0,0]);assert(s.calls[1].params.position_seq>action.position_seq);
+});
+
+test("a speed retry retains its old ordering so it cannot undo a newer attack position",async()=>{
+ const s=setup();s.motion.set([1,0]);
+ const first=s.calls[0].params.position_seq,attack=s.motion.report();
+ s.rejects[0](Object.assign(new Error("Wait"),{code:"movement_speed"}));await new Promise(resolve=>setImmediate(resolve));
+ s.setTime(400);s.tick();assert.equal(s.calls[1].params.position_seq,first);assert(first<attack.position_seq);
+});
+
+test("a reloaded client continues after the server position sequence",()=>{
+ const s=setup();s.adventure.battle.players.hero.position_sequence=500;s.motion.sync(s.adventure,s.me,100);
+ s.motion.set([1,0]);assert(s.calls[0].params.position_seq>500);
+});
 test("a key moves the visual model on the next frame while an action is busy and network reply is delayed",()=>{
   const s=setup(),original=JSON.stringify(s.adventure);
   s.motion.set([1,0]);assert.equal(s.calls.length,1);assert.equal(s.calls[0].action,"move_axis");

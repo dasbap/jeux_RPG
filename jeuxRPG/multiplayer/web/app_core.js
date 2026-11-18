@@ -146,3 +146,35 @@ function remember() {
   sessionStorage.setItem("rpg-token", token);
   sessionStorage.setItem("rpg-session", sessionId);
 }
+
+// Foreground transitions share one screen; overlapping work cannot hide it early.
+globalThis.RPGLoading=(()=>{
+  const jobs=new Map();let sequence=0,previousFocus=null,lastScene="";
+  function nodes(){
+    let root=$("loading-screen");
+    if(!root){root=document.createElement("section");root.id="loading-screen";root.hidden=true;root.tabIndex=-1;root.setAttribute("role","status");root.setAttribute("aria-live","polite");root.setAttribute("aria-labelledby","loading-title");
+      root.innerHTML='<div class="loading-card"><div class="loading-emblem" aria-hidden="true">✦</div><p class="loading-eyebrow">Les terres éveillées</p><h2 id="loading-title"></h2><p id="loading-detail"></p><progress aria-label="Chargement en cours"></progress><p class="loading-tip">Votre aventure reprend dès que tout est prêt.</p></div>';document.body.append(root);}
+    return root;
+  }
+  function draw(){
+    const root=nodes(),job=[...jobs.values()].at(-1),main=document.querySelector("main");
+    root.hidden=!job;document.body.classList.toggle("rpg-loading",Boolean(job));
+    document.body.dataset.loadingScene=String(Boolean(job)&&[...jobs.values()].every(task=>task.scene));
+    if(main){main.inert=Boolean(job);main.setAttribute("aria-busy",String(Boolean(job)));}
+    if(job){$("loading-title").textContent=job.title;$("loading-detail").textContent=job.detail||"";}
+    else if(previousFocus?.isConnected&&!previousFocus.closest("[hidden]")){previousFocus.focus?.({preventScroll:true});previousFocus=null;}
+  }
+  function begin(title,detail="",{scene=false}={}){
+    if(!jobs.size){previousFocus=document.activeElement;if(!scene)globalThis.RPGMotion?.set([0,0]);}
+    const id=++sequence;jobs.set(id,{title,detail,scene});draw();nodes().focus({preventScroll:true});
+    return {update:(nextTitle,nextDetail)=>{if(jobs.has(id)){jobs.set(id,{...jobs.get(id),title:nextTitle,detail:nextDetail||""});draw();}},finish:()=>{jobs.delete(id);draw();}};
+  }
+  function scene(adventure){
+    if(document.hidden||typeof requestAnimationFrame!=="function")return;
+    const key=adventure.battle?`${session?.id}:${adventure.field_map||adventure.battle.map?.id}`:"";
+    if(key===lastScene)return;lastScene=key;if(!key)return;
+    const loading=begin("Entrée dans la zone",adventure.battle.map?.name||"Préparation du terrain et des personnages…", {scene:true});
+    requestAnimationFrame(()=>requestAnimationFrame(()=>loading.finish()));
+  }
+  return {begin,scene};
+})();

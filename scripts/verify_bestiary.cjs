@@ -18,7 +18,7 @@ function setup() {
   vm.runInContext(fs.readFileSync("jeuxRPG/multiplayer/web/app_bootstrap.js","utf8"),context);
   context.renderBestiary(adventure);
   const change=(id,value)=>{document.getElementById(id).value=value;document.getElementById(id).dispatchEvent(new window.Event(id==="bestiary-search"?"input":"change"));};
-  return {context,document,adventure,change,cards:()=>[...document.querySelectorAll("#bestiary-details article")]};
+  return {context,document,adventure,change,cards:()=>[...document.querySelectorAll("#bestiary-details .bestiary-entry")],selected:()=>document.querySelector(".bestiary-selected")};
 }
 
 test("map, text, rare materials and sort filters update immediately without a game redraw",()=>{
@@ -27,8 +27,9 @@ test("map, text, rare materials and sort filters update immediately without a ga
   change("bestiary-map","z");assert.equal(cards().length,1);assert.match(cards()[0].textContent,/Loup/);
   change("bestiary-map","");change("bestiary-search","CUIR");assert.equal(cards().length,1);assert.match(cards()[0].textContent,/Sanglier/);
   change("bestiary-search","Rubis");assert.equal(cards().length,2);
-  change("bestiary-sort","desc");assert.match(cards()[0].textContent,/Zéphyr, Auberge/);
-  change("bestiary-search","absent");assert.equal(cards().length,0);assert.match(document.getElementById("bestiary-details").textContent,/Aucun mob/);
+  change("bestiary-sort","desc");assert.match(cards()[0].textContent,/Sanglier/);assert.match(cards()[1].textContent,/Loup/);
+  cards()[1].click();assert.match(document.querySelector(".bestiary-selected").textContent,/Auberge, Zéphyr/);
+  change("bestiary-search","absent");assert.equal(cards().length,0);assert.match(document.getElementById("bestiary-details").textContent,/Aucune créature/);
 });
 
 test("unchanged bestiary keeps its DOM and scroll while other world data changes",()=>{
@@ -49,4 +50,14 @@ test("a disappeared map resets its filter and an empty bestiary clears previous 
   assert.equal(document.getElementById("bestiary-map").value,"");assert.equal(cards().length,1);
   adventure.world.bestiary=[];context.renderBestiary(adventure);
   assert.equal(cards().length,0);assert.match(document.getElementById("bestiary-details").textContent,/Aucun monstre/);
+});
+
+test("selection enlarges one creature, moves others to a rail and survives snapshots",()=>{
+ const {context,document,adventure,cards,selected,change}=setup();
+ assert.equal(document.querySelectorAll(".bestiary-selected").length,1);
+ assert.equal(selected().dataset.mob,"wolf");cards().find(card=>card.dataset.mob==="boar").click();
+ assert.equal(selected().dataset.mob,"boar");assert.match(selected().textContent,/Cuir/);assert.equal(document.querySelectorAll('.bestiary-entry[aria-pressed="true"]').length,1);
+ const focused=document.activeElement,detail=selected();context.renderBestiary(adventure);assert.equal(selected(),detail);assert.equal(document.activeElement,focused);
+ change("bestiary-map","z");assert.equal(selected().dataset.mob,"wolf");
+ assert(selected().querySelector(".bestiary-large-portrait"));assert(selected().querySelector(".bestiary-stat-grid"));
 });

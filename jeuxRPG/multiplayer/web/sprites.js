@@ -29,6 +29,8 @@ function spriteDataUri(sprite, weapon=null, tint=null) {
     });
     const palette=[...layer.palette];
     if(kind==="body"&&tint) {
+      const shadow=color=>"#"+[1,3,5].map(start=>Math.round(parseInt(color.slice(start,start+2),16)*.65).toString(16).padStart(2,"0")).join("");
+      if(palette[14]&&palette[3]&&palette[14]===shadow(palette[3]))palette[14]=shadow(tint);
       palette[3]=tint;
       palette[4]="#"+[1,3,5].map(start=>Math.round(parseInt(tint.slice(start,start+2),16)*.7+255*.3).toString(16).padStart(2,"0")).join("");
     }
@@ -41,13 +43,15 @@ function spriteDataUri(sprite, weapon=null, tint=null) {
   spriteImages.set(key,value);if(spriteImages.size>64)spriteImages.delete(spriteImages.keys().next().value);
   return value;
 }
-function entitySprite(adventure, keys, element, position, size=36, facing="right") {
+function equippedWeaponSprite(player){return {sword:"arme_sword",bow:"arme_bow",staff:"arme_staff"}[(player?.gear||[]).find(item=>item.slot==="weapon")?.weapon_type]||"";}
+function entitySprite(adventure, keys, element, position, size=36, facing="right", weaponOverride="") {
   const catalog=adventure.sprites;
   const target=keys.find(key=>catalog?.assets[catalog?.bindings?.[key]]);
   const id=catalog?.bindings?.[target], sprite=catalog?.assets[id];
   if(!sprite)return null;
   const width=size*sprite.width/Math.max(sprite.width,sprite.height),height=size*sprite.height/Math.max(sprite.width,sprite.height);
-  const weaponId=catalog?.equipment?.[target],weapon=catalog?.assets[weaponId];
+  const override=catalog?.assets[weaponOverride];
+  const weaponId=override?.layer==="weapon"&&override.width===sprite.width&&override.height===sprite.height?weaponOverride:catalog?.equipment?.[target],weapon=catalog?.assets[weaponId];
   const tint=catalog?.colors?.[target];
   const attrs={href:spriteDataUri(sprite,weapon||null,tint||null),x:position[0]*40+20-width/2,y:position[1]*40+20-height/2,width,height,"data-sprite":id,"data-weapon":weaponId||"","data-tint":tint||"","data-facing":facing,"aria-label":sprite.name,"image-rendering":"pixelated"};
   if(facing==="left")attrs.transform=`translate(${position[0]*80+40} 0) scale(-1 1)`;

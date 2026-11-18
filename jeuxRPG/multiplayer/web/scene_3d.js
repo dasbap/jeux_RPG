@@ -3,6 +3,15 @@
 (() => {
   const TILT = .72, LIFT = .78;
   const rgb = hex => [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+  function environment(map){
+    const cave=map.biome==="cave";
+    return {cave,ground:cave?"#465260":"#7ea969",path:cave?"#6d6861":"#ddcba0",water:cave?"#285264":"#5caebc",unknown:cave?"#101722":"#152b31",fog:rgb(cave?"#0c1420":"#14262b")};
+  }
+  function caveLights(map,seen,origin){
+    return (map.decorations||[]).filter(item=>["crystal","camp"].includes(item.kind)&&(!seen||seen.has(item.position.join())))
+      .sort((a,b)=>Math.hypot(a.position[0]-origin[0],a.position[1]-origin[1])-Math.hypot(b.position[0]-origin[0],b.position[1]-origin[1])).slice(0,8)
+      .flatMap(item=>[...item.position,item.kind==="camp"?0:1]);
+  }
   class Mesh {
     constructor(){this.data=[];}
     tri(a,b,c,color,light=1){const r=color[0]*light,g=color[1]*light,bv=color[2]*light;this.data.push(a[0],a[1],a[2],r,g,bv,b[0],b[1],b[2],r,g,bv,c[0],c[1],c[2],r,g,bv);}
@@ -47,14 +56,37 @@
     mesh.tri([b,1.05,c],[b,1.7,z],[b,1.05,e],rgb("#ce9c75"),.8);
   }
   function scenery(mesh,map,seen,camera){
+    const theme=environment(map);
     const visible=(x,z)=>Math.abs(x-camera.x)<camera.span*.65+5&&Math.abs(z-camera.z)<camera.span*.65+5;
     const sets=Object.fromEntries(["cover","blocked","paths","water","bridges"].map(key=>[key,new Set((map[key]||[]).map(p=>p.join()))]));
     for(let z=Math.max(0,Math.floor(camera.z-camera.span));z<Math.min(map.height,camera.z+camera.span);z++)for(let x=Math.max(0,Math.floor(camera.x-camera.span));x<Math.min(map.width,camera.x+camera.span);x++){
       if(!visible(x,z))continue;
       const key=`${x},${z}`, known=!seen||seen.has(key),road=sets.paths.has(key),water=sets.water.has(key)&&!sets.bridges.has(key);
-      let color=!known?"#152b31":water?"#5caebc":sets.bridges.has(key)?"#bb9464":road?"#ddcba0":map.biome==="mountain"||map.biome==="cave"?"#87938a":"#7ea969";
-      const shade=road?1:1+Math.sin(Math.floor(x/4)*7+Math.floor(z/4)*3)*.009,c=rgb(color).map(v=>v*shade);
-      mesh.quad([x-.5,0,z-.5],[x+.5,0,z-.5],[x+.5,0,z+.5],[x-.5,0,z+.5],c);
+      let color=!known?theme.unknown:water?theme.water:sets.bridges.has(key)?"#bb9464":road?theme.path:map.biome==="mountain"?"#87938a":theme.ground;
+      const shade=road?1:1+Math.sin((theme.cave?x:Math.floor(x/4))*7+(theme.cave?z:Math.floor(z/4))*3)*(theme.cave?.055:.009),c=rgb(color).map(v=>v*shade);
+      const level=known&&water?-.22:0;
+      mesh.quad([x-.5,level,z-.5],[x+.5,level,z-.5],[x+.5,level,z+.5],[x-.5,level,z+.5],c);
+      if(known&&water){
+        for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const neighbor=`${x+dx},${z+dz}`;
+          if(sets.water.has(neighbor))continue;
+          const a=[x+dx*.5-dz*.5,0,z+dz*.5-dx*.5],b=[x+dx*.5+dz*.5,0,z+dz*.5+dx*.5];
+          mesh.quad(a,b,[b[0],level,b[2]],[a[0],level,a[2]],rgb(theme.cave?"#323d4d":"#71654f"),dx<0?.68:.90);
+        }
+        mesh.box(x-.12,-.215,z,.48,.006,.025,rgb("#86c8ce"));
+        mesh.box(x+.18,-.215,z+.22,.26,.006,.018,rgb("#75bbc6"));
+      }
+      if(known&&sets.bridges.has(key)){
+        const rotation=(map.bridge_rotations||[]).find(item=>item.position.join()===key)?.rotation||0;
+        const turned=rotation===90||rotation===270;
+        mesh.box(x,-.13,z,1,.12,1,rgb("#795c3e"));
+        for(const offset of [-.38,-.13,.13,.38])mesh.box(x+(turned?offset:0),-.012,z+(turned?0:offset),turned?.018:.98,.012,turned?.98:.018,rgb("#745437"));
+      }
+      // Expose the earth along the map edge, giving the landscape thickness.
+      for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]])if(x+dx<0||x+dx>=map.width||z+dz<0||z+dz>=map.height){
+        const a=[x+dx*.5-dz*.5,level,z+dz*.5-dx*.5],b=[x+dx*.5+dz*.5,level,z+dz*.5+dx*.5];
+        mesh.quad(a,b,[b[0],-.55,b[2]],[a[0],-.55,a[2]],rgb("#655d49"),.8);
+      }
     }
     const decorations=new Set((map.decorations||[]).map(d=>d.position.join()));
     const roofs=new Set((map.decorations||[]).filter(d=>d.kind==="roof").map(d=>d.position.join()));
@@ -70,6 +102,17 @@
     for(const item of map.decorations||[]){
       const [x,z]=item.position;
       if(item.kind==="roof"||!visible(x,z)||seen&&!seen.has(item.position.join()))continue;
+      if(theme.cave&&item.kind==="rock"){
+        const exposed=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dz])=>!sets.cover.has(`${x+dx},${z+dz}`));
+        const cutaway=z>camera.z+.5,fullHeight=exposed?.75+(Math.sin(x*2.3+z*1.7)+1)*.28:1.35,height=cutaway?Math.min(.55,fullHeight):fullHeight;
+        mesh.box(x,0,z,1,height,1,rgb("#454858"));
+        if(exposed){if(!cutaway)mesh.cone(x-.12,height,z+.06,.42,.25,rgb("#62616f"),5);mesh.box(x,height*.4,z,.99,.06,1.01,rgb("#333d4d"));}
+        continue;
+      }
+      if(["tree","house","rock","camp"].includes(item.kind))mesh.ball(x+.12,.012,z+.12,.48,.012,.34,rgb(theme.cave?"#1b2331":"#53724c"));
+      const rockHeight=item.kind==="rock"?.12+(Math.sin(x*1.7+z*2.1)+1)*.12:0;
+      if(rockHeight)mesh.box(x,0,z,.86,rockHeight,.82,rgb("#6f7d6b"));
+      const raisedStart=mesh.data.length;
       if(item.kind==="tree"){
         mesh.box(x,0,z,.18,.75,.18,rgb("#8c684b"));
         mesh.ball(x,1.0,z,.60,.65,.53,rgb("#4e8262"));mesh.ball(x-.18,1.25,z-.1,.42,.42,.4,rgb("#8bbf79"));
@@ -78,16 +121,24 @@
         mesh.box(x-.28,1,z,.28,.20,.9,rgb("#d0d6c6"));mesh.box(x+.28,1,z,.28,.20,.9,rgb("#d0d6c6"));
       }else if(item.kind==="house")building(mesh,x,z,.94,.86);
       else if(item.kind==="rock")mesh.ball(x,.25,z,.50,.48,.44,rgb("#939f9e"));
-      else if(item.kind==="crystal")mesh.cone(x,.0,z,.24,.9,rgb("#86dbe0"),5);
-      else if(item.kind==="camp")mesh.cone(x,0,z,.48,.8,rgb("#ccab78"),4);
+      else if(item.kind==="crystal"){
+        mesh.cone(x,0,z,.24,.9,rgb("#86dbe0"),5);
+        if(theme.cave){mesh.cone(x-.23,0,z+.1,.13,.45,rgb("#8196cc"),5);mesh.cone(x+.2,0,z-.12,.11,.6,rgb("#a1e5e0"),5);}
+      }
+      else if(item.kind==="camp"){
+        if(theme.cave){mesh.ball(x,.06,z,.28,.1,.25,rgb("#313b4b"));mesh.box(x,.08,z,.42,.12,.1,rgb("#967454"));mesh.cone(x,.18,z,.15,.48,rgb("#e68a51"),5);mesh.cone(x,.19,z,.08,.30,rgb("#ffe0a0"),5);}
+        else mesh.cone(x,0,z,.48,.8,rgb("#ccab78"),4);
+      }
       else if(item.kind==="barricade")mesh.box(x,.0,z,.95,.45,.18,rgb("#b48d59"));
       else if(item.kind==="bed"){mesh.box(x,0,z,.5,.22,.8,rgb("#876045"));mesh.box(x,.22,z,.47,.08,.65,rgb("#83b9af"));}
       else if(item.kind==="rack"){mesh.box(x,.1,z,.6,.8,.08,rgb("#886449"));for(const o of [-.16,.16])mesh.box(x+o,.3,z+.08,.04,.65,.04,rgb("#d6e2de"));}
       else if(item.kind==="flowers"){for(const o of [-.18,.12])mesh.ball(x+o,.12,z,.09,.1,.09,rgb(o<0?"#edb0a9":"#f5dfac"));}
+      else if(item.kind==="grass"){for(const o of [-.18,.04,.21])mesh.cone(x+o,0,z+o*.5,.035,.16+o*.2,rgb("#557e48"),3);}
+      if(rockHeight)for(let i=raisedStart+1;i<mesh.data.length;i+=6)mesh.data[i]+=rockHeight;
     }
     for(const point of map.cover){
       if(!visible(...point)||seen&&!seen.has(point.join())||decorations.has(point.join()))continue;
-      mesh.ball(point[0],.2,point[1],.45,.4,.4,rgb("#748978"));
+      mesh.ball(point[0],.2,point[1],.45,.4,.4,rgb(theme.cave?"#454858":"#748978"));
     }
   }
   function appearance(adventure,keys){
@@ -227,6 +278,18 @@
     const [x,z]=actor.display||actor.position,{id,weapon,color}=actor.look,c=rgb(color),skin=rgb(/gobelin|orc|kobold|troll/.test(id)?"#9ec179":/skeleton|liche|golem/.test(id)?"#d4d5be":"#f0c99f");
     const moving=actor.moving,swing=actor.swing||0,casting=Boolean(actor.unit?.casting||actor.unit?.ability_cast),raise=casting?.26:swing*.22,bob=(moving?Math.sin(time*11+actor.phase)*.035:Math.sin(time*2+actor.phase)*.012)+swing*.06;
     const left=1;
+    if(actor.site?.coach_stop){
+      const wood=rgb("#89563c"),gold=rgb("#dab879");
+      mesh.box(x,0,z,.10,1.65,.10,wood);mesh.box(x,1.25,z,.85,.38,.10,gold);
+      if(actor.site.coach_boarding){
+        mesh.box(x+.85,.40,z,.85,.80,1.35,rgb("#6b3b36"));mesh.box(x+.85,1.20,z,1,.14,1.55,wood);
+        mesh.box(x+.85,.84,z+.68,.50,.40,.025,rgb("#a7ccd0"));
+        for(const dx of [.40,1.30])for(const dz of [-.46,.46])mesh.ball(x+dx,.32,z+dz,.20,.27,.27,wood);
+        mesh.ball(x+.85,.64,z+1.65,.26,.35,.58,rgb("#af8760"));mesh.ball(x+.85,1.03,z+2.05,.18,.30,.22,wood);
+        for(const dx of [.67,1.03])for(const dz of [1.3,1.95])mesh.box(x+dx,0,z+dz,.10,.55,.10,wood);
+      }
+      return;
+    }
     mesh.ball(x,.025,z,.30,.015,.20,rgb("#426d61"));
     if(creatureModel(mesh,id,x,z,c,bob,time))return;
     const leg=moving?Math.sin(time*12+actor.phase)*.10:0;
@@ -261,7 +324,7 @@
   function actors(adventure,me){
     const result=[],battle=adventure.battle;
     const add=(id,p,name,keys,extra={})=>result.push({id,position:p,name,look:appearance(adventure,keys),phase:result.length*.7,...extra});
-    for(const p of adventure.players){const unit=battle.players[p.id];add(p.id,unit.position,p.id===me.id?"Vous":p.name,[`class:${p.class_name}`],{hp:p.hp,max_hp:p.max_hp,unit,hero:p.id===me.id});}
+    for(const p of adventure.players){const unit=battle.players[p.id];add(p.id,unit.position,p.id===me.id?"Vous":p.name,[`class:${p.class_name}`],{hp:p.hp,max_hp:p.max_hp,unit,hero:p.id===me.id});const weapon=typeof equippedWeaponSprite==="function"?equippedWeaponSprite(p):"";if(weapon)result.at(-1).look.weapon=weapon;}
     for(const mob of adventure.mobs)add(mob.combat_id,mob.position,mob.name,[`mob:${mob.mob_id}`],{hp:mob.stats.hp.current,max_hp:mob.stats.hp.max,enemy:true,unit:mob});
     for(const [id,s] of Object.entries({...battle.summons,...battle.companions}))add(id,s.position,s.name,[`mob:${s.mob_id}`,`class:${s.class_name}`],{hp:s.hp,max_hp:s.max_hp,unit:s});
     for(const site of battle.map.sites||[])add(`site:${site.id}`,site.position,site.name,[`npc:${site.id}`],{site});
@@ -307,10 +370,11 @@
       const gl=this.gl;
       const compile=(type,source)=>{const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;};
       this.program=gl.createProgram();
-      gl.attachShader(this.program,compile(gl.VERTEX_SHADER,`attribute vec3 p;attribute vec3 c;uniform vec4 camera;varying vec3 color;void main(){vec3 v=p-vec3(camera.x,0.0,camera.y);gl_Position=vec4(v.x/camera.z,(-v.z*0.72+v.y*0.78)/camera.w,-(v.z*0.78+v.y*0.72)/128.0,1.0);color=c;}`));
-      gl.attachShader(this.program,compile(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 color;void main(){gl_FragColor=vec4(color,1.0);}`));
+      gl.attachShader(this.program,compile(gl.VERTEX_SHADER,`attribute vec3 p;attribute vec3 c;uniform vec4 camera;varying vec3 color;varying vec3 world;void main(){vec3 v=p-vec3(camera.x,0.0,camera.y);gl_Position=vec4(v.x/camera.z,(-v.z*0.72+v.y*0.78)/camera.w,-(v.z*0.78+v.y*0.72)/128.0,1.0);color=c;world=p;}`));
+      gl.attachShader(this.program,compile(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 color;varying vec3 world;uniform float underground;uniform vec2 observer;uniform vec3 mist;uniform vec3 lightSources[8];void main(){vec3 result=color;if(underground>0.5){float lantern=1.0-smoothstep(1.5,8.0,distance(world.xz,observer));vec3 illumination=vec3(0.42,0.49,0.58)+lantern*vec3(0.60,0.51,0.36);for(int i=0;i<8;i++){float halo=max(0.0,1.0-distance(world.xz,lightSources[i].xy)/3.6);vec3 glow=mix(vec3(0.85,0.35,0.12),vec3(0.18,0.46,0.65),lightSources[i].z);illumination+=halo*halo*glow;}float haze=smoothstep(4.0,18.0,distance(world.xz,observer))*0.65;result=mix(color*min(illumination,vec3(1.4)),mist,haze);}gl_FragColor=vec4(result,1.0);}`));
       gl.linkProgram(this.program);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(this.program));
       this.staticBuffer=gl.createBuffer();this.dynamicBuffer=gl.createBuffer();this.cameraUniform=gl.getUniformLocation(this.program,"camera");
+      this.environmentUniforms=Object.fromEntries(["underground","observer","mist","lightSources[0]"].map(key=>[key,gl.getUniformLocation(this.program,key)]));
       this.camera={x:0,z:0,span:22,halfW:11,halfH:7};this.previous=new Map();this.nodes=new Map();this.effects=new CombatEffects();this.last=0;this.stats={cameraLocked:true,azimuth:0,tilt:TILT};
       this.canvas.scene3D=this;
       this.canvas.oncontextmenu=e=>e.preventDefault();
@@ -358,10 +422,12 @@
       if(typeof fieldCamera!=="undefined"&&fieldCamera?.follow===false){this.camera.x=fieldCamera.x;this.camera.z=fieldCamera.y;}
       else if(hero){this.camera.x=hero.position[0];this.camera.z=hero.position[1];}
       this.seen=adventure.field_map?new Set((adventure.battle.explored||[]).map(p=>p.join())):null;
-      const map=adventure.battle.map,key=`${map.id}:${Math.floor(this.camera.x/2)}:${Math.floor(this.camera.z/2)}:${this.camera.span}:${this.seen?.size}`;
+      const map=adventure.battle.map,key=`${map.id}:${map.biome}:${map.terrain_version}:${Math.floor(this.camera.x/2)}:${Math.floor(this.camera.z/2)}:${this.camera.span}:${this.seen?.size}`;
+      this.root.dataset.biome=map.biome||"forest";
       if(key!==this.terrainKey){const mesh=new Mesh();scenery(mesh,map,this.seen,this.camera);this.upload(this.staticBuffer,mesh);this.staticCount=mesh.data.length/6;this.terrainKey=key;}
       this.attack.textContent=`⚔ Attaquer · portée ${me.attack_range}`;
-      this.help.textContent=`ZQSD / WASD · Espace : attaque · Portée ${me.attack_range}`;
+      this.help.textContent=globalThis.RPGKeybindings?.hint()||`ZQSD / WASD · Espace : attaque · Portée ${me.attack_range}`;
+      this.canvas.setAttribute("aria-label", "Monde en 3D. " + this.help.textContent);
       this.attack.disabled=me.hp<=0||me.stunned||me.casting||me.cooldown_real_seconds>0;
     }
     upload(buffer,mesh){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),gl.DYNAMIC_DRAW);}
@@ -412,8 +478,13 @@
       const target=visible.find(a=>typeof focusedMob!=="undefined"&&a.id===focusedMob);
       if(target)mesh.ring(...target.display,.42,rgb("#ed9b8a"),.035);
       this.upload(this.dynamicBuffer,mesh);
-      gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clearColor(.08,.15,.17,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.viewport(0,0,this.canvas.width,this.canvas.height);
       gl.enable(gl.DEPTH_TEST);gl.useProgram(this.program);gl.uniform4f(this.cameraUniform,this.camera.x,this.camera.z,this.camera.halfW,this.camera.halfH);
+      const theme=environment(this.adventure.battle.map),observer=hero?.display||[this.camera.x,this.camera.z],lights=theme.cave?caveLights(this.adventure.battle.map,this.seen,observer):[],sources=new Float32Array(24);
+      for(let i=0;i<8;i++){sources[i*3]=10000;sources[i*3+1]=10000;}sources.set(lights);
+      gl.uniform1f(this.environmentUniforms.underground,theme.cave?1:0);gl.uniform2f(this.environmentUniforms.observer,...observer);gl.uniform3fv(this.environmentUniforms.mist,theme.fog);gl.uniform3fv(this.environmentUniforms["lightSources[0]"],sources);
+      if(theme.cave)gl.clearColor(...theme.fog,1);else gl.clearColor(.08,.15,.17,1);
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);this.stats.biome=this.root.dataset.biome;this.stats.lights=lights.length/3;
       this.buffer(this.staticBuffer,this.staticCount);this.buffer(this.dynamicBuffer,mesh.data.length/6);
       this.stats.vertices=this.staticCount+mesh.data.length/6;this.stats.models=visible.length;this.stats.frames=(this.stats.frames||0)+1;
       const used=new Set(),occupied=[];
@@ -439,7 +510,7 @@
   function attack(preferred){
     const adventure=typeof session!=="undefined"?session?.tutorial:null;if(!adventure?.battle||busy)return;
     const me=adventure.players.find(p=>p.id===session.me);if(!me||me.hp<=0||me.stunned||me.casting||me.cooldown_real_seconds>0)return;
-    const source=adventure.battle.players[me.id].position;
+    const source=globalThis.RPGMotion?.position?.(adventure,me.id)||adventure.battle.players[me.id].position;
     const targets=adventure.mobs.filter(m=>m.stats.hp.current>0&&battleAllowed(adventure,me.id,m.combat_id,me.attack_range)).sort((a,b)=>Math.hypot(...a.position.map((v,i)=>v-source[i]))-Math.hypot(...b.position.map((v,i)=>v-source[i])));
     const target=targets.find(m=>m.combat_id===(preferred||focusedMob))||targets[0];
     if(target)tutorialCommand("strike",{target:target.combat_id});else message("Aucun ennemi à portée.");
@@ -454,5 +525,5 @@
       return true;
     }catch(error){scene?.dispose();parent.classList.remove("has-scene3d");parent.dataset.renderer="svg";return false;}
   };
-  globalThis.RPGScene3D={Mesh,CombatEffects,GuardTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
+  globalThis.RPGScene3D={Mesh,scenery,environment,caveLights,CombatEffects,GuardTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
 })();

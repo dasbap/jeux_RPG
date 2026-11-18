@@ -793,12 +793,15 @@ class GameService(AccountMixin, LivingWorldMixin):
             "strike": {"session_id", "revision", "target"},
             "rest": {"session_id", "revision"},
             "skill": {"session_id", "revision", "skill_name", "target"},
+            "coach": {"session_id", "revision", "station", "destination"},
             "travel": {"session_id", "revision", "destination", "world_context"},
             "move": {"session_id", "revision", "destination", "world_context"},
             "talk": {"session_id", "revision", "npc", "world_context"},
             "story": {"session_id", "revision", "npc", "choice"},
             "craft": {"session_id", "revision", "recipe"},
             "upgrade": {"session_id", "revision", "recipe"},
+            "equip": {"session_id", "revision", "recipe"},
+            "unequip": {"session_id", "revision", "recipe"},
             "endgame_claim": {"session_id", "revision", "challenge"},
             "buy": {"session_id", "revision", "npc", "item", "quantity"},
             "sell": {"session_id", "revision", "npc", "item", "quantity"},
@@ -857,11 +860,14 @@ class GameService(AccountMixin, LivingWorldMixin):
                     and set(params) == allowed[action] - {"encounter"}
                 )
                 and not (
-                    action in ("move_axis", "stop_move")
+                    action in ("move_axis", "stop_move", "strike", "skill", "harvest")
                     and set(params)
                     in (
                         allowed[action] | {"position"},
                         (allowed[action] - {"encounter"}) | {"position"},
+                        allowed[action] | {"position", "position_seq"},
+                        (allowed[action] - {"encounter"})
+                        | {"position", "position_seq"},
                     )
                 )
                 and not (
@@ -989,6 +995,7 @@ class GameService(AccountMixin, LivingWorldMixin):
         if action in ("world_help", "world_buy"):
             return self._execute_living_world(player, action, params, now, compact)
         if action in (
+            "coach",
             "enter_zone",
             "explore",
             "strike",
@@ -1000,6 +1007,8 @@ class GameService(AccountMixin, LivingWorldMixin):
             "story",
             "craft",
             "upgrade",
+            "equip",
+            "unequip",
             "endgame_claim",
             "buy",
             "sell",

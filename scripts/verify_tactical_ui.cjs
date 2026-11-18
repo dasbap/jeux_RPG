@@ -355,7 +355,7 @@ try {
   assert(authoredDetail.textContent.includes("Point modifié"));
   if (fixtures.field_village) {
     render(fixtures.field_village);
-    assert.equal(el("field-camera").hidden, false);
+    assert.equal(el("field-camera").hidden, true);
     assert.equal(el("field-location").textContent, "Village de Rosée");
     assert(el("world-map").querySelector('[data-site="mira"]'));
     assert(el("world-map").querySelector(".unexplored-cell"));

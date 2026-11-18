@@ -131,6 +131,18 @@ Cette commande réécrit les dessins et associations gérés par le pack dans
 d'autres identifiants sont conservés ; les associations des entités existantes
 sont remises aux choix du pack.
 
+Pour actualiser uniquement les dessins gérés en conservant les associations,
+armes et teintes personnalisées, ajouter `--art-only` :
+
+```powershell
+.\.venv-reprise\Scripts\python.exe -m scripts.generate_entity_sprites projects/authored --art-only
+```
+
+Les surfaces de couleur principale reçoivent un éclaircissement en haut à gauche
+et une ombre en bas à droite. L'index 14 du pack contient cette ombre, calculée à
+65 % de la couleur principale ; le jeu et le Maker la recalculent lors d'une teinte.
+Les anciens dessins dont l'index 14 utilise une autre couleur restent compatibles.
+
 ## Vérifier localement
 
 ```powershell

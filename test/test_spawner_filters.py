@@ -259,6 +259,42 @@ def test_real_spawner_form_selects_by_name_and_saves_override(tmp_path, monkeypa
                 and "Espèce (par défaut)" in widget.cget("values")
             )
             behavior.set("Hostile")
+            profile = next(
+                widget
+                for widget in descendants(root)
+                if isinstance(widget, ttk.Combobox) and "boss" in widget.cget("values")
+            )
+
+            def entry_for(prefix):
+                label = next(
+                    widget
+                    for widget in descendants(root)
+                    if isinstance(widget, ttk.Label)
+                    and str(widget.cget("text")).startswith(prefix)
+                )
+                return label.master.grid_slaves(row=label.grid_info()["row"], column=1)[
+                    0
+                ]
+
+            count = entry_for("Nombre de cr")
+            count.delete(0, "end")
+            count.insert(0, "3")
+            custom = entry_for("Cycle en secondes")
+            custom.insert(0, "75")
+            profile.set("boss")
+            profile.event_generate("<<ComboboxSelected>>")
+            assert custom.get() == ""
+            preview = next(
+                widget
+                for widget in descendants(root)
+                if isinstance(widget, ttk.Label)
+                and widget.cget("textvariable")
+                and str(root.globalgetvar(widget.cget("textvariable"))).startswith(
+                    "Cycle :"
+                )
+            )
+            assert "200 s" in str(root.globalgetvar(preview.cget("textvariable")))
+            custom.insert(0, "75")
             accept.invoke()
         except BaseException as error:
             failures.append(error)
@@ -271,6 +307,8 @@ def test_real_spawner_form_selects_by_name_and_saves_override(tmp_path, monkeypa
         saved = definition["spawners"][-1]
         assert saved["mob_id"] == "scout" and saved["hostile"] is True
         assert saved["patrol"] == [position]
+        assert saved["respawn_profile"] == "boss"
+        assert saved["respawn_seconds"] == 75 and saved["count"] == 3
     finally:
         if not failures:
             root.destroy()

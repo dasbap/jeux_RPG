@@ -1,7 +1,27 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("node:vm");
 const {test}=require("node:test");
-function setup(){const context=vm.createContext({});vm.runInContext(fs.readFileSync("jeuxRPG/multiplayer/web/scene_3d.js","utf8"),context);return context.RPGScene3D;}
+function setup(){const context=vm.createContext({});vm.runInContext(fs.readFileSync("jeuxRPG/multiplayer/web/sprites.js","utf8")+"\n"+fs.readFileSync("jeuxRPG/multiplayer/web/scene_3d.js","utf8"),context);return context.RPGScene3D;}
+
+test("cave terrain has its own dark palette, rock walls and discovered light sources",()=>{
+ const api=setup(),map={biome:"cave",width:4,height:4,cover:[[0,0]],decorations:[{position:[0,0],kind:"rock"},{position:[1,1],kind:"camp"},{position:[3,2],kind:"crystal"}]};
+ assert(api.environment(map).cave);assert(!api.environment({biome:"forest"}).cave);
+ assert.notEqual(api.environment(map).ground,api.environment({biome:"forest"}).ground);
+ const mesh=new api.Mesh();api.scenery(mesh,map,null,{x:2,z:2,span:8});assert(mesh.data.every(Number.isFinite));assert(mesh.data.some((value,i)=>i%6===1&&value>1));
+ assert.equal(api.caveLights(map,new Set(),[1,1]).length,0);
+ assert.deepEqual(Array.from(api.caveLights(map,new Set(["1,1"]),[1,1])),[1,1,0]);
+ assert.deepEqual(Array.from(api.caveLights(map,null,[3,2])).slice(0,3),[3,2,1]);
+});
+
+test("terrain relief recesses water, keeps bridges walkable and hides unseen details",()=>{
+ const api=setup(),map={width:4,height:4,cover:[],water:[[1,1],[2,1]],bridges:[[2,1]],decorations:[{position:[3,2],kind:"rock"}]},camera={x:2,z:2,span:8};
+ const mesh=new api.Mesh();api.scenery(mesh,map,null,camera);
+ assert(mesh.data.every(Number.isFinite));
+ const heights=mesh.data.filter((_,i)=>i%6===1);
+ assert(heights.some(y=>y===-.22));assert(heights.some(y=>y>.5));
+ const hidden=new api.Mesh();api.scenery(hidden,map,new Set(),camera);
+ assert(!hidden.data.filter((_,i)=>i%6===1).some(y=>y>0||y===-.22));
+});
 test("fixed 3D projection and geometry stay finite with no camera rotation API",()=>{
   const api=setup(),camera={x:5,z:6,halfW:10,halfH:7};
   assert.deepEqual(Array.from(api.project([5,6],camera)),[.5,.5]);
@@ -87,4 +107,11 @@ test("catalogue species and tools retain distinct finite silhouettes",()=>{
 test("3D actors use equipment and tint from the same binding as their body",()=>{
  const api=setup(),adventure={sprites:{assets:{body:{palette:[null,"#000000","#111111","#123456"]}},bindings:{"npc:local":"body","ambient:resident":"body"},equipment:{"ambient:resident":"arme_axe"},colors:{"ambient:resident":"#ff0000"}},players:[],mobs:[],battle:{map:{id:"test",sites:[{id:"local",name:"Local",position:[1,1]}]},summons:{},companions:{}},living_world:{nearby:[{id:"local",kind:"resident",map:"test",position:[2,2],name:"Local"}]}};
  for(const actor of api.actors(adventure,{id:"hero"})){assert.equal(actor.look.weapon,"");assert.equal(actor.look.color,"#123456");}
+});
+
+test("shared crafted weapons override each class weapon while keeping its own body and tint",()=>{
+ const api=setup(),players=["Mage","Priest","Necromancien"].map((class_name,index)=>({id:`p${index}`,class_name,name:class_name,hp:20,max_hp:20,gear:[{slot:"weapon",weapon_type:"staff"}]}));
+ const adventure={players,mobs:[],sprites:{assets:{body:{palette:[null,"#000000","#111111","#123456"]}},bindings:Object.fromEntries(players.map(p=>[`class:${p.class_name}`,"body"])),equipment:{"class:Mage":"arme_wand","class:Priest":"arme_staff","class:Necromancien":"arme_skull_staff"}},battle:{players:Object.fromEntries(players.map((p,i)=>[p.id,{position:[i,0]}])),map:{id:"test",sites:[]},summons:{},companions:{},corpses:[]}};
+ for(const actor of api.actors(adventure,players[0])){assert.equal(actor.look.weapon,"arme_staff");assert.equal(actor.look.id,"body");assert.equal(actor.look.color,"#123456");}
+ players[0].gear=[];assert.equal(api.actors(adventure,players[0])[0].look.weapon,"arme_wand");
 });

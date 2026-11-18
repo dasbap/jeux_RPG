@@ -28,3 +28,13 @@ test("a loading gap preserves held input, while blur still releases it",()=>{
   s.w.dispatchEvent(new s.w.Event("blur"));assert.deepEqual(s.calls.at(-1),[0,0]);assert.equal(s.timers.size,0);
  }finally{s.close();}
 });
+
+test("held movement survives a brief scene loading screen and release still stops it",()=>{
+ const s=setup();try{
+  s.key("keydown","ArrowUp");s.w.document.body.classList.add("rpg-loading");s.w.document.body.dataset.loadingScene="true";
+  s.tick();assert.deepEqual(s.calls.at(-1),[0,0]);assert.equal(s.timers.size,1);
+  s.w.session.tutorial.encounter_number++;s.w.session.tutorial.field_map="new-map";s.w.document.body.classList.remove("rpg-loading");
+  s.tick();assert.deepEqual(s.calls.at(-1),[0,-1]);
+  s.key("keyup","ArrowUp");assert.deepEqual(s.calls.at(-1),[0,0]);assert.equal(s.timers.size,0);
+ }finally{s.close();}
+});

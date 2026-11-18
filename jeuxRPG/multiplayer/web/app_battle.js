@@ -11,6 +11,7 @@ function requestTravel(destination) {
     }
     if (adventure.battle.hostiles_alive) return message("Terminez le combat avant de voyager.");
   } else if (adventure.battle) return message("Terminez le combat avant de voyager.");
+  if (adventure.coaches?.enabled) return message("Rejoignez une sortie de zone à pied ou un relais de diligence.");
   return tutorialCommand("move", {destination});
 }
 function selectEntity(id) {
@@ -252,7 +253,7 @@ function gridSight(map, source, target) {
 }
 function battleAllowed(adventure, player, target, range) {
   if (!adventure?.battle) return false;
-  const source = adventure.battle.players[player]?.position;
+  const source = globalThis.RPGMotion?.position?.(adventure,player)||adventure.battle.players[player]?.position;
   const destination = adventure.mobs.find(m => m.combat_id === target)?.position || adventure.battle.players[target]?.position;
   return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
 }
@@ -385,7 +386,7 @@ function renderBattleMapSvg(adventure, me) {
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
     const actor=battle.players[id]||alliedUnits(adventure)[id]||adventure.mobs.find(mob=>mob.combat_id===id)||{position};
     const target=entityPosition(adventure,actor.target);
-    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position,36,spriteFacing(adventure,id,actor,target));
+    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position,36,spriteFacing(adventure,id,actor,target),(typeof equippedWeaponSprite==="function"?equippedWeaponSprite(adventure.players.find(player=>player.id===id)):""));
     group.append(picture || element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
     group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + (picture?45:25)}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
@@ -448,7 +449,7 @@ function renderBattleMapSvg(adventure, me) {
       y = Math.max((top + .5) * 40, Math.min((top + height - .5) * 40, baseY + (direction === 0 ? distance : direction === 1 ? -distance : 0)));
     }
     usedGateMarkers.push([x, y]);
-    const marker = element("g", {class: "battle-unit exit-marker", "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
+    const marker = element("g", {class: `battle-unit exit-marker${gate.changes_zone?" zone-exit-marker":""}`, "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
     marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"));
     marker.onclick = () => { inspectedCell = gate.position; message(gate.name || "Sortie"); };
     marker.ondblclick = () => moveControlled(adventure, me, gate.position);
@@ -579,13 +580,16 @@ function renderBattle(adventure, me) {
   if (!hide.disabled) $("tactical-actions").append(hide);
   else if (unit.hidden) { const label = document.createElement("p"); label.textContent = "Dissimulé · déplacement couvert à vitesse réduite"; $("tactical-actions").append(label); }
   $("corpse-actions").replaceChildren();
+  const harvestRange=battle.corpse_interact_range??1.5;
   for (const corpse of battle.corpses) {
-    if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5) continue;
-    const button = document.createElement("button"); button.textContent = "✂";
-    button.title = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
-    button.setAttribute("aria-label", button.title);
-    button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
-    button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
+    if(corpse.harvested.length||!Object.values(corpse.loot||{}).some(n=>n>0))continue;
+    const distance=Math.hypot(unit.position[0]-corpse.position[0],unit.position[1]-corpse.position[1]);
+    if(distance>harvestRange&&focusedMob!==corpse.id)continue;
+    const button=document.createElement("button");button.type="button";button.dataset.harvest=corpse.id;
+    button.classList.toggle("selected",focusedMob===corpse.id);
+    button.textContent=`${globalThis.RPGKeybindings?.label("harvest")||"G"} · Dépecer ${corpse.name}${distance>harvestRange?" · approcher":""}`;
+    button.disabled=disabled;button.onclick=()=>{if(focusedMob!==corpse.id)selectEntity(corpse.id);harvestSelectedCorpse(adventure,me);};
+    $("corpse-actions").append(button);
   }
 
 }

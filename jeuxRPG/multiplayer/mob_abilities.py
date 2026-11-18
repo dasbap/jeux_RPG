@@ -30,6 +30,7 @@ def self_target(ability):
 
 def advance(party, mob, target, characters, units, preset, now, messages):
     from . import tactics
+    from .free_movement import awaiting_position
     from .tutorial import pack, unpack
 
     abilities = mob.get("abilities", [])
@@ -49,9 +50,13 @@ def advance(party, mob, target, characters, units, preset, now, messages):
             mob.pop("ability_cast", None)
             messages.append(f"{mob['name']} : cible perdue, {ability['name']} annulée.")
             return False
-        if cast["ends_at"] > now:
+        if (
+            cast["ends_at"] > now
+            or not own
+            and awaiting_position(units[key], now, cast["ends_at"])
+        ):
             mob["intent"] = (
-                f"{ability['name']} · {(cast['ends_at'] - now) / progression.RATIO:.1f} s"
+                f"{ability['name']} · {max(0, cast['ends_at'] - now) / progression.RATIO:.1f} s"
             )
             return True
         source = unpack(mob)

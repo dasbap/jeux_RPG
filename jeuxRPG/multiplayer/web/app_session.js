@@ -1,4 +1,18 @@
 "use strict";
+let soloRecovery=null;
+function recoverSoloResume(error) {
+  if(soloRecovery)return soloRecovery;
+  soloRecovery=(async()=>{
+    stateEpoch++;
+    await soloTransport?.subscribe(false)?.catch?.(()=>{});
+    try { accountState=await api("/api/account/me",undefined,false); } catch {}
+    if(accountState)renderCharacters();else $("registration").hidden=false;
+    $("connection").textContent="Solo \u00b7 reprise interrompue";
+    const detail=String(error.message||error).includes("migration de catalogue")?"Cette sauvegarde utilise une ancienne version du monde.":"Impossible de reprendre ce personnage.";
+    message(`${detail} Vos personnages sont conserv\u00e9s. Choisissez un personnage pour r\u00e9essayer.`,true);
+  })().finally(()=>{soloRecovery=null;});
+  return soloRecovery;
+}
 async function refresh(force = false) {
   if (gameMode !== "solo" && globalThis.navigator?.onLine === false) return;
   if (!$("characters").hidden) return;
@@ -8,6 +22,7 @@ async function refresh(force = false) {
   }
   if (polling || (!force && Date.now() < nextRefreshAt)) return;
   polling = true;
+  const loading=!lastPlayer?globalThis.RPGLoading?.begin("Reprise de votre aventure", "Lecture du personnage et du monde."):null;
   const epoch = stateEpoch;
   try {
     if (!accountState) {
@@ -32,6 +47,7 @@ async function refresh(force = false) {
     render(state);
   } catch (error) {
     if (epoch !== stateEpoch) return;
+    if(gameMode==="solo"){await recoverSoloResume(error);return;}
     refreshFailures++;
     nextRefreshAt = Date.now() + Math.round(Math.min(30000, 1000 * 2 ** Math.min(5, refreshFailures - 1)) * (.9 + Math.random() * .2));
     $("connection").textContent = "Reconnexion automatique · " + (error.code === "timeout" ? "tunnel lent" : "serveur indisponible");
@@ -51,10 +67,11 @@ async function refresh(force = false) {
       session = null;
       remember();
     }
-  } finally { polling = false; scheduleRefresh(); }
+  } finally { loading?.finish(); polling = false; scheduleRefresh(); }
 }
 async function command(action, params = {}) {
   if (busy) return;
+  const loading=["tutorial","explore","travel","move","join","start"].includes(action)?globalThis.RPGLoading?.begin("Chargement de votre aventure", "Le monde se met en place."):null;
   stateEpoch++;
   busy = true;
   if (session?.tutorial) renderGame(session.tutorial);
@@ -62,7 +79,7 @@ async function command(action, params = {}) {
   $("attack").disabled = true;
   try {
     let data;
-    let currentParams = params;
+    let currentParams = ["strike","skill","harvest"].includes(action)?{...params,...(globalThis.RPGMotion?.report?.()||{})}:params;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         data = await api("/api/commands", {request_id: requestId(), action, params: currentParams});
@@ -114,6 +131,7 @@ async function command(action, params = {}) {
     message(error.message, true);
     if (["craft", "upgrade"].includes(action) || action === "talk" && params.npc === "forge") $("forge-feedback").textContent = error.message;
   } finally {
+    loading?.finish();
     busy = false;
     if (lastPlayer && $("characters").hidden) render({player: lastPlayer});
     else if (session?.tutorial) renderGame(session.tutorial);
@@ -131,6 +149,7 @@ $("register-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (busy) return;
   busy = true;
+  const loading=globalThis.RPGLoading?.begin("Création de votre compte", "Lecture de vos personnages.");
   try {
     const data = await api("/api/account/signup", {username: $("account-name").value, password: $("account-password").value}, false);
     token = data.token;
@@ -141,12 +160,13 @@ $("register-form").addEventListener("submit", async event => {
     $("account-password").value = "";
     message("Compte créé. Commencez le tutoriel et retrouvez vos alliés dans Social.");
   } catch (error) { message(error.message, true); if (token && accountState) renderCharacters(); }
-  finally { busy = false; await refresh(true); }
+  finally { busy = false; try { await refresh(true); } finally { loading?.finish(); } }
 });
 $("restore-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (busy) return;
   busy = true;
+  const loading=globalThis.RPGLoading?.begin("Connexion à votre compte", "Lecture de vos personnages.");
   try {
     const data = await api("/api/account/login", {username: $("login-name").value, password: $("login-password").value}, false);
     token = data.token;
@@ -157,12 +177,12 @@ $("restore-form").addEventListener("submit", async event => {
     renderCharacters();
     message("Choisissez votre personnage.");
   } catch (error) { message(error.message, true); }
-  finally { busy = false; }
+  finally { busy = false; loading?.finish(); }
 });
 for (const view of ["social", "options", "stats", "equipment", "inventory", "quest", "map", "bestiary", "achievements"]) $(`show-${view}`).addEventListener("click", () => showView(view));
 $("map-place").addEventListener("change", () => { mapPlace = $("map-place").value; mapPoint = ""; showView("map", {toggle: false}); });
 $("game-menu-toggle").addEventListener("click", () => toggleGameMenu());
-document.addEventListener("keydown", event => {if (event.key !== "Escape" || !session?.tutorial || $("craft-view").open || $("story-dialog")?.open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
+document.addEventListener("keydown", event => {if (document.body.classList.contains("rpg-loading") || event.key !== "Escape" || !session?.tutorial || $("craft-view").open || $("story-dialog")?.open) return;event.preventDefault();if (document.body.classList.contains("hud-menu-open")) {$("back-view").click();toggleGameMenu(true);} else toggleGameMenu();});
 $("back-view").addEventListener("click", () => {toggleGameMenu(false);document.body.classList.remove("hud-menu-open"); currentView="map"; if(session?.tutorial) renderGame(session.tutorial);});
 $("combat-target").addEventListener("change", () => {
   combatTarget = $("combat-target").value;
@@ -255,6 +275,7 @@ function bindTransport() {
   globalThis.rpgRealtime.onState = result => {
     if (boundTransport !== globalThis.rpgRealtime || !token || result.status !== 200 || !$("characters").hidden) return;
     const state = result.body;
+    if (accountState?.selected && state.player?.id !== accountState.selected) return;
     if (lastPlayer && state.player?.id !== lastPlayer.id) return;
     if(globalThis.RPGMotion?RPGMotion.accept(session,state.session)===false:(state.session&&session&&state.session.id===session.id&&state.session.revision<session.revision))return;
     session = state.session || null;

@@ -154,7 +154,13 @@ def enter(party, identifier, entry, now, pursuers=()):
                 ],
                 patrol_index=0,
             )
-    if saved and now - saved["saved_at"] >= content.WORLD["repop_seconds"]:
+    from . import spawn_cycles
+
+    if (
+        saved
+        and not spawn_cycles.profiles()
+        and now - saved["saved_at"] >= content.WORLD["repop_seconds"]
+    ):
         progression.health_resources(party, now)
         repop(party, identifier, now, pursuers)
     occupied = []
@@ -230,7 +236,18 @@ def enter(party, identifier, entry, now, pursuers=()):
 
 
 def transition(party, gate, player, now):
-    destination = None if gate.get("world_exit") else gate["destination"]
+    seamless = MAPS["clearing"].get("seamless_transitions", False)
+    destination = (
+        gate["destination"]
+        if seamless
+        else None
+        if gate.get("world_exit")
+        else gate["destination"]
+    )
+    if seamless and destination is None:
+        return [
+            "Ce passage ne mène pas à une autre zone. Consultez les départs au relais."
+        ]
     battle = party["battle"]
     definition = MAPS[party["field_map"]]
     unit = battle["players"][player]
@@ -260,14 +277,14 @@ def transition(party, gate, player, now):
             and tactics.sees(definition, mob, unit)
             and tactics.path(definition, mob["position"], unit["position"]) is not None
         ]
-        if destination and not gate.get("travel_minutes", 0)
+        if destination and (seamless or not gate.get("travel_minutes", 0))
         else []
     )
     remaining = [mob for mob in party["mobs"] if mob not in pursuers]
     party["fields"][party["field_map"]] = snapshot(party, now, remaining)
     # Crossing a physical gate replaces any itinerary from a previous outing.
     party.update(journey=[], transit=None)
-    if destination and gate.get("travel_minutes", 0) > 0:
+    if destination and not seamless and gate.get("travel_minutes", 0) > 0:
         duration = gate["travel_minutes"] * 60
         party["linked_companions"] = deepcopy(battle.get("companions", {}))
         party.update(battle=None, mobs=[], mob=None, journey=[])
@@ -344,6 +361,30 @@ def execute(party, player, action, params, now, error, random):
     from . import economy, forge, tutorial
 
     nearby = interactions(party, player)
+    from . import coaches
+
+    if action == "talk" and params.get("npc") in coaches.settings().get(
+        "coach_stations", {}
+    ):
+        stop = next(
+            (
+                s
+                for s in coaches.view(party, player)["nearby"]
+                if s["id"] == params["npc"]
+            ),
+            None,
+        )
+        if stop is None:
+            raise error("wrong_location", "Approchez-vous du relais.", 409)
+        return [
+            stop["name"]
+            + (
+                " : choisissez une destination au relais."
+                if stop["boarding"]
+                else " : d\u00e9pose uniquement, aucun d\u00e9part ici."
+            )
+        ], False
+
     site = params.get("npc") if action in ("talk", "buy", "sell") else "forge"
     if site not in {item["id"] for item in nearby}:
         raise error("wrong_location", "Approchez-vous du lieu pour interagir.", 409)
@@ -415,6 +456,9 @@ def advance(party, now):
     expire_corpses(party, now)
     if not party.get("field_map") or not party.get("battle"):
         return []
+    from .spawn_cycles import advance as advance_spawns
+
+    advance_spawns(party, party["field_map"], now)
     battle = party["battle"]
     definition = MAPS[party["field_map"]]
     messages = []
@@ -462,7 +506,9 @@ def snapshot(party, now, mobs=None):
     }
 
 
-def repop(party, identifier, now, pursuers=(), *, skip_origins=()):
+def repop(
+    party, identifier, now, pursuers=(), *, skip_origins=(), refresh_encounter=True
+):
     definition = MAPS[identifier]
     existing = list(party["mobs"]) + list(pursuers)
     existing.extend(arrival["mob"] for arrival in party["battle"].get("arrivals", []))
@@ -512,7 +558,10 @@ def repop(party, identifier, now, pursuers=(), *, skip_origins=()):
             }
         )
         count += 1
-    if count:
+    if count and not refresh_encounter:
+        party["battle"]["initial_mobs"] = party["battle"].get("initial_mobs", 0) + count
+        party["battle"]["awarded"] = False
+    if count and refresh_encounter:
         party["battle"].update(
             initial_mobs=len(party["mobs"]),
             awarded=False,

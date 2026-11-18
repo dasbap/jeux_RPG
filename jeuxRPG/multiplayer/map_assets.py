@@ -267,6 +267,9 @@ def _validate_map_spawners(maps):
                 or len(config.get("battlecry", "")) > 1000
             ):
                 raise ValueError(f"{key} : réplique de combat invalide.")
+            from .spawn_cycles import validate_spawner
+
+            validate_spawner(config)
             position = config["position"]
             if (
                 position not in definition["spawns"]

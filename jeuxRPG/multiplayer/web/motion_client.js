@@ -5,6 +5,7 @@
   let predicted=null,lastFrame=0,mapKey="",solids=new Set(),generation=0,lastServerTime=null;
   let controlled=false,correctionPending=false,clockOffset=Infinity,cachedUnit=null;
   let snapshotRevisions=new WeakMap();
+  let positionSequence=0;
   const diagnostics={hardResets:0,staleSnapshots:0,maxCorrectionStep:0,speedRetries:0};
   const context=()=>typeof session!=="undefined"&&session?.tutorial?.battle?`${session.id}:${session.tutorial.encounter_number}:${session.tutorial.field_map||session.tutorial.battle.map.id}`:"";
   function fits(map,p){
@@ -54,10 +55,11 @@
     const task=pending;pending=null;
     if(task.key!==context())return;
     inFlight=true;lastSent=performance.now();const epoch=generation,position=task.position||(controlled&&predicted?[...predicted]:null);
+    const sequence=position?(task.sequence??++positionSequence):null;
     try{
       const s=session,a=s.tutorial;
       const data=await api("/api/commands",{request_id:requestId(),action:task.axis.some(Boolean)?"move_axis":"stop_move",
-        params:{session_id:s.id,revision:s.revision,encounter:a.encounter_number,...(position?{position}:{}),...(task.axis.some(Boolean)?{x:task.axis[0],y:task.axis[1]}:{})}});
+        params:{session_id:s.id,revision:s.revision,encounter:a.encounter_number,...(position?{position,position_seq:sequence}:{}),...(task.axis.some(Boolean)?{x:task.axis[0],y:task.axis[1]}:{})}});
       if(epoch!==generation||task.key!==context())return;
       if(data.session?.id===session.id&&accept(session,data.session)){
         if(data.session.tutorial){session=data.session;if(typeof renderGame==="function")renderGame(session.tutorial);}
@@ -71,7 +73,7 @@
         // A clock/arrival-time deficit is not proof that the local model moved
         // too fast. Retain the server refusal, retry the same report, never rewind.
         diagnostics.speedRetries++;retryAt=performance.now()+120;
-        if(!pending)pending={...task,position};
+        if(!pending)pending={...task,position,sequence};
       }
       else if(["invalid_position","cannot_move"].includes(error.code)){
         correctionPending=true;axis=[0,0];pending=null;void refresh(true);
@@ -81,7 +83,7 @@
   function tick(){
     if(key!==context()){reset(context());if(timer!==null)clearInterval(timer);timer=null;return;}
     const now=performance.now();
-    if(!pending&&axis.some(Boolean)&&now-lastSent>=200)pending={axis:[...axis],key};
+    if(!pending&&axis.some(Boolean)&&now-lastSent>=80)pending={axis:[...axis],key};
     if(pending)void pump();
     if(!axis.some(Boolean)&&!pending&&!inFlight){clearInterval(timer);timer=null;}
   }
@@ -108,6 +110,7 @@
       mapKey=geometry;solids=new Set([...map.cover,...(map.blocked||[]),...(map.water||[]).filter(p=>!map.bridges?.some(b=>b[0]===p[0]&&b[1]===p[1]))].map(p=>p.join()));
     }
     cachedUnit=unit;
+    positionSequence=Math.max(positionSequence,unit.position_sequence||0);
     if(Number.isFinite(stamp))clockOffset=Math.min(clockOffset,now-stamp/ratio*1000);
     lastServerTime=stamp;
     if(unit.route?.length&&!axis.some(Boolean))controlled=false;
@@ -135,5 +138,13 @@
     }
     return [...predicted];
   }
-  globalThis.RPGMotion={set,sync,sample,accept,rebase:()=>reset(context()),fits:(map,p)=>fits(map,p),get diagnostics(){return {...diagnostics};},get axis(){return [...axis];},get pending(){return inFlight||!!pending;}};
+  function position(adventure,player){
+    if(player!==session?.me||adventure!==session?.tutorial||key!==context()||!controlled||!predicted)return null;
+    return [...predicted];
+  }
+  function report(){
+    const current=position(session?.tutorial,session?.me);
+    return current?{position:current,position_seq:++positionSequence}:{};
+  }
+  globalThis.RPGMotion={set,sync,sample,accept,position,report,rebase:()=>reset(context()),fits:(map,p)=>fits(map,p),get diagnostics(){return {...diagnostics};},get axis(){return [...axis];},get pending(){return inFlight||!!pending;}};
 })();

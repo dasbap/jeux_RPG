@@ -990,6 +990,21 @@ def view(party, now, player=None):
         "hostiles_alive": sum(mob_rules.is_hostile(mob) for mob in party["mobs"]),
         "exit": exit_cell(party),
     }
+    if party.get("field_map"):
+        from .world import WORLD_MAP_DATA
+        from .zone_navigation import passages
+
+        if party["field_map"] in WORLD_MAP_DATA:
+            crossings = {
+                tuple(p["position"]): p
+                for p in passages(WORLD_MAP_DATA, party["field_map"])
+            }
+            for gate in result["map"].get("exits", []):
+                crossing = crossings.get(tuple(gate["position"]))
+                gate["changes_zone"] = bool(crossing)
+                if crossing:
+                    gate["destination_zone_name"] = crossing["zone_name"]
+    result["corpse_interact_range"] = AI_RULES["corpse_interact_range"]
     result["movement_model"] = "continuous-v1"
     from .free_movement import ATTACK_SLOW_FACTOR
 
@@ -1170,14 +1185,17 @@ def execute(party, player, action, params, now, error):
 
         if "position" in params:
             actor = ready(party, player, now, error, redirect=True, moving_cast=True)
-            report_position(
+            accepted = report_position(
                 battle["players"][player],
                 PRESETS[battle["preset"]],
                 actor,
                 params["position"],
                 now,
                 error,
+                params.get("position_seq"),
             )
+            if not accepted:
+                return []
         stop(battle["players"][player], now)
         return []
     if action in ("move_axis", "walk"):
@@ -1187,6 +1205,10 @@ def execute(party, player, action, params, now, error):
     actor = ready(
         party, player, now, error, redirect=action in ("battle_move", "leave_battle")
     )
+    if action == "harvest":
+        from .free_movement import report_attack_position
+
+        report_attack_position(party, player, params, actor, now, error)
     unit = battle["players"][player]
     preset = PRESETS[battle["preset"]]
     if action == "battle_move":
@@ -1296,6 +1318,9 @@ def damaged(party, mob, actor, now):
 
 
 def defeated(party, mob, now, random, messages, credited=True):
+    from .spawn_cycles import on_death
+
+    on_death(party, mob, now)
     from . import world
     from .tutorial import pack, unpack
 
@@ -1399,6 +1424,13 @@ def _resolve_mob_intent(
     ):
         mob.pop("agent_waypoint", None)
         if mob["windup_until"] is not None and mob["windup_until"] <= now:
+            unit = units[target]
+            from .free_movement import awaiting_position
+
+            if awaiting_position(unit, now, mob["windup_until"]):
+                # Wait for a report covering the end of the windup; an old
+                # position is insufficient evidence that a moving target stayed.
+                return
             enemy = unpack(mob)
             actor = characters[target]
             actor.drop_xp = lambda killer: ""

@@ -8,7 +8,7 @@ from test_living_world import no_network  # noqa: F401
 from test_tactics import act, party
 from test_tutorial import game  # noqa: F401
 
-from jeuxRPG.multiplayer import fields, free_movement, tactics, tutorial
+from jeuxRPG.multiplayer import fields, free_movement, mob_abilities, tactics, tutorial
 from jeuxRPG.multiplayer.service import GameError
 
 
@@ -44,6 +44,110 @@ def arena(monkeypatch):
 
 def step(data, now):
     tactics.advance(data, now, lambda: 0.5)
+
+
+def test_older_position_report_cannot_rewind_a_newer_stop(arena):
+    data, unit, _ = arena
+    act(data, "move_axis", x=1, y=0, position=[4, 4], position_seq=1)
+    act(data, "stop_move", now=0.6, position=[4.4, 4], position_seq=3)
+    stopped = deepcopy(unit)
+    act(data, "move_axis", now=0.7, x=-1, y=0, position=[4.1, 4], position_seq=2)
+    assert unit == stopped
+
+
+def test_attack_uses_reported_position_and_old_movement_cannot_undo_it(arena):
+    data, unit, _ = arena
+    mob = data["mobs"][0]
+    mob["position"] = [5, 4]
+    act(data, "move_axis", x=0, y=1, position=[4, 4], position_seq=1)
+    before = mob["stats"]["hp"]["current"]
+    with pytest.raises(GameError) as failure:
+        act(
+            data,
+            "strike",
+            now=0.6,
+            target=mob["combat_id"],
+            position=[3, 4],
+            position_seq=3,
+        )
+    assert failure.value.code == "out_of_range"
+    assert mob["stats"]["hp"]["current"] == before
+    assert unit["position"] == [3, 4]
+    act(data, "move_axis", now=0.7, x=1, y=0, position=[4, 4], position_seq=2)
+    assert unit["position"] == [3, 4]
+    act(data, "strike", now=1, target=mob["combat_id"], position=[4, 4], position_seq=4)
+    assert mob["stats"]["hp"]["current"] < before
+
+
+def test_mob_waits_for_retreat_report_and_cancels_its_out_of_range_hit(arena):
+    data, unit, preset = arena
+    mob = data["mobs"][0]
+    mob.update(position=[5, 4], windup_until=0.3, next_attack=0, attack_range=1.5)
+    act(data, "move_axis", x=-1, y=0, position=[4, 4], position_seq=1)
+    characters = {
+        key: tutorial.unpack(actor) for key, actor in data["characters"].items()
+    }
+    actor = characters["p0"]
+    before = actor.hp.current_value
+
+    def resolve(now):
+        tactics._resolve_mob_intent(
+            data,
+            mob,
+            characters,
+            data["battle"]["players"],
+            preset,
+            now,
+            lambda: 0.5,
+            [],
+            "p0",
+            [],
+        )
+
+    resolve(0.4)
+    assert actor.hp.current_value == before
+    act(data, "move_axis", now=0.5, x=-1, y=0, position=[3, 4], position_seq=2)
+    resolve(0.5)
+    assert actor.hp.current_value == before and mob["windup_until"] is None
+    act(data, "stop_move", now=1.5, position=[4, 4], position_seq=3)
+    mob["windup_until"] = 1.4
+    resolve(1.5)
+    assert actor.hp.current_value < before
+
+
+def test_waiting_for_a_position_report_is_bounded_by_input_expiry(arena):
+    data, unit, _ = arena
+    act(data, "move_axis", x=1, y=0, position=[4, 4])
+    assert free_movement.awaiting_position(unit, 0.4, 0.3)
+    assert not free_movement.awaiting_position(unit, free_movement.HEARTBEAT + 0.1, 0.3)
+
+
+def test_mob_cast_waits_for_new_position_and_loses_a_retreating_target(arena):
+    data, unit, preset = arena
+    mob = data["mobs"][0]
+    mob.update(
+        position=[5, 4],
+        ability_cast={
+            "ability": {"name": "Coup", "type": "damage", "range": 1.5},
+            "target": "p0",
+            "ends_at": 0.3,
+        },
+    )
+    act(data, "move_axis", x=-1, y=0, position=[4, 4], position_seq=1)
+    characters = {
+        key: tutorial.unpack(actor) for key, actor in data["characters"].items()
+    }
+    actor = characters["p0"]
+    before = actor.hp.current_value
+    assert mob_abilities.advance(
+        data, mob, "p0", characters, data["battle"]["players"], preset, 0.4, []
+    )
+    assert actor.hp.current_value == before and "ability_cast" in mob
+    act(data, "move_axis", now=0.5, x=-1, y=0, position=[3, 4], position_seq=2)
+    assert not mob_abilities.advance(
+        data, mob, "p0", characters, data["battle"]["players"], preset, 0.5, []
+    )
+    assert actor.hp.current_value == before and "ability_cast" not in mob
 
 
 def test_axis_moves_between_cells_and_diagonal_has_no_speed_bonus(arena):

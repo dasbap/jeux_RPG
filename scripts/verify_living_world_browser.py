@@ -88,7 +88,9 @@ def advance_fixture(service, session, clock, message):
     }
 
 
-def browser_script(guard, scene, jitter, zones=False):
+def browser_script(guard, scene, jitter, zones=False, attack_sync=False):
+    if attack_sync:
+        return "scripts/verify_attack_sync_browser.cjs"
     if zones:
         return "scripts/verify_zone_transitions_browser.cjs"
     if jitter:
@@ -130,7 +132,8 @@ def main():
     sys.path.insert(0, str(root))
     zones_scenario = "--zone-transitions" in sys.argv
     jitter_scenario = "--jitter" in sys.argv or zones_scenario
-    scene_scenario = "--3d" in sys.argv or jitter_scenario
+    attack_sync_scenario = "--attack-sync" in sys.argv
+    scene_scenario = "--3d" in sys.argv or jitter_scenario or attack_sync_scenario
     guard_scenario = "--guards" in sys.argv or scene_scenario
     for key in list(os.environ):
         if any(
@@ -249,7 +252,11 @@ def main():
                     str(
                         root
                         / browser_script(
-                            guard_scenario, scene_scenario, jitter_scenario, zones_scenario
+                            guard_scenario,
+                            scene_scenario,
+                            jitter_scenario,
+                            zones_scenario,
+                            attack_sync_scenario,
                         )
                     ),
                 ],

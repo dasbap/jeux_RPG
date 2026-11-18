@@ -19,6 +19,9 @@ monstres de combat et les membres individuels des patrouilles restent visibles.
 
 ## Commandes
 
+Les touches d’action et de menus sont personnalisables dans Options.
+Voir [la liste des raccourcis](KEYBINDINGS.md).
+
 - **ZQSD, WASD ou flèches** : déplacement libre ; relâcher arrête le mouvement.
 - **Joystick tactile** : direction analogique, limitée et vérifiée par le moteur.
 - **Clic sur le sol** : trajet proposé par le navigateur, parcouru en continu.
@@ -56,6 +59,20 @@ réponses d'une ancienne zone sont ignorées, même après un retour dans celle-
 Les attaques
 et incantations autorisent la marche à **55 % de la vitesse habituelle**.
 La portée et les effets du combat restent décidés par le moteur.
+
+La sélection d'une cible utilise la position locale affichée. Les attaques et
+compétences emportent aussi cette position : le moteur vérifie la vitesse et le
+terrain avant de vérifier la portée. Les rapports de mouvement et les positions
+d'attaque partagent une séquence ; un ancien paquet ou sa retransmission ne peut
+pas rétablir une position plus proche après un recul. Les rapports sont envoyés
+au plus toutes les 80 ms pendant la marche, sous réserve du temps réseau.
+
+À la fin de la préparation d'un coup ou d'une compétence de monstre, le moteur
+attend brièvement un rapport couvrant cette fin si sa cible utilise le mouvement
+local. Il revérifie ensuite portée et visibilité. L'attente est bornée par
+l'expiration de l'entrée de mouvement, pour ne pas protéger indéfiniment un client
+déconnecté. Les anciens clients et les trajets pilotés par le moteur restent pris
+en charge.
 
 Les états périmés sont filtrés ; les révisions des accusés de réception
 sont suivies séparément de celles des états complets.
@@ -96,6 +113,7 @@ Les performances sur téléphones anciens et avec 40 joueurs restent à mesurer.
 .\.venv-reprise\Scripts\python.exe -m pytest test/test_free_movement.py test/test_combat_visuals.py test/test_tactics.py -q
 node scripts/verify_scene3d.cjs
 node scripts/verify_motion_client.cjs
+.\.venv-reprise\Scripts\python.exe -m scripts.verify_living_world_browser --attack-sync
 .\.venv-reprise\Scripts\python.exe scripts/verify_living_world_browser.py --3d
 .\.venv-reprise\Scripts\python.exe scripts/verify_living_world_browser.py --jitter
 .\.venv-reprise\Scripts\python.exe scripts/verify_living_world_browser.py --zone-transitions

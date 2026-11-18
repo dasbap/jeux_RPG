@@ -224,8 +224,12 @@ class Project:
             raise
 
     def _validate(self):
+        from .coaches import validate_references as validate_coaches
+        from .spawn_cycles import validate_references as validate_respawns
         from .sprite_catalog import validate_references as validate_sprite_references
 
+        validate_respawns(self.maps, self.content["gameplay"])
+        validate_coaches(self.content["gameplay"], self.maps)
         validate_sprite_references(self.content, self.mobs, self.maps)
         validate_mobs(
             self.mobs,

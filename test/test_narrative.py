@@ -114,6 +114,53 @@ def test_talking_never_accepts_quests_and_choices_are_personal(story):
     assert p["characters"]["p"] == before_p
 
 
+def test_completed_quests_disappear_from_npc_offers_but_remain_in_journal(story):
+    p = party()
+    visit(p, "mira")
+    personal = narrative.state(p, "p")
+    personal["quests"]["mira_hunt_1"] = {"status": "completed", "progress": 4}
+    personal["quests"]["patrouille_veteran"] = {
+        "status": "completed",
+        "progress": 5,
+        "completions": 1,
+    }
+    saved = deepcopy(personal["quests"])
+    offers = narrative.view(p, "p")["conversation"]["quests"]
+    assert not any(quest["id"] == "mira_hunt_1" for quest in offers)
+    assert all(quest["status"] != "completed" for quest in offers)
+    repeat = next(quest for quest in offers if quest["id"] == "patrouille_veteran")
+    assert repeat["status"] == "available" and repeat["progress"] == 0
+    assert repeat["repeat_offer"]
+    journal = {quest["id"]: quest for quest in narrative.journal(p, "p")}
+    assert journal["mira_hunt_1"]["status"] == "completed"
+    assert journal["patrouille_veteran"]["status"] == "completed"
+    assert personal["quests"] == saved
+
+
+def test_npc_hides_quest_until_all_requirements_are_met(story):
+    p = party()
+    visit(p, "mira")
+    quest = next(
+        quest for quest in content.DATA["quests"] if quest["id"] == "mira_hunt_1"
+    )
+    quest["requirements"] = {"level": 5, "quests": ["derniere_borne"]}
+
+    def offers():
+        return narrative.view(p, "p")["conversation"]["quests"]
+
+    assert not any(offer["id"] == quest["id"] for offer in offers())
+    p["characters"]["p"]["level"] = 5
+    assert not any(offer["id"] == quest["id"] for offer in offers())
+    narrative.state(p, "p")["quests"]["derniere_borne"] = {
+        "status": "completed",
+        "progress": 1,
+    }
+    assert (
+        next(offer for offer in offers() if offer["id"] == quest["id"])["status"]
+        == "available"
+    )
+
+
 def test_inspecting_before_acceptance_is_remembered_and_local(story):
     p = party()
     with pytest.raises(GameError, match="Approchez"):

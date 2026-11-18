@@ -359,6 +359,10 @@ def view(party, me, now, traveller=None):
             (party.get("journey") or [transit["destination"]])[-1]
         )
     result["world"] = world.view(party, me, result["traveller"])
+    from . import coaches
+
+    result["coaches"] = coaches.view(party, me)
+    result.pop("spawn_timers", None)
     result.pop("fields", None)
     fields.reveal(party)
     result["field_interactions"] = fields.interactions(party, me)
@@ -442,8 +446,14 @@ def view(party, me, now, traveller=None):
                 )
                 or None,
                 "gear": list(party["equipment"].get(player_id, {}).values()),
+                "stored_gear": list(
+                    party.get("stored_equipment", {}).get(player_id, {}).values()
+                ),
+                "equipment_locked_reason": forge.equipment_lock_reason(
+                    party, player_id
+                ),
                 "equipment_sets": forge.set_catalogue(
-                    party["equipment"].get(player_id, {})
+                    party["equipment"].get(player_id, {}), include_inactive=True
                 ),
                 "forge": forge.catalogue(party, player_id),
                 "attack_range": progression.attack_range(character),
@@ -560,6 +570,9 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
     messages = []
     if not resolved:
         tactics.ready(party, player_id, now, error)
+        from .free_movement import report_attack_position
+
+        report_attack_position(party, player_id, params, actor, now, error)
     enemies = {m["combat_id"]: unpack(m) for m in party["mobs"]}
     for target in [*characters.values(), *enemies.values()]:
         target.drop_xp = lambda killer: ""
@@ -809,6 +822,9 @@ def migrate(party, now):
         progression.health_resources(party, now)
     fields.migrate_terrain(party, now)
     world.migrate_journey(party)
+    from . import coaches
+
+    coaches.restore_field(party, now)
 
 
 def sync_mobs(party):
@@ -1116,6 +1132,14 @@ def _enter_world_zone(party, now, error):
 
 def _execute_travel(party, player_id, params, now, error, random):
     messages = []
+    from . import coaches
+
+    if coaches.enabled() and party.get("field_mode"):
+        raise error(
+            "coach_only",
+            "Rejoignez une sortie pour marcher ou un relais pour voyager en diligence.",
+            409,
+        )
     if party["battle"] or party["mobs"] or party["mob"]:
         raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
     destination = params.get("destination")
@@ -1163,8 +1187,23 @@ def execute(party, player_id, action, params, now, error, random):
         return narrative.interact(
             party, player_id, params.get("npc"), params.get("choice", "open"), error
         ), False
+    if action == "coach":
+        from . import coaches
+
+        return coaches.depart(
+            party,
+            player_id,
+            params.get("station"),
+            params.get("destination"),
+            now,
+            error,
+        )
     if action == "enter_zone":
         return _enter_world_zone(party, now, error)
+    if action in ("equip", "unequip"):
+        return forge.change_equipment(
+            party, player_id, action, params.get("recipe"), error
+        )
     if party.get("field_map") and action in ("talk", "craft", "upgrade", "buy", "sell"):
         return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):

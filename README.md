@@ -19,14 +19,15 @@ Construire le client `.exe` à partir de la version web, depuis Windows :
 ```
 
 Résultat : `dist/client/Jeux-RPG.exe`, également mis à jour dans `dist/windows/Jeux-RPG.exe`. Le solo est embarqué et fonctionne hors
-ligne ; le multijoueur se connecte au site. Node.js 22.12+ et Python 3.11+ sont
-requis pour construire, aucun des deux n'est nécessaire pour jouer avec le `.exe`.
+ligne ; le multijoueur se connecte au site. Docker avec des conteneurs Linux est
+le seul outil de construction requis sur l’hôte. Python, Node et Wine sont installés
+dans l’image à partir des recettes du dépôt. Le premier build télécharge ses dépendances.
 Voir [le guide du client Windows](docs/CLIENT_WINDOWS.md) pour les sauvegardes et
 les mises à jour.
 
 ## Windows, Linux et Android
 
-`build-distribution.cmd` construit les trois formats dans `dist/windows`, `dist/linux` et `dist/mobile` : exécutable Windows, AppImage et archive Linux, APK Android signé. Le contenu du Builder et le solo hors ligne sont embarqués sur chaque plateforme. Voir [les instructions de construction](docs/CONSTRUCTION_MULTIPLATEFORME.md) et [les instructions pour jouer](docs/DISTRIBUTION_LIREMOI.md).
+`build-distribution.cmd` construit les trois formats avec Docker dans `dist/windows`, `dist/linux` et `dist/mobile` : exécutable Windows, AppImage et archive Linux, APK Android signé. Ajouter `windows`, `linux` ou `android` pour une seule cible. Sous Linux/macOS : `bash scripts/build-docker.sh [cible]`. Le contenu du Builder et le solo hors ligne sont embarqués sur chaque plateforme. Voir [les instructions de construction](docs/CONSTRUCTION_MULTIPLATEFORME.md) et [les instructions pour jouer](docs/DISTRIBUTION_LIREMOI.md).
 
 ## Démarrer en local
 

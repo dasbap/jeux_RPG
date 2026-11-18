@@ -142,3 +142,13 @@ def test_reptiles_have_their_own_body_instead_of_wolf_geometry(pack):
     assert lizard["frames"] != data["assets"]["corps_wolf"]["frames"]
     for mob in ("salamandre_de_braise", "basilic_juvenile"):
         assert data["bindings"][f"mob:{mob}"] == "corps_lizard"
+
+
+def test_art_refresh_preserves_personalized_bindings_equipment_and_tints(pack):
+    project, data = pack
+    data["bindings"]["mob:goblin"] = "corps_orc"
+    data["equipment"]["mob:goblin"] = "arme_bow"
+    data["colors"]["mob:goblin"] = "#123456"
+    expected = {key: deepcopy(data[key]) for key in ("bindings", "equipment", "colors")}
+    refreshed = populate(project, preserve_bindings=True)
+    assert all(refreshed[key] == value for key, value in expected.items())

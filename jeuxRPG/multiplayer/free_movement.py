@@ -105,7 +105,16 @@ def command(party, player, action, params, now, error):
         direction = [0, 0]
     # Validation is complete before the old order is changed.
     if action == "move_axis" and "position" in params:
-        report_position(unit, preset, actor, params["position"], now, error)
+        if not report_position(
+            unit,
+            preset,
+            actor,
+            params["position"],
+            now,
+            error,
+            params.get("position_seq"),
+        ):
+            return []
     else:
         advance(unit, preset, actor, now)
         unit.pop("position_client", None)
@@ -153,7 +162,12 @@ def position_budget(unit, now):
     unit["position_budget_at"] = max(previous, now)
 
 
-def report_position(unit, preset, actor, position, now, error):
+def report_position(unit, preset, actor, position, now, error, sequence=None):
+    if sequence is not None:
+        if type(sequence) is not int or not 1 <= sequence <= 9007199254740991:
+            raise error("invalid_position", "Séquence de position invalide.")
+        if sequence <= unit.get("position_sequence", 0):
+            return False
     if not finite_pair(position):
         raise error("invalid_position", "Position invalide.")
     if not actor.is_alive() or actor.is_stunned():
@@ -190,6 +204,40 @@ def report_position(unit, preset, actor, position, now, error):
         ),
         position_budget_at=trial["position_budget_at"],
         motion_at=now,
+        position_reported_at=now,
+    )
+    if sequence is not None:
+        unit["position_sequence"] = sequence
+    return True
+
+
+def report_attack_position(party, player, params, actor, now, error):
+    if "position" not in params:
+        return
+    from . import tactics
+
+    accepted = report_position(
+        party["battle"]["players"][player],
+        tactics.PRESETS[party["battle"]["preset"]],
+        actor,
+        params["position"],
+        now,
+        error,
+        params.get("position_seq"),
+    )
+    if not accepted:
+        raise error(
+            "stale_position", "Position déjà mise à jour. Réessayez votre attaque.", 409
+        )
+
+
+def awaiting_position(unit, now, since):
+    """Wait briefly for a moving client's report, never beyond input expiry."""
+    return bool(
+        unit.get("position_client")
+        and any(unit.get("motion_axis", []))
+        and now <= unit.get("motion_until", 0)
+        and unit.get("position_reported_at", -1) < since
     )
 
 

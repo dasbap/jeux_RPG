@@ -7,6 +7,48 @@ from .map_assets import load, save
 from .map_building import MOBS, linked_sector, map_level, sync_overlap, zone_of
 
 
+def respawn_preview(window, entries, profiles, row):
+    preview = tk.StringVar()
+    ttk.Label(window, textvariable=preview, wraplength=500).grid(
+        row=row, column=0, columnspan=3, padx=8, pady=6
+    )
+
+    def refresh_respawn(event=None):
+        if event is not None and event.widget is entries["respawn_profile"]:
+            entries["respawn_seconds"].delete(0, "end")
+        try:
+            seconds = (
+                float(entries["respawn_seconds"].get())
+                if entries["respawn_seconds"].get().strip()
+                else profiles[entries["respawn_profile"].get()]["seconds"]
+            )
+            count = int(entries["count"].get())
+            preview.set(
+                f"Cycle : {seconds:g} s réelles. Une créature toutes les {seconds / count:g} s (maximum {count})."
+                if seconds
+                else "Réapparition désactivée."
+            )
+        except (ValueError, KeyError, ZeroDivisionError):
+            preview.set("Choisissez un profil et un effectif valides.")
+
+    entries["respawn_profile"].bind("<<ComboboxSelected>>", refresh_respawn)
+    for name in ("respawn_seconds", "count"):
+        entries[name].bind("<KeyRelease>", refresh_respawn)
+    refresh_respawn()
+
+
+def spawner_choice(window, key, value, profiles, row):
+    options = (
+        list(profiles)
+        if key == "respawn_profile"
+        else ["Espèce (par défaut)", "Hostile", "Neutre"]
+    )
+    entry = ttk.Combobox(window, values=options, state="readonly", width=48)
+    entry.set("Hostile" if value is True else "Neutre" if value is False else value)
+    entry.grid(row=row, column=1, padx=8, pady=5, sticky="w")
+    return entry
+
+
 class MapEditor:
     def __init__(self, root, path=None):
         self.root = root
@@ -110,6 +152,7 @@ class MapEditor:
         for index, (label, command) in enumerate(
             (
                 ("Nouvelle carte", self.new),
+                ("Générer une carte", self.generate),
                 ("Enregistrer sous", lambda: self.save(True)),
                 ("Aperçu navigateur", self.preview),
                 ("Assemblage des cartes", self.assembly),
@@ -726,6 +769,8 @@ class MapEditor:
                 "mob_id": "goblin",
                 "level": "",
                 "count": 1,
+                "respawn_profile": "default",
+                "respawn_seconds": "",
                 "battlecry": "",
                 "name": "",
                 "hostile": "Espèce (par défaut)",
@@ -740,6 +785,14 @@ class MapEditor:
                     count=int(result["count"]),
                     level=int(result["level"]) if result.get("level") else None,
                 )
+                result["respawn_seconds"] = (
+                    float(result["respawn_seconds"])
+                    if str(result.get("respawn_seconds", "")).strip()
+                    else None
+                )
+                from .spawn_cycles import validate_spawner
+
+                validate_spawner(result)
                 from .mob_picker import spawner_hostility
 
                 behavior = spawner_hostility(
@@ -996,6 +1049,8 @@ class MapEditor:
                 "overlap": "Chevauchement (cases)",
                 "name": "Nom affiché",
                 "width": "Largeur (cases)",
+                "seed": "Graine (texte ou nombre)",
+                "density": "Densité du décor (0 à 60 %)",
                 "height": "Hauteur (cases)",
                 "biome": "Ambiance",
                 "map_kind": "Type de carte",
@@ -1017,6 +1072,8 @@ class MapEditor:
                 "hostile": "Comportement de ce spawner",
                 "battlecry": "Réplique au début du combat (facultatif)",
                 "interaction": "Interaction : talk = parler / inspect = examiner",
+                "respawn_profile": "Profil rapide de réapparition",
+                "respawn_seconds": "Cycle en secondes réelles (vide = profil, 0 = jamais) / effectif",
                 "count": "Nombre de créatures (1–5)",
             }
             ttk.Label(window, text=labels.get(key, key)).grid(
@@ -1032,21 +1089,17 @@ class MapEditor:
                 picker.frame.grid(row=row, column=1, sticky="nsew", padx=8, pady=5)
                 entries[key] = picker
                 continue
-            if key == "hostile":
-                entry = ttk.Combobox(
-                    window,
-                    values=["Espèce (par défaut)", "Hostile", "Neutre"],
-                    state="readonly",
-                    width=48,
+            if key in ("respawn_profile", "hostile"):
+                from . import content
+                from .spawn_cycles import PRESETS
+
+                profiles = (
+                    getattr(self, "catalog_content", content.DATA)["gameplay"].get(
+                        "respawn_profiles", {}
+                    )
+                    or PRESETS
                 )
-                entry.set(
-                    "Hostile"
-                    if value is True
-                    else "Neutre"
-                    if value is False
-                    else value
-                )
-                entry.grid(row=row, column=1, padx=8, pady=5, sticky="w")
+                entry = spawner_choice(window, key, value, profiles, row)
                 entries[key] = entry
                 continue
             if key in (
@@ -1116,6 +1169,8 @@ class MapEditor:
             )
             entry.grid(row=row, column=1, padx=8, pady=5)
             entries[key] = entry
+        if "respawn_profile" in entries:
+            respawn_preview(window, entries, profiles, len(values))
         created_doors = {}
         for endpoint in ("from", "to"):
             map_key, entry_key = endpoint + "_map", endpoint + "_entry"
@@ -1188,13 +1243,61 @@ class MapEditor:
             panel.destroy()
 
         ttk.Button(window, text="Valider", command=accept).grid(
-            row=len(values), column=0
+            row=len(values) + ("respawn_profile" in entries), column=0
         )
         ttk.Button(window, text="Annuler", command=panel.destroy).grid(
-            row=len(values), column=1
+            row=len(values) + ("respawn_profile" in entries), column=1
         )
         self.root.wait_window(panel)
         return result[0] if result else None
+
+    def generate(self):
+        from .map_assets import validate
+        from .map_generator import generate_map
+
+        values = self.form(
+            "Générer une nouvelle carte · graine identique = même terrain",
+            {
+                "map_id": "",
+                "name": "Nouvelle région",
+                "width": 30,
+                "height": 20,
+                "biome": "forest",
+                "seed": "1",
+                "density": 25,
+                "zone_id": zone_of(self.maps, self.selected.get()),
+            },
+        )
+        if values is None:
+            return
+        try:
+            key = values["map_id"].strip()
+            if key in self.maps:
+                raise ValueError(
+                    "Cet identifiant existe déjà. Choisissez un nouvel identifiant."
+                )
+            definition = generate_map(
+                key,
+                values["name"],
+                int(values["width"]),
+                int(values["height"]),
+                values["biome"],
+                values["seed"],
+                int(values["density"]),
+            )
+            definition["zone_id"] = values.get("zone_id") or key
+            updated = {**self.maps, key: definition}
+            validate(updated)
+        except (ValueError, TypeError) as exc:
+            self.messages.showerror("Génération", str(exc))
+            return
+        self.remember()
+        self.maps = updated
+        self.show_map(key)
+        self.status.set(
+            "Carte générée. Éditez-la, reliez un passage puis enregistrez. Ctrl+Z pour annuler."
+        )
+        return key
 
     def new(self):
         values = self.form(

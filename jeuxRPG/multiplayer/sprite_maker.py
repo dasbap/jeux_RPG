@@ -480,6 +480,15 @@ class SpriteMaker:
         palette = list(sprite["palette"])
         if tint and len(tint) == 7 and tint.startswith("#") and len(palette) >= 5:
             try:
+
+                def shadow(color):
+                    return "#" + "".join(
+                        f"{int(int(color[index : index + 2], 16) * 0.65 + 0.5):02x}"
+                        for index in (1, 3, 5)
+                    )
+
+                if len(palette) > 14 and palette[14] == shadow(palette[3]):
+                    palette[14] = shadow(tint)
                 palette[4] = "#" + "".join(
                     f"{round(int(tint[index : index + 2], 16) * 0.7 + 255 * 0.3):02x}"
                     for index in (1, 3, 5)

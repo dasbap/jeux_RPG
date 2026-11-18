@@ -3,6 +3,9 @@ from copy import deepcopy
 from .gameplay_catalog import STATS, identifier
 
 SECTIONS = [
+    ("respawn_profiles", "Réapparition / profils"),
+    ("coach_stations", "Relais et arrêts"),
+    ("coach_routes", "Lignes de diligence"),
     ("recipes", "Forge / recettes"),
     ("equipment_sets", "Panoplies"),
     ("materials", "Matériaux"),
@@ -29,7 +32,15 @@ LABELS = {
     "start": "Apparition initiale du personnage",
 }
 FIELD_LABELS = {
+    "seconds": "Cycle de réapparition (secondes réelles, 0 = jamais)",
     "set_id": "Panoplie (facultatif)",
+    "weapon_type": "Type d’arme (facultatif)",
+    "boarding": "Embarquement autorisé",
+    "duration_seconds": "Durée du voyage (secondes réelles)",
+    "from": "Relais de départ",
+    "to": "Arrêt de destination",
+    "classes": "Classes autorisées",
+    "class_name": "Classe autorisée",
     "slot": "Emplacement d’équipement",
     "adjective": "Adjectif au niveau maximum",
     "quantity": "Quantité de matériau",
@@ -113,6 +124,34 @@ def catalog(project, section):
 
 def rows(project, section):
     values = catalog(project, section)
+    if section == "respawn_profiles":
+        return [
+            (key, value["name"], f"{value['seconds']} s / effectif du spawner")
+            for key, value in values.items()
+        ]
+    if section == "coach_stations":
+        return [
+            (
+                key,
+                value["name"],
+                value["map"]
+                + (
+                    " : embarquement"
+                    if value["boarding"]
+                    else " : d\u00e9pose uniquement"
+                ),
+            )
+            for key, value in values.items()
+        ]
+    if section == "coach_routes":
+        return [
+            (
+                key,
+                value["name"],
+                f"{value['from']} \u2192 {value['to']} : {value['duration_seconds']} s",
+            )
+            for key, value in values.items()
+        ]
     if section == "equipment_sets":
         return [
             (key, value["name"], "Paliers cumulés : 2 / 4 / 5 pièces")
@@ -181,6 +220,24 @@ def rows(project, section):
 def references(project, section, key):
     gameplay = project.content["gameplay"]
     result = []
+    if section == "respawn_profiles":
+        result.extend(
+            "spawners/" + map_id
+            for map_id, data in project.maps.items()
+            if any(
+                spawn.get("respawn_profile", "default") == key
+                for spawn in data.get("spawners", [])
+            )
+        )
+        if key == "default":
+            result.append("réapparition/par défaut")
+    if section == "coach_stations":
+        result.extend(
+            "diligences/" + name
+            for name, route in gameplay["coach_routes"].items()
+            if key in (route["from"], route["to"])
+        )
+
     if section == "equipment_sets":
         result.extend(
             "recettes/" + name
@@ -238,6 +295,28 @@ def references(project, section, key):
     return sorted(set(result))
 
 
+def sync_coach_site(project, key, value):
+    for data in project.maps.values():
+        sites = data.get("sites", [])
+        if any(site["id"] == key and not site.get("coach_stop") for site in sites):
+            raise ValueError("Cet identifiant appartient déjà à un autre lieu.")
+        data["sites"] = [site for site in sites if site["id"] != key]
+    if value and value["map"] in project.maps:
+        project.maps[value["map"]].setdefault("sites", []).append(
+            {
+                "id": key,
+                "name": value["name"],
+                "position": value["position"][:],
+                "coach_stop": True,
+                "coach_boarding": value["boarding"],
+                "dialogue": "Choisissez votre destination."
+                if value["boarding"]
+                else "Dépose uniquement.",
+                "interaction": "talk",
+            }
+        )
+
+
 def change(project, section, key, value=None, new=False, delete=False):
     before = project.state()
     try:
@@ -264,6 +343,8 @@ def change(project, section, key, value=None, new=False, delete=False):
             if new and key in values:
                 raise ValueError("Identifiant déjà utilisé.")
             values[key] = deepcopy(value)
+        if section == "coach_stations":
+            sync_coach_site(project, key, None if delete else value)
         project.validate()
     except Exception:
         project.restore(before)
@@ -338,6 +419,76 @@ class ControllerGameplayMixin:
         except (ValueError, KeyError, TypeError) as error:
             self.messagebox.showerror("Gameplay", str(error), parent=self.root)
 
+    def recipe_weapon_form(self, initial):
+        result = {}
+        weapon = self.form(
+            "Arme et classes compatibles",
+            {"weapon_type": initial.get("weapon_type", "")},
+            {"weapon_type": ["", "sword", "bow", "staff"]},
+        )
+        if weapon is None:
+            return None
+        available = [
+            item["id"]
+            for item in self.project.content["templates"]["classes"]
+            if item.get("playable")
+        ] + [item["id"] for item in self.project.content.get("classes", [])]
+        allowed = self.edit_records(
+            "Classes autoris\u00e9es (vide : toutes, pour une armure)",
+            [{"class_name": name} for name in initial.get("classes", [])],
+            {"class_name": available[0]},
+            {"class_name": available},
+        )
+        if allowed is None:
+            return None
+        if allowed:
+            result["classes"] = [item["class_name"] for item in allowed]
+        if weapon["weapon_type"]:
+            result["weapon_type"] = weapon["weapon_type"]
+        return result
+
+    def coach_form(self, section, key, old):
+        if section == "coach_stations":
+            initial = old or {
+                "name": "Nouveau relais",
+                "map": "rosee",
+                "position": [2, 2],
+                "boarding": True,
+            }
+            result = self.form(
+                "Relais ou arr\u00eat de diligence",
+                {
+                    "id": key or "",
+                    "name": initial["name"],
+                    "map": initial["map"],
+                    "x": initial["position"][0],
+                    "y": initial["position"][1],
+                    "boarding": initial["boarding"],
+                },
+                {"map": list(self.project.maps)},
+            )
+            if result is not None:
+                result["position"] = [result.pop("x"), result.pop("y")]
+        else:
+            stops = catalog(self.project, "coach_stations")
+            if not stops:
+                raise ValueError("Cr\u00e9ez les arr\u00eats avant les lignes.")
+            initial = old or {
+                "name": "Nouvelle ligne",
+                "from": next(iter(stops)),
+                "to": next(iter(stops)),
+                "duration_seconds": 8,
+            }
+            result = self.form(
+                "Ligne de diligence (sens unique)",
+                {"id": key or "", **initial},
+                {
+                    "from": [name for name, stop in stops.items() if stop["boarding"]],
+                    "to": list(stops),
+                },
+            )
+        return result
+
     def gameplay_form(self, section, key, new):
         values = catalog(self.project, section)
         old = (
@@ -345,7 +496,15 @@ class ControllerGameplayMixin:
             if new
             else deepcopy(values[int(key)] if isinstance(values, list) else values[key])
         )
-        if section == "equipment_sets":
+        if section == "respawn_profiles":
+            result = self.form(
+                "Profil de réapparition",
+                {
+                    "id": key or "",
+                    **(old or {"name": "Nouveau profil", "seconds": 120}),
+                },
+            )
+        elif section == "equipment_sets":
             result = self.form(
                 "Panoplie",
                 {"id": key or "", "name": (old or {}).get("name", "Nouvelle panoplie")},
@@ -384,6 +543,10 @@ class ControllerGameplayMixin:
             )
             if result is None:
                 return None
+            weapon_fields = self.recipe_weapon_form(initial)
+            if weapon_fields is None:
+                return None
+            result.update(weapon_fields)
             costs = self.edit_records(
                 "Matériaux de fabrication",
                 [
@@ -400,6 +563,8 @@ class ControllerGameplayMixin:
                     "Un matériau ne doit apparaître qu’une fois dans les coûts."
                 )
             result["cost"] = {item["item"]: item["quantity"] for item in costs}
+        elif section in ("coach_stations", "coach_routes"):
+            result = self.coach_form(section, key, old)
         elif section == "materials":
             result = self.form(
                 "Matériau",
