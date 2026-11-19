@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from redis.asyncio import Redis
 
 from jeuxRPG.multiplayer import distributed, realtime
 from jeuxRPG.multiplayer.redis_configuration import RedisConfigurationError, redis_url
@@ -41,7 +42,7 @@ def test_async_coordinator_uses_same_selected_endpoint(monkeypatch):
         pubsub = SimpleNamespace(subscribe=AsyncMock(), aclose=AsyncMock())
         client = SimpleNamespace(pubsub=lambda: pubsub, aclose=AsyncMock())
         monkeypatch.setattr(
-            realtime.Redis,
+            Redis,
             "from_url",
             lambda url, **kwargs: selected.append(url) or client,
         )

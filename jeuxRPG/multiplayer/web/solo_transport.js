@@ -1,5 +1,5 @@
 "use strict";
-globalThis.createRpgSoloTransport = async function () {
+globalThis.createRpgSoloTransport = async function ({onProgress} = {}) {
   if (!navigator.locks) throw new Error("Ce navigateur ne permet pas la sauvegarde solo sécurisée. Utilisez un navigateur récent.");
   let release, readyResolve, readyReject;
   const locked = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; });
@@ -14,16 +14,17 @@ globalThis.createRpgSoloTransport = async function () {
   catch (error) { release(); await lockTask; throw error; }
   const pending = new Map();
   let sequence = 0, closed = false;
-  const transport = {connected: true, onState: null, onConnection: null, onSave: null, onError: null};
+  const transport = {connected: true, onState: null, onConnection: null, onSave: null, onError: null, onProgress};
   function send(type, payload) {
     if (closed) return Promise.reject(new Error("Le mode solo est fermé."));
     const id = ++sequence;
     return new Promise((resolve, reject) => { pending.set(id, {resolve, reject}); worker.postMessage({id, type, payload}); });
   }
   worker.onmessage = ({data}) => {
+    if (data.type === "progress") { transport.onProgress?.(data); return; }
     if (data.type === "state") { transport.onState?.(data.result); return; }
     if (data.type === "saved") { transport.onSave?.(data.at); return; }
-    if (data.type === "error") { transport.onError?.(new Error(data.error)); return; }
+    if (data.type === "error") { transport.onError?.(Object.assign(new Error(data.error),{operation:data.operation})); return; }
     const task = pending.get(data.id);
     if (!task) return;
     pending.delete(data.id);

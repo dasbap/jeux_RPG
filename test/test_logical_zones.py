@@ -1,6 +1,9 @@
+import json
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
+from world_checks import assert_connected_world, zone_members
 
 from jeuxRPG.multiplayer import fields, map_assets
 from jeuxRPG.multiplayer.map_building import map_level, zone_of
@@ -9,13 +12,15 @@ from jeuxRPG.multiplayer.map_layout_editor import layout_places
 
 def test_mapless_zone_can_contain_multiple_maps_and_be_saved(tmp_path):
     maps = deepcopy(fields.MAPS)
-    maps["clearing"].setdefault("logical_zones", {}).update({
-        "grotte_oublies": {
-            "name": "Grotte des Oubliés",
-            "level": 5,
-            "world_view": {"position": [450, 300]},
+    maps["clearing"].setdefault("logical_zones", {}).update(
+        {
+            "grotte_oublies": {
+                "name": "Grotte des Oubliés",
+                "level": 5,
+                "world_view": {"position": [450, 300]},
+            }
         }
-    })
+    )
     maps["cave_1"]["zone_id"] = "grotte_oublies"
     maps["cave_2"]["zone_id"] = "grotte_oublies"
 
@@ -48,29 +53,19 @@ def test_logical_zone_must_exist_and_have_valid_level():
         map_assets.validate(maps)
 
 
-def test_packaged_world_uses_five_logical_zones():
-    from jeuxRPG.multiplayer import world
-
-    from pathlib import Path
-    import json
-
-    data = json.loads(Path("jeuxRPG/maps/world.json").read_text())
+def test_packaged_world_uses_the_authored_logical_zones():
+    data = json.loads(Path("jeuxRPG/maps/world.json").read_text(encoding="utf-8"))
     maps = data.get("maps", data)
-    expected = {
-        "foret_eveilles": {"clearing"},
-        "zone_lisiere": {"lisiere", "hunt"},
-        "zone_rosee": {"rosee", "forest", "rosee_prairies", "rosee_verger", "rosee_bois", "rosee_carriere"},
-        "zone_brume": {"brume", "brume_marais", "brume_ruines", "brume_ravin", "brume_sanctuaire"},
-        "grotte_oublies": {"cave_1", "cave_2"},
-    }
+    assert_connected_world(maps)
+    expected = zone_members(maps)
     logical = maps["clearing"]["logical_zones"]
-    assert set(expected) <= set(logical)
+    assert set(logical) <= set(expected)
     for zone_id, members in expected.items():
         assert {key for key in maps if zone_of(maps, key) == zone_id} == members
     assert "zone_level" not in maps["clearing"]
     assert "zone_level" not in maps["rosee"]
     places = layout_places(maps)
-    assert set(expected) <= set(places)
+    assert set(expected) == set(places)
     assert "clearing" not in places
     assert "rosee" not in places
     assert "grotte_oublies" in places

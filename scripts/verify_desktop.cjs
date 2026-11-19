@@ -15,6 +15,7 @@ async function launch() {
   const args = packaged ? [] : [path.join(root, "desktop")];
   if (process.platform === "linux") args.push("--no-sandbox", "--ozone-platform=headless");
   const app = await _electron.launch({executablePath, args, env, timeout: 60000});
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.setBackgroundThrottling(false));
   await app.evaluate(({session}) => {
     // Block native requests too, including the main process API bridge.
     session.fromPartition("persist:jeux-rpg").webRequest.onBeforeRequest({urls: ["https://*/*", "http://*/*", "wss://*/*", "ws://*/*"]}, (_details, callback) => callback({cancel: true}));
@@ -41,6 +42,43 @@ async function launch() {
     await page.click("#tutorial");
     await page.waitForFunction(() => Boolean(session?.tutorial), null, {timeout: 30000});
     const world = await page.evaluate(() => session.tutorial.world);
+    const livingWorld = await page.evaluate(() => session.tutorial.living_world);
+    await page.waitForFunction(()=>document.querySelector(".rpg-canvas3d")?.scene3D.stats.frames>2).catch(async error=>{
+      console.error(await page.evaluate(()=>({hidden:document.hidden,model:session?.tutorial?.battle?.movement_model,renderer:document.getElementById("world-map").dataset.renderer,canvas:!!document.querySelector(".rpg-canvas3d"),stats:document.querySelector(".rpg-canvas3d")?.scene3D.stats})));
+      throw error;
+    });
+    assert(await page.evaluate(()=>{const scene=document.querySelector(".rpg-canvas3d").scene3D;return scene.items.find(a=>a.hero)?.look.weapon==="arme_sword_shield"&&scene.stats.vertices>1000&&scene.stats.cameraLocked;}));
+    const sprite = page.locator('.scene3d-label').filter({hasText:"Vous"}).first();
+    assert(await page.evaluate(()=>{
+      const data=session.tutorial.sprites;
+      return data.bindings["mob:gobelin_archer"]===data.bindings["mob:garde_gobelin"]&&data.equipment["mob:gobelin_archer"]==="arme_bow"&&data.equipment["mob:garde_gobelin"]==="arme_sword_shield";
+    }),"Les variantes de gobelins réutilisent le corps et changent seulement l'arme");
+    assert(await page.evaluate(async () => {
+      const data=session.tutorial.sprites;
+      const source=spriteDataUri(data.assets.chevalier_original,data.assets.arme_sword_shield);
+      const image=new Image();image.src=source;
+      try {await image.decode();return image.naturalWidth===session.tutorial.sprites.assets.chevalier_original.width;}catch{return false;}
+    }),"Le sprite embarqué se décode hors ligne avec la politique CSP du client");
+    await sprite.click();
+    await page.waitForFunction(()=>focusedMob===session.me);
+    await page.locator('.scene3d-label.selected').waitFor();
+    assert(await page.locator('.scene3d-label.selected').count()>0,"Un personnage 3D reste sélectionnable");
+    await sprite.click();
+    const movement=await page.evaluate(()=>{
+      const a=session.tutorial,p=a.battle.players[session.me].position;
+      for(const [axis,code] of [[[1,0],"ArrowRight"],[[0,1],"ArrowDown"],[[-1,0],"ArrowLeft"],[[0,-1],"ArrowUp"]]){
+        const path=gridPath(a.battle.map,p,p.map((v,i)=>Math.round(v)+axis[i]));if(path?.length===1)return {code,position:[...p]};
+      }
+    });
+    assert(movement);
+    await page.locator(".rpg-canvas3d").focus();await page.keyboard.down(movement.code);
+    await page.waitForFunction(before=>{const p=session.tutorial.battle.players[session.me].position;return Math.hypot(p[0]-before[0],p[1]-before[1])>.02;},movement.position);
+    const fractional=await page.evaluate(()=>session.tutorial.battle.players[session.me].position.some(v=>v!==Math.round(v)));
+    await page.keyboard.up(movement.code);
+    await page.waitForFunction(()=>session.tutorial.battle.players[session.me].motion_axis?.every(v=>v===0));
+    assert(fractional,"Le moteur Python embarqué avance entre les cases.");
+    assert(livingWorld?.towns.length > 0,"Le monde vivant est actif dans le moteur solo embarqué");
+    assert(livingWorld.merchant.stock.length > 0,"La caravane dispose de son stock partagé local");
     assert.equal(world.zone_entries.zone_rosee, "rosee");
     const interfaceSettings=await page.evaluate(()=>session.tutorial.interface);
     const authoredInterface=JSON.parse(fs.readFileSync(path.join(root,"projects/authored/content.json"),"utf8")).content.interface || {};
@@ -67,6 +105,8 @@ async function launch() {
     assert(await page.locator("#game-menu-toggle").isVisible(),"Le HUD revient à la fermeture du panneau");
     assert(enemyToggle.x > (await page.evaluate(()=>innerWidth))/2,"Le bouton cheval est à droite dans le client compilé");
     await page.evaluate(()=>showView("map",{toggle:false}));
+    assert(await page.locator("#world-life-view").isVisible(),"La vie du monde est accessible depuis la carte");
+    assert.equal(await page.locator("#world-life-towns article").count(),livingWorld.towns.length);
     const detail=page.locator('#region-map > svg[data-map^="detail:"]').last();
     await detail.scrollIntoViewIfNeeded();
     const beforePan=await detail.getAttribute("viewBox"),detailBox=await detail.boundingBox();
@@ -77,6 +117,45 @@ async function launch() {
     await page.locator("#region-center").click();
     assert.equal(await detail.getAttribute("viewBox"),beforePan,"Le recentrage restaure toute la carte");
     await page.locator("#back-view").click();
+    await page.evaluate(()=>showView("bestiary",{toggle:false}));
+    const filtering = await page.evaluate(() => {
+      const originalBestiary=session.tutorial.world.bestiary, originalRender=renderGame;
+      const base={rank:"D",description:"Fiche de recette locale",hp:{first_encounter:20,hunt:30},stats:{force:5,endurance:3,intelligence:1,sagesse:1},weaknesses:[],resistances:[],loot:[{item:"Cuir",quantity:1,max_quantity:1,chance:1,attempts:1}],xp:{hunt:10},rare_loot:[],materials_usage:"Forge"};
+      const maps=[{id:"local-a",name:"Auberge"},{id:"local-z",name:"Zéphyr"}];
+      let redraws=0;
+      try {
+        session.tutorial.world.bestiary=Array.from({length:80},(_,index)=>({...base,id:`local-${index}`,name:`Créature ${String(index).padStart(2,"0")}`,spawn_maps:index%2?[maps[0]]:maps}));
+        renderBestiary(session.tutorial);
+        const first=$("bestiary-details").firstElementChild;
+        renderBestiary(session.tutorial);
+        const retained=first===$("bestiary-details").firstElementChild;
+        renderGame=(...args)=>{redraws++;return originalRender(...args);};
+        const times=[];
+        for(let index=0;index<20;index++) {
+          const start=performance.now();
+          $("bestiary-map").value=index%2?"":"local-z";
+          $("bestiary-map").dispatchEvent(new Event("change"));
+          const expected=index%2?80:40;
+          if($("bestiary-details").querySelectorAll("article").length!==expected)throw Error("Le filtre carte n'est pas immédiatement appliqué");
+          times.push(performance.now()-start);
+        }
+        $("bestiary-search").value="Créature 07";
+        $("bestiary-search").dispatchEvent(new Event("input"));
+        const searched=$("bestiary-details").querySelectorAll("article").length;
+        $("bestiary-search").value="";$("bestiary-search").dispatchEvent(new Event("input"));
+        $("bestiary-sort").value="desc";$("bestiary-sort").dispatchEvent(new Event("change"));
+        return {redraws,retained,searched,sorted:$("bestiary-details").firstElementChild.textContent.includes("Zéphyr, Auberge"),maxMs:Math.max(...times),averageMs:times.reduce((a,b)=>a+b,0)/times.length};
+      } finally {
+        renderGame=originalRender;
+        session.tutorial.world.bestiary=originalBestiary;
+        $("bestiary-search").value="";$("bestiary-map").value="";$("bestiary-sort").value="asc";
+        renderBestiary(session.tutorial);
+      }
+    });
+    assert.equal(filtering.redraws,0,"Les filtres du bestiaire ne redessinent pas le jeu");
+    assert(filtering.retained&&filtering.sorted&&filtering.searched===1);
+    console.log(`Bestiaire compilé, 80 fiches fictives : ${filtering.averageMs.toFixed(1)} ms en moyenne, ${filtering.maxMs.toFixed(1)} ms au maximum sur 20 changements ; aucun rendu global.`);
+    await page.locator("#back-view").click();
     const id = await page.evaluate(() => session.id);
     // Close immediately after starting: the native close hook must flush IndexedDB.
     const closed = current.app.waitForEvent("close");
@@ -85,6 +164,7 @@ async function launch() {
     current = await launch();
     await current.page.waitForFunction(expected => session?.id === expected, id, {timeout: 60000});
     assert.equal(await current.page.evaluate(() => gameMode), "solo");
+    assert.deepEqual(await current.page.evaluate(() => session.tutorial.living_world.towns),livingWorld.towns,"Le monde vivant est conservé après fermeture et reprise du client");
     const result = await current.page.evaluate(async () => (await fetch("/api/classes")).json());
     assert(result.some(item => item.id === "Knight"));
     await current.page.screenshot({path: path.join(root, ".data/desktop-offline.png")});

@@ -13,14 +13,17 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
-from redis.asyncio import Redis
-from redis.exceptions import RedisError
 
 from .browser_solo_assets import client_csp
 from .distributed import build_rate_limiter
 from .json_protocol import object_json
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .realtime_store import KEYS, RuntimeStore
+from .runtime_configuration import (
+    account_auth_required,
+    runtime_environment,
+    runtime_mode,
+)
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
@@ -104,6 +107,8 @@ class Coordinator:
             if self.started:
                 return
             if not self.local:
+                from redis.asyncio import Redis
+
                 from .redis_configuration import redis_url
 
                 url = redis_url(self.environment)
@@ -348,7 +353,7 @@ class Coordinator:
 
             async with self.auth_slots:
                 async with self.lock:
-                    if self.owner():
+                    if self.owner() and not getattr(self, "draining", False):
                         store = self.store
                 if store is not None:
                     accepted = await self.memory_call(
@@ -379,7 +384,12 @@ class Coordinator:
                             "body": {"error": error.code, "message": str(error)},
                         }
         async with self.lock:
-            if not self.owner() or store is not None and self.store is not store:
+            if (
+                not self.owner()
+                or getattr(self, "draining", False)
+                or store is not None
+                and self.store is not store
+            ):
                 return {
                     "status": 503,
                     "headers": {},
@@ -463,7 +473,7 @@ class Coordinator:
                 continue
             try:
                 async with self.lock:
-                    if not self.owner():
+                    if not self.owner() or getattr(self, "draining", False):
                         continue
                     await self.memory_call(self.store.tick)
                     if (
@@ -514,6 +524,8 @@ class Coordinator:
     async def release(self):
         if self.local or not self.owner() or self.connections:
             return
+        from redis.exceptions import RedisError
+
         await self.flush()
         async with self.lock:
             if not self.owner() or self.connections or self.store.pending:
@@ -536,7 +548,11 @@ class Coordinator:
 def _socket_origin_allowed(websocket, environment):
     host = websocket.headers.get("host", "")
     origin = websocket.headers.get("origin")
-    scheme = "https" if environment.get("VERCEL") else "http"
+    scheme = (
+        "https"
+        if environment.get("VERCEL")
+        else websocket.url.scheme.replace("ws", "http", 1)
+    )
     allowed = {
         value
         for value in (
@@ -642,7 +658,7 @@ async def _socket_connection(websocket, coordinator, environment, trusted):
     authenticated = None
     try:
         await websocket.accept()
-        if environment.get("VERCEL"):
+        if account_auth_required(environment):
             authenticated = await _authenticate_socket(websocket, coordinator, trusted)
             if authenticated is None:
                 return
@@ -807,7 +823,9 @@ def _trusted_request(connection, path, method, body, headers, environment):
         "headers": forwarded,
         "host": host,
         "peer": connection.client.host if connection.client else "unknown",
-        "scheme": "https" if environment.get("VERCEL") else "http",
+        "scheme": "https"
+        if environment.get("VERCEL")
+        else connection.url.scheme.replace("ws", "http", 1),
     }
 
 
@@ -843,15 +861,58 @@ def _static_response(request, path, result, content):
     return Response(content, status_code=result["status"], headers=result["headers"])
 
 
+def build_coordinator(environment):
+    if runtime_mode(environment) == "d1":
+        from .d1_runtime import D1Coordinator
+
+        return D1Coordinator(environment)
+    if runtime_mode(environment) == "single":
+        from .single_runtime import SingleCoordinator
+
+        return SingleCoordinator(environment)
+    return Coordinator(environment)
+
+
+async def _runtime_ready(coordinator, mode):
+    if mode == "d1":
+        try:
+            return await coordinator.ready()
+        except Exception:
+            return False
+    return (
+        coordinator.owner()
+        and not getattr(coordinator, "draining", False)
+        and not coordinator.store.last_save_error
+    )
+
+
+def _runtime_health(environment):
+    from .storage_configuration import database_backend
+
+    result = {"status": "ok", "database_backend": database_backend(environment)}
+    if runtime_mode(environment) == "d1":
+        result["runtime"] = "d1-transaction"
+    if environment.get("RPG_RELEASE_SHA"):
+        result["release"] = environment["RPG_RELEASE_SHA"]
+    return result
+
+
 def create_app(environment=None, coordinator=None):
-    environment = dict(os.environ if environment is None else environment)
-    coordinator = coordinator or Coordinator(environment)
+    environment = runtime_environment(
+        os.environ if environment is None else environment
+    )
+    mode = runtime_mode(environment)
+    coordinator = coordinator or build_coordinator(environment)
     static = Application(environment=environment)
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        await coordinator.close()
+        if mode == "single":
+            await coordinator.start()
+        try:
+            yield
+        finally:
+            await coordinator.close()
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.coordinator = coordinator
@@ -877,14 +938,17 @@ def create_app(environment=None, coordinator=None):
 
     @app.get("/health")
     async def healthcheck():
-        from .storage_configuration import database_backend
-
-        result = {"status": "ok", "database_backend": database_backend(environment)}
-        if environment.get("RPG_RELEASE_SHA"):
-            result["release"] = environment["RPG_RELEASE_SHA"]
-        return JSONResponse(result)
+        return JSONResponse(_runtime_health(environment))
 
     _register_socket(app, coordinator, environment, trusted)
+
+    @app.get("/ready")
+    async def readiness():
+        available = await _runtime_ready(coordinator, mode)
+        return JSONResponse(
+            {"status": "ready" if available else "unavailable"},
+            status_code=200 if available else 503,
+        )
 
     @app.api_route("/{path:path}", methods=["GET", "POST"])
     async def http(request: Request, path: str):
@@ -896,8 +960,11 @@ def create_app(environment=None, coordinator=None):
             validate_request_origin(
                 environment,
                 {
-                    "HTTP_" + key.upper().replace("-", "_"): value
-                    for key, value in request.headers.items()
+                    "wsgi.url_scheme": request.url.scheme,
+                    **{
+                        "HTTP_" + key.upper().replace("-", "_"): value
+                        for key, value in request.headers.items()
+                    },
                 },
                 "/" + path,
                 request.method,
@@ -959,7 +1026,9 @@ def create_app(environment=None, coordinator=None):
             "PATH_INFO": "/" + path,
             "REQUEST_METHOD": request.method,
             "HTTP_HOST": request.headers.get("host", ""),
-            "wsgi.url_scheme": "https" if environment.get("VERCEL") else "http",
+            "wsgi.url_scheme": "https"
+            if environment.get("VERCEL")
+            else request.url.scheme,
         }
         for key, value in request.headers.items():
             environment_wsgi["HTTP_" + key.upper().replace("-", "_")] = value

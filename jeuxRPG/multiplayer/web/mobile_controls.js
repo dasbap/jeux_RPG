@@ -1,4 +1,48 @@
 "use strict";
+// A modal also blocks focus and keyboard navigation behind the rotation notice.
+globalThis.RPGLandscape = (() => {
+  if (typeof matchMedia !== "function") return {blocked: false};
+  const portrait = matchMedia("(pointer: coarse) and (orientation: portrait)");
+  let blocked = false, panel, previousFocus;
+  const update = () => {
+    if (portrait.matches === blocked) return;
+    blocked = portrait.matches;
+    document.body.classList.toggle("landscape-blocked", blocked);
+    if (blocked) {
+      previousFocus = document.activeElement;
+      globalThis.RPGMotion?.set([0, 0]);
+      window.dispatchEvent(new Event("blur"));
+      if (!panel) {
+        panel = document.createElement("dialog");
+        panel.id = "landscape-required";
+        panel.setAttribute("aria-labelledby", "landscape-title");
+        panel.setAttribute("aria-describedby", "landscape-description");
+        panel.innerHTML = '<div><span aria-hidden="true">↻</span><h2 id="landscape-title">Tournez votre téléphone</h2><p id="landscape-description">Le jeu se joue en mode paysage.</p></div>';
+        panel.addEventListener("cancel", event => event.preventDefault());
+        document.body.append(panel);
+      }
+      panel.showModal();
+    } else {
+      panel?.close();
+      if (previousFocus?.isConnected && !previousFocus.closest("[inert], [hidden]")) previousFocus.focus();
+    }
+  };
+  portrait.addEventListener("change", update);
+  window.addEventListener("resize", update);
+  document.addEventListener("fullscreenchange", () => {
+    if (blocked) { panel.close(); panel.showModal(); }
+  });
+  for (const type of ["keydown", "keyup", "pointerdown", "pointermove", "pointerup", "click", "dblclick", "touchstart", "touchmove", "submit"]) {
+    window.addEventListener(type, event => {
+      if (!blocked) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, {capture: true, passive: false});
+  }
+  update();
+  return {get blocked() { return blocked; }};
+})();
+
 globalThis.createRpgTouchControls = api => {
   const panel = document.createElement("section");
   panel.id = "touch-controls";
@@ -27,19 +71,23 @@ globalThis.createRpgTouchControls = api => {
   function halt() {if (timer !== null) clearInterval(timer); timer = null; pointer = null; pendingStop = false; direction = null; origin = null; reset();}
   function tick() {
     const state = api.state();
-    if (!state.active || state.key !== key) return halt();
-    if (state.busy || Date.now() - last < 250) return;
+    if (!state.active) return state.continuous && (pointer!==null || keys.size) ? undefined : halt();
+    if (state.key !== key) {
+      if (!state.continuous) return halt();
+      key=state.key;direction=null;origin=null;last=-Infinity;
+    }
+    if (state.busy || !state.continuous && Date.now() - last < 250) return;
     if (pendingStop) {
       pendingStop = false;
       if (direction !== null || state.actor?.route?.length) {last = Date.now(); api.stop();}
       return halt();
     }
     if (!vector.some(Boolean)) return;
-    const next = vector.map(x => Math.round(x));
+    const next = state.continuous?vector.map(x=>Math.round(x*100)/100):vector.map(x => Math.round(x));
     if (!next.some(Boolean)) return;
-    if (direction?.join() === next.join() && state.actor?.route?.length) return;
+    if (!state.continuous && direction?.join() === next.join() && state.actor?.route?.length) return;
     const currentOrigin = state.actor?.position?.join();
-    if (currentOrigin !== undefined && direction?.join() === next.join() && origin === currentOrigin) return;
+    if (!state.continuous && currentOrigin !== undefined && direction?.join() === next.join() && origin === currentOrigin) return;
     last = Date.now();
     if (api.move(next)) {direction = next; origin = currentOrigin;}
   }
@@ -49,10 +97,12 @@ globalThis.createRpgTouchControls = api => {
     const length = Math.hypot(dx,dy), scale = Math.max(1,length);
     vector = length < .2 ? [0,0] : [dx/scale,dy/scale];
     thumb.setAttribute("cx", 50 + vector[0]*28); thumb.setAttribute("cy", 50 + vector[1]*28);
+    if(api.state().continuous)tick();
   }
   function release(event) {
     if (event && event.pointerId !== pointer) return;
     pointer = null; reset(); pendingStop = true;
+    if(api.state().continuous){api.stop();return halt();}
     tick();
   }
   const keys = new Map();
@@ -87,7 +137,11 @@ globalThis.createRpgTouchControls = api => {
   return {sync() {
     const state = api.state();
     panel.hidden = !state.active;
-    if (!state.active || key !== null && state.key !== key) halt();
+    if (!state.active) {if(!state.continuous)halt();}
+    else if (key !== null && state.key !== key) {
+      if(state.continuous){key=state.key;direction=null;origin=null;last=-Infinity;}
+      else halt();
+    }
     const buttons = api.actions();
     while (actions.children.length > buttons.length) actions.lastElementChild.remove();
     buttons.forEach((source, i) => {

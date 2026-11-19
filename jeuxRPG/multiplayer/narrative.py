@@ -290,8 +290,30 @@ def greeting(party, player, npc):
     return result
 
 
+def quest_offers(party, player, npc):
+    from . import content
+
+    offers = []
+    for quest in content.DATA["quests"]:
+        if quest["npc"] != npc:
+            continue
+        offer = quest_view(party, player, quest)
+        if offer["missing_requirements"]:
+            continue
+        if offer["status"] == "completed":
+            if not quest.get("repeatable"):
+                continue
+            offer.update(
+                status="available",
+                progress=0,
+                repeat_offer=True,
+            )
+        offers.append(offer)
+    return offers
+
+
 def view(party, player):
-    from . import content, fields
+    from . import fields
 
     personal = state(party, player)
     current = personal.get("conversation")
@@ -319,11 +341,7 @@ def view(party, player):
                 {"id": topic["id"], "label": topic["label"]}
                 for topic in topics(party, player, npc)
             ],
-            "quests": [
-                quest_view(party, player, quest)
-                for quest in content.DATA["quests"]
-                if quest["npc"] == npc
-            ],
+            "quests": quest_offers(party, player, npc),
         }
         topic = next(
             (

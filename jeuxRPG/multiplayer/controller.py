@@ -161,6 +161,23 @@ class Controller(
                     text="Trajets, rues, raccords et placements : bouton Builder → Assemblage / Trajets et rues.\nLe temps, les déplacements et la régénération se règlent dans Règles du jeu.",
                 ).pack(anchor="w")
         self.create_interface_tab(notebook)
+        sprite_page = ttk.Frame(notebook, padding=16)
+        notebook.add(sprite_page, text="Sprites / Sprite Maker")
+        ttk.Label(
+            sprite_page,
+            text="Créez vos personnages en pixel art, animez-les et associez-les aux entités du projet.",
+            wraplength=900,
+        ).pack(anchor="w", pady=12)
+        ttk.Button(
+            sprite_page, text="Ouvrir le Sprite Maker", command=self.open_sprite_maker
+        ).pack(anchor="w", pady=8)
+        self.sprite_summary = tk.StringVar()
+        ttk.Label(sprite_page, textvariable=self.sprite_summary).pack(anchor="w")
+        ttk.Label(
+            sprite_page,
+            text="Appliquer modifie le projet en mémoire. Enregistrer le projet conserve les sprites, leurs animations et leurs associations. Annuler / Rétablir s'applique aussi aux sprites.",
+            wraplength=900,
+        ).pack(anchor="w", pady=12)
         navigation = ttk.Frame(root, padding=8)
         navigation.pack(fill="x", before=notebook)
         ttk.Label(navigation, text="Catalogue").pack(side="left")
@@ -181,6 +198,18 @@ class Controller(
         self.future = []
         self.history.append(self.project.state() if state is None else state)
         self.history = self.history[-30:]
+
+    def open_sprite_maker(self, parent=None):
+        from .sprite_maker import SpriteMaker
+
+        existing = getattr(self, "sprite_maker", None)
+        if existing is not None and existing.window.winfo_exists():
+            existing.refresh_lists()
+            existing.window.lift()
+            return
+        self.sprite_maker = SpriteMaker(
+            parent or self.root, self.project, self.finish_change
+        )
 
     def finish_change(self, before):
         self.project.validate()
@@ -361,6 +390,13 @@ class Controller(
 
         if only is None and hasattr(self, "interface_fields"):
             self.refresh_interface()
+        if only is None and hasattr(self, "sprite_summary"):
+            from .sprite_catalog import catalog
+
+            sprites = catalog(self.project.content)
+            self.sprite_summary.set(
+                f"{len(sprites['assets'])} sprite(s) · {len(sprites['bindings'])} association(s)"
+            )
 
     def label(self, key):
         from .controller_gameplay import FIELD_LABELS
@@ -428,6 +464,8 @@ class Controller(
             "parent": "Espèce parente",
             "race": "Race (vide = héritée ou classe de base)",
             "hostile": "Hostile par défaut (sinon neutre, se défend si attaqué)",
+            "attack_range": "Portée de l'attaque de base (cases)",
+            "attack_name": "Nom de l'attaque de base",
             "item": "Matériau",
             "chance": "Probabilité (0–1)",
             "attempts": "Nombre de tirages indépendants",
@@ -837,6 +875,12 @@ class Controller(
             "rank": old["rank"],
             "damage": old["damage"],
             "damage_growth": float(old.get("damage_growth", 0.5)),
+            "attack_range": float(
+                old.get(
+                    "attack_range", p.content["gameplay"]["rules"]["ai"]["melee_range"]
+                )
+            ),
+            "attack_name": old.get("attack_name", "Entaille"),
             "xp_class": old.get("xp_class", "normal"),
             "xp_multiplier": float(old.get("xp_multiplier", 1)),
             "parent": p.mobs[key].get("parent", "") if not new else "",
@@ -1273,6 +1317,11 @@ class Controller(
         before = self.project.state()
         try:
             editor = map_editor.MapEditor(window, self.project.directory / "world.json")
+            self.ttk.Button(
+                window,
+                text="Sprite Maker / associer une entité",
+                command=lambda: self.open_sprite_maker(window),
+            ).pack(side="bottom", pady=4)
             editor.gameplay = self.project.content["gameplay"]
             editor.catalog_content = self.project.content
             editor.maps = deepcopy(self.project.maps)
@@ -1377,6 +1426,9 @@ class Controller(
             self.messagebox.showerror("Enregistrement", str(exc), parent=self.root)
 
     def close(self):
+        maker = getattr(self, "sprite_maker", None)
+        if maker is not None and maker.window.winfo_exists() and not maker.discard():
+            return
         if self.project.state() != self.project.snapshot:
             answer = self.messagebox.askyesnocancel(
                 "Fermer",

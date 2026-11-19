@@ -10,7 +10,12 @@ def manifest(definition, maps, identifier):
     result = {}
     for index, config in enumerate(map_building.spawners(definition)):
         species = mob_rules.resolve(map_building.MOBS, config["mob_id"])
-        payload = [config, species, map_building.map_level(maps, identifier)]
+        identity = {
+            key: value
+            for key, value in config.items()
+            if key not in ("respawn_profile", "respawn_seconds")
+        }
+        payload = [identity, species, map_building.map_level(maps, identifier)]
         result[f"{identifier}-mob-{index}"] = hashlib.sha256(
             json.dumps(payload, sort_keys=True).encode()
         ).hexdigest()

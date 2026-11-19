@@ -242,7 +242,7 @@ def status_view(party, key, effects, now):
     ]
 
 
-def view(party, me, now):
+def view(party, me, now, traveller=None):
     party = json.loads(json.dumps(party, ensure_ascii=False, separators=(",", ":")))
     migrate(party, now)
     progression.resources(party, now)
@@ -330,7 +330,12 @@ def view(party, me, now):
         if transit
         else 0
     )
-    result["traveller"] = npc(now)
+    from .sprite_catalog import catalog as sprite_catalog
+
+    sprites = sprite_catalog(content.DATA)
+    if sprites["assets"]:
+        result["sprites"] = sprites
+    result["traveller"] = npc(now) if traveller is None else traveller
     result["travel_progress"] = (
         max(
             0,
@@ -354,6 +359,10 @@ def view(party, me, now):
             (party.get("journey") or [transit["destination"]])[-1]
         )
     result["world"] = world.view(party, me, result["traveller"])
+    from . import coaches
+
+    result["coaches"] = coaches.view(party, me)
+    result.pop("spawn_timers", None)
     result.pop("fields", None)
     fields.reveal(party)
     result["field_interactions"] = fields.interactions(party, me)
@@ -437,8 +446,14 @@ def view(party, me, now):
                 )
                 or None,
                 "gear": list(party["equipment"].get(player_id, {}).values()),
+                "stored_gear": list(
+                    party.get("stored_equipment", {}).get(player_id, {}).values()
+                ),
+                "equipment_locked_reason": forge.equipment_lock_reason(
+                    party, player_id
+                ),
                 "equipment_sets": forge.set_catalogue(
-                    party["equipment"].get(player_id, {})
+                    party["equipment"].get(player_id, {}), include_inactive=True
                 ),
                 "forge": forge.catalogue(party, player_id),
                 "attack_range": progression.attack_range(character),
@@ -555,6 +570,9 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
     messages = []
     if not resolved:
         tactics.ready(party, player_id, now, error)
+        from .free_movement import report_attack_position
+
+        report_attack_position(party, player_id, params, actor, now, error)
     enemies = {m["combat_id"]: unpack(m) for m in party["mobs"]}
     for target in [*characters.values(), *enemies.values()]:
         target.drop_xp = lambda killer: ""
@@ -578,6 +596,9 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
                 409,
             )
         before_hp = target.hp.current_value
+        from .free_movement import attacking
+
+        attacking(party, player_id, now)
         target.lose_hp(actor, progression.simple_damage(actor))
         messages.append(
             f"{actor.name} termine son attaque simple contre {target.name} : {max(0, before_hp - target.hp.current_value)} dégâts."
@@ -612,7 +633,13 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
         if not resolved:
             timing = progression.casting(skill)
             unit = party["battle"]["players"][player_id]
-            unit["route"] = []
+            from .free_movement import attacking
+
+            attacking(
+                party, player_id, now, now + timing["seconds"] * progression.RATIO
+            )
+            if not unit.get("free_motion"):
+                unit["route"] = []
             unit["hidden"] = False
             unit["casting"] = {
                 "skill_name": skill.name,
@@ -628,6 +655,19 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
             )
             party["ready"][player_id] = (
                 now + progression.ACTION_SECONDS * progression.RATIO
+            )
+            from .combat_visuals import emit
+
+            emit(
+                party,
+                player_id,
+                target_id,
+                now,
+                "cast",
+                skill.skill_type.name,
+                skill.name,
+                progression.attack_range(actor, skill),
+                duration=timing["seconds"],
             )
             return [
                 f"{actor.name} commence {skill.name} ({timing['seconds']:g} s)."
@@ -653,6 +693,19 @@ def _execute_attack(party, player_id, action, params, now, error, random, resolv
         party["effect_at"][target_id] = (
             now + progression.ACTION_SECONDS * progression.RATIO
         )
+    from .combat_visuals import emit
+
+    emit(
+        party,
+        player_id,
+        target_id,
+        now,
+        action,
+        skill.skill_type.name if skill else "DAMAGE",
+        skill.name if skill else "",
+        progression.attack_range(actor, skill),
+        before_hp - target.hp.current_value,
+    )
     party["characters"] = {key: pack(c) for key, c in characters.items()}
     tactics.sync_summons(party, now)
     defeated = _attack_survivors(
@@ -769,6 +822,9 @@ def migrate(party, now):
         progression.health_resources(party, now)
     fields.migrate_terrain(party, now)
     world.migrate_journey(party)
+    from . import coaches
+
+    coaches.restore_field(party, now)
 
 
 def sync_mobs(party):
@@ -820,6 +876,8 @@ def spawn(party, now, random, messages, origin="travel"):
 
 def arrive(party, destination, messages):
     party["position"] = destination
+    # Arrival must persist even when both points belong to the same zone.
+    party["autosave_checkpoint"] = party.get("autosave_checkpoint", 0) + 1
     zone = world.zone_of(destination)
     party["visited"] = sorted(set(party["visited"]) | {zone})
     messages.append(f"Vous arrivez à {world.point_name(destination)}.")
@@ -1074,6 +1132,14 @@ def _enter_world_zone(party, now, error):
 
 def _execute_travel(party, player_id, params, now, error, random):
     messages = []
+    from . import coaches
+
+    if coaches.enabled() and party.get("field_mode"):
+        raise error(
+            "coach_only",
+            "Rejoignez une sortie pour marcher ou un relais pour voyager en diligence.",
+            409,
+        )
     if party["battle"] or party["mobs"] or party["mob"]:
         raise error("in_combat", "Terminez le combat avant de vous déplacer.", 409)
     destination = params.get("destination")
@@ -1121,15 +1187,38 @@ def execute(party, player_id, action, params, now, error, random):
         return narrative.interact(
             party, player_id, params.get("npc"), params.get("choice", "open"), error
         ), False
+    if action == "coach":
+        from . import coaches
+
+        return coaches.depart(
+            party,
+            player_id,
+            params.get("station"),
+            params.get("destination"),
+            now,
+            error,
+        )
     if action == "enter_zone":
         return _enter_world_zone(party, now, error)
+    if action in ("equip", "unequip"):
+        return forge.change_equipment(
+            party, player_id, action, params.get("recipe"), error
+        )
     if party.get("field_map") and action in ("talk", "craft", "upgrade", "buy", "sell"):
         return fields.execute(party, player_id, action, params, now, error, random)
     if action in ("travel", "move"):
         return _execute_travel(party, player_id, params, now, error, random)
     if action in ("control_units", "unit_order", "unit_skill"):
         return tactics.control(party, player_id, action, params, now, error), False
-    if action in ("battle_move", "stop_move", "hide", "harvest", "leave_battle"):
+    if action in (
+        "walk",
+        "move_axis",
+        "battle_move",
+        "stop_move",
+        "hide",
+        "harvest",
+        "leave_battle",
+    ):
         messages = tactics.execute(party, player_id, action, params, now, error)
         if action == "leave_battle":
             continue_journey(party, now, random, messages)

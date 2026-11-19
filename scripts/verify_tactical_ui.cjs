@@ -52,7 +52,7 @@ try {
   render(removed);
   event(unit("mob-3"), "click");
   removed.mobs = removed.mobs.filter(mob => mob.combat_id !== "mob-3");
-  removed.battle.corpses = [{id: "mob-3", name: "Gobelin", position: [2,2]}];
+  removed.battle.corpses = [{id: "mob-3", name: "Gobelin", position: [2,2], harvested: [], loot: {peau:1}}];
   render(removed);
   assert.notEqual(el("combat-target").value, "mob-3");
   assert.equal(el("combat-auto-target").getAttribute("aria-pressed"), "true");
@@ -124,7 +124,8 @@ try {
   assert.equal(el("combat-target").value, "mob-3");
   event(unit("mob-3"), "dblclick");
   const movement = dom.window.uiTest.calls.at(-1);
-  assert.equal(movement.action, "battle_move");
+  assert.equal(fixture.battle.movement_model, "continuous-v1");
+  assert.equal(movement.action, "walk");
   assert(movement.params.path.length > 0);
   assert(Math.hypot(movement.params.x - 12, movement.params.y - 5) <= 1.5);
   const moving = JSON.parse(JSON.stringify(fixture));
@@ -134,7 +135,7 @@ try {
   const beforeRedirect = dom.window.uiTest.calls.length;
   event(unit("mob-3"), "dblclick");
   assert.equal(dom.window.uiTest.calls.length, beforeRedirect + 1);
-  assert.equal(dom.window.uiTest.calls.at(-1).action, "battle_move");
+  assert.equal(dom.window.uiTest.calls.at(-1).action, "walk");
   assert(unit("p0"));
   assert.equal(el("combat-allies").parentElement.id, "combat-player-panel");
   assert.equal(el("unit-controls").parentElement.id, "combat-player-panel");
@@ -165,15 +166,22 @@ try {
   assert(el("combat-resources").textContent.includes("4/12 Mana"));
   assert(el("mob-cards").textContent.includes("Faiblesse"));
   const near = JSON.parse(JSON.stringify(fixture));
-  near.battle.corpses = [{id: "dead", name: "Gobelin mort", position: [9, 4], harvested: ["p0"]}];
+  near.battle.corpses = [
+    {id: "dead", name: "Déjà dépecé", position: [9, 4], harvested: ["p0"], loot:{peau:1}},
+    {id: "empty", name: "Corps vide", position: [9, 4], harvested: [], loot:{}},
+    {id: "fresh", name: "Gobelin frais", position: [9, 4], harvested: [], loot:{peau:1}},
+  ];
   near.battle.summons = {"p0:summon:0": {position: [8, 4], name: "Squelette", hp: 10, max_hp: 10}};
   render(near);
-  assert(Boolean(el("corpse-actions").querySelector('button[aria-label*="déjà dépecé"]')));
+  assert.equal(el("corpse-actions").querySelectorAll('button').length, 1);
+  assert(el("corpse-actions").textContent.includes("Gobelin frais"));
+  assert(!el("corpse-actions").textContent.includes("Déjà dépecé"));
+  assert(!el("corpse-actions").textContent.includes("Corps vide"));
   assert(unit("p0:summon:0"));
   const far = JSON.parse(JSON.stringify(near));
   far.battle.players.p0.position = [0, 0];
   render(far);
-  assert(!Boolean(el("corpse-actions").querySelector('button[aria-label*="déjà dépecé"]')));
+  assert.equal(el("corpse-actions").querySelectorAll('button').length, 0);
   assert(!Boolean(el("tactical-actions").querySelector('button[aria-label*="Se cacher"]')));
   far.battle.players.p0.position = [2, 5];
   far.battle.players.p0.can_hide = true;
@@ -316,12 +324,14 @@ try {
   render(invisible);
   assert.equal(el("cell-entities").querySelectorAll("[data-target=mob]").length, 0);
   assert([...el("combat-actions").children].every(button => button.disabled));
-  render(fixture);
+  const zoomFixture = JSON.parse(JSON.stringify(fixture));
+  zoomFixture.battle.map = {...zoomFixture.battle.map, id:"zoom-fixture", width:32, height:24};
+  render(zoomFixture);
   const legacyBox = el("world-map").querySelector("svg").getAttribute("viewBox");
   el("field-zoom-in").click();
   const legacyZoom = el("world-map").querySelector("svg").getAttribute("viewBox");
   assert.notEqual(legacyZoom, legacyBox);
-  render(fixture);
+  render(zoomFixture);
   assert.equal(el("world-map").querySelector("svg").getAttribute("viewBox"), legacyZoom);
   const peaceful = JSON.parse(JSON.stringify(fixture));
   peaceful.battle = null; peaceful.mobs = []; peaceful.mob = null;
@@ -355,7 +365,7 @@ try {
   assert(authoredDetail.textContent.includes("Point modifié"));
   if (fixtures.field_village) {
     render(fixtures.field_village);
-    assert.equal(el("field-camera").hidden, false);
+    assert.equal(el("field-camera").hidden, true);
     assert.equal(el("field-location").textContent, "Village de Rosée");
     assert(el("world-map").querySelector('[data-site="mira"]'));
     assert(el("world-map").querySelector(".unexplored-cell"));
@@ -377,7 +387,7 @@ try {
     assert(marker, "Un passage doit avoir un repère visible même hors exploration et hors cadrage");
     assert.match(fs.readFileSync(path.join(root, "jeuxRPG/multiplayer/web/app_battle.js"), "utf8"), /class:\s*"exit-caption".*"pointer-events":\s*"none"/s);
     event(marker, "dblclick");
-    assert(dom.window.uiTest.calls.some(call => call.action === "battle_move" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
+    assert(dom.window.uiTest.calls.some(call => call.action === "walk" && call.params.x === gate.position[0] && call.params.y === gate.position[1]));
     scene.battle.map.exits.push({...gate, position: [gate.position[0], gate.position[1] + 1], name: "Autre passage"});
     render(scene);
     const markers = [...el("world-map").querySelectorAll("[data-exit]")];

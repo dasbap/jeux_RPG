@@ -83,6 +83,26 @@ Les sept cartes de référence du tutoriel doivent rester dans le fichier : `cle
 
 ## 5. Peindre le terrain
 
+### Générer automatiquement une carte
+
+Dans **Cartes, monde et validation**, cliquer sur **Générer une carte**.
+Choisir un nouvel identifiant, le nom, les dimensions (8 à 128 cases),
+l'ambiance (`forest`, `village`, `cave`), une graine et la densité du décor (0 à 60 %).
+Une graine identique avec les mêmes réglages reproduit le même terrain.
+
+Le générateur crée des bosquets, maisons ou massifs rocheux, des chemins et quatre
+sorties vers les chemins rapides. Les forêts comprennent une rivière traversée
+par un pont. Toutes les cases praticables sont reliées aux sorties. Les PNJ et
+spawners restent à placer avec les outils habituels.
+
+La nouvelle carte reste entièrement éditable. **Annuler** retire sa création.
+Relier un passage depuis une carte existante pour la rendre accessible, puis
+enregistrer le projet. Aucun terrain existant n'est remplacé.
+
+Le rendu 3D ajoute des berges en creux, des socles rocheux, des ombres sous les
+décors et des planches aux ponts. Ce relief est visuel ; les déplacements restent
+validés par la grille du moteur.
+
 Choisir un outil puis cliquer sur une case. Maintenir le bouton et glisser pour peindre plusieurs cases. Un clic suivi d’un glisser constitue une opération annulable avec **Annuler** ou `Ctrl+Z`.
 
 | Outil | Déplacement | Ligne de vue |
@@ -385,3 +405,13 @@ Enregistrez le projet et redémarrez le serveur pour appliquer ces changements a
 Dans les formulaires de trajet, le bouton « Créer / choisir sur la carte » ouvre une grille interactive pour chaque porte. Cliquez une case praticable : les coordonnées sont remplies automatiquement et une nouvelle porte sera créée à la validation du trajet (ou à « Appliquer » dans Trajets / rues). Une porte existante peut être réutilisée ; un passage ou un PNJ n’est pas remplacé. Annuler le formulaire ne crée aucune porte.
 
 Le projet éditable livré avec cette branche se trouve dans `projects/authored/`. Ouvrez ce dossier dans le controller pour modifier ce catalogue. Les données du jeu installé restent dans `jeuxRPG/maps/`.
+
+Les tests de structure du monde n’imposent pas un nombre de zones ou de cartes.
+Une nouvelle zone est acceptée dès que ses cartes sont accessibles depuis le
+départ et disposent d’un chemin de retour. Un passage à sens unique est valide
+si un autre chemin permet de revenir. Les destinations, les portes d’arrivée,
+les chemins praticables et l’affichage des cartes dans leur zone sont vérifiés.
+Les scénarios particuliers (quête, boss, labyrinthe) conservent leurs règles.
+
+Après ajout et export du projet vers `jeuxRPG/maps/`, vérifier ces invariants avec
+`python -m pytest test/test_world_connectivity.py test/test_builder_zone_views.py test/test_logical_zones.py test/test_region_extensions.py -q`.

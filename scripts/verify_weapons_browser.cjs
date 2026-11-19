@@ -1,0 +1,45 @@
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),{chromium}=require("../.data/browser-tools/node_modules/playwright");
+(async()=>{
+ const config=JSON.parse(fs.readFileSync(0,"utf8")),browser=await chromium.launch({headless:true});
+ try{
+  const context=await browser.newContext({viewport:{width:1440,height:1000}}),errors=[];
+  await context.route("**/*",route=>new URL(route.request().url()).origin===config.url?route.continue():route.abort());
+  await context.addInitScript(token=>sessionStorage.setItem("rpg-token",token),config.token);
+  const page=await context.newPage();page.on("pageerror",error=>errors.push(error.message));
+  await page.goto(config.url);await page.waitForFunction(()=>typeof session!=="undefined"&&session?.tutorial?.position==="forge");
+  await page.locator("#loading-screen").waitFor({state:"hidden"});
+  const initial=await page.evaluate(()=>{const me=session.tutorial.players.find(p=>p.id===session.me);return {force:me.stats?.force,materials:{...me.inventory}};});
+  await page.evaluate(()=>openForge());
+  const sword=page.locator('[data-recipe="epee_lisiere"]');await sword.waitFor({state:"visible"});
+  assert.equal(await page.locator('[data-recipe="baton_lucioles"]').count(),0);
+  assert(await sword.locator('[data-action="craft"]').isEnabled(),JSON.stringify(await page.evaluate(()=>({busy,unlocked:session.tutorial.forge_unlocked,recipe:session.tutorial.players.find(p=>p.id===session.me).forge.find(r=>r.recipe==="epee_lisiere"),inventory:session.tutorial.players.find(p=>p.id===session.me).inventory}))));
+  await sword.locator('[data-action="craft"]').click();
+  await page.waitForFunction(()=>session.tutorial.players.find(p=>p.id===session.me).gear.some(g=>g.recipe==="epee_lisiere"));
+  const me=await page.evaluate(()=>session.tutorial.players.find(p=>p.id===session.me));
+  assert.equal(me.inventory.croc,initial.materials.croc-5);assert.equal(me.inventory.peau,initial.materials.peau-2);
+  await page.locator("#forge-class-filter").selectOption("all");
+  const staff=page.locator('[data-recipe="baton_lucioles"]');await staff.waitFor({state:"visible"});
+  assert(await staff.locator('[data-action="craft"]').isDisabled());
+  const text=await staff.locator(".item-classes").textContent();for(const name of ["Mage","Prêtre","Nécromancien"])assert(text.includes(name));
+  const before=await page.evaluate(()=>JSON.stringify(session.tutorial.players.find(p=>p.id===session.me).inventory));
+  await page.evaluate(()=>tutorialCommand("craft",{recipe:"baton_lucioles"}));
+  await page.waitForFunction(()=>document.getElementById("forge-feedback").textContent.includes("Classes"));
+  assert.equal(await page.evaluate(()=>JSON.stringify(session.tutorial.players.find(p=>p.id===session.me).inventory)),before);
+  await staff.screenshot({path:path.resolve(".data/weapons-forge.png")});
+  await page.locator("#forge-close").click();await page.evaluate(()=>showView("equipment",{toggle:false}));
+  assert.equal(await page.locator(".equipment-slot").count(),7);
+  const unequip=()=>page.locator('#equipment-view [data-recipe="epee_lisiere"] [data-equipment-action="unequip"]');
+  await unequip().click();await page.locator('#equipment-view [data-recipe="epee_lisiere"] [data-equipment-action="equip"]').click();await unequip().waitFor({state:"visible"});
+  await page.waitForFunction(()=>!busy);
+  await page.locator("#equipment-slot").selectOption("weapon");
+  await page.locator('#equipment-view [data-recipe="epee_lisiere"]').screenshot({path:path.resolve(".data/weapons-equipment.png")});
+  await page.reload();await page.waitForFunction(()=>typeof session!=="undefined"&&session?.tutorial?.players.some(p=>p.gear.some(g=>g.recipe==="epee_lisiere")));
+  await page.evaluate(()=>showView("inventory",{toggle:false}));await page.setViewportSize({width:390,height:844});
+  await page.locator('#inventory-gear [data-recipe="epee_lisiere"]').waitFor({state:"visible"});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.screenshot({path:path.resolve(".data/weapons-inventory-mobile.png")});
+  assert.deepEqual(errors,[]);
+  console.log(JSON.stringify({passed:true,checks:["class-filtered forge","real weapon crafting and material deduction","server rejects incompatible class","shared-class labels","seven equipment slots","unequip and equip","reload persistence","mobile inventory"]}));
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

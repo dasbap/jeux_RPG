@@ -165,10 +165,11 @@ def test_graphical_controller_exposes_every_gameplay_catalog(tmp_path):
         root.update_idletasks()
         assert all(section in screen.tables for section, _ in controller_gameplay.SECTIONS)
         for section, _ in controller_gameplay.SECTIONS:
-            if section != 'equipment_sets':
-                assert screen.tables[section].get_children()
-            else:
-                assert len(screen.tables[section].get_children()) == len(screen.project.content['gameplay']['equipment_sets'])
+            expected = controller_gameplay.rows(screen.project, section)
+            table = screen.tables[section]
+            assert set(table.get_children()) == {str(key) for key, _, _ in expected}
+            for key, name, details in expected:
+                assert table.item(str(key), 'values') == (str(name), str(details))
         screen.root.update()
         assert all(screen.label(key) != key for group in screen.project.content['gameplay']['rules'].values() for key in group if key not in ('map','x','y'))
     finally:

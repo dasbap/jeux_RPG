@@ -13,19 +13,26 @@ Depuis la racine du dépôt, sous Windows 10/11 x64 :
 .\build-client.cmd
 ```
 
-Prérequis de construction : **Node.js 22.12 ou plus récent** et **Python 3.11 ou
-plus récent**, accessibles dans le terminal. La commande installe les outils
-verrouillés dans `desktop/package-lock.json`, régénère le client à partir de
-`jeuxRPG/multiplayer/web` et construit :
+Prérequis de construction : **Docker Desktop démarré en mode conteneurs Linux**.
+Python, Node, Wine et les bibliothèques Linux sont fournis par
+`deploy/build/Dockerfile`. La commande copie les sources du dépôt dans l’image,
+installe les dépendances verrouillées dans `desktop/package-lock.json`, exporte
+le Builder et régénère le client à partir de `jeuxRPG/multiplayer/web` :
 
 ```text
 dist/client/Jeux-RPG.exe
+dist/windows/Jeux-RPG.exe
 ```
 
 Ce fichier est portable : copier uniquement ce `.exe` sur un autre PC Windows x64.
 Le joueur n'a besoin ni de Python, ni de Node.js, ni d'une base de données locale
 à installer. Internet est nécessaire à la construction et au multijoueur, pas au
 solo. L'exécutable n'est pas signé avec un certificat d'éditeur.
+
+Sous Linux/macOS : `bash scripts/build-docker.sh windows`. Ni Python ni Node ni
+WSL ne sont nécessaires sur la machine de construction. Les téléchargements du
+premier build nécessitent Internet. Les sauvegardes ne sont pas montées dans le
+conteneur. Voir [la recette Docker](CONSTRUCTION_MULTIPLATEFORME.md).
 
 Après une modification du client web, relancer la même commande. La construction
 est un instantané des sources locales : elle ne télécharge pas automatiquement
@@ -60,12 +67,15 @@ Contrôles automatisés :
 npm --prefix desktop test
 npm install --prefix .ui-test playwright@1.56.1
 node scripts/verify_desktop.cjs
-node scripts/verify_desktop.cjs --packaged
+node scripts/verify_portable_windows.cjs
 ```
 
-Le dernier contrôle nécessite une construction préalable. Il lance le véritable
-client compilé, bloque HTTP/HTTPS/WebSocket, crée une partie solo, ferme
-l'application puis vérifie la reprise au redémarrage dans un profil de test.
+Le dernier contrôle nécessite une construction préalable. Il lance le portable
+exact de `dist/windows`, bloque les requêtes web externes, crée une partie solo,
+vérifie le rendu 3D, la barre masquée et le centrage du dialogue, ferme
+l’application puis vérifie la reprise au redémarrage dans un profil de test.
+Node/Playwright sont nécessaires uniquement sur la machine qui effectue cette
+validation Windows. Le build lui-même continue de dépendre uniquement de Docker.
 
 Le workflow GitHub Actions **Client Windows** fournit aussi le `.exe` comme
 artefact et peut être lancé manuellement. `desktop/assets` et `dist` sont générés

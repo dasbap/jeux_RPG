@@ -33,10 +33,11 @@ def test_client_sends_authenticated_checkpoint(monkeypatch):
 
     monkeypatch.setattr("urllib.request.urlopen", fake)
     D1Client(ENV).persist_checkpoint(
-        42, {
+        42,
+        {
             ("players", ("alice",)): {"id": "alice", "name": "Alice"},
             ("meta", ("runtime_fence",)): {"key": "runtime_fence", "value": "41"},
-        }
+        },
     )
     request, timeout = calls[0]
     assert timeout == 30
@@ -92,9 +93,7 @@ def test_sqlite_fence_guard_is_atomic():
         "CREATE TABLE progress(id TEXT PRIMARY KEY,value TEXT NOT NULL);"
     )
     sql = (
-        Path(__file__).resolve().parents[1]
-        / "cloudflare"
-        / "0004_fence_guard.sql"
+        Path(__file__).resolve().parents[1] / "cloudflare" / "0004_fence_guard.sql"
     ).read_text()
     db.executescript(sql)
     db.execute("INSERT INTO meta VALUES('runtime_fence','20')")
@@ -129,6 +128,33 @@ def test_complete_snapshot_is_accepted(monkeypatch):
     data = dict.fromkeys(TABLES, [])
     monkeypatch.setattr(D1Client, "request", lambda *_args, **_kwargs: {"data": data})
     assert D1Client(ENV).load_snapshot(20) == data
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "invalid", "9007199254740992"])
+def test_claim_rejects_invalid_generation(monkeypatch, value):
+    from jeuxRPG.multiplayer.realtime_store import TABLES
+
+    data = {table: [] for table in TABLES}
+    data["meta"] = [{"key": "runtime_fence", "value": value}]
+    monkeypatch.setattr(D1Client, "request", lambda *_args, **_kwargs: {"data": data})
+    with pytest.raises(D1StorageError, match="Génération"):
+        D1Client(ENV).claim_snapshot()
+
+
+def test_claim_returns_generation_and_complete_snapshot(monkeypatch):
+    from jeuxRPG.multiplayer.realtime_store import TABLES
+
+    data = {table: [] for table in TABLES}
+    data["meta"] = [{"key": "runtime_fence", "value": "42"}]
+    operations = []
+
+    def request(_, operation):
+        operations.append(operation)
+        return {"data": data}
+
+    monkeypatch.setattr(D1Client, "request", request)
+    assert D1Client(ENV).claim_snapshot() == (42, data)
+    assert operations == ["claim_snapshot"]
 
 
 @pytest.mark.parametrize("body", [b"null", b"[]", b'"error"', b"invalid"])

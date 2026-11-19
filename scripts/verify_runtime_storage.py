@@ -2,21 +2,23 @@ import os
 from pathlib import Path
 
 from dotenv import dotenv_values
-from redis import Redis
-from redis.exceptions import (
-    AuthenticationError,
-    ConnectionError,
-    ResponseError,
-    TimeoutError,
-)
 
+from jeuxRPG.multiplayer.d1_client import D1Client
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
 from jeuxRPG.multiplayer.redis_configuration import redis_url
-from jeuxRPG.multiplayer.d1_client import D1Client
 from jeuxRPG.multiplayer.storage_configuration import database_backend
 
 
 def failure_code(error):
+    if not type(error).__module__.startswith("redis"):
+        return "d1_storage" if type(error).__module__.endswith("d1_client") else "runtime_storage"
+    from redis.exceptions import (
+        AuthenticationError,
+        ConnectionError,
+        ResponseError,
+        TimeoutError,
+    )
+
     if isinstance(error, AuthenticationError):
         return "redis_authentication"
     if isinstance(error, TimeoutError):
@@ -33,6 +35,16 @@ def failure_code(error):
 
 def verify(environment):
     mode = "online"
+    if environment.get("RPG_RUNTIME_MODE") == "d1":
+        result = D1Client(environment).health()
+        if result.get("runtime_transactions") != 1:
+            raise RuntimeError("Worker D1 sans transactions atomiques")
+        D1Client(environment).runtime_snapshot()
+        print("Stockage D1 transactionnel verifie, sans Redis.")
+        return mode
+    from redis import Redis
+    from redis.exceptions import ResponseError
+
     url = redis_url(environment)
     if not url:
         raise RuntimeError("missing_configuration")

@@ -28,6 +28,7 @@ from .command_journal import (
     prune_receipts,
 )
 from .distributed import PresenceRegistry
+from .living_world_service import LivingWorldMixin
 from .network_log import create_chat_logger
 
 
@@ -58,7 +59,7 @@ def world_context(party):
     )
 
 
-class GameService(AccountMixin):
+class GameService(AccountMixin, LivingWorldMixin):
     from jeuxRPG._class.res.character.class_models import playable
 
     classes = tuple(playable())
@@ -75,6 +76,9 @@ class GameService(AccountMixin):
         connection=None,
         initialize_schema=True,
         presence_registry=None,
+        living_world=None,
+        world_speed=1,
+        world_seed="jeux-rpg-living-world-v1",
     ):
         from .content import DATA, validate_references
         from .fields import MAPS
@@ -127,6 +131,19 @@ class GameService(AccountMixin):
         if initialize_schema:
             initialize(self.db)
         self._initialize_clock(clock)
+        self.world_life = None
+        enabled = (
+            living_world
+            if living_world is not None
+            else os.environ.get("RPG_LIVING_WORLD") == "1"
+        )
+        if enabled:
+            from .living_world import LivingWorld
+            from .living_world_catalog import build_catalog
+
+            self.world_life = LivingWorld(
+                self.db, build_catalog(world_seed, world_speed)
+            )
         if connection is None:
             with self._transaction():
                 for row in self.db.execute(
@@ -188,6 +205,7 @@ class GameService(AccountMixin):
     def tick(self, session_id=None, prepare_views=True, active_players=None):
         with self._transaction():
             now = self._now()
+            self._advance_world(now)
             self._expire(now)
             query = "SELECT t.session_id FROM tutorials t JOIN sessions s ON s.id=t.session_id WHERE s.state='running'"
             parameters = ()
@@ -226,7 +244,15 @@ class GameService(AccountMixin):
                 try:
                     party = json.loads(current["data"])
                     before = json.dumps(party, sort_keys=True)
+                    from . import guard_patrols
+
+                    guard_context = guard_patrols.attach(
+                        self, party, row["session_id"], now
+                    )
                     messages = tutorial.advance(party, now, self.random)
+                    guard_patrols.commit(
+                        self, party, guard_context, row["session_id"], now
+                    )
                 except Exception:
                     last = self._tick_errors.get(row["session_id"], -60)
                     if time.monotonic() - last >= 60:
@@ -253,7 +279,7 @@ class GameService(AccountMixin):
                 revision = self.db.execute(
                     "SELECT revision FROM sessions WHERE id=?", (row["session_id"],)
                 ).fetchone()[0]
-                if not prepare_views:
+                if not prepare_views or self.world_life is not None:
                     continue
                 for player_id in party["characters"]:
                     key = (row["session_id"], player_id)
@@ -502,6 +528,7 @@ class GameService(AccountMixin):
             )
             if (
                 cached
+                and self.world_life is None
                 and cached[0] == session["revision"]
                 and 0 <= now - cached[1] <= 0.6
             ):
@@ -509,7 +536,30 @@ class GameService(AccountMixin):
             else:
                 party = json.loads(adventure[0])
                 self.record_party_locations(party)
-                result["tutorial"] = tutorial.view(party, player["id"], now)
+                life = self._living_view(player, party, now)
+                result["tutorial"] = tutorial.view(
+                    party,
+                    player["id"],
+                    now,
+                    traveller=life["merchant"] if life else None,
+                )
+                if life:
+                    if party.get("field_map"):
+                        explored = {
+                            tuple(point)
+                            for point in (result["tutorial"].get("battle") or {}).get(
+                                "explored", []
+                            )
+                        }
+                        life["nearby"] = [
+                            actor
+                            for actor in life["nearby"]
+                            if tuple(
+                                round(coordinate) for coordinate in actor["position"]
+                            )
+                            in explored
+                        ]
+                    result["tutorial"]["living_world"] = life
                 result["tutorial"]["world_context"] = world_context(party)
         return result
 
@@ -743,12 +793,15 @@ class GameService(AccountMixin):
             "strike": {"session_id", "revision", "target"},
             "rest": {"session_id", "revision"},
             "skill": {"session_id", "revision", "skill_name", "target"},
+            "coach": {"session_id", "revision", "station", "destination"},
             "travel": {"session_id", "revision", "destination", "world_context"},
             "move": {"session_id", "revision", "destination", "world_context"},
             "talk": {"session_id", "revision", "npc", "world_context"},
             "story": {"session_id", "revision", "npc", "choice"},
             "craft": {"session_id", "revision", "recipe"},
             "upgrade": {"session_id", "revision", "recipe"},
+            "equip": {"session_id", "revision", "recipe"},
+            "unequip": {"session_id", "revision", "recipe"},
             "endgame_claim": {"session_id", "revision", "challenge"},
             "buy": {"session_id", "revision", "npc", "item", "quantity"},
             "sell": {"session_id", "revision", "npc", "item", "quantity"},
@@ -760,7 +813,11 @@ class GameService(AccountMixin):
                 "quantity",
                 "gold",
             },
+            "world_help": {"session_id", "revision", "town", "kind"},
+            "world_buy": {"session_id", "revision", "item", "quantity", "unit_price"},
             "battle_move": {"session_id", "revision", "encounter", "x", "y", "path"},
+            "walk": {"session_id", "revision", "encounter", "x", "y", "path"},
+            "move_axis": {"session_id", "revision", "encounter", "x", "y"},
             "stop_move": {"session_id", "revision", "encounter"},
             "hide": {"session_id", "revision"},
             "harvest": {"session_id", "revision", "target"},
@@ -778,6 +835,8 @@ class GameService(AccountMixin):
             "leave_battle": {"session_id", "revision"},
         }
         tactical_actions = {
+            "walk",
+            "move_axis",
             "battle_move",
             "stop_move",
             "unit_order",
@@ -799,6 +858,17 @@ class GameService(AccountMixin):
                 and not (
                     action in tactical_actions
                     and set(params) == allowed[action] - {"encounter"}
+                )
+                and not (
+                    action in ("move_axis", "stop_move", "strike", "skill", "harvest")
+                    and set(params)
+                    in (
+                        allowed[action] | {"position"},
+                        (allowed[action] - {"encounter"}) | {"position"},
+                        allowed[action] | {"position", "position_seq"},
+                        (allowed[action] - {"encounter"})
+                        | {"position", "position_seq"},
+                    )
                 )
                 and not (
                     action in ("move", "travel")
@@ -922,7 +992,10 @@ class GameService(AccountMixin):
             return self._execute_tutorial(player, action, params, now, compact)
         if action == "trade":
             return self._execute_trade(player, action, params, now, compact)
+        if action in ("world_help", "world_buy"):
+            return self._execute_living_world(player, action, params, now, compact)
         if action in (
+            "coach",
             "enter_zone",
             "explore",
             "strike",
@@ -934,9 +1007,13 @@ class GameService(AccountMixin):
             "story",
             "craft",
             "upgrade",
+            "equip",
+            "unequip",
             "endgame_claim",
             "buy",
             "sell",
+            "walk",
+            "move_axis",
             "battle_move",
             "stop_move",
             "hide",
@@ -946,6 +1023,7 @@ class GameService(AccountMixin):
             "unit_order",
             "unit_skill",
         ):
+            # Directions and free paths share the existing authenticated adventure flow.
             return self._execute_adventure(player, action, params, now, compact)
         if action in ("create", "join") and self._active(player_id):
             raise GameError(

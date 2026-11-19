@@ -45,9 +45,12 @@ function applyInterface(value = {}) {
   document.body.classList.toggle("ui-relaxed-quests",quests.compact===false);
 }
 function renderGame(adventure, preserveBattle = false) {
+  globalThis.RPGLoading?.scene(adventure);
   applyInterface(adventure.interface);
   syncRegionTravel(adventure);
   renderJourney(adventure);
+  if (adventure.living_world || $("world-life-view")) renderLivingWorld(adventure);
+  if (currentView === "bestiary") renderBestiary(adventure);
   if ($("craft-view").parentElement !== $("battle")) $("battle").append($("craft-view"));
   if ($("combat-view").firstElementChild !== $("fighters")) $("combat-view").prepend($("fighters"));
   const fighting = Boolean(adventure.battle);
@@ -55,7 +58,7 @@ function renderGame(adventure, preserveBattle = false) {
     if ($("message").parentElement !== $("combat-action-panel")) $("combat-action-panel").prepend($("message"));
   } else if ($("message").parentElement === $("combat-action-panel")) $("registration").before($("message"));
   $("combat-layout").hidden = !fighting;
-  $("field-camera").hidden = false;
+  $("field-camera").hidden = true;
   let touchMove = $("field-move-selected");
   if (!touchMove) {
     touchMove = document.createElement("button");
@@ -96,7 +99,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("chat-toggle").hidden = gameMode === "solo" || !session?.tutorial;
   if (!fighting) combatFullscreenRequested = false;
   if (!fighting && document.fullscreenElement === $("battle")) document.exitFullscreen?.().catch(() => {});
-  $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette ou boutons pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
+  $("map-help").textContent = adventure.field_map ? "Carte fixe : double clic pour marcher, molette pour zoomer, flèches pour déplacer la vue. Les sorties relient les zones." : fighting ? "Un clic inspecte les entités d’une case ; un double clic déplace le personnage ou les alliés contrôlés. Les blocs bruns servent de couverture." : "Un clic consulte un lieu ou un point ; un double clic lance le déplacement.";
   $("character-menu").hidden = false;
   $("lobby").hidden = fighting;
   const context = `${session.id}:${adventure.step}:${fighting}:${adventure.encounter_number || 0}`;
@@ -112,12 +115,13 @@ function renderGame(adventure, preserveBattle = false) {
   }
   touchMove.disabled = busy || !inspectedCell;
   const me = adventure.players.find(player => player.id === session.me);
+  renderCoachStations(adventure);
   const vest = me.gear.find(piece => piece.slot === "torso");
   const fieldInteractions = adventure.field_interactions || [];
   const fieldSites = new Set(fieldInteractions.map(site => site.id));
   const worldPoints = adventure.world?.places?.flatMap(place => place.points || []) || [];
   const currentPoint = worldPoints.find(point => point.id === adventure.position);
-  const nearbyNpc = fieldInteractions.map(site => ({...worldPoints.find(point => point.id === site.id), ...site})).find(site => site.dialogue || site.type === "pnj") || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
+  const nearbyNpc = fieldInteractions.filter(site => !site.coach_stop).map(site => ({...worldPoints.find(point => point.id === site.id), ...site})).find(site => site.dialogue || site.type === "pnj") || (!fighting && currentPoint?.type === "pnj" ? currentPoint : null);
   const canTalk = Boolean(nearbyNpc) && !adventure.moving;
   const atForge = (adventure.position === "forge" && !fighting || fieldSites.has("forge")) && !adventure.moving;
   const forgeUnlocked = adventure.forge_unlocked ?? adventure.quest === "completed";
@@ -174,9 +178,11 @@ function renderGame(adventure, preserveBattle = false) {
   if (sectionChanged("character", [session.id, me])) {
   renderVitals("character-vitals", [me, ...me.invocations]);
   $("character-details").replaceChildren();
+  const stats=menuNode("dl","character-stat-grid");
+  for(const [key,label]of [["force","Force"],["endurance","Endurance"],["intelligence","Intelligence"],["sagesse","Sagesse"]]){const tile=menuNode("div");tile.append(menuNode("dt","",label),menuNode("dd","",me.stats[key]));stats.append(tile);}$("character-details").append(stats);
+  const experience=menuNode("progress","character-experience");experience.max=me.next_level_exp;experience.value=me.exp;experience.setAttribute("aria-label",`Expérience du niveau ${me.level}`);$("character-details").append(experience);
   for (const text of [
     `Expérience : ${me.exp}/${me.next_level_exp} · niveau ${me.level}`,
-    `Force ${me.stats.force} · Endurance ${me.stats.endurance} · Intelligence ${me.stats.intelligence} · Sagesse ${me.stats.sagesse}`,
     `Invocations : ${me.invocations.map(i => `${i.name} (${i.hp} PV)`).join(", ") || "aucune"}`,
     `Statuts : ${statusText(me)}`,
     `Compétences acquises : ${me.skills.map(s => `${s.name} (${s.cost} ${s.energy})`).join(", ")}`,
@@ -214,7 +220,7 @@ function renderGame(adventure, preserveBattle = false) {
     if (!adventure.moving && !adventure.world.routes.some(route => route.id === adventure.position)) action("tutorial-actions", "Explorer à pied", "enter_zone");
     if (!adventure.field_mode && ["clearing", "clearing_fight", "lisiere", "hunt", "training"].includes(adventure.position)) action("tutorial-actions", "Explorer ce lieu", "explore");
   }
-  if (!fighting) { if (sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
+  if (!fighting) { if (!(adventure.coaches?.enabled && adventure.moving) && currentView !== "bestiary" && sectionChanged("world", [adventure.world, me, currentView, mapPlace, mapPoint, mapMarker, adventure.position, adventure.moving, adventure.travel_remaining_real_seconds, busy])) renderWorld(adventure, me); renderAchievements(adventure.achievements); }
   $("npc-title").textContent = nearbyNpc ? `${nearbyNpc.interaction==="inspect"?"Examiner":"Parler à"} ${nearbyNpc.name}` : "Dialogue";
   $("npc-dialogue").textContent = nearbyNpc ? `${nearbyNpc.name} : ${adventure.narrative?.greetings?.[nearbyNpc.id] || nearbyNpc.dialogue || nearbyNpc.description || "Bonjour, voyageur."}` : "Approchez-vous d'un PNJ pour lui parler.";
   if (canTalk && nearbyNpc) action("npc-actions", nearbyNpc.interaction==="inspect"?"Examiner":nearbyNpc.id === "forge" ? "Parler à Garrik" : "Parler", "talk", {npc: nearbyNpc.id});
@@ -227,19 +233,23 @@ function renderGame(adventure, preserveBattle = false) {
   if (vest && adventure.step === "travel" && atForge && !adventure.moving) action("craft-actions", "Rejoindre Village de Brume", "travel", {destination: "brume"});
   $("forge-status").textContent = forgeUnlocked ? "Forge de Rosée débloquée. Fabriquez et améliorez chaque équipement indépendamment." : `Terminez « ${adventure.forge_unlock_quest?.name || "Protéger la lisière"} » auprès de Mira pour utiliser la forge de Rosée. Vous pouvez continuer à explorer librement.`;
   $("craft-materials").textContent = `Votre sac : ${Object.entries(me.inventory).map(([item, quantity]) => `${quantity} ${materialName(item)}`).join(", ") || "aucun matériau"}.`;
-  if (sectionChanged("forge", [session.id, atForge, me.forge, adventure.material_names, adventure.quest, forgeUnlocked, busy])) {
-  if (sectionChanged("forge-catalogue", [session.id, me.id, me.forge, me.inventory, adventure.material_names, adventure.step, forgeUnlocked, busy])) {
+  if (sectionChanged("forge", [session.id, atForge, me.class_name, $("forge-class-filter")?.value, me.forge, me.equipment_sets, adventure.material_names, adventure.quest, forgeUnlocked, busy])) {
+  if (sectionChanged("forge-catalogue", [session.id, me.id, me.class_name, $("forge-class-filter")?.value, me.forge, me.equipment_sets, me.inventory, adventure.material_names, adventure.step, forgeUnlocked, busy])) {
   $("forge-catalogue").replaceChildren();
   if (atForge) for (const recipe of me.forge) {
+    if($("forge-class-filter")?.value!=="all"&&recipe.compatible===false)continue;
+    const owned=recipe.owned||recipe.equipped;
     const card = document.createElement("article"); card.className = "codex-card"; card.dataset.recipe = recipe.recipe;
     if (adventure.step === "craft" && recipe.slot === "torso") { card.classList.add("quest-recipe"); const goal = document.createElement("p"); goal.textContent = "Objectif de Mira"; card.append(goal); }
-    const title = document.createElement("h4"); title.textContent = recipe.equipped ? `${recipe.equipped.name} +${recipe.equipped.level}` : recipe.name; card.append(title);
+    card.append(menuIcon(recipe.weapon_type||recipe.slot));
+    const compatibility=itemClasses(recipe,me);if(compatibility)card.append(compatibility);
+    const title = document.createElement("h4"); title.textContent = owned ? `${owned.name} +${owned.level}` : recipe.name; card.append(title);
     const info = document.createElement("p"); info.textContent = recipe.cost ? `Coût : ${Object.entries(recipe.cost).map(([k,v]) => `${v} ${materialName(k)}`).join(", ")}` : `Amélioration maximale +${recipe.max_level ?? forgeMaximum} atteinte.`; card.append(info);
     if (recipe.cost && !recipe.affordable) { const missing = document.createElement("p"); missing.textContent = `Il manque : ${Object.entries(recipe.cost).filter(([item, quantity]) => (me.inventory[item] || 0) < quantity).map(([item, quantity]) => `${quantity - (me.inventory[item] || 0)} ${materialName(item)}`).join(", ")}.`; card.append(missing); }
-    const bonus = document.createElement("p"); bonus.textContent = `Bonus : ${equipmentBonuses(recipe.equipped || recipe)}.`; card.append(bonus);
-    if(recipe.set_name){const set=document.createElement("p");set.className="set-membership";set.textContent=`${recipe.set_name} · Bonus à 2, 4 et 5 pièces équipées.`;card.append(set);}
+    const bonus = document.createElement("p"); bonus.textContent = `Bonus : ${equipmentBonuses(owned || recipe)}.`; card.append(bonus);
+    const set=itemSetBonuses(recipe,me);if(set)card.append(set);
     const adjective = document.createElement("p"); adjective.textContent = `À +${recipe.max_level ?? forgeMaximum} : ${recipe.name} ${recipe.adjective}. Chaque pièce s'améliore indépendamment.`; card.append(adjective);
-    if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = recipe.equipped ? "upgrade" : "craft"; craft.textContent = recipe.equipped ? `Améliorer à +${recipe.equipped.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || !forgeUnlocked || !recipe.affordable; craft.addEventListener("click", () => tutorialCommand(recipe.equipped ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
+    if (recipe.cost) { const craft = document.createElement("button"); craft.dataset.action = owned ? "upgrade" : "craft"; craft.textContent = owned ? `Améliorer à +${owned.level + 1}` : "Fabriquer et équiper"; craft.disabled = busy || !forgeUnlocked || !recipe.affordable || recipe.compatible===false; craft.title=recipe.compatibility_reason||""; craft.addEventListener("click", () => tutorialCommand(owned ? "upgrade" : "craft", {recipe: recipe.recipe})); card.append(craft); }
     $("forge-catalogue").append(card);
   }
   }
@@ -275,7 +285,7 @@ function renderGame(adventure, preserveBattle = false) {
     const playerUnit = adventure.battle.players[me.id];
     if (playerUnit.hidden && playerUnit.route.length) $("combat-status").textContent = "Déplacement discret : vitesse réduite, dissimulation maintenue tant que vous restez couvert.";
   }
-  if (fighting && !preserveBattle) renderBattle(adventure, me);
+  if (fighting && !preserveBattle && !(currentView === "bestiary" && document.body.classList.contains("hud-menu-open"))) renderBattle(adventure, me);
   if (fighting) {
     renderUnitControls(adventure, me, action);
     renderSelection(adventure, me);
@@ -311,7 +321,7 @@ function renderGame(adventure, preserveBattle = false) {
   $("region-view").querySelector("h3").textContent = fighting ? "Carte de la région" : "Destination";
   const detailsParent = regionOpen ? $("region-view") : $("map-view");
   if ($("map-details").parentElement !== detailsParent) detailsParent.append($("map-details"));
-  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "bestiary", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.equipment_sets, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, $("bestiary-map").value, $("bestiary-search").value, $("bestiary-sort").value, busy])) {
+  if (document.body.classList.contains("hud-menu-open") && ["map", "equipment", "inventory", "achievements"].includes(currentView) && sectionChanged("hud-consultation", [session.id, currentView, adventure.world, me.gear, me.stored_gear, me.equipment_locked_reason, me.equipment_sets, me.forge, me.inventory, adventure.achievements, socialState?.team, mapPlace, mapPoint, mapMarker, busy])) {
     renderWorld(adventure, me, $("region-map"), {overview: fighting});
     renderAchievements(adventure.achievements);
     if (regionJustOpened) $("map-details").open = true;

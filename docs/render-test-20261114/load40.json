@@ -1,0 +1,20 @@
+{
+  "players": 40,
+  "authenticated_connections": 40,
+  "all_connected": true,
+  "configured_seconds": 10,
+  "elapsed_seconds": 15.14,
+  "state_responses": 128,
+  "pushes": 50,
+  "received_bytes": 6744862,
+  "latency_ms": {
+    "p50": 4315.49,
+    "p95": 5611.29,
+    "p99": 5694.88,
+    "max": 5707.22
+  },
+  "errors": [],
+  "combat_load": false,
+  "production_capacity_validated": false,
+  "ready_after": true
+}

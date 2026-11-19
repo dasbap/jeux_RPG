@@ -1,49 +1,70 @@
 "use strict";
 function renderCharacters() {
   if (!accountState) return;
-  soloTransport?.subscribe(false);
+  toggleGameMenu(false);
+  document.body.classList.add("character-select");
+  soloTransport?.subscribe(false)?.catch?.(error=>message(error.message,true));
   $("mode-online").setAttribute("aria-pressed", String(gameMode === "online"));
   $("mode-solo").setAttribute("aria-pressed", String(gameMode === "solo"));
-  $("mode-status").textContent = gameMode === "solo" ? "Solo · sauvegarde sur cet appareil uniquement. Aucun transfert vers le mode en ligne." : "En ligne · personnages sauvegardés sur le serveur.";
-  document.body.classList.remove("combat-active", "hud-menu-open");
-  $("characters").hidden = false;
-  $("registration").hidden = true;
-  $("lobby").hidden = true;
-  $("battle").hidden = true;
-  $("character-menu").hidden = true;
-  $("chat-panel").hidden = true;
+  $("mode-status").textContent = gameMode === "solo" ? "Solo · personnages sauvegardés sur cet appareil." : "En ligne · personnages sauvegardés sur le serveur.";
+  document.body.classList.remove("combat-active", "hud-menu-open", "chat-open");
+  for(const id of ["registration","lobby","battle","character-menu","chat-panel"])$(id).hidden=true;
+  $("characters").hidden=false;
   $("account-title").textContent = `${accountState.account.username} · mes personnages`;
+  let help=$("character-roster-help");
+  if(!help){help=document.createElement("p");help.id="character-roster-help";$("mode-status").after(help);}
+  help.textContent=`${accountState.characters.length} personnage(s) · Un par classe, chacun avec sa progression.`;
   $("character-list").replaceChildren();
   for (const character of accountState.characters) {
-    const button = document.createElement("button");
-    button.textContent = `${character.name} · ${classes[character.class_name] || character.class_name}`;
-    button.addEventListener("click", () => selectCharacter({action: "select", player_id: character.id}));
+    const button=document.createElement("button");button.type="button";button.dataset.character=character.id;
+    const selected=character.id===accountState.selected;button.setAttribute("aria-pressed",String(selected));
+    for(const [className,text] of [["character-card-name",character.name],["character-card-class",classes[character.class_name]||character.class_name],["character-card-state",selected?"Dernier personnage joué · Reprendre":"Choisir ce personnage"]]){
+      const span=document.createElement("span");span.className=className;span.textContent=text;button.append(span);
+    }
+    button.addEventListener("click",()=>selectCharacter({action:"select",player_id:character.id}));
     $("character-list").append(button);
   }
-  const owned = new Set(accountState.characters.map(character => character.class_name));
-  for (const option of $("new-character-class").options) option.disabled = owned.has(option.value);
-  $("new-character-class").value = [...$("new-character-class").options].find(option => !option.disabled)?.value || "";
-  $("character-create").hidden = !$("new-character-class").value;
-  $("character-cancel").hidden = !accountState.selected;
+  const owned=new Set(accountState.characters.map(character=>character.class_name));
+  for(const option of $("new-character-class").options)option.disabled=owned.has(option.value);
+  $("new-character-class").value=[...$("new-character-class").options].find(option=>!option.disabled)?.value||"";
+  $("character-create").hidden=!$("new-character-class").value;
+  let title=$("character-create-title");
+  if(!title){title=document.createElement("h3");title.id="character-create-title";$("character-create").prepend(title);}
+  title.textContent=accountState.characters.length?"Créer un autre personnage":"Créer votre premier personnage";
+  $("character-cancel").hidden=!accountState.selected;
+}
+async function openCharacterRoster(){
+  if(busy)return;
+  busy=true;stateEpoch++;
+  const loading=globalThis.RPGLoading?.begin("Mes personnages","Sauvegarde de votre aventure et lecture des personnages…");
+  try{
+    await soloTransport?.subscribe(false);
+    await soloTransport?.flush();
+    accountState=await api("/api/account/me");renderCharacters();
+  }catch(error){message(error.message,true);if($("characters").hidden)soloTransport?.subscribe(true)?.catch?.(()=>{});}
+  finally{busy=false;loading?.finish();scheduleRefresh();}
 }
 async function selectCharacter(body) {
-  if (busy) return;
-  busy = true;
-  stateEpoch++;
-  try {
-    accountState = await api("/api/account/character", body);
-    if (gameMode === "solo") token = accountState.token;
-    session = null;
-    sessionId = "";
-    presenceState = null;
-    socialState = null;
-    currentView = "map";
-    sectionSignatures.clear();
-    $("characters").hidden = true;
-    soloTransport?.subscribe(true);
-    remember();
-  } catch (error) { message(error.message, true); }
-  finally { busy = false; if ($("characters").hidden) await refresh(true); }
+  if(busy)return;
+  busy=true;stateEpoch++;
+  const loading=globalThis.RPGLoading?.begin(body.action==="create"?"Création du personnage":"Reprise du personnage","Préparation de votre aventure…");
+  let nextState=null;
+  try{
+    await soloTransport?.subscribe(false);
+    await soloTransport?.flush();
+    accountState=await api("/api/account/character",body);
+    if(gameMode==="solo")token=accountState.token;
+    session=null;sessionId="";lastPlayer=null;presenceState=null;socialState=null;
+    bundleToken="";bundleHashes={};bundleValues={};pendingBattleMove=null;
+    globalThis.RPGMotion?.rebase();
+    currentView="map";viewContext="";sectionSignatures.clear();
+    const state=await api("/api/state");
+    if(state.player?.id!==accountState.selected)throw new Error("Le personnage reçu ne correspond pas à votre sélection. Réessayez.");
+    session=state.session||null;sessionId=session?.id||"";
+    $("characters").hidden=true;remember();render(state);nextState=state;
+    await soloTransport?.subscribe(true);
+  }catch(error){if(accountState)renderCharacters();message(error.message,true);}
+  finally{busy=false;if(nextState&&$("characters").hidden)render(nextState);loading?.finish();scheduleRefresh();}
 }
 async function socialAction(action, params = {}) {
   if (busy) return;
@@ -121,9 +142,7 @@ function renderSocial() {
   for (let index = 1; index <= (presence?.realms || 0); index++) if (index !== presence.realm) button(`Rejoindre le serveur ${index}`, "realm", {realm: index});
   for (const child of [...travel.children]) if (!travelNodes.has(child)) child.remove();
 }
-for (const id of ["choose-character", "choose-character-options"]) $(id).addEventListener("click", async () => {
-  try { accountState = await api("/api/account/me"); renderCharacters(); } catch (error) { message(error.message, true); }
-});
+for (const id of ["choose-character", "choose-character-options", "choose-character-menu"]) $(id)?.addEventListener("click", openCharacterRoster);
 $("character-create").addEventListener("submit", event => {event.preventDefault(); selectCharacter({action: "create", name: $("new-character-name").value, class_name: $("new-character-class").value});});
 $("character-cancel").addEventListener("click", () => {$("characters").hidden = true; soloTransport?.subscribe(true); sectionSignatures.clear(); refresh(true);});
 $("social-search").addEventListener("submit", event => {event.preventDefault(); socialAction("friend_add", {username: $("social-name").value.trim()});});

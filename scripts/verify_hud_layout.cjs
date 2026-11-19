@@ -8,7 +8,7 @@ const fixture=fixtures.combat;
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.RPG_BROWSER_EXECUTABLE});
  try{
-  for(const [width,height] of [[1440,900],[390,844],[844,390]]){
+  for(let [width,height] of [[1440,900],[390,844],[844,390]]){
    const mobile=width<751||height<500;
    const page=await browser.newPage({viewport:{width,height},isMobile:mobile,hasTouch:mobile,reducedMotion:'reduce'});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -18,6 +18,18 @@ const fixture=fixtures.combat;
    await page.addStyleTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web/style.css'),'utf8')});
    await page.evaluate(()=>{window.fetch=()=>new Promise(()=>{});window.setInterval=()=>0;});
    for(const file of ['map_artwork.js','mobile_controls.js',...require('./client_source.cjs').files]) await page.addScriptTag({content:fs.readFileSync(path.join(root,'jeuxRPG/multiplayer/web',file),'utf8')});
+   if(mobile&&height>width){
+    await page.locator('#landscape-required').waitFor({state:'visible'});
+    await page.keyboard.press('Escape');
+    assert(await page.locator('#landscape-required').isVisible(),'Le portrait ne peut pas être débloqué par Échap');
+    assert(await page.evaluate(()=>RPGLandscape.blocked),'Téléphone portrait bloqué');
+    fs.mkdirSync(path.join(root,'hud-captures'),{recursive:true});
+    await page.screenshot({path:path.join(root,'hud-captures','portrait-required.png')});
+    [width,height]=[height,width];
+    await page.setViewportSize({width,height});
+    await page.locator('#landscape-required').waitFor({state:'hidden'});
+    assert(!await page.evaluate(()=>RPGLandscape.blocked),'Le paysage réactive le jeu');
+   }
    await page.evaluate(adventure=>{
     adventure.interface={...adventure.interface,hud:{zone_banner_seconds:15}};
     window.eval(`token='fixture';session={id:'layout',me:'p0',tutorial:${JSON.stringify(adventure)},events:[]};document.getElementById('battle').hidden=false;document.getElementById('tutorial-panel').hidden=false;renderGame(session.tutorial);`);
@@ -152,9 +164,9 @@ const fixture=fixtures.combat;
    assert(quickNames.every(name=>favorites.includes(name)),'Les monstres proposent uniquement les compétences rapides désignées');
    assert.equal(await page.locator('.battle-map').getAttribute('clip-path'),'inset(0)','Découpe sur le viewport entier sans couper une partie du terrain');
    await page.mouse.move(1,1);
-   await page.evaluate(()=>window.eval("session.tutorial.battle.corpses=[{id:'layout-corpse',name:'Corps test',position:[...session.tutorial.battle.players[session.me].position],harvested:[]}];renderGame(session.tutorial);"));
-   const harvest=page.locator('#corpse-actions button');
-   assert.equal(await harvest.getAttribute('aria-label'),'Dépecer Corps test','Dépeçage accessible avec une icône compacte');
+   await page.evaluate(()=>window.eval("session.tutorial.battle.corpses=[{id:'layout-corpse',name:'Corps test',position:[...session.tutorial.battle.players[session.me].position],harvested:[],loot:{peau:1}}];renderGame(session.tutorial);"));
+   const harvest=page.locator('#corpse-actions').getByRole('button',{name:/Dépecer Corps test/});
+   assert.equal(await harvest.count(),1,'Le bouton de dépeçage possède un nom accessible explicite');
    const harvestBox=await harvest.boundingBox();
    assert(harvestBox&&harvestBox.y>height/2&&!overlaps(harvestBox,menu)&&!overlaps(harvestBox,await button.boundingBox()),'Dépeçage près du combat sans collision avec les paramètres ou l’attaque');
 
@@ -204,9 +216,10 @@ const fixture=fixtures.combat;
    for(const [name,adventure] of [['exploration',outingFixture],['forge',{...outingFixture,position:'forge'}]]){
     await page.evaluate(adventure=>window.eval(`session.tutorial=${JSON.stringify(adventure)};renderGame(session.tutorial);`),adventure);
     const explorationMenu=await rect('character-menu'),outing=await rect('outing-vitals'),camera=await rect('field-camera'),navigation=await rect('hud-navigation');
-    assert(explorationMenu&&outing&&camera&&navigation,'Menu, PV, caméra et minicarte visibles hors combat');
-    for(const [first,second] of [[explorationMenu,outing],[explorationMenu,camera],[outing,camera],[outing,navigation],[camera,navigation]]) assert(!overlaps(first,second),'Commandes et ressources sans chevauchement hors combat');
-    for(const box of [explorationMenu,outing,camera]) assert(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height,'HUD hors combat dans les limites de l’écran');
+    assert(explorationMenu&&outing&&navigation,'Menu, PV et minicarte visibles hors combat');
+    assert.equal(camera,null,'La barre de caméra reste masquée hors combat');
+    for(const [first,second] of [[explorationMenu,outing],[outing,navigation]]) assert(!overlaps(first,second),'Commandes et ressources sans chevauchement hors combat');
+    for(const box of [explorationMenu,outing]) assert(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height,'HUD hors combat dans les limites de l’écran');
     for(const card of await page.locator('#outing-vitals .vitals-card').all()){
      const nameBox=await card.locator('.vitals-name').boundingBox(),resourceBox=await card.locator('.vitals-resources').boundingBox(),statusBox=await card.locator('.vitals-statuses').boundingBox();
      assert(nameBox&&resourceBox,'Nom et ressources visibles');

@@ -2,6 +2,10 @@
 
 Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une interface HTML/JavaScript et un monde éditable dans le Builder. La production utilise FastAPI sur Vercel, Redis pour la coordination et **Cloudflare D1 pour les données durables**. Le serveur local utilise un fichier SQLite ; le solo conserve sa sauvegarde sur le client.
 
+La [recette sur Render Free](docs/RENDER.md) remplace le projet Oracle abandonné faute de capacité. Le mode expérimental `single` utilise D1 sans service Redis. La production Vercel reste inchangée pendant la recette isolée.
+La [recette Render](docs/render-test-20261114/REPORT.md) confirme 40 connexions de joueurs distincts sous une charge légère, mais un p95 de 5,6 secondes ne valide pas les combats rapides à 40 joueurs. Le premier essai local avec D1 distant reste [documenté séparément](docs/oracle-test-20261113/REPORT.md).
+Le [service Render de test](https://jeux-rpg-render-test.onrender.com) est déployé sur Free à Francfort, avec un D1 fictif distinct de la production. Les jetons sont dans **Secret Files**. La construction Docker et la sauvegarde indépendante chiffrée sont vérifiées dans GitHub Actions ; la planification quotidienne attend l'intégration du workflow dans la branche par défaut. Aucun changement de routage du site Vercel n'est effectué.
+
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Les duels simplifiés restent des démonstrations historiques ; le PvP est désactivé en production.
 
 L’[architecture actuelle](docs/ARCHITECTURE.md) est la référence pour les modes d’exécution, le stockage et la capacité. La [migration D1](docs/D1_PRODUCTION.md) est terminée depuis le 6 novembre 2026. Le réglage de 40 joueurs n’est pas une garantie de capacité : les anciens essais HTTP locaux ne mesurent pas 40 WebSockets sur Vercel/Redis/D1.
@@ -15,14 +19,15 @@ Construire le client `.exe` à partir de la version web, depuis Windows :
 ```
 
 Résultat : `dist/client/Jeux-RPG.exe`, également mis à jour dans `dist/windows/Jeux-RPG.exe`. Le solo est embarqué et fonctionne hors
-ligne ; le multijoueur se connecte au site. Node.js 22.12+ et Python 3.11+ sont
-requis pour construire, aucun des deux n'est nécessaire pour jouer avec le `.exe`.
+ligne ; le multijoueur se connecte au site. Docker avec des conteneurs Linux est
+le seul outil de construction requis sur l’hôte. Python, Node et Wine sont installés
+dans l’image à partir des recettes du dépôt. Le premier build télécharge ses dépendances.
 Voir [le guide du client Windows](docs/CLIENT_WINDOWS.md) pour les sauvegardes et
 les mises à jour.
 
 ## Windows, Linux et Android
 
-`build-distribution.cmd` construit les trois formats dans `dist/windows`, `dist/linux` et `dist/mobile` : exécutable Windows, AppImage et archive Linux, APK Android signé. Le contenu du Builder et le solo hors ligne sont embarqués sur chaque plateforme. Voir [les instructions de construction](docs/CONSTRUCTION_MULTIPLATEFORME.md) et [les instructions pour jouer](docs/DISTRIBUTION_LIREMOI.md).
+`build-distribution.cmd` construit les trois formats avec Docker dans `dist/windows`, `dist/linux` et `dist/mobile` : exécutable Windows, AppImage et archive Linux, APK Android signé. Ajouter `windows`, `linux` ou `android` pour une seule cible. Sous Linux/macOS : `bash scripts/build-docker.sh [cible]`. Le contenu du Builder et le solo hors ligne sont embarqués sur chaque plateforme. Voir [les instructions de construction](docs/CONSTRUCTION_MULTIPLATEFORME.md) et [les instructions pour jouer](docs/DISTRIBUTION_LIREMOI.md).
 
 ## Démarrer en local
 
@@ -51,6 +56,14 @@ Si le venv est déjà créé et activé, reprendre à `python -m pip install .`.
 `python -m pip install -r requirements.txt` installe également le projet et toutes ses dépendances. L’option `-r` est en minuscule ; `-R` n’existe pas. Le paquet Python `redis` est requis ; aucun serveur Redis externe n’est nécessaire pour le mode local.
 
 Ouvrir **http://127.0.0.1:8080**.
+
+Pour essayer le monde vivant dans une base séparée (PNJ, caravane, patrouilles,
+attaques et reconstruction des villes), suivre la [recette locale](docs/LIVING_WORLD.md).
+
+Le Builder propose aussi un [Sprite Maker](docs/SPRITES.md) pour dessiner et animer
+des sprites, importer/exporter des PNG et les associer aux entités du jeu.
+
+Pour donner du volume aux images, lancer `images-vers-3d.cmd` : voir [le convertisseur 2D vers 3D](docs/IMAGE_TO_3D.md).
 
 1. Créer un compte, puis créer ou sélectionner son personnage et démarrer l’aventure.
 2. Explorer les cartes écrites dans le Builder. Un double clic permet de se déplacer ; les passages affichent leur nom au survol.

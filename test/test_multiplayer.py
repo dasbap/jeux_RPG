@@ -2,8 +2,8 @@ import asyncio
 import concurrent.futures
 import json
 import threading
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -12,7 +12,7 @@ import pytest
 from jeuxRPG.multiplayer.clock import GameClock
 from jeuxRPG.multiplayer.discord_adapter import DiscordAdapter
 from jeuxRPG.multiplayer.server import RPGServer
-from jeuxRPG.multiplayer.service import GameService, GameError
+from jeuxRPG.multiplayer.service import GameError, GameService
 
 
 class Clock:
@@ -310,7 +310,8 @@ def request(server, path, body=None, token=None, headers=None):
     values.update(headers or {})
     req = Request(f"http://127.0.0.1:{server.server_address[1]}{path}", data=payload, headers=values)
     try:
-        with urlopen(req, timeout=3) as response:
+        # Allow CPU contention while coverage and browser scenarios run together.
+        with urlopen(req, timeout=10) as response:
             return response.status, json.loads(response.read())
     except HTTPError as error:
         return error.code, json.loads(error.read())
@@ -577,6 +578,7 @@ def test_http_reuses_connection_and_closes_rejected_post(http_server):
 
 def test_prepared_view_failure_does_not_stop_other_sessions(game, monkeypatch):
     import uuid
+
     from jeuxRPG.multiplayer import tutorial
     alice, bob = player(game), player(game, "Bob")
     for token in (alice, bob):
@@ -596,6 +598,7 @@ def test_prepared_view_failure_does_not_stop_other_sessions(game, monkeypatch):
 
 def test_command_queue_rolls_back_rejected_action_and_preserves_receipts(game, monkeypatch):
     import uuid
+
     from jeuxRPG.multiplayer.command_queue import CommandQueue
     token = player(game)
     dispatcher = CommandQueue(game)
@@ -622,6 +625,7 @@ def test_command_queue_rolls_back_rejected_action_and_preserves_receipts(game, m
 def test_compact_confirmation_skips_rendering_and_keeps_action_validation(game, monkeypatch):
     game.random = lambda: .5
     import uuid
+
     from jeuxRPG.multiplayer import tutorial
     token = player(game)
     state = game.command(token, uuid.uuid4().hex, "tutorial")["session"]

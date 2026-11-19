@@ -30,6 +30,7 @@ def self_target(ability):
 
 def advance(party, mob, target, characters, units, preset, now, messages):
     from . import tactics
+    from .free_movement import awaiting_position
     from .tutorial import pack, unpack
 
     abilities = mob.get("abilities", [])
@@ -49,9 +50,13 @@ def advance(party, mob, target, characters, units, preset, now, messages):
             mob.pop("ability_cast", None)
             messages.append(f"{mob['name']} : cible perdue, {ability['name']} annulée.")
             return False
-        if cast["ends_at"] > now:
+        if (
+            cast["ends_at"] > now
+            or not own
+            and awaiting_position(units[key], now, cast["ends_at"])
+        ):
             mob["intent"] = (
-                f"{ability['name']} · {(cast['ends_at'] - now) / progression.RATIO:.1f} s"
+                f"{ability['name']} · {max(0, cast['ends_at'] - now) / progression.RATIO:.1f} s"
             )
             return True
         source = unpack(mob)
@@ -101,13 +106,33 @@ def advance(party, mob, target, characters, units, preset, now, messages):
             invocations_after = sum(
                 invoc.hp.current_value for invoc in actor.invocations.get_all()
             )
-            if (
+            if key not in party["battle"].get("guard_patrol", {}).get(
+                "members", {}
+            ) and (
                 actor.hp.current_value < before
                 or invocations_after < invocations_before
             ):
                 party["battle"]["damage_received"] = True
                 if units[key].get("casting", {}).get("concentration"):
                     units[key].pop("casting", None)
+        from .combat_visuals import emit
+
+        if "combat_id" in mob:
+            emit(
+                party,
+                mob["combat_id"],
+                mob["combat_id"] if own else key,
+                now,
+                "skill",
+                "HEAL"
+                if own
+                else "DAMAGE"
+                if ability["type"] == "damage"
+                else "DEBUFF",
+                ability["name"],
+                ability["range"],
+                before - actor.hp.current_value,
+            )
         mob.pop("ability_cast", None)
         mob.setdefault("ability_ready", {})[ability["name"]] = (
             now + ability["cooldown"] * progression.RATIO

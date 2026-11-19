@@ -11,6 +11,7 @@ function requestTravel(destination) {
     }
     if (adventure.battle.hostiles_alive) return message("Terminez le combat avant de voyager.");
   } else if (adventure.battle) return message("Terminez le combat avant de voyager.");
+  if (adventure.coaches?.enabled) return message("Rejoignez une sortie de zone à pied ou un relais de diligence.");
   return tutorialCommand("move", {destination});
 }
 function selectEntity(id) {
@@ -29,8 +30,10 @@ function selectEntity(id) {
   for (const group of $("world-map").querySelectorAll("[data-unit]")) {
     group.querySelector(".objective-ring")?.remove();
     if (group.dataset.unit === focusedMob) {
-      const source = group.querySelector("circle"), ring = document.createElementNS(ns, "circle");
-      for (const attr of ["cx", "cy"]) ring.setAttribute(attr, source.getAttribute(attr));
+      const position = entityPosition(session.tutorial, group.dataset.unit);
+      if(!position)continue;
+      const ring = document.createElementNS(ns, "circle");
+      ring.setAttribute("cx",position[0]*40+20);ring.setAttribute("cy",position[1]*40+20);
       ring.setAttribute("r", "18"); ring.setAttribute("class", "objective-ring"); group.append(ring);
     }
   }
@@ -151,7 +154,7 @@ function moveControlled(adventure, me, destination) {
   if (unit.route.length && unit.route.at(-1).join(",") === destination.join(",")) return;
   const path = gridPath(adventure.battle.map, unit.position, destination);
   if (path === null) return message("Ce chemin est inaccessible : vérifiez les passages sur la carte.", true);
-  if (path.length) return tutorialCommand("battle_move", {x, y, path});
+  if (path.length) return tutorialCommand(adventure.battle.movement_model==="continuous-v1"?"walk":"battle_move", {x, y, path});
 }
 function canPayControl(adventure, me, unit) {
   const cost = unit.control_cost;
@@ -236,8 +239,8 @@ function renderSelection(adventure, me) {
   paragraphs("selected-unit-stats", selected ? [selected.owner === me.id ? `Contrôle : ${selected.controlled ? "manuel" : "automatique"} · ${selected.control_cost?.per_second || 0} ${selected.control_cost?.energy || "énergie"}/s` : "Cet allié appartient à votre compagnon."] : []);
 }
 function gridSight(map, source, target) {
-  let [x, y] = source;
-  const [tx, ty] = target;
+  let [x, y] = source.map(Math.round);
+  const [tx, ty] = target.map(Math.round);
   const dx = Math.abs(tx - x), dy = Math.abs(ty - y), sx = x < tx ? 1 : -1, sy = y < ty ? 1 : -1;
   let error = dx - dy;
   while (x !== tx || y !== ty) {
@@ -250,11 +253,12 @@ function gridSight(map, source, target) {
 }
 function battleAllowed(adventure, player, target, range) {
   if (!adventure?.battle) return false;
-  const source = adventure.battle.players[player]?.position;
+  const source = globalThis.RPGMotion?.position?.(adventure,player)||adventure.battle.players[player]?.position;
   const destination = adventure.mobs.find(m => m.combat_id === target)?.position || adventure.battle.players[target]?.position;
   return Boolean(source && destination && Math.hypot(source[0] - destination[0], source[1] - destination[1]) <= range && gridSight(adventure.battle.map, source, destination));
 }
 function gridPath(map, source, destination) {
+  source=source.map(Math.round);destination=destination.map(Math.round);
   const obstacles = new Set([...(map.cover || []), ...(map.blocked || [])].map(p => p.join(",")));
   const blocked = (x, y) => x < 0 || y < 0 || x >= map.width || y >= map.height || obstacles.has(`${x},${y}`);
   if (blocked(...destination)) return null;
@@ -300,10 +304,9 @@ function exitCaptionLayout(name, x, y, view, pixel, measure) {
     x:Math.max(view.left+padding,Math.min(view.right-padding-width,toRight?x+gap:x-gap-width)),
     y:Math.max(view.top+padding,Math.min(view.bottom-padding-height,y-height/2)),pixel};
 }
-function renderBattle(adventure, me) {
-  const battle = adventure.battle, map = battle.map;
-  const unit = battle.players[me.id];
-  const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
+function renderBattleMapSvg(adventure, me) {
+  const battle=adventure.battle,map=battle.map,unit=battle.players[me.id];
+  const disabled=Boolean(me.casting)||me.hp<=0||me.stunned;
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   if (fieldCamera?.map !== map.id) fieldCamera = {map: map.id, span: Math.min(map.width, 24), x: unit.position[0], y: unit.position[1], follow: true};
@@ -355,7 +358,9 @@ function renderBattle(adventure, me) {
   for (const site of map.sites || []) {
     if (!inView(site.position) || explored && !explored.has(site.position.join(","))) continue;
     const node = element("g", {class: "battle-unit field-site", "data-site": site.id, role: "button", tabindex: "0", "aria-label": site.id === "forge" ? "Parler à Garrik · ouvrir la forge" : site.name});
-    if(site.interaction==="inspect") {
+    const siteSprite=adventure.sprites&&entitySprite(adventure,[`npc:${site.id}`],element,site.position);
+    if(siteSprite) node.append(siteSprite);
+    else if(site.interaction==="inspect") {
       const x=site.position[0]*40+20,y=site.position[1]*40+20;
       node.classList.add("field-clue");node.setAttribute("aria-label",`Examiner ${site.name}`);
       node.append(element("path",{d:`M ${x} ${y-13} l 13 13 -13 13 -13 -13 Z`}));
@@ -376,18 +381,35 @@ function renderBattle(adventure, me) {
   }
   for (const [, ally] of controlledUnits(adventure, me.id)) for (const step of ally.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
   for (const step of unit.route.filter(inView)) svg.append(element("circle", {cx: step[0] * 40 + 20, cy: step[1] * 40 + 20, r: 3, class: "route-dot"}));
-  const draw = (id, position, label, className) => {
+  const draw = (id, position, label, className, spriteKeys=[]) => {
     if (!inView(position)) return null;
     const group = element("g", {class: `battle-unit ${className}`, "data-unit": id});
-    group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
-    group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + 25}, label));
+    const actor=battle.players[id]||alliedUnits(adventure)[id]||adventure.mobs.find(mob=>mob.combat_id===id)||{position};
+    const target=entityPosition(adventure,actor.target);
+    const picture=adventure.sprites&&entitySprite(adventure,spriteKeys,element,position,36,spriteFacing(adventure,id,actor,target),(typeof equippedWeaponSprite==="function"?equippedWeaponSprite(adventure.players.find(player=>player.id===id)):""));
+    group.append(picture || element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 13}));
+    group.append(element("text", {x: position[0] * 40 + 20, y: position[1] * 40 + (picture?45:25)}, label));
     if (id === focusedMob) group.append(element("circle", {cx: position[0] * 40 + 20, cy: position[1] * 40 + 20, r: 18, class: "objective-ring"}));
     group.onclick = () => selectEntity(id);
     group.ondblclick = event => { event.preventDefault(); const current = entityPosition(session.tutorial, id); if (current) approachEntity(current); };
     svg.append(group);
     return group;
   };
-  for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player");
+  for (const actor of adventure.living_world?.nearby || []) {
+    if (actor.map !== map.id || !inView(actor.position)) continue;
+    const [x,y] = actor.position.map(value => value * 40 + 20);
+    const group = element("g", {class:`world-life-actor world-life-${actor.kind}`,"data-unit":`world:${actor.id}`,"pointer-events":"none"});
+    const picture=adventure.sprites&&entitySprite(adventure,[`npc:${actor.id}`,`ambient:guard_${actor.role}`,`ambient:${actor.kind}`],element,actor.position,36,spriteFacing(adventure,actor.id,actor,actor.aim));
+    group.append(picture||element("circle",{cx:x,cy:y,r:10}),element("title",{},`${actor.name} · ${actor.activity}`));
+    if(!picture)group.append(element("text",{x,y:y+4},actor.kind==="merchant"?"¤":actor.kind==="resident"?"•":actor.kind==="guards"?"◆":"!"));
+    if(actor.max_hp) {
+      const percent=Math.max(0,Math.min(1,actor.hp/actor.max_hp));
+      group.append(element("rect",{x:x-16,y:y-23,width:32,height:4,rx:1,fill:"#263343"}),element("rect",{x:x-16,y:y-23,width:32*percent,height:4,rx:1,fill:percent<=.3?"#ef7373":percent<.8?"#e6c86a":"#75d6a6"}));
+      group.append(element("title",{},`${actor.name} · ${actor.hp}/${actor.max_hp} PV · ${actor.activity}`));
+    }
+    svg.append(group);
+  }
+  for (const player of adventure.players) draw(player.id, battle.players[player.id].position, player.id === me.id ? "Vous" : player.name.slice(0, 3), battle.players[player.id].hidden ? "hidden-player" : "visible-player", [`class:${player.class_name}`]);
   for (const player of presenceState?.nearby || []) {
     if (!player.position || player.map !== adventure.field_map && player.map !== battle.map.id || adventure.players.some(member => member.id === player.id)) continue;
     const x = Math.round(player.position[0]), y = Math.round(player.position[1]);
@@ -398,11 +420,11 @@ function renderBattle(adventure, me) {
     group.append(element("title", {}, `${player.name} · ${player.ally ? "Allié" : "Joueur"} · PvP désactivé`));
     svg.append(group);
   }
-  for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit"); }
+  for (const [index, mob] of adventure.mobs.entries()) { const mark = {goblin: "G", orc: "O", dragon_whelp: "D"}[mob.mob_id] || "G"; const number = mob.combat_id.match(/(?:-mob-|^mob-)(\d+)/); draw(mob.combat_id, mob.position, `${mark}${number ? Number(number[1]) + 1 : index + 1}`, "enemy-unit",[`mob:${mob.mob_id}`]); }
   for (const [id, summon] of Object.entries(alliedUnits(adventure))) {
     const number = id.match(/:summon:(\d+)$/);
     const label = battle.companions?.[id] ? "F" : number ? `S${Number(number[1]) + 1}` : "S";
-    const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit");
+    const summonNode = draw(id, summon.position, summon.controlled ? `${label}★` : label, "summon-unit",[`mob:${summon.mob_id}`,`class:${summon.class_name}`]);
     summonNode?.append(element("title", {}, `${summon.name} · ${summon.hp}/${summon.max_hp} PV`));
   }
   for (const corpse of battle.corpses) draw(corpse.id, corpse.position, "✝", "corpse-unit");
@@ -427,7 +449,7 @@ function renderBattle(adventure, me) {
       y = Math.max((top + .5) * 40, Math.min((top + height - .5) * 40, baseY + (direction === 0 ? distance : direction === 1 ? -distance : 0)));
     }
     usedGateMarkers.push([x, y]);
-    const marker = element("g", {class: "battle-unit exit-marker", "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
+    const marker = element("g", {class: `battle-unit exit-marker${gate.changes_zone?" zone-exit-marker":""}`, "data-exit": gate.position.join(","), role: "button", tabindex: "0", "aria-label": gate.name || "Sortie"});
     marker.append(element("circle", {cx: x, cy: y, r: 16}), element("text", {x, y: y + 5}, "⇥"));
     marker.onclick = () => { inspectedCell = gate.position; message(gate.name || "Sortie"); };
     marker.ondblclick = () => moveControlled(adventure, me, gate.position);
@@ -474,8 +496,8 @@ function renderBattle(adventure, me) {
       const children = [...node.children].map((child, index) => {
         const oldChild = retained.children[index];
         if (!oldChild || oldChild.tagName !== child.tagName) return child;
-        for (const attr of [...oldChild.attributes]) oldChild.removeAttribute(attr.name);
-        for (const attr of child.attributes) oldChild.setAttribute(attr.name, attr.value);
+        for (const attr of [...oldChild.attributes]) if(!child.hasAttribute(attr.name))oldChild.removeAttribute(attr.name);
+        for (const attr of child.attributes) if(oldChild.getAttribute(attr.name)!==attr.value)oldChild.setAttribute(attr.name, attr.value);
         oldChild.textContent = child.textContent;
         return oldChild;
       });
@@ -491,7 +513,16 @@ function renderBattle(adventure, me) {
       if (previousMap.children[index] !== child) previousMap.insertBefore(child, previousMap.children[index] || null);
     }
     previousMap.onwheel = svg.onwheel;
-  } else $("world-map").replaceChildren(svg);
+  } else if(previousMap && $("world-map").querySelector(".rpg-canvas3d")) previousMap.replaceWith(svg);
+  else $("world-map").replaceChildren(svg);
+}
+function renderBattle(adventure, me) {
+  const battle = adventure.battle, map = battle.map;
+  const unit = battle.players[me.id];
+  const disabled = Boolean(me.casting) || me.hp <= 0 || me.stunned;
+  if(fieldCamera?.map!==map.id)fieldCamera={map:map.id,span:24,x:unit.position[0],y:unit.position[1],follow:true};
+  const drawn=battle.movement_model==="continuous-v1" && globalThis.renderRpgScene3D?.(adventure,me);
+  if(!drawn)renderBattleMapSvg(adventure,me);
   const retainedCards = new Set();
   for (const mob of adventure.mobs) {
     const card = [...$("mob-cards").children].find(node => node.dataset.mob === mob.combat_id) || document.createElement("article"); retainedCards.add(card); card.className = "mob-card"; card.tabIndex = 0; card.setAttribute("role", "group"); card.dataset.mob = mob.combat_id;
@@ -549,13 +580,16 @@ function renderBattle(adventure, me) {
   if (!hide.disabled) $("tactical-actions").append(hide);
   else if (unit.hidden) { const label = document.createElement("p"); label.textContent = "Dissimulé · déplacement couvert à vitesse réduite"; $("tactical-actions").append(label); }
   $("corpse-actions").replaceChildren();
+  const harvestRange=battle.corpse_interact_range??1.5;
   for (const corpse of battle.corpses) {
-    if (Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5) continue;
-    const button = document.createElement("button"); button.textContent = "✂";
-    button.title = corpse.harvested.length ? `${corpse.name} · déjà dépecé` : `Dépecer ${corpse.name}`;
-    button.setAttribute("aria-label", button.title);
-    button.disabled = disabled || corpse.harvested.length > 0 || Math.hypot(unit.position[0] - corpse.position[0], unit.position[1] - corpse.position[1]) > 1.5;
-    button.addEventListener("click", () => tutorialCommand("harvest", {target: corpse.id})); $("corpse-actions").append(button);
+    if(corpse.harvested.length||!Object.values(corpse.loot||{}).some(n=>n>0))continue;
+    const distance=Math.hypot(unit.position[0]-corpse.position[0],unit.position[1]-corpse.position[1]);
+    if(distance>harvestRange&&focusedMob!==corpse.id)continue;
+    const button=document.createElement("button");button.type="button";button.dataset.harvest=corpse.id;
+    button.classList.toggle("selected",focusedMob===corpse.id);
+    button.textContent=`${globalThis.RPGKeybindings?.label("harvest")||"G"} · Dépecer ${corpse.name}${distance>harvestRange?" · approcher":""}`;
+    button.disabled=disabled;button.onclick=()=>{if(focusedMob!==corpse.id)selectEntity(corpse.id);harvestSelectedCorpse(adventure,me);};
+    $("corpse-actions").append(button);
   }
 
 }

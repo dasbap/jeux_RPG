@@ -13,10 +13,13 @@ distingue production D1, serveur local SQLite et solo hors ligne.
   moteur périmées.
 - `wrangler.production.json` et `wrangler.preview.json` : bindings et cibles
   distinctes. Ne pas confondre une recette et la base des joueurs.
+- `wrangler.oracle-test.json` : Worker dédié au moteur mono-instance, lié à
+  l'ancienne base fictive vide `jeux-rpg-preview`. La cible `preview` ci-dessus
+  contient des comptes importés et ne doit pas servir aux tests de charge.
 - `../jeuxRPG/multiplayer/d1_client.py` : adaptateur HTTP Python appelé par le
   moteur pour charger et persister ses lots.
 
-Les opérations sont `health`, `read_snapshot`, `load_snapshot` et
+Les opérations sont `health`, `read_snapshot`, `load_snapshot`, `claim_snapshot` et
 `persist_checkpoint`. Le Worker n’expose ni migration de schéma ni SQL
 arbitraire. Les sauvegardes sont bornées à 1000 changements par lot et la
 taille de la requête est contrôlée par le Worker (seuil de 2 000 000 pour

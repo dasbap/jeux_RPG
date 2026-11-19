@@ -61,10 +61,42 @@ def upgrade_cost(recipe, level, gameplay=None):
     return cost
 
 
+def class_labels(definition):
+    names = {
+        item["id"]: item["name"]
+        for item in [
+            *DATA.get("templates", {}).get("classes", []),
+            *DATA.get("classes", []),
+        ]
+    }
+    return [names.get(key, key) for key in definition.get("classes", [])]
+
+
+def compatibility_reason(party, player, recipe):
+    definition = RECIPES[recipe]
+    allowed = definition.get("classes")
+    if allowed and party["characters"][player]["class_name"] not in allowed:
+        return "Classes autoris\u00e9es : " + ", ".join(class_labels(definition)) + "."
+    return ""
+
+
 def piece(recipe, level=0, gameplay=None):
     definition, rules, _ = recipe_settings(recipe, gameplay)
     return {
         "recipe": recipe,
+        **(
+            {
+                "classes": definition["classes"][:],
+                "class_names": class_labels(definition),
+            }
+            if definition.get("classes")
+            else {}
+        ),
+        **(
+            {"weapon_type": definition["weapon_type"]}
+            if definition.get("weapon_type")
+            else {}
+        ),
         **({"set_id": definition["set_id"]} if definition.get("set_id") else {}),
         "slot": definition["slot"],
         "level": level,
@@ -84,7 +116,7 @@ def piece(recipe, level=0, gameplay=None):
     }
 
 
-def set_catalogue(equipment, gameplay=None):
+def set_catalogue(equipment, gameplay=None, *, include_inactive=False):
     selected = GAMEPLAY if gameplay is None else gameplay
     recipes = RECIPES if gameplay is None else selected["recipes"]
     result = []
@@ -96,7 +128,7 @@ def set_catalogue(equipment, gameplay=None):
             and item.get("recipe") in recipes
             and recipes[item["recipe"]].get("set_id") == identifier
         }
-        if not slots:
+        if not slots and not include_inactive:
             continue
         tiers = [
             {
@@ -149,6 +181,12 @@ def sync_set_bonuses(party):
 
 
 def migrate(party):
+    storage = party.setdefault("stored_equipment", {})
+    for player in party["characters"]:
+        bag = storage.setdefault(player, {})
+        for recipe, old in list(bag.items()):
+            if recipe in RECIPES:
+                bag[recipe] = piece(recipe, old["level"])
     for key, equipment in list(party["equipment"].items()):
         if isinstance(equipment, str):
             party["equipment"][key] = {"torso": piece("veste")}
@@ -173,6 +211,24 @@ def migrate(party):
                     else values["current"] + delta
                 )
             equipment[slot] = new
+    # Builder edits can revoke a class: keep the item, remove its bonuses once.
+    for player, equipment in party["equipment"].items():
+        if not isinstance(equipment, dict):
+            continue
+        for slot, item in list(equipment.items()):
+            if item.get("recipe") not in RECIPES or not compatibility_reason(
+                party, player, item["recipe"]
+            ):
+                continue
+            for stat in BONUS_STATS:
+                values = party["characters"][player]["stats"][stat]
+                values["max"] -= item.get(stat, 0)
+                values["current"] = (
+                    min(values["current"], values["max"])
+                    if stat == "hp"
+                    else values["current"] - item.get(stat, 0)
+                )
+            storage.setdefault(player, {})[item["recipe"]] = equipment.pop(slot)
     sync_set_bonuses(party)
 
 
@@ -185,22 +241,27 @@ def catalogue(party, player):
         equipped = next(
             (item for item in gear.values() if item["recipe"] == recipe), None
         )
+        owned = equipped or party["stored_equipment"].get(player, {}).get(recipe)
         cost = (
-            upgrade_cost(recipe, equipped["level"] + 1)
-            if equipped and equipped["level"] < RULES["max_level"]
+            upgrade_cost(recipe, owned["level"] + 1)
+            if owned and owned["level"] < RULES["max_level"]
             else None
-            if equipped
+            if owned
             else definition["cost"]
         )
         result.append(
             {
                 **deepcopy(definition),
                 "recipe": recipe,
+                "class_names": class_labels(definition),
+                "compatible": not compatibility_reason(party, player, recipe),
+                "compatibility_reason": compatibility_reason(party, player, recipe),
                 "set_name": GAMEPLAY.get("equipment_sets", {})
                 .get(definition.get("set_id"), {})
                 .get("name"),
                 "max_level": RULES["max_level"],
                 "equipped": deepcopy(equipped),
+                "owned": deepcopy(owned),
                 "cost": cost,
                 "affordable": bool(
                     cost is not None
@@ -229,6 +290,9 @@ def execute(party, player, action, recipe, error):
         )
     if not isinstance(recipe, str) or recipe not in RECIPES:
         raise error("invalid_recipe", "Recette inconnue.")
+    reason = compatibility_reason(party, player, recipe)
+    if reason:
+        raise error("incompatible_class", reason, 409)
     migrate(party)
     gear = party["equipment"].setdefault(player, {})
     slot = RECIPES[recipe]["slot"]
@@ -236,11 +300,19 @@ def execute(party, player, action, recipe, error):
         ((place, item) for place, item in gear.items() if item["recipe"] == recipe),
         None,
     )
+    bag = party["stored_equipment"].setdefault(player, {})
+    stored = bag.get(recipe)
     if action == "upgrade" and existing:
         slot = existing[0]
-    old = gear.get(slot)
+    old = stored if action == "upgrade" and stored else gear.get(slot)
     if action == "craft" and existing:
         raise error("already_crafted", "Cette pièce est déjà équipée.", 409)
+    if action == "craft" and stored:
+        raise error(
+            "already_crafted",
+            "Cette pièce est déjà possédée. Équipez-la depuis votre équipement.",
+            409,
+        )
     if action == "upgrade" and (not old or old["recipe"] != recipe):
         raise error(
             "missing_equipment", "Fabriquez cette pièce avant de l'améliorer.", 409
@@ -261,7 +333,7 @@ def execute(party, player, action, recipe, error):
     new = piece(recipe, level)
     new["slot"] = slot
     actor = unpack(party["characters"][player])
-    for name in BONUS_STATS:
+    for name in BONUS_STATS if not (stored and action == "upgrade") else ():
         delta = new[name] - (old.get(name, 0) if old else 0)
         stat = getattr(actor, name)
         stat.value += delta
@@ -270,7 +342,12 @@ def execute(party, player, action, recipe, error):
             if name == "hp"
             else stat.current_value + delta
         )
-    gear[slot] = new
+    if stored and action == "upgrade":
+        bag[recipe] = new
+    else:
+        if old and old["recipe"] != recipe:
+            bag[old["recipe"]] = deepcopy(old)
+        gear[slot] = new
     party["characters"][player] = pack(actor)
     sync_set_bonuses(party)
     from . import content, world
@@ -311,3 +388,76 @@ def execute(party, player, action, recipe, error):
             f"{actor.name} a terminé la fabrication de sa veste. Attendez que les autres joueurs équipent la leur."
         )
     return messages, False
+
+
+def equipment_lock_reason(party, player):
+    from . import mob_rules
+
+    character = party["characters"][player]
+    battle = party.get("battle")
+    unit = battle.get("players", {}).get(player, {}) if battle else {}
+    fighting = battle and (
+        not party.get("field_map")
+        or any(
+            mob_rules.is_hostile(mob) and mob.get("alerted")
+            for mob in party.get("mobs", [])
+        )
+    )
+    if (
+        party.get("transit")
+        or fighting
+        or unit.get("casting")
+        or character["stats"]["hp"]["current"] <= 0
+    ):
+        return "Changez votre équipement à l’arrêt, vivant et hors combat."
+    return ""
+
+
+def change_equipment(party, player, action, recipe, error):
+    """Move owned gear between a slot and storage without granting healing."""
+    reason = equipment_lock_reason(party, player)
+    if reason:
+        raise error("equipment_unavailable", reason, 409)
+    if not isinstance(recipe, str) or recipe not in RECIPES:
+        raise error("invalid_recipe", "Pièce inconnue.")
+    if action == "equip" and (reason := compatibility_reason(party, player, recipe)):
+        raise error("incompatible_class", reason, 409)
+    migrate(party)
+    character = party["characters"][player]
+    gear = party["equipment"].setdefault(player, {})
+    bag = party["stored_equipment"].setdefault(player, {})
+    worn_slot = next(
+        (slot for slot, item in gear.items() if item["recipe"] == recipe), None
+    )
+    if action == "unequip":
+        if worn_slot is None:
+            raise error("missing_equipment", "Cette pièce n’est pas équipée.", 409)
+        slot, new = worn_slot, None
+    else:
+        if recipe not in bag:
+            raise error(
+                "missing_equipment",
+                "Vous ne possédez pas cette pièce dans votre réserve.",
+                409,
+            )
+        slot, new = RECIPES[recipe]["slot"], bag[recipe]
+    old = gear.get(slot)
+    hp = character["stats"]["hp"]["current"]
+    for stat in BONUS_STATS:
+        delta = (new.get(stat, 0) if new else 0) - (old.get(stat, 0) if old else 0)
+        values = character["stats"][stat]
+        values["max"] += delta
+        values["current"] += delta if stat != "hp" else 0
+    if new:
+        bag.pop(recipe)
+        gear[slot] = new
+    else:
+        gear.pop(slot)
+    if old:
+        bag[old["recipe"]] = old
+    sync_set_bonuses(party)
+    character["stats"]["hp"]["current"] = min(hp, character["stats"]["hp"]["max"])
+    item = new or old
+    return [
+        f"{character['name']} {'équipe' if new else 'retire'} {item['name']} +{item['level']}."
+    ], False
