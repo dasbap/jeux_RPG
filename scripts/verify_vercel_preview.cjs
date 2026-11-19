@@ -43,14 +43,16 @@ async function verify() {
   const release = process.env.RPG_RELEASE_SHA;
   const base = verifiedOrigin(metadata, release);
   const {chromium} = require("../.ui-test/node_modules/playwright");
-  const browser = await chromium.launch({headless: true, executablePath: process.env.RPG_BROWSER_EXECUTABLE});
+  const browser = await chromium.launch({headless: true, ...(process.env.RPG_BROWSER_EXECUTABLE ? {executablePath: process.env.RPG_BROWSER_EXECUTABLE} : {channel: "chromium"})});
+  console.log("Navigateur Vercel : " + browser.version());
   const errors = [], failures = [];
   const output = path.resolve(".data/vercel-preview-report");
   fs.mkdirSync(output, {recursive: true});
   const auth = process.env.VERCEL_OIDC_TOKEN ? {"x-vercel-trusted-oidc-idp-token": process.env.VERCEL_OIDC_TOKEN} : {};
   const credentials = {username: "vc_" + crypto.randomBytes(7).toString("hex"), password: crypto.randomBytes(24).toString("hex")};
   privateValue(credentials.password);
-  let authenticatedSocket = false;
+  let authenticatedSocket = false, socketReplies = 0;
+  const socketErrors = [];
   const closing = new WeakSet();
   const closeContext = async value => {
     closing.add(value);
@@ -91,9 +93,17 @@ async function verify() {
       page.on("response", response => {
         if (new URL(response.url()).origin === base && response.status() >= 500) failures.push(new URL(response.url()).pathname + ":" + response.status());
       });
-      page.on("websocket", socket => socket.on("framereceived", frame => {
-        try { if (JSON.parse(String(frame.payload)).type === "authenticated") authenticatedSocket = true; } catch {}
-      }));
+      page.on("websocket", socket => {
+        socket.on("socketerror", error => socketErrors.push(safeMessage(error)));
+        socket.on("framereceived", frame => {
+          try {
+            const message = JSON.parse(String(frame.payload));
+            if (message.type === "authenticated") authenticatedSocket = true;
+            if (message.result?.status === 200) socketReplies++;
+            if (message.result?.status >= 500) failures.push("WebSocket RPC: " + message.result.status);
+          } catch {}
+        });
+      });
     });
     return value;
   };
@@ -129,7 +139,8 @@ async function verify() {
     await page.locator("#character-list button").first().waitFor({state: "visible", timeout: 60000});
     await page.locator("#character-list button").first().click(); await adventure(page);
     assert.equal(await page.evaluate(() => session.id), sessionId); await saved(page);
-    assert(authenticatedSocket, "Le WebSocket doit s'authentifier sur Vercel");
+    assert(authenticatedSocket, "Le WebSocket doit s'authentifier sur Vercel. " + socketErrors.join("; "));
+    assert(socketReplies > 0, "Le WebSocket doit transmettre un etat du jeu");
     console.log("Vercel : connexion par mot de passe, reprise et WebSocket verifies.");
     await closeContext(current);
 
@@ -149,7 +160,7 @@ async function verify() {
     await page.screenshot({path: path.join(output, "solo-landscape.png")});
     await closeContext(current);
     assert.deepEqual(errors, []); assert.deepEqual(failures, []);
-    const report = {release, base, signup: true, online: true, passwordResume: true, websocket: true, soloResume: true, landscape: true, pageErrors: errors.length, serverErrors: failures.length};
+    const report = {release, base, browser: browser.version(), signup: true, online: true, passwordResume: true, websocket: true, websocketReplies: socketReplies, soloResume: true, landscape: true, pageErrors: errors.length, serverErrors: failures.length};
     fs.writeFileSync(path.join(output, "report.json"), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report));
   } finally {
