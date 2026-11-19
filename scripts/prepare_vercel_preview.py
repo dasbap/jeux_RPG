@@ -17,9 +17,10 @@ WORKER = "https://jeux-rpg-d1-preview.dasbap-jeux-rpg.workers.dev"
 def configuration(environment):
     if environment.get("RPG_D1_WORKER_URL", "").rstrip("/") != WORKER:
         raise ValueError("La recette exige le Worker D1 fictif jeux-rpg-d1-preview")
-    values = {key: environment.get(key, "") for key in (
-        "RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN", "REDIS_URL", "RPG_RELEASE_SHA"
-    )}
+    values = {
+        key: environment.get(key, "")
+        for key in ("RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN", "RPG_RELEASE_SHA")
+    }
     for key, value in values.items():
         if not value or value == "[SENSITIVE]":
             raise ValueError("Configuration de recette absente : " + key)
@@ -27,12 +28,12 @@ def configuration(environment):
         raise ValueError("Le secret administrateur de recette doit avoir 32 caracteres")
     if not re.fullmatch(r"[0-9a-f]{40}", values["RPG_RELEASE_SHA"]):
         raise ValueError("Commit de recette invalide")
-    from jeuxRPG.multiplayer.redis_configuration import redis_url
-
-    redis_url(values)
     return {
-        **values, "RPG_D1_WORKER_URL": WORKER, "RPG_DATABASE_BACKEND": "d1",
-        "RPG_RUNTIME_MODE": "distributed", "RPG_RUNTIME_REALMS": "1",
+        **values,
+        "RPG_D1_WORKER_URL": WORKER,
+        "RPG_DATABASE_BACKEND": "d1",
+        "RPG_RUNTIME_MODE": "d1",
+        "RPG_RUNTIME_REALMS": "1",
         "RPG_RESET_TEST_PLAYERS": "0",
     }
 
@@ -40,9 +41,16 @@ def configuration(environment):
 def link(root):
     folder = root / ".vercel"
     folder.mkdir(exist_ok=True)
-    (folder / "project.json").write_text(json.dumps({
-        "projectId": PROJECT, "orgId": TEAM, "projectName": "jeux-rpg",
-    }), encoding="utf-8")
+    (folder / "project.json").write_text(
+        json.dumps(
+            {
+                "projectId": PROJECT,
+                "orgId": TEAM,
+                "projectName": "jeux-rpg",
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def prepare(root, environment):
@@ -73,10 +81,24 @@ def main():
         for key, value in values.items():
             if key == "RPG_RELEASE_SHA":
                 continue  # Bound to the exact deployment by --env.
-            subprocess.run([
-                args.cli, "env", "add", key, "preview", "--force", "--scope", TEAM,
-                "--sensitive" if key in {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN", "REDIS_URL"} else "--no-sensitive",
-            ], input=value, text=True, check=True)
+            subprocess.run(
+                [
+                    args.cli,
+                    "env",
+                    "add",
+                    key,
+                    "preview",
+                    "--force",
+                    "--scope",
+                    TEAM,
+                    "--sensitive"
+                    if key in {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN", "REDIS_URL"}
+                    else "--no-sensitive",
+                ],
+                input=value,
+                text=True,
+                check=True,
+            )
     print("Configuration Vercel preview preparee, sans modifier la production.")
 
 

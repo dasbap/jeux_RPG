@@ -16,9 +16,9 @@ L’application déployée expose `app:app`, une application FastAPI/ASGI créé
 - En mode `turso` : `TURSO_DATABASE_URL` (URL libSQL ou HTTPS) et `TURSO_AUTH_TOKEN` (lecture et écriture).
 - `RPG_ADMIN_TOKEN` : secret aléatoire distinct, au moins 32 caractères, pour le panneau administrateur.
 - `RPG_PUBLIC_ORIGIN` : origine HTTPS sans chemin si un domaine personnalisé est utilisé.
-- `REDIS_URL` ou `KV_URL` : Redis partagé pour coordination temps réel, relais entre instances et limites de connexion. La présence et l'état du moteur autoritaire restent en RAM ; les sauvegardes vont dans le stockage sélectionné.
-- `REDIS_URLS` : liste JSON facultative d'URL Redis ; a priorité sur les deux variables précédentes.
-- `RPG_REDIS_ACTIVE_INDEX` : index de l'instance active dans cette liste, à partir de 0. Le moteur et les autres services Redis utilisent tous cet index.
+- `RPG_RUNTIME_MODE=d1` : moteur Vercel transactionnel, sans Redis ni processus
+  persistant sur Render. Ce mode est aussi le défaut pour Vercel avec le backend D1.
+  Les anciennes variables Redis/KV sont ignorées et retirées du build D1.
 
 Configurer ces valeurs pour les environnements réellement déployés. La variable GitHub `RPG_DATABASE_BACKEND` et les paramètres D1 sont dans l’environnement `production`, pas nécessairement au niveau du dépôt. Les workflows conservent aussi un repli historique `turso` si la variable manque. Les previews doivent utiliser une base et un Worker distincts. Le workflow synchronise les paramètres nécessaires vers Vercel ; les secrets GitHub ne sont pas transmis automatiquement en dehors de cette procédure.
 
@@ -42,9 +42,30 @@ Le jeu dispose désormais de comptes nom d’utilisateur/mot de passe avec plusi
 
 ## Exécution et validation
 
-La production utilise un moteur temps réel coordonné par Redis avec WebSocket sur `/api/ws`. Un propriétaire actif maintient l’état en mémoire, publie les changements et persiste les checkpoints vers le backend sélectionné avec fencing ; les autres instances relaient les requêtes via Redis. Les moteurs D1 utilisent un espace de coordination distinct par URL de Worker. Aucun état durable n’est sauvegardé sur le disque Vercel.
+Le nouveau mode Vercel utilise D1 comme état partagé. Chaque opération recharge
+un snapshot cohérent, avance la simulation et applique la commande en SQLite en
+mémoire, puis confirme atomiquement les changements dans D1 avant de répondre.
+Le numéro de version est comparé dans la même transaction que les données : une
+instance concurrente repart d'un snapshot neuf et rejoue la commande. Les reçus
+de commandes rendent les reprises idempotentes. Le combat, les positions, le
+chat, la présence et les limites de requêtes sont partagés entre instances.
+Les connexions WebSocket sur `/api/ws` diffusent l'état confirmé ; aucun tick de
+fond ni sauvegarde à l'arrêt de la fonction n'est nécessaire à la persistance.
 
-Le contrôle avant build vérifie les fichiers et les variables sans afficher les secrets. Il ne valide pas la connexion distante. Après déploiement, vérifier inscription, reprise de partie, chargement de tous les modules frontend, WebSocket, combat, chat entre deux navigateurs, suspension/rétablissement et conservation des données après redéploiement. La CI contient également un smoke test de charge configurable ; la capacité à 40 WebSockets sur Vercel/Redis/D1 et la consommation Workers/D1 restent à mesurer sur un environnement de recette isolé. Les anciens tests HTTP locaux ne valident pas cette capacité ; voir [ARCHITECTURE.md](ARCHITECTURE.md#mesures-disponibles-et-limites).
+Le Worker cible doit d'abord être mis à jour avec les opérations
+`runtime_snapshot` et `commit_runtime` de `cloudflare/d1-worker.mjs`.
+Le contrôle avant build exige `runtime_transactions=1`. Le schéma et les
+anciennes sauvegardes restent compatibles. La bascule de production doit
+arrêter les anciennes connexions et sauvegarder l'ancien moteur avant de
+promouvoir le mode transactionnel ; une preview n'effectue pas cette bascule.
+
+Le contrôle des fichiers ne contacte pas D1 ; l'étape de stockage et la recette
+navigateur vérifient séparément le Worker réel. Le mode transactionnel effectue
+deux appels D1 par opération, davantage en cas de conflit. Les snapshots complets
+et les écritures de simulation augmentent la latence et les lectures/écritures
+D1 par rapport au moteur persistant. La capacité et les quotas doivent être
+mesurés sur la recette : les tests de correction ne prouvent pas une capacité
+de 40 joueurs. Voir [ARCHITECTURE.md](ARCHITECTURE.md#mesures-disponibles-et-limites).
 
 ## Branche de publication
 
@@ -57,7 +78,7 @@ Les recettes sont sérialisées car elles partagent la même base de test.
 
 Configurer l'environnement GitHub `vercel-preview` avec les secrets
 `VERCEL_PREVIEW_D1_SERVICE_TOKEN`, `VERCEL_PREVIEW_ADMIN_TOKEN` (distinct de la
-production, au moins 32 caractères) et `VERCEL_PREVIEW_REDIS_URL`. Le secret
+production, au moins 32 caractères). Aucun secret Redis n'est nécessaire. Le secret
 `VERCEL_TOKEN` du dépôt fournit l'accès au projet existant. Activer ensuite la
 variable de dépôt `VERCEL_PREVIEW_ENABLED=1`. Sans cette variable, seul le job
 de configuration s'exécute ; cela ne constitue pas une validation distante.
@@ -75,18 +96,21 @@ l'URL, un rapport sans secrets et les captures du jeu.
 L'accès à une preview protégée passe par le jeton OIDC de développement
 temporaire obtenu avec `vercel env run`. Les en-têtes sont limités à l'origine
 vérifiée. Le workflow ne désactive pas la protection Vercel et ne récupère pas
-les variables de production. Un éventuel partage du Redis existant exige un
-accord explicite ; son quota serait partagé même si les données D1 et les
-clés de coordination sont distinctes.
+les variables de production. Le moteur et le site tournent sur Vercel, avec
+le Worker D1 fictif pour la persistance. Render et Redis ne sont pas utilisés.
 
 Le lancement manuel devient disponible lorsque le workflow est intégré à la
 branche par défaut. Avant cela, les événements de PR exécutent déjà ce workflow.
 
 `master` contient le code intégré. `prod` est la branche publiée par le workflow **Publication Vercel jeux-rpg** à chaque push, ainsi que lors d'un lancement manuel sur cette branche.
 
-Pour configurer plusieurs instances, ajouter le secret `REDIS_URLS` et la variable `RPG_REDIS_ACTIVE_INDEX` dans l'environnement GitHub `production`. Le workflow les synchronise vers Vercel et restaure les secrets CI pour le build local, car les secrets Vercel récupérés par `vercel pull` sont remplacés par `[SENSITIVE]`. La procédure de bascule et la reprise depuis D1 sont décrites dans [realtime.md](realtime.md#plusieurs-url-redis).
+Le workflow restaure uniquement les secrets D1 et administrateur dans le build
+local après `vercel pull`, dont les secrets sont remplacés par `[SENSITIVE]`.
+Il configure `RPG_RUNTIME_MODE=d1` et ne synchronise aucun accès Redis.
+Le paquet Redis est une dépendance optionnelle de compatibilité pour l'ancien
+mode `distributed` et ses tests ; il ne fait pas partie du runtime Vercel D1.
 
-Le workflow exécute les tests et contrôles du stockage, prépare un déploiement de production avec `--skip-domain`, contrôle son URL exacte et son `RPG_RELEASE_SHA`, puis promeut ce même déploiement. Le domaine public reste sur la précédente version tant que la vérification échoue. `VERCEL_TOKEN`, les accès du backend sélectionné et les accès Redis doivent correspondre au projet existant. Pour un déploiement protégé, fournir le secret `VERCEL_AUTOMATION_BYPASS_SECRET` au vérificateur.
+Le workflow exécute les tests et contrôles du stockage, prépare un déploiement de production avec `--skip-domain`, contrôle son URL exacte et son `RPG_RELEASE_SHA`, puis promeut ce même déploiement. Le domaine public reste sur la précédente version tant que la vérification échoue. `VERCEL_TOKEN` et les accès D1 doivent correspondre au projet existant. Pour un déploiement protégé, fournir le secret `VERCEL_AUTOMATION_BYPASS_SECRET` au vérificateur.
 
 Avant de lancer un workflow utilisant les secrets, protéger la branche et faire relire le code, ou configurer un reviewer requis de l’environnement GitHub `production` qui approuve le commit exact. La création de la branche ne configure pas ces règles et ne modifie pas le site public.
 

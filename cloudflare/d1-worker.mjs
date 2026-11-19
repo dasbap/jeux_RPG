@@ -1,5 +1,7 @@
 const TABLES = ["meta","accounts","players","account_characters","account_sessions","friendships","teams","team_members","team_invites","guilds","guild_members","guild_invites","account_status","sessions","members","tutorials","events","receipts","receipt_expiry","admin_audit"];
 const KEYS = {"meta":["key"],"accounts":["id"],"players":["id"],"account_characters":["account_id","class_name"],"account_sessions":["token_hash"],"friendships":["first_id","second_id"],"teams":["id"],"team_members":["account_id"],"team_invites":["id"],"guilds":["id"],"guild_members":["account_id"],"guild_invites":["id"],"account_status":["player_id"],"sessions":["id"],"members":["session_id","player_id"],"tutorials":["session_id"],"events":["id"],"receipts":["player_id","request_id"],"receipt_expiry":["player_id","request_id"],"admin_audit":["id"]};
+const RUNTIME_KEYS = {...KEYS,presence:["player_id"],chat:["id"],request_limits:["key"],chat_streams:["player_id","connection"]};
+const RUNTIME_TABLES = Object.keys(RUNTIME_KEYS);
 const headers = {"content-type":"application/json","cache-control":"no-store"};
 const reply = (body,status=200) => new Response(JSON.stringify(body),{status,headers});
 const validFence = value => Number.isSafeInteger(value) && value >= 0;
@@ -18,12 +20,12 @@ function authorize(request,env) {
 function guardedFence(db, fence) {
   return db.prepare("INSERT INTO meta(key,value) VALUES('runtime_fence',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(String(fence));
 }
-function checkpointStatements(db, body) {
+function checkpointStatements(db, body, tables=TABLES, keysByTable=KEYS) {
   if (!validFence(body.fence) || !Array.isArray(body.changes) || body.changes.length > 1000) throw new Error("invalid_checkpoint");
   const statements=[db.prepare("PRAGMA defer_foreign_keys=ON"),guardedFence(db,body.fence)];
   for(const item of body.changes) {
-    if(!item || !TABLES.includes(item.table) || item.table==="meta" && item.row?.key==="runtime_fence") throw new Error("invalid_table");
-    const keys=KEYS[item.table];
+    if(!item || !tables.includes(item.table) || item.table==="meta" && item.row?.key==="runtime_fence") throw new Error("invalid_table");
+    const keys=keysByTable[item.table];
     if(!Array.isArray(item.key) || item.key.length!==keys.length) throw new Error("invalid_key");
     if(item.row===null){
       statements.push(db.prepare("DELETE FROM "+item.table+" WHERE "+keys.map(k=>k+"=?").join(" AND ")).bind(...item.key));
@@ -55,7 +57,21 @@ export default {
     const row=await env.DB.prepare("SELECT version FROM schema_version WHERE id=1").first();
     const guards=await env.DB.prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='trigger' AND name IN ('reject_stale_runtime_fence_update','reject_stale_runtime_fence_delete')").first();
     const ready=row?.version===3 && guards?.count===2;
-    return reply({ok:ready,version:row?.version,fence_guards:guards?.count},ready?200:503);
+    return reply({ok:ready,version:row?.version,fence_guards:guards?.count,runtime_transactions:1},ready?200:503);
+   }
+   if(body.operation==="runtime_snapshot"){
+    const session=env.DB.withSession("first-primary");
+    const batch=await session.batch([...RUNTIME_TABLES.map(t=>session.prepare("SELECT * FROM "+t)),session.prepare("SELECT name,seq FROM sqlite_sequence")]);
+    return reply({data:Object.fromEntries(RUNTIME_TABLES.map((t,i)=>[t,batch[i].results])),sequences:batch[RUNTIME_TABLES.length].results});
+   }
+   if(body.operation==="commit_runtime"){
+    if(!validFence(body.fence) || !validFence(body.fence+1)) return reply({error:"invalid_fence"},400);
+    const statements=checkpointStatements(env.DB,body,RUNTIME_TABLES,RUNTIME_KEYS);
+    // The NOT NULL constraint aborts the entire batch when another instance won.
+    // Compare, version increment, gameplay, receipts, chat and limits are atomic.
+    statements[1]=env.DB.prepare("INSERT INTO meta(key,value) VALUES('runtime_fence',CASE WHEN COALESCE((SELECT CAST(value AS INTEGER) FROM meta WHERE key='runtime_fence'),0)=? THEN ? ELSE NULL END) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(body.fence,String(body.fence+1));
+    await env.DB.batch(statements);
+    return reply({ok:true,fence:body.fence+1});
    }
    if(body.operation==="read_snapshot"){
     const session=env.DB.withSession("first-primary");
@@ -83,7 +99,9 @@ export default {
    }
    return reply({error:"unknown_operation"},400);
   } catch(error) {
-   return reply({error:String(error?.message || "").includes("stale_runtime_fence") ? "stale_runtime_fence" : "database_operation_failed"},409);
+   const message=String(error?.message || "");
+   if(body.operation==="commit_runtime" && /NOT NULL constraint failed: meta.value/.test(message)) return reply({error:"transaction_conflict"},409);
+   return reply({error:message.includes("stale_runtime_fence") ? "stale_runtime_fence" : "database_operation_failed"},409);
   }
  }
 };

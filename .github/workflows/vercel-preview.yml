@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  # One fictitious D1/Redis runtime: do not run competing recipes concurrently.
+  # Keep preview deployment and its browser recipe together.
   group: jeux-rpg-vercel-preview
   cancel-in-progress: false
 jobs:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '24'
       - run: python -m pip install -c constraints.txt '.[test]'
-      - run: python -m pytest test/test_vercel_preview.py test/test_vercel_build_secrets.py test/test_deployment_health.py test/test_d1_configuration.py -q
+      - run: python -m pytest test/test_vercel_preview.py test/test_vercel_build_secrets.py test/test_deployment_health.py test/test_d1_configuration.py test/test_d1_runtime.py -q
       - run: node --test scripts/verify_vercel_target.test.cjs
   preview:
     needs: configuration
@@ -54,7 +54,6 @@ jobs:
           RPG_D1_WORKER_URL: https://jeux-rpg-d1-preview.dasbap-jeux-rpg.workers.dev
           RPG_D1_SERVICE_TOKEN: ${{ secrets.VERCEL_PREVIEW_D1_SERVICE_TOKEN }}
           RPG_ADMIN_TOKEN: ${{ secrets.VERCEL_PREVIEW_ADMIN_TOKEN }}
-          REDIS_URL: ${{ secrets.VERCEL_PREVIEW_REDIS_URL }}
         run: |
           python -m scripts.prepare_vercel_preview sync --cli .ui-test/node_modules/.bin/vercel
           .ui-test/node_modules/.bin/vercel pull --yes --environment=preview --scope "$VERCEL_ORG_ID"

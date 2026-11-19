@@ -86,6 +86,25 @@ try {
   const oldEngine = await request({ operation: "persist_checkpoint", fence: 23, changes: [] });
   assert.equal(oldEngine.status, 409);
   assert.equal((await oldEngine.json()).error, "stale_runtime_fence");
+  const runtime = await (await request({operation:"runtime_snapshot"})).json();
+  assert(Array.isArray(runtime.data.chat) && Array.isArray(runtime.data.request_limits));
+  const commands = [70,80].map(hp=>request({operation:"commit_runtime",fence:24,changes:[
+    {table:"players",key:["alice"],row:{...player,hp}},
+  ]}));
+  const outcomes = await Promise.all(commands);
+  assert.deepEqual(outcomes.map(item=>item.status).sort(),[200,409]);
+  assert.equal(db.prepare("SELECT value FROM meta WHERE key='runtime_fence'").get().value,"25");
+  const conflict = outcomes.find(item=>item.status===409);
+  assert.equal((await conflict.json()).error,"transaction_conflict");
+  assert([70,80].includes(db.prepare("SELECT hp FROM players").get().hp));
+  const beforeBad = db.prepare("SELECT hp FROM players").get().hp;
+  const badTransaction = await request({operation:"commit_runtime",fence:25,changes:[
+    {table:"players",key:["alice"],row:{...player,hp:2}},
+    {table:"account_status",key:["missing"],row:{player_id:"missing",suspended:0}},
+  ]});
+  assert.equal(badTransaction.status,409);
+  assert.equal(db.prepare("SELECT hp FROM players").get().hp,beforeBad);
+  assert.equal(db.prepare("SELECT value FROM meta WHERE key='runtime_fence'").get().value,"25");
   db.exec("DROP TRIGGER reject_stale_runtime_fence_update");
   assert.equal((await request({ operation: "health" })).status, 503);
   console.log("Worker D1 : relations différées, rollback et rejet des anciens moteurs vérifiés sur SQLite local.");

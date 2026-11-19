@@ -356,7 +356,7 @@ class Application:
                     payload = self._render_class_options(payload)
                     from .runtime_configuration import runtime_mode
 
-                    if runtime_mode(self.environment) == "single":
+                    if runtime_mode(self.environment) in ("single", "d1"):
                         payload = payload.replace(
                             b"<head>",
                             b'<head><meta name="rpg-realtime-url" content="/api/ws">',

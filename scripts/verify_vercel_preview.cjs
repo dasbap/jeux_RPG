@@ -64,6 +64,7 @@ async function verify() {
     await page.goto(base);
     const health = await page.evaluate(() => fetch("/health").then(result => result.json()));
     assert.equal(health.release, release); assert.equal(health.database_backend, "d1");
+    assert.equal(health.runtime, "d1-transaction", "La preview doit utiliser D1 sans Redis");
     await page.fill("#account-name", credentials.username);
     await page.fill("#account-password", credentials.password);
     await page.fill("#name", "Recette Vercel");

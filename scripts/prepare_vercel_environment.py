@@ -27,6 +27,17 @@ def prepare(path, environment):
         if inactive != backend:
             for key in names:
                 values.pop(key, None)
+    if backend == "d1":
+        from jeuxRPG.multiplayer.runtime_configuration import runtime_environment
+
+        values["RPG_RUNTIME_MODE"] = "d1"
+        values.update(RPG_RESET_TEST_PLAYERS="0", RPG_RUNTIME_REALMS="1")
+        values = runtime_environment(values)
+        path.write_text("", encoding="utf-8")
+        path.chmod(0o600)
+        for key, value in values.items():
+            set_key(path, key, value)
+        return
     values.update(RPG_RESET_TEST_PLAYERS="0", RPG_RUNTIME_REALMS="1")
     redis_urls = environment.get("REDIS_URLS")
     if redis_urls:

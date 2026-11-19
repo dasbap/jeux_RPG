@@ -13,15 +13,17 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
-from redis.asyncio import Redis
-from redis.exceptions import RedisError
 
 from .browser_solo_assets import client_csp
 from .distributed import build_rate_limiter
 from .json_protocol import object_json
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .realtime_store import KEYS, RuntimeStore
-from .runtime_configuration import account_auth_required, runtime_mode
+from .runtime_configuration import (
+    account_auth_required,
+    runtime_environment,
+    runtime_mode,
+)
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
@@ -105,6 +107,8 @@ class Coordinator:
             if self.started:
                 return
             if not self.local:
+                from redis.asyncio import Redis
+
                 from .redis_configuration import redis_url
 
                 url = redis_url(self.environment)
@@ -520,6 +524,8 @@ class Coordinator:
     async def release(self):
         if self.local or not self.owner() or self.connections:
             return
+        from redis.exceptions import RedisError
+
         await self.flush()
         async with self.lock:
             if not self.owner() or self.connections or self.store.pending:
@@ -856,6 +862,10 @@ def _static_response(request, path, result, content):
 
 
 def build_coordinator(environment):
+    if runtime_mode(environment) == "d1":
+        from .d1_runtime import D1Coordinator
+
+        return D1Coordinator(environment)
     if runtime_mode(environment) == "single":
         from .single_runtime import SingleCoordinator
 
@@ -863,8 +873,28 @@ def build_coordinator(environment):
     return Coordinator(environment)
 
 
+async def _runtime_ready(coordinator, mode):
+    if mode == "d1":
+        try:
+            return await coordinator.ready()
+        except Exception:
+            return False
+    return coordinator.owner() and not getattr(coordinator, "draining", False) and not coordinator.store.last_save_error
+
+
+def _runtime_health(environment):
+    from .storage_configuration import database_backend
+
+    result = {"status": "ok", "database_backend": database_backend(environment)}
+    if runtime_mode(environment) == "d1":
+        result["runtime"] = "d1-transaction"
+    if environment.get("RPG_RELEASE_SHA"):
+        result["release"] = environment["RPG_RELEASE_SHA"]
+    return result
+
+
 def create_app(environment=None, coordinator=None):
-    environment = dict(os.environ if environment is None else environment)
+    environment = runtime_environment(os.environ if environment is None else environment)
     mode = runtime_mode(environment)
     coordinator = coordinator or build_coordinator(environment)
     static = Application(environment=environment)
@@ -902,22 +932,13 @@ def create_app(environment=None, coordinator=None):
 
     @app.get("/health")
     async def healthcheck():
-        from .storage_configuration import database_backend
-
-        result = {"status": "ok", "database_backend": database_backend(environment)}
-        if environment.get("RPG_RELEASE_SHA"):
-            result["release"] = environment["RPG_RELEASE_SHA"]
-        return JSONResponse(result)
+        return JSONResponse(_runtime_health(environment))
 
     _register_socket(app, coordinator, environment, trusted)
 
     @app.get("/ready")
     async def readiness():
-        available = (
-            coordinator.owner()
-            and not getattr(coordinator, "draining", False)
-            and not coordinator.store.last_save_error
-        )
+        available = await _runtime_ready(coordinator, mode)
         return JSONResponse(
             {"status": "ready" if available else "unavailable"},
             status_code=200 if available else 503,
