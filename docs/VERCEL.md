@@ -48,6 +48,40 @@ Le contrôle avant build vérifie les fichiers et les variables sans afficher le
 
 ## Branche de publication
 
+### Recette Vercel des PR
+
+Le workflow **Vercel preview et parcours navigateur** valide la configuration
+sur chaque PR. Le job de déploiement utilise exclusivement le projet `jeux-rpg`
+en Preview et le Worker fictif `jeux-rpg-d1-preview`. Il ne promeut aucun domaine.
+Les recettes sont sérialisées car elles partagent la même base de test.
+
+Configurer l'environnement GitHub `vercel-preview` avec les secrets
+`VERCEL_PREVIEW_D1_SERVICE_TOKEN`, `VERCEL_PREVIEW_ADMIN_TOKEN` (distinct de la
+production, au moins 32 caractères) et `VERCEL_PREVIEW_REDIS_URL`. Le secret
+`VERCEL_TOKEN` du dépôt fournit l'accès au projet existant. Activer ensuite la
+variable de dépôt `VERCEL_PREVIEW_ENABLED=1`. Sans cette variable, seul le job
+de configuration s'exécute ; cela ne constitue pas une validation distante.
+Les PR venant d'un fork n'exécutent pas le déploiement avec des secrets.
+
+La recette construit l'artefact Vercel, déploie le SHA de tête exact, puis
+contrôle par l'API authentifiée le projet, l'équipe, le SHA et l'environnement
+avant de donner accès au navigateur. Elle vérifie l'inscription, le personnage,
+l'aventure, son checkpoint et sa reprise après connexion par mot de passe,
+l'authentification WebSocket, le solo avec reprise locale et le paysage imposé
+sur téléphone. Les identifiants fictifs restent uniquement en mémoire du test ;
+les comptes fictifs créés restent dans le D1 de test. L'artefact GitHub contient
+l'URL, un rapport sans secrets et les captures du jeu.
+
+L'accès à une preview protégée passe par le jeton OIDC de développement
+temporaire obtenu avec `vercel env run`. Les en-têtes sont limités à l'origine
+vérifiée. Le workflow ne désactive pas la protection Vercel et ne récupère pas
+les variables de production. Un éventuel partage du Redis existant exige un
+accord explicite ; son quota serait partagé même si les données D1 et les
+clés de coordination sont distinctes.
+
+Le lancement manuel devient disponible lorsque le workflow est intégré à la
+branche par défaut. Avant cela, les événements de PR exécutent déjà ce workflow.
+
 `master` contient le code intégré. `prod` est la branche publiée par le workflow **Publication Vercel jeux-rpg** à chaque push, ainsi que lors d'un lancement manuel sur cette branche.
 
 Pour configurer plusieurs instances, ajouter le secret `REDIS_URLS` et la variable `RPG_REDIS_ACTIVE_INDEX` dans l'environnement GitHub `production`. Le workflow les synchronise vers Vercel et restaure les secrets CI pour le build local, car les secrets Vercel récupérés par `vercel pull` sont remplacés par `[SENSITIVE]`. La procédure de bascule et la reprise depuis D1 sont décrites dans [realtime.md](realtime.md#plusieurs-url-redis).
