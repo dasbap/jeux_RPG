@@ -41,9 +41,16 @@ def configuration(environment):
 def link(root):
     folder = root / ".vercel"
     folder.mkdir(exist_ok=True)
-    (folder / "project.json").write_text(
+    path = folder / "project.json"
+    existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if existing and (
+        existing.get("projectId") != PROJECT or existing.get("orgId") != TEAM
+    ):
+        raise ValueError("Le repertoire est lie a un autre projet Vercel")
+    path.write_text(
         json.dumps(
             {
+                **existing,
                 "projectId": PROJECT,
                 "orgId": TEAM,
                 "projectName": "jeux-rpg",
@@ -57,7 +64,7 @@ def prepare(root, environment):
     values = configuration(environment)
     link(root)
     path = root / ".vercel/.env.preview.local"
-    # Discard pulled settings: neither production credentials nor placeholders
+    # Discard pulled environment values: neither production credentials nor placeholders
     # belong in a preview build. Runtime values are synced to Preview only.
     path.write_text("", encoding="utf-8")
     path.chmod(0o600)

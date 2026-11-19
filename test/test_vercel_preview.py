@@ -1,7 +1,9 @@
+import json
+
 import pytest
 from dotenv import dotenv_values
 
-from scripts.prepare_vercel_preview import WORKER, configuration, prepare
+from scripts.prepare_vercel_preview import PROJECT, TEAM, WORKER, configuration, prepare
 
 
 @pytest.fixture
@@ -44,7 +46,13 @@ def test_preview_replaces_pulled_settings_without_production_secrets(
     path.write_text(
         "TURSO_AUTH_TOKEN='production'\nRPG_D1_SERVICE_TOKEN='[SENSITIVE]'\n"
     )
+    settings = {"framework": "python", "buildCommand": "python scripts/check_vercel.py"}
+    project = folder / "project.json"
+    project.write_text(
+        json.dumps({"projectId": PROJECT, "orgId": TEAM, "settings": settings})
+    )
     prepare(tmp_path, {**preview_environment, "UNRELATED_SECRET": "production"})
+    assert json.loads(project.read_text())["settings"] == settings
     values = dotenv_values(path)
     assert values["RPG_D1_SERVICE_TOKEN"] == "fictitious-token"
     assert values["RPG_RUNTIME_MODE"] == "d1"
@@ -59,3 +67,15 @@ def test_invalid_configuration_does_not_overwrite_local_files(
     with pytest.raises(ValueError, match="Commit"):
         prepare(tmp_path, {**preview_environment, "RPG_RELEASE_SHA": "wrong"})
     assert not (tmp_path / ".vercel").exists()
+
+
+def test_preview_refuses_to_retarget_an_existing_project(tmp_path, preview_environment):
+    folder = tmp_path / ".vercel"
+    folder.mkdir()
+    project = folder / "project.json"
+    project.write_text(json.dumps({"projectId": "another-project", "orgId": TEAM}))
+    before = project.read_bytes()
+    with pytest.raises(ValueError, match="autre projet"):
+        prepare(tmp_path, preview_environment)
+    assert project.read_bytes() == before
+    assert not (folder / ".env.preview.local").exists()
