@@ -59,8 +59,13 @@ class D1Client:
                     and detail.get("error") == "stale_runtime_fence"
                 ):
                     raise StaleRuntimeError("Moteur remplacé") from error
-                if isinstance(detail, dict) and detail.get("error") == "transaction_conflict":
-                    raise SnapshotConflict("Etat D1 modifie par une autre instance") from error
+                if (
+                    isinstance(detail, dict)
+                    and detail.get("error") == "transaction_conflict"
+                ):
+                    raise SnapshotConflict(
+                        "Etat D1 modifie par une autre instance"
+                    ) from error
             raise D1StorageError("Opération D1 refusée") from error
         except (urllib.error.URLError, TimeoutError, ValueError) as error:
             raise D1StorageError("Opération D1 indisponible") from error
@@ -97,15 +102,22 @@ class D1Client:
 
         payload = self.request("runtime_snapshot")
         data = payload.get("data")
-        if not isinstance(data, dict) or set(data) != set(RUNTIME_KEYS) or any(
-            not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows)
-            for rows in data.values()
+        if (
+            not isinstance(data, dict)
+            or set(data) != set(RUNTIME_KEYS)
+            or any(
+                not isinstance(rows, list)
+                or any(not isinstance(row, dict) for row in rows)
+                for rows in data.values()
+            )
         ):
             raise D1StorageError("Snapshot du moteur D1 invalide")
         sequences = payload.get("sequences")
         if not isinstance(sequences, list) or any(
-            not isinstance(row, dict) or row.get("name") not in RUNTIME_KEYS
-            or type(row.get("seq")) is not int or row["seq"] < 0
+            not isinstance(row, dict)
+            or row.get("name") not in RUNTIME_KEYS
+            or type(row.get("seq")) is not int
+            or row["seq"] < 0
             for row in sequences
         ):
             raise D1StorageError("Sequences du moteur D1 invalides")

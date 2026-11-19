@@ -879,7 +879,11 @@ async def _runtime_ready(coordinator, mode):
             return await coordinator.ready()
         except Exception:
             return False
-    return coordinator.owner() and not getattr(coordinator, "draining", False) and not coordinator.store.last_save_error
+    return (
+        coordinator.owner()
+        and not getattr(coordinator, "draining", False)
+        and not coordinator.store.last_save_error
+    )
 
 
 def _runtime_health(environment):
@@ -894,7 +898,9 @@ def _runtime_health(environment):
 
 
 def create_app(environment=None, coordinator=None):
-    environment = runtime_environment(os.environ if environment is None else environment)
+    environment = runtime_environment(
+        os.environ if environment is None else environment
+    )
     mode = runtime_mode(environment)
     coordinator = coordinator or build_coordinator(environment)
     static = Application(environment=environment)
