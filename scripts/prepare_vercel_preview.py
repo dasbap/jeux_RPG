@@ -89,6 +89,7 @@ def main():
                     key,
                     "preview",
                     "--force",
+                    "--yes",
                     "--scope",
                     TEAM,
                     "--sensitive"
