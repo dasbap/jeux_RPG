@@ -14,7 +14,7 @@ def main(passages=False, harvest=False):
     root = Path(__file__).resolve().parents[1]
     os.environ["RPG_MAPS_FILE"] = str(root / "jeuxRPG/maps")
     from jeuxRPG.multiplayer import content, fields, tutorial
-    from jeuxRPG.multiplayer.distributed import PresenceRegistry
+    from jeuxRPG.multiplayer.local_state import PresenceRegistry
     from jeuxRPG.multiplayer.server import RPGServer
     from jeuxRPG.multiplayer.service import GameService
 

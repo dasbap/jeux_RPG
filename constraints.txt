@@ -18,7 +18,6 @@ pydantic_core==2.50.0
 pytest-timeout==2.4.0
 pytest==9.1.1
 python-dotenv==1.2.4
-redis==8.1.0
 starlette==1.7.0
 typing-inspection==0.4.4
 typing_extensions==4.16.0

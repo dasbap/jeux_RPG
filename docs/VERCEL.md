@@ -136,9 +136,7 @@ branche par défaut. Avant cela, les événements de PR exécutent déjà ce wor
 
 Le workflow restaure uniquement les secrets D1 et administrateur dans le build
 local après `vercel pull`, dont les secrets sont remplacés par `[SENSITIVE]`.
-Il configure `RPG_RUNTIME_MODE=d1` et ne synchronise aucun accès Redis.
-Le paquet Redis est une dépendance optionnelle de compatibilité pour l'ancien
-mode `distributed` et ses tests ; il ne fait pas partie du runtime Vercel D1.
+Il configure `RPG_RUNTIME_MODE=d1`. Le moteur et ses tests de publication utilisent D1 pour la coordination.
 
 Le workflow exécute les tests et contrôles du stockage, prépare un déploiement de production avec `--skip-domain`, contrôle son URL exacte et son `RPG_RELEASE_SHA`, puis promeut ce même déploiement. Le domaine public reste sur la précédente version tant que la vérification échoue. `VERCEL_TOKEN` et les accès D1 doivent correspondre au projet existant. Pour un déploiement protégé, fournir le secret `VERCEL_AUTOMATION_BYPASS_SECRET` au vérificateur.
 

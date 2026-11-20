@@ -1,6 +1,6 @@
 import time
 
-from jeuxRPG.multiplayer.distributed import LocalRateLimiter, PresenceRegistry, build_rate_limiter
+from jeuxRPG.multiplayer.local_state import LocalRateLimiter, PresenceRegistry
 
 
 def test_local_rate_limiter_preserves_existing_contract():
@@ -21,8 +21,3 @@ def test_presence_registry_local_mapping_and_prune():
     assert "a" not in registry
     assert registry["b"]["realm"] == 2
     assert list(registry.values()) == [{"realm": 2, "seen": now}]
-
-
-def test_build_rate_limiter_keeps_explicit_fallback_without_redis():
-    fallback = LocalRateLimiter()
-    assert build_rate_limiter({}, fallback=fallback) is fallback

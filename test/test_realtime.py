@@ -1,7 +1,6 @@
 from copy import deepcopy
 import asyncio
 import json
-import os
 import time
 import uuid
 from types import SimpleNamespace
@@ -15,7 +14,6 @@ from jeuxRPG.multiplayer import realtime_store, content
 from jeuxRPG.multiplayer.schema import initialize
 from jeuxRPG.multiplayer.turso import TursoConnection
 from test_serverless import Transport
-from redis.asyncio import Redis
 
 
 ENV = {'RPG_ADMIN_TOKEN': 'a' * 40}
@@ -349,53 +347,6 @@ def test_new_deployment_validates_origin_before_relay_to_old_owner(public):
             assert rejected.json()['error'] == error
         assert len(received) == 1
 
-
-@pytest.mark.skipif(not os.environ.get('RPG_TEST_REDIS_URL'), reason='Redis réel disponible dans le workflow de publication')
-def test_two_instances_share_one_engine_and_recover_from_turso_without_redis_snapshot(monkeypatch):
-    async def run():
-        persisted = []
-        durable = {'value': None}
-        monkeypatch.setattr(RuntimeStore, 'load', classmethod(lambda cls, environment, fence=None: RuntimeStore(environment, durable['value'])))
-        def persist(store, fence, batch):
-            persisted.append((fence, batch))
-            durable['value'] = json.loads(store.snapshot())
-        monkeypatch.setattr(RuntimeStore, 'persist', persist)
-        a = Coordinator(ENV, redis=Redis.from_url(os.environ['RPG_TEST_REDIS_URL'], decode_responses=True))
-        b = Coordinator(ENV, redis=Redis.from_url(os.environ['RPG_TEST_REDIS_URL'], decode_responses=True))
-        prefix = 'test:jeux-rpg:' + uuid.uuid4().hex + ':'
-        a.prefix = b.prefix = prefix
-        try:
-            await a.start()
-            await b.start()
-            assert a.owner() and not b.owner()
-            registered = await a.rpc(message('/api/register', {'name': 'Alice', 'class_name': 'Knight'}))
-            token = registered['body']['token']
-            mirrored = await b.rpc(message('/api/state', token=token))
-            assert mirrored['body']['player']['id'] == registered['body']['player']['id']
-            deadline = asyncio.get_running_loop().time() + 5
-            while a.outgoing or not a.received.empty():
-                assert asyncio.get_running_loop().time() < deadline
-                await asyncio.sleep(.05)
-            for _ in range(30):
-                assert (await a.rpc(message('/api/state', token=token)))['status'] == 200
-            assert not a.outgoing and not a.pending
-            await a.flush()
-            assert len(persisted) == 1
-            assert await a.redis.get(prefix + 'checkpoint') is None
-            old_fence = a.fence
-            await a.release()
-            await b.elect()
-            assert b.owner() and b.fence > old_fence
-            assert not b.store.pending
-            recovered = await b.rpc(message('/api/state', token=token))
-            assert recovered['body']['player']['id'] == registered['body']['player']['id']
-            stale = await a.execute(message('/api/state', token=token))
-            assert stale['status'] == 503
-        finally:
-            await a.close()
-            await b.redis.delete(prefix + 'lease', prefix + 'fence', prefix + 'checkpoint')
-            await b.close()
-    asyncio.run(run())
 
 
 def test_realtime_serves_all_modular_frontend_assets():

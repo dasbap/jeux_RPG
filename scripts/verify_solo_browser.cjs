@@ -35,7 +35,7 @@ const {chromium} = require("../.ui-test/node_modules/playwright");
     await context.route("**/api/**", route => {
       apiCalls++;
       if (new URL(route.request().url()).pathname === "/api/classes") return route.continue();
-      return route.fulfill({status: 503, contentType: "application/json", body: JSON.stringify({error: "unavailable", message: "Quota Redis épuisé"})});
+      return route.fulfill({status: 503, contentType: "application/json", body: JSON.stringify({error: "unavailable", message: "Moteur distant indisponible"})});
     });
     const page = await context.newPage();
     page.setDefaultTimeout(20000);

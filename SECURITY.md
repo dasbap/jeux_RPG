@@ -2,7 +2,7 @@
 
 ## Périmètre
 
-Le projet comporte un serveur HTTP local, un solo hors ligne et un multijoueur public FastAPI/ASGI sur Vercel. La production utilise Cloudflare D1 pour les données durables et Redis pour la coordination ; le PvP y est désactivé. Le mode coopératif historique à deux et les duels restent des cas de compatibilité distincts. Cette description ne constitue pas une certification de sécurité. Voir [l’architecture actuelle](docs/ARCHITECTURE.md).
+Le projet comporte un serveur HTTP local, un solo hors ligne et un multijoueur public FastAPI/ASGI sur Vercel. La cible Vercel utilise Cloudflare D1 pour les données durables et la coordination ; le PvP y est désactivé. Le mode coopératif historique à deux et les duels restent des cas de compatibilité distincts. Cette description ne constitue pas une certification de sécurité. Voir [l’architecture actuelle](docs/ARCHITECTURE.md).
 
 Le serveur HTTP local reste limité à la boucle locale. Le déploiement web utilise l’entrée FastAPI/ASGI et impose les contrôles d’hôte et d’origine. Toute exposition personnalisée doit rester sous HTTPS. Ne pas transmettre les jetons de session, mots de passe ou secrets administrateur en URL, dans un journal ou dans un canal public.
 
@@ -20,13 +20,13 @@ Le serveur HTTP local reste limité à la boucle locale. Le déploiement web uti
 
 ## Limites explicites
 
-Le serveur local borne les traitements HTTP concurrents. Les routes appliquent des limites distinctes aux connexions, créations de compte et commandes ; le transport WebSocket borne également les messages et les authentifications simultanées. Redis permet le rate limiting distribué en production. La présence de jeu reste en RAM dans le moteur autoritaire. Les limites exactes dépendent de la route et du mode d’exécution ; elles ne remplacent pas une protection réseau en amont.
+Le serveur local borne les traitements HTTP concurrents. Les routes appliquent des limites distinctes aux connexions, créations de compte et commandes ; le transport WebSocket borne également les messages et les authentifications simultanées. Les instances Vercel partagent les limites et la présence par les transactions D1. Les limites exactes dépendent de la route et du mode d’exécution ; elles ne remplacent pas une protection réseau en amont.
 
 Le service conserve des bornes de stockage et un journal de commandes dédupliquées. Les reçus ont une rétention de 15 minutes et sont purgés par `command_journal.py` : l’ancien plafond cumulatif de 100 000 reçus n’est plus une limite permanente de fonctionnement. Les événements sont bornés par session. La publication et l’administration ne doivent pas supprimer les comptes ni remplacer une base existante pour contourner une limite.
 
 Les comptes utilisent un nom d’utilisateur et un mot de passe dérivé avec scrypt. Les sessions sont des jetons révocables, avec un maximum de sessions actives conservées par compte ; le changement de mot de passe révoque les anciennes sessions et une déconnexion globale est disponible. Le POC n’inclut pas encore OAuth ni récupération de compte par email.
 
-Les fichiers sont protégés contre les entrées du joueur, mais le compte système et le répertoire de données restent dans le périmètre de confiance. Redis coordonne le propriétaire du moteur, les générations de sauvegarde et le rate limiting distribué ; les parties et la présence sont simulées en RAM. Cloudflare D1 conserve les comptes et la progression durable via un Worker privé authentifié. Les lots atomiques et les triggers de génération refusent les sauvegardes d’un moteur périmé. Turso reste un ancien backend verrouillé, sans retour automatique en cas de panne D1.
+Les fichiers sont protégés contre les entrées du joueur, mais le compte système et le répertoire de données restent dans le périmètre de confiance. Le moteur Vercel simule chaque opération en RAM puis enregistre ses mutations et ses limites dans D1. Cloudflare D1 conserve les comptes et la progression durable via un Worker privé authentifié. Les lots atomiques et les triggers de génération refusent les sauvegardes d’un moteur périmé. Turso reste un ancien backend verrouillé, sans retour automatique en cas de panne D1.
 
 La reprise compte le temps hors ligne à partir de l'horloge système UTC et empêche un retour en arrière du temps de jeu. Une modification importante de l'heure pendant l'arrêt peut faire avancer les échéances. Les durées des compétences du moteur historique restent exprimées en tours ; elles ne sont pas implicitement converties en secondes du POC.
 

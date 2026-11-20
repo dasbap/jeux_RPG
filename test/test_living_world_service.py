@@ -6,7 +6,7 @@ from test_living_world import no_network  # noqa: F401
 from test_single_runtime import d1  # noqa: F401
 
 from jeuxRPG.multiplayer.d1_client import D1Client
-from jeuxRPG.multiplayer.distributed import PresenceRegistry
+from jeuxRPG.multiplayer.local_state import PresenceRegistry
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
 from jeuxRPG.multiplayer.service import GameError, GameService
 

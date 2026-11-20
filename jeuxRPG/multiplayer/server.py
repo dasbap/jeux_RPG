@@ -1,7 +1,6 @@
 import argparse
 import json
 import logging
-import os
 import socket
 import threading
 import time
@@ -13,8 +12,7 @@ from urllib.parse import urlsplit
 
 from .browser_solo_assets import client_csp, engine_archive
 from .command_queue import CommandQueue
-from .distributed import LocalRateLimiter as RateLimiter
-from .distributed import build_rate_limiter
+from .local_state import LocalRateLimiter as RateLimiter
 from .network_log import create_logger, write
 from .observability import health, metrics, ready
 from .service import GameError, GameService, digest
@@ -59,9 +57,7 @@ class RPGServer(ThreadingHTTPServer):
         self.network_log = create_logger(log_directory)
         service.configure_chat_log(log_directory)
         self.service = service
-        self.limiter = build_rate_limiter(
-            os.environ, fallback=RateLimiter(clock=lambda: time.monotonic())
-        )
+        self.limiter = RateLimiter()
         self._slots = threading.BoundedSemaphore(128)
         super().__init__(address, Handler)
         port = self.server_address[1]
