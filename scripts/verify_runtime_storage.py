@@ -9,7 +9,13 @@ from jeuxRPG.multiplayer.redis_configuration import redis_url
 from jeuxRPG.multiplayer.storage_configuration import database_backend
 
 
+class D1WorkerUpgradeRequired(RuntimeError):
+    pass
+
+
 def failure_code(error):
+    if isinstance(error, D1WorkerUpgradeRequired):
+        return "d1_worker_upgrade_required"
     if not type(error).__module__.startswith("redis"):
         return "d1_storage" if type(error).__module__.endswith("d1_client") else "runtime_storage"
     from redis.exceptions import (
@@ -36,10 +42,11 @@ def failure_code(error):
 def verify(environment):
     mode = "online"
     if environment.get("RPG_RUNTIME_MODE") == "d1":
-        result = D1Client(environment).health()
+        client = D1Client(environment)
+        result = client.health()
         if result.get("runtime_transactions") != 1:
-            raise RuntimeError("Worker D1 sans transactions atomiques")
-        D1Client(environment).runtime_snapshot()
+            raise D1WorkerUpgradeRequired("Worker D1 sans transactions atomiques")
+        client.runtime_snapshot()
         print("Stockage D1 transactionnel verifie, sans Redis.")
         return mode
     from redis import Redis
@@ -80,6 +87,9 @@ def main():
         mode = verify(environment)
     except Exception as error:
         print("Stockage du moteur indisponible : " + failure_code(error))
+        if isinstance(error, D1WorkerUpgradeRequired):
+            print("Mettre a jour le Worker cible avec cloudflare/d1-worker.mjs "
+                  "avant de relancer la publication ; consulter docs/VERCEL.md.")
         return 1
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:
