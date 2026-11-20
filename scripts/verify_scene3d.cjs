@@ -115,3 +115,26 @@ test("shared crafted weapons override each class weapon while keeping its own bo
  for(const actor of api.actors(adventure,players[0])){assert.equal(actor.look.weapon,"arme_staff");assert.equal(actor.look.id,"body");assert.equal(actor.look.color,"#123456");}
  players[0].gear=[];assert.equal(api.actors(adventure,players[0])[0].look.weapon,"arme_wand");
 });
+
+test("terrain follows the displayed camera and covers tall viewports",()=>{
+ const api=setup(),map={width:100,height:100,cover:[]};
+ const camera={x:48.8,z:41.8,halfW:9,halfH:22};
+ const first=api.terrainWindow(camera);
+ const moved=api.terrainWindow({...camera,z:42.1});
+ assert.equal(moved.z,42);
+ assert.notEqual(moved.z,first.z);
+ assert(moved.radiusZ>moved.radiusX);
+ const mesh=new api.Mesh();api.scenery(mesh,map,null,moved);
+ const depths=mesh.data.filter((_,i)=>i%6===2);
+ const visibleDepth=camera.halfH/api.cameraAngle.tilt;
+ assert(Math.min(...depths)<=42.1-visibleDepth);
+ assert(Math.max(...depths)>=42.1+visibleDepth);
+ assert(api.terrainWindow({...camera,halfH:9}).radiusZ<moved.radiusZ);
+});
+
+test("discovery cache distinguishes different cells with the same count",()=>{
+ const {sameExploration}=setup();
+ assert(sameExploration(new Set(["1,1","2,2"]),new Set(["2,2","1,1"])));
+ assert(!sameExploration(new Set(["1,1"]),new Set(["2,2"])));
+ assert(!sameExploration(null,new Set()));
+});

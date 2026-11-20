@@ -55,11 +55,24 @@
     mesh.tri([a,1.05,e],[a,1.7,z],[a,1.05,c],rgb("#ce9c75"));
     mesh.tri([b,1.05,c],[b,1.7,z],[b,1.05,e],rgb("#ce9c75"),.8);
   }
+  function sameExploration(a,b){
+    if(a===b)return true;
+    if(!a||!b||a.size!==b.size)return false;
+    for(const cell of b)if(!a.has(cell))return false;
+    return true;
+  }
+  function terrainWindow(camera){
+    return {
+      x:Math.floor(camera.x/2)*2,z:Math.floor(camera.z/2)*2,
+      radiusX:Math.ceil(camera.halfW)+5,radiusZ:Math.ceil(camera.halfH/TILT)+5,
+    };
+  }
   function scenery(mesh,map,seen,camera){
     const theme=environment(map);
-    const visible=(x,z)=>Math.abs(x-camera.x)<camera.span*.65+5&&Math.abs(z-camera.z)<camera.span*.65+5;
+    const radiusX=camera.radiusX??camera.span*.65+5,radiusZ=camera.radiusZ??camera.span*.65+5;
+    const visible=(x,z)=>Math.abs(x-camera.x)<=radiusX&&Math.abs(z-camera.z)<=radiusZ;
     const sets=Object.fromEntries(["cover","blocked","paths","water","bridges"].map(key=>[key,new Set((map[key]||[]).map(p=>p.join()))]));
-    for(let z=Math.max(0,Math.floor(camera.z-camera.span));z<Math.min(map.height,camera.z+camera.span);z++)for(let x=Math.max(0,Math.floor(camera.x-camera.span));x<Math.min(map.width,camera.x+camera.span);x++){
+    for(let z=Math.max(0,Math.floor(camera.z-radiusZ));z<Math.min(map.height,camera.z+radiusZ+1);z++)for(let x=Math.max(0,Math.floor(camera.x-radiusX));x<Math.min(map.width,camera.x+radiusX+1);x++){
       if(!visible(x,z))continue;
       const key=`${x},${z}`, known=!seen||seen.has(key),road=sets.paths.has(key),water=sets.water.has(key)&&!sets.bridges.has(key);
       let color=!known?theme.unknown:water?theme.water:sets.bridges.has(key)?"#bb9464":road?theme.path:map.biome==="mountain"?"#87938a":theme.ground;
@@ -394,7 +407,7 @@
     update(adventure,me){
       const received=performance.now();
       if(globalThis.RPGMotion?.sync(adventure,me,received)===false)return;
-      const previousReceived=this.received;
+      const previousReceived=this.received,previousMap=this.adventure?.battle.map;
       this.adventure=adventure;this.me=me;this.received=received;
       const now=this.received/1000;
       this.items=actors(adventure,me).map(a=>{
@@ -420,15 +433,21 @@
       this.camera.span=Math.max(12,Math.min(36,span||22));
       const hero=this.items.find(a=>a.hero);
       if(typeof fieldCamera!=="undefined"&&fieldCamera?.follow===false){this.camera.x=fieldCamera.x;this.camera.z=fieldCamera.y;}
-      else if(hero){this.camera.x=hero.position[0];this.camera.z=hero.position[1];}
-      this.seen=adventure.field_map?new Set((adventure.battle.explored||[]).map(p=>p.join())):null;
-      const map=adventure.battle.map,key=`${map.id}:${map.biome}:${map.terrain_version}:${Math.floor(this.camera.x/2)}:${Math.floor(this.camera.z/2)}:${this.camera.span}:${this.seen?.size}`;
-      this.root.dataset.biome=map.biome||"forest";
-      if(key!==this.terrainKey){const mesh=new Mesh();scenery(mesh,map,this.seen,this.camera);this.upload(this.staticBuffer,mesh);this.staticCount=mesh.data.length/6;this.terrainKey=key;}
+      else if(hero&&previousMap?.id!==adventure.battle.map.id){this.camera.x=hero.position[0];this.camera.z=hero.position[1];}
+      const seen=adventure.field_map?new Set((adventure.battle.explored||[]).map(p=>p.join())):null;
+      if(!sameExploration(this.seen,seen)){this.seen=seen;this.terrainKey=null;}
+      this.root.dataset.biome=adventure.battle.map.biome||"forest";
       this.attack.textContent=`⚔ Attaquer · portée ${me.attack_range}`;
       this.help.textContent=globalThis.RPGKeybindings?.hint()||`ZQSD / WASD · Espace : attaque · Portée ${me.attack_range}`;
       this.canvas.setAttribute("aria-label", "Monde en 3D. " + this.help.textContent);
       this.attack.disabled=me.hp<=0||me.stunned||me.casting||me.cooldown_real_seconds>0;
+    }
+    updateTerrain(){
+      const map=this.adventure.battle.map,window=terrainWindow(this.camera);
+      const key=`${map.id}:${map.biome}:${map.terrain_version}:${map.width}:${map.height}:${window.x}:${window.z}:${window.radiusX}:${window.radiusZ}`;
+      if(key===this.terrainKey)return;
+      const mesh=new Mesh();scenery(mesh,map,this.seen,window);
+      this.upload(this.staticBuffer,mesh);this.staticCount=mesh.data.length/6;this.terrainKey=key;
     }
     upload(buffer,mesh){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),gl.DYNAMIC_DRAW);}
     buffer(buffer,count){
@@ -458,6 +477,12 @@
         if(a.hero&&globalThis.RPGMotion){a.display=RPGMotion.sample(this.adventure,this.me,ms)||a.display;a.moving=RPGMotion.axis.some(Boolean)||Boolean(a.unit?.route?.length);}
         if(a.hero&&globalThis.RPGMotion?.axis.some(Boolean)){const [dx,dz]=RPGMotion.axis;a.targetYaw=Math.atan2(dx,dz);}
         const turn=Math.atan2(Math.sin(a.targetYaw-a.yaw),Math.cos(a.targetYaw-a.yaw));a.yaw+=turn*.35;
+      }
+      const followed=this.items.find(a=>a.hero);
+      if(followed&&(typeof fieldCamera==="undefined"||fieldCamera?.follow!==false)){
+        this.camera.x=followed.display[0];this.camera.z=followed.display[1];
+      }
+      for(const a of this.items){
         if(Math.abs(a.display[0]-this.camera.x)>this.camera.halfW+2||Math.abs(a.display[1]-this.camera.z)>this.camera.halfH/TILT+3)continue;
         if(this.seen&&!this.seen.has(a.position.map(Math.round).join()))continue;
         if(a.hp!==undefined&&a.hp<=0)continue;
@@ -467,7 +492,6 @@
       this.stats.effects=this.effects.events.length;
       const hero=visible.find(a=>a.hero);
       if(hero){
-        if(typeof fieldCamera==="undefined"||fieldCamera?.follow!==false){this.camera.x=hero.display[0];this.camera.z=hero.display[1];}
         mesh.ring(...hero.display,this.me.attack_range,rgb("#e6d6a1"));
         mesh.ring(...hero.display,.38,rgb("#f4e7bd"),.03);
       }
@@ -477,6 +501,7 @@
       }
       const target=visible.find(a=>typeof focusedMob!=="undefined"&&a.id===focusedMob);
       if(target)mesh.ring(...target.display,.42,rgb("#ed9b8a"),.035);
+      this.updateTerrain();
       this.upload(this.dynamicBuffer,mesh);
       gl.viewport(0,0,this.canvas.width,this.canvas.height);
       gl.enable(gl.DEPTH_TEST);gl.useProgram(this.program);gl.uniform4f(this.cameraUniform,this.camera.x,this.camera.z,this.camera.halfW,this.camera.halfH);
@@ -525,5 +550,5 @@
       return true;
     }catch(error){scene?.dispose();parent.classList.remove("has-scene3d");parent.dataset.renderer="svg";return false;}
   };
-  globalThis.RPGScene3D={Mesh,scenery,environment,caveLights,CombatEffects,GuardTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
+  globalThis.RPGScene3D={Mesh,scenery,terrainWindow,sameExploration,environment,caveLights,CombatEffects,GuardTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
 })();
