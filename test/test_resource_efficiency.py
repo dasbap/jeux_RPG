@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from jeuxRPG.multiplayer import accounts, realtime
-from jeuxRPG.multiplayer.distributed import PresenceRegistry
+from jeuxRPG.multiplayer.local_state import PresenceRegistry
 from jeuxRPG.multiplayer.realtime import Coordinator, create_app
 from jeuxRPG.multiplayer.realtime_store import RuntimeStore
 from jeuxRPG.multiplayer.service import GameService

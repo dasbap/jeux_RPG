@@ -3,7 +3,7 @@ import sqlite3
 from urllib.parse import urlsplit
 
 from .catalogue import catalogue
-from .distributed import PresenceRegistry
+from .local_state import PresenceRegistry
 from .service import GameError, GameService
 
 

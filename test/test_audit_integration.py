@@ -1,6 +1,5 @@
 import asyncio
 import json
-from contextlib import suppress
 
 import pytest
 
@@ -45,41 +44,6 @@ def test_legacy_checkpoint_receipts_receive_expiry():
     restored.close()
     store.close()
 
-
-def test_relay_password_work_does_not_block_other_players():
-    async def run():
-        slow_started, finish, fast_received = asyncio.Event(), asyncio.Event(), asyncio.Event()
-        coordinator = Coordinator(ENV, store=RuntimeStore(ENV))
-        class Redis:
-            async def publish(self, channel, payload):
-                if any(item['id'] == 'fast' for item in json.loads(payload)):
-                    fast_received.set()
-        coordinator.redis = Redis()
-        calls = []
-        async def execute(message):
-            calls.append(message)
-            if message == 'slow':
-                slow_started.set()
-                await finish.wait()
-            return {'status': 200}
-        coordinator.execute = execute
-        task = asyncio.create_task(coordinator.pump())
-        try:
-            await coordinator.received.put({'id': 'slow', 'source': 'other', 'message': 'slow'})
-            await asyncio.wait_for(slow_started.wait(), 2)
-            await coordinator.received.put({'id': 'slow', 'source': 'other', 'message': 'slow'})
-            await coordinator.received.put({'id': 'fast', 'source': 'other', 'message': 'fast'})
-            await asyncio.wait_for(fast_received.wait(), 2)
-            assert calls.count('slow') == 1
-            assert not finish.is_set()
-        finally:
-            finish.set()
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-            await asyncio.gather(*list(coordinator.relay_tasks.values()))
-            coordinator.store.close()
-    asyncio.run(run())
 
 
 def test_forty_concurrent_combat_commands_and_checkpoint_replay():

@@ -150,7 +150,7 @@ def main():
 
     socket.socket.connect = loopback_only
     from jeuxRPG.multiplayer import fields, map_building, tactics
-    from jeuxRPG.multiplayer.distributed import PresenceRegistry
+    from jeuxRPG.multiplayer.local_state import PresenceRegistry
     from jeuxRPG.multiplayer.server import RPGServer
     from jeuxRPG.multiplayer.service import GameService
 

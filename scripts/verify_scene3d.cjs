@@ -115,3 +115,40 @@ test("shared crafted weapons override each class weapon while keeping its own bo
  for(const actor of api.actors(adventure,players[0])){assert.equal(actor.look.weapon,"arme_staff");assert.equal(actor.look.id,"body");assert.equal(actor.look.color,"#123456");}
  players[0].gear=[];assert.equal(api.actors(adventure,players[0])[0].look.weapon,"arme_wand");
 });
+
+test("terrain follows the displayed camera and covers tall viewports",()=>{
+ const api=setup(),map={width:100,height:100,cover:[]};
+ const camera={x:48.8,z:41.8,halfW:9,halfH:22};
+ const first=api.terrainWindow(camera);
+ const moved=api.terrainWindow({...camera,z:42.1});
+ assert.equal(moved.z,42);
+ assert.notEqual(moved.z,first.z);
+ assert(moved.radiusZ>moved.radiusX);
+ const mesh=new api.Mesh();api.scenery(mesh,map,null,moved);
+ const depths=mesh.data.filter((_,i)=>i%6===2);
+ const visibleDepth=camera.halfH/api.cameraAngle.tilt;
+ assert(Math.min(...depths)<=42.1-visibleDepth);
+ assert(Math.max(...depths)>=42.1+visibleDepth);
+ assert(api.terrainWindow({...camera,halfH:9}).radiusZ<moved.radiusZ);
+});
+
+test("discovery cache distinguishes different cells with the same count",()=>{
+ const {sameExploration}=setup();
+ assert(sameExploration(new Set(["1,1","2,2"]),new Set(["2,2","1,1"])));
+ assert(!sameExploration(new Set(["1,1"]),new Set(["2,2"])));
+ assert(!sameExploration(null,new Set()));
+});
+
+test("online click movement follows bends between packets and never passes the target",()=>{
+ const {RouteTrack}=setup(),rules={speed:1,stealth_speed:.5,ratio:3,attack_factor:.55};
+ const first=new RouteTrack([0,0],[[2,0],[2,4]],0,rules,{},0);
+ assert.deepEqual(Array.from(first.sample(500)),[1.5,0]);
+ const second=new RouteTrack([1,0],[[2,0],[2,4]],1000,rules,{},3,first);
+ const atUpdate=second.sample(1000);
+ assert.deepEqual(Array.from(atUpdate),[2,1]);
+ assert(second.sample(1200)[1]>atUpdate[1]);
+ const nearEnd=new RouteTrack([2,3],[[2,4]],2000,rules,{},6,second);
+ assert.deepEqual(Array.from(nearEnd.sample(2500)),[2,4]);
+ assert.deepEqual(Array.from(nearEnd.sample(9000)),[2,4]);
+ assert.deepEqual(Array.from(first.sample(10000)),[2,2.5]);
+});

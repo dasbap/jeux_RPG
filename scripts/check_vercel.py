@@ -6,11 +6,6 @@ from pathlib import Path
 
 
 def check(root, environment):
-    from jeuxRPG.multiplayer.redis_configuration import (
-        RedisConfigurationError,
-        redis_url,
-    )
-
     errors = []
     from jeuxRPG.multiplayer.storage_configuration import (
         database_backend,
@@ -37,16 +32,8 @@ def check(root, environment):
     for name in database_variables(environment):
         if not environment.get(name) or environment[name] == "[SENSITIVE]":
             errors.append(f"Variable Vercel requise absente : {name}")
-    if environment.get("RPG_RUNTIME_MODE") != "d1":
-        try:
-            selected_redis = redis_url(environment)
-        except RedisConfigurationError as error:
-            errors.append(str(error))
-        else:
-            if not selected_redis or selected_redis == '[SENSITIVE]':
-                errors.append('REDIS_URL ou REDIS_URLS requis pour le mode historique distributed')
-    elif backend != "d1":
-        errors.append("Le moteur serverless sans Redis requiert le backend D1")
+    if backend != "d1" or environment.get("RPG_RUNTIME_MODE", "d1") != "d1":
+        errors.append("Le moteur Vercel requiert le mode transactionnel D1")
     if len(environment.get("RPG_ADMIN_TOKEN", "")) < 32:
         errors.append("RPG_ADMIN_TOKEN requis : secret administrateur distinct de 32 caractères minimum")
     if not (root / "jeuxRPG" / "maps" / "world.json").is_file():

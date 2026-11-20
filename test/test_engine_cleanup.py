@@ -59,7 +59,7 @@ def test_decimal_fields_keep_fractional_values_from_integer_defaults(key, initia
 
 
 def test_rate_limiter_uses_injected_clock_for_expiration():
-    from jeuxRPG.multiplayer.distributed import LocalRateLimiter
+    from jeuxRPG.multiplayer.local_state import LocalRateLimiter
 
     now = [0.0]
     limiter = LocalRateLimiter(clock=lambda: now[0])

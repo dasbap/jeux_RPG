@@ -89,6 +89,9 @@ def test_cross_site_document_navigation_preserves_api_protection(web):
     app, _ = web
     headers = {"HTTP_SEC_FETCH_SITE": "cross-site", "HTTP_SEC_FETCH_MODE": "navigate", "HTTP_SEC_FETCH_DEST": "document"}
     assert request(app, "/", **headers)["status"] == 200
+    assert request(app, "/", HTTP_SEC_FETCH_SITE="cross-site")["status"] == 200
+    assert request(app, "/", HTTP_ORIGIN="https://vercel.com", **headers)["status"] == 200
+    assert request(app, "/", HTTP_HOST="unrelated.vercel.app", **headers)["status"] == 403
     assert request(app, "/admin", **headers)["status"] == 200
     assert request(app, "/api/classes", **headers)["status"] == 403
     assert request(app, "/api/admin/accounts", "POST", {}, "a" * 40, **headers)["status"] == 403

@@ -16,7 +16,6 @@ from urllib.parse import parse_qs, urlsplit
 from . import admin
 from .browser_solo_assets import client_csp, engine_archive
 from .clock import GameClock
-from .distributed import RedisRateLimiter
 from .network_log import create_logger
 from .observability import health, metrics, ready
 from .server import CLIENT_STATIC, Handler
@@ -53,6 +52,8 @@ def validate_request_origin(environment, environ, path, method):
         allowed.update(("localhost", "127.0.0.1", "localhost:8080", "127.0.0.1:8080"))
     if host not in allowed:
         raise GameError("invalid_host", "Hôte non autorisé.", 403)
+    if method == "GET" and path == "/":
+        return host
     origin = environ.get("HTTP_ORIGIN")
     if (
         origin
@@ -69,7 +70,7 @@ def validate_request_origin(environment, environ, path, method):
         method == "GET"
         and environ.get("HTTP_SEC_FETCH_MODE") == "navigate"
         and environ.get("HTTP_SEC_FETCH_DEST") == "document"
-        and path in ("/", "/admin")
+        and path == "/admin"
     )
     if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site" and not navigation:
         raise GameError("invalid_origin", "Origine non autorisée.", 403)
@@ -288,10 +289,6 @@ class Application:
         self.factory = service_factory
         self.initialized = False
         self.lock = threading.Lock()
-        from .redis_configuration import redis_url
-
-        url = redis_url(self.environment)
-        self.redis_limiter = RedisRateLimiter(url) if url else None
 
     def service(self):
         if self.factory:
@@ -364,7 +361,7 @@ class Application:
                         )
             else:
                 service = self.service()
-                limiter = self.redis_limiter or DatabaseLimiter(service)
+                limiter = DatabaseLimiter(service)
                 peer = environ.get("REMOTE_ADDR", "unknown")
                 status, payload, mime = self._dispatch_dynamic_request(
                     path, limiter, peer, environ, method, service, logger, host

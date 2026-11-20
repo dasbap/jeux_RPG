@@ -20,7 +20,7 @@ def main(weapons=False):
         ):
             os.environ.pop(key)
     from jeuxRPG.multiplayer import content, forge, narrative, tutorial
-    from jeuxRPG.multiplayer.distributed import PresenceRegistry
+    from jeuxRPG.multiplayer.local_state import PresenceRegistry
     from jeuxRPG.multiplayer.server import RPGServer
     from jeuxRPG.multiplayer.service import GameService
 

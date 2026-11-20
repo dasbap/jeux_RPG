@@ -5,14 +5,8 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from jeuxRPG.multiplayer.d1_client import D1Client, D1StorageError, StaleRuntimeError
-from jeuxRPG.multiplayer.distributed import (
-    LocalRateLimiter,
-    PresenceRegistry,
-    build_rate_limiter,
-)
 from jeuxRPG.multiplayer.realtime import create_app
 from jeuxRPG.multiplayer.realtime_store import TABLES
-from jeuxRPG.multiplayer.redis_configuration import redis_url
 from jeuxRPG.multiplayer.single_runtime import SingleCoordinator
 
 ENV = {
@@ -70,14 +64,6 @@ def d1(monkeypatch):
     monkeypatch.setattr(D1Client, "persist_checkpoint", persist)
     return state
 
-
-def test_single_ignores_redis_and_preserves_local_limits():
-    assert redis_url(ENV) is None
-    limiter = build_rate_limiter(ENV)
-    assert isinstance(limiter, LocalRateLimiter)
-    assert limiter.accept("ip", 1)
-    assert not limiter.accept("ip", 1)
-    assert PresenceRegistry.from_environment(ENV).redis is None
 
 
 @pytest.mark.parametrize(

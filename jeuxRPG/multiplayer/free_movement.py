@@ -243,6 +243,7 @@ def awaiting_position(unit, now, since):
 
 def advance(unit, preset, actor, now):
     from . import tactics
+    from .progression import RATIO
 
     if not unit.get("free_motion"):
         return
@@ -259,7 +260,8 @@ def advance(unit, preset, actor, now):
         unit["position_budget_at"] = max(unit["position_budget_at"], now)
     route = unit.get("route", [])
     until = now if route else min(now, unit.get("motion_until", previous))
-    elapsed = min(MAX_CATCHUP, max(0, until - previous))
+    catchup = max(MAX_CATCHUP, 1.5 * RATIO) if route else MAX_CATCHUP
+    elapsed = min(catchup, max(0, until - previous))
     speed = 1 / (tactics.STEALTH_MOVE_TIME if unit.get("hidden") else tactics.MOVE_TIME)
     slow_until = max(
         unit.get("attack_slow_until", 0), (unit.get("casting") or {}).get("ends_at", 0)
