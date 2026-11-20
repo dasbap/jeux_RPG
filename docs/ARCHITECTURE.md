@@ -1,6 +1,6 @@
 # Architecture et état actuel
 
-Référence d’exploitation mise à jour le 13 novembre 2026. Les rapports d’audit
+Référence d’exploitation mise à jour le 19 novembre 2026. Les rapports d’audit
 datés décrivent leurs anciennes révisions ; ils ne remplacent pas ce document.
 
 ## Modes d’exécution
@@ -23,18 +23,25 @@ export embarqué dans `jeuxRPG/maps`. Voir le [guide du Builder](BUILDER_GUIDE.m
 
 ## Simulation, coordination et sauvegardes
 
-Le propriétaire du moteur simule les parties dans SQLite en mémoire. Redis
-sert à l’élection et au renouvellement du bail, au relais entre instances et
-aux limites distribuées. La présence de jeu est maintenue en RAM par le moteur.
-Redis n’est pas la base durable des comptes, inventaires ou quêtes.
+Le mode Vercel `d1` recharge l'état partagé depuis D1 à chaque opération,
+simule en SQLite en mémoire puis confirme les modifications par comparaison
+atomique de version dans D1. Un conflit provoque un rechargement et une reprise
+avec le même identifiant de commande. Le chat, les présences, les limites et
+les états de combat sont persistés avant la réponse, y compris les positions
+qui n'étaient pas des checkpoints de progression. Ce mode n'utilise pas Redis
+et ne dépend pas d'un processus persistant sur Render.
 
-Le moteur charge D1 à sa prise de rôle et enregistre les lots de changements
+Le mode historique `distributed`, conservé comme option de compatibilité,
+utilisait Redis pour l'élection et le relais entre instances. Les mesures et
+audits de cette ancienne architecture ne décrivent pas le mode transactionnel.
+
+Le moteur persistant historique charge D1 à sa prise de rôle et enregistre les lots de changements
 via `jeuxRPG/multiplayer/d1_client.py` et `cloudflare/d1-worker.mjs`.
 Le Worker authentifie les appels serveur, applique les lots atomiques et refuse
 les générations de moteur périmées. Les lectures d’état du propriétaire sont
 servies en RAM ; elles n’interrogent pas D1 à chaque rafraîchissement.
 
-La capture planifie normalement une sauvegarde après cinq secondes. Ce délai
+Dans le moteur persistant historique, la capture planifie normalement une sauvegarde après cinq secondes. Ce délai
 ne garantit pas une perte maximale de cinq secondes : une panne peut retarder
 la persistance, et les changements uniquement en RAM peuvent être perdus.
 Voir [realtime.md](realtime.md) pour les conditions de reprise.

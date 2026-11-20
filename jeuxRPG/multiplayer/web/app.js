@@ -33,6 +33,7 @@ function render(state) {
   if (sectionSignatures.get("state-render") === signature) return;
   sectionSignatures.set("state-render", signature);
   lastPlayer = state.player;
+  if($("characters").hidden)document.body.classList.remove("character-select");
   if (state.presence) presenceState = state.presence;
   if (state.social) socialState = state.social;
   renderChat(state.chat);

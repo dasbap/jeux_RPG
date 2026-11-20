@@ -21,6 +21,10 @@ from .service import GameError, GameService, digest
 from .state_bundles import encode
 
 CLIENT_MODULES = (
+    "scene_3d.js",
+    "free_controls.js",
+    "motion_client.js",
+    "sprites.js",
     "app_core.js",
     "app_world.js",
     "app_skills.js",
@@ -558,6 +562,8 @@ class Handler(BaseHTTPRequestHandler):
         tactical = self._network_action in (
             "strike",
             "skill",
+            "walk",
+            "move_axis",
             "battle_move",
             "hide",
             "harvest",
@@ -603,6 +609,8 @@ class Handler(BaseHTTPRequestHandler):
             "talk",
             "craft",
             "upgrade",
+            "walk",
+            "move_axis",
             "battle_move",
             "hide",
             "harvest",

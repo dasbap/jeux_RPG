@@ -51,12 +51,39 @@ def _known_places(visited, step):
     return set(PLACES)
 
 
+def _route_definitions():
+    definitions = deepcopy(ROUTES)
+    represented = set()
+    if not WORLD_MAP_DATA.get("clearing", {}).get("seamless_transitions"):
+        return definitions, represented
+    for route in definitions:
+        source, target = route["from"], route["to"]
+        if not any(
+            g.get("destination") == target
+            for g in WORLD_MAP_DATA.get(source, {}).get("exits", [])
+        ):
+            continue
+        route.update(
+            kind="passage",
+            duration_game_seconds=0,
+            from_map_name=WORLD_MAP_DATA[source]["name"],
+            to_map_name=WORLD_MAP_DATA[target]["name"],
+        )
+        represented.add((source, target))
+        if route.get("bidirectional", True):
+            represented.add((target, source))
+    return definitions, represented
+
+
 def _visible_routes(known, step, fighting, moving):
     routes = []
-    definitions = list(ROUTES)
+    definitions, represented = _route_definitions()
     for source, data in WORLD_MAP_DATA.items():
         for index, gate in enumerate(data.get("exits", [])):
-            if gate.get("destination") in WORLD_MAP_DATA:
+            if (
+                gate.get("destination") in WORLD_MAP_DATA
+                and (source, gate["destination"]) not in represented
+            ):
                 minutes = gate.get("travel_minutes", 0)
                 definitions.append(
                     {
@@ -112,6 +139,8 @@ def view(party, me, traveller=None):
     known = _known_places(visited, step)
     fighting = bool(party.get("battle") or party["mob"] or party.get("mobs"))
     moving = bool(party.get("transit") or party.get("journey"))
+    from .zone_navigation import zone_passages
+
     places = []
     for key, definition in PLACES.items():
         if key not in known:
@@ -135,6 +164,7 @@ def view(party, me, traveller=None):
             else "Lieu connu, encore non visité. Ses détails seront révélés à votre arrivée.",
             "points": deepcopy(definition["points"]) if key in visited else [],
             "entry": deepcopy(definition.get("entry", [70, 110])),
+            "passages": zone_passages(WORLD_MAP_DATA, key) if key in visited else [],
         }
         if (
             traveller
@@ -268,6 +298,10 @@ def view(party, me, traveller=None):
 
     for creature in bestiary:
         definition = resolve(MOBS, creature["id"])
+        creature["attack_range"] = definition.get(
+            "attack_range", content.DATA["gameplay"]["rules"]["ai"]["melee_range"]
+        )
+        creature["attack_name"] = definition.get("attack_name", "Entaille")
         rules = drop_rules(definition, RARE_DROPS)
         creature["loot"] = [
             {
@@ -322,7 +356,14 @@ def view(party, me, traveller=None):
     current_zone = zone_of(party.get("position", CURRENT[step]))
     if current_zone not in {p["id"] for p in places}:
         definition = PLACES[current_zone]
-        places.append({"id": current_zone, **deepcopy(definition), "visited": True})
+        places.append(
+            {
+                "id": current_zone,
+                **deepcopy(definition),
+                "visited": True,
+                "passages": zone_passages(WORLD_MAP_DATA, current_zone),
+            }
+        )
     return {
         "current": zone_of(party.get("position", CURRENT[step])),
         "position": party.get("position", CURRENT[step]),

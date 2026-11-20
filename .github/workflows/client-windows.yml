@@ -5,6 +5,12 @@ on:
     paths:
       - 'desktop/**'
       - 'build-client.cmd'
+      - 'build-distribution.cmd'
+      - 'deploy/build/**'
+      - 'projects/authored/**'
+      - 'scripts/build_container.py'
+      - 'scripts/build-docker.sh'
+      - 'scripts/verify_portable_windows.cjs'
       - 'scripts/prepare_desktop_client.py'
       - 'scripts/verify_desktop.cjs'
       - 'jeuxRPG/**'
@@ -12,27 +18,32 @@ on:
 permissions:
   contents: read
 jobs:
-  client:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Construire le portable Windows dans Docker
+        run: bash scripts/build-docker.sh windows
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Jeux-RPG-Windows-x64
+          path: dist/windows/Jeux-RPG.exe
+          if-no-files-found: error
+          retention-days: 14
+  verify:
+    needs: build
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          python-version: '3.12'
+          name: Jeux-RPG-Windows-x64
+          path: dist/windows
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Construire depuis les sources web en une commande
-        run: .\build-client.cmd
-      - name: Verifier le pont API et les fichiers embarques
-        run: npm --prefix desktop test
       - run: npm install --prefix .ui-test playwright@1.56.1
-      - name: Verifier le client compile sans reseau et sa sauvegarde
-        run: node scripts/verify_desktop.cjs --packaged
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: Jeux-RPG-Windows-x64
-          path: dist/client/Jeux-RPG.exe
-          if-no-files-found: error
-          retention-days: 14
+      - name: Verifier le portable Docker sans reseau et sa sauvegarde
+        run: node scripts/verify_portable_windows.cjs

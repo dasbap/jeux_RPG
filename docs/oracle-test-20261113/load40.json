@@ -1,0 +1,67 @@
+{
+  "engine": "local Python ASGI",
+  "storage": "remote Cloudflare D1, fictitious jeux-rpg-preview",
+  "transport": "real loopback TCP WebSockets, without TLS/proxy",
+  "production_capacity_validated": false,
+  "load": {
+    "simultaneous_authenticated_sockets": 40,
+    "duration_seconds": 60,
+    "combat_sessions": 20,
+    "town_sessions": 20,
+    "state_requests": 2375,
+    "state_pushes_received": 2015,
+    "movement_actions": 300,
+    "action_conflicts": 0,
+    "received_bytes": 252372749,
+    "state_latency_ms": {
+      "p50": 269.82,
+      "p95": 439.47,
+      "p99": 517.16,
+      "max": 606.94
+    },
+    "movement_latency_ms": {
+      "p50": 356.54,
+      "p95": 512.89,
+      "p99": 546.54,
+      "max": 548.21
+    },
+    "errors": []
+  },
+  "save_after_load": {
+    "confirmed": true,
+    "failures": 0,
+    "checkpoints": 11
+  },
+  "injected_transport_outage": "pending preserved; readiness 503; close refused; retry confirmed",
+  "restart": {
+    "accounts_and_sessions_restored": 40,
+    "password_login": "ok",
+    "progression": "ok"
+  },
+  "reconnect": {
+    "simultaneous_authenticated_sockets": 40,
+    "duration_seconds": 2,
+    "combat_sessions": 20,
+    "town_sessions": 20,
+    "state_requests": 80,
+    "state_pushes_received": 40,
+    "movement_actions": 19,
+    "action_conflicts": 0,
+    "received_bytes": 7583757,
+    "state_latency_ms": {
+      "p50": 426.59,
+      "p95": 699.38,
+      "p99": 721.96,
+      "max": 721.96
+    },
+    "movement_latency_ms": {
+      "p50": 432.77,
+      "p95": 455.32,
+      "p99": 455.32,
+      "max": 455.32
+    },
+    "errors": []
+  },
+  "fencing": "replacement generation allocated; old engine detects rejection and refuses commands",
+  "cleanup": "all fictitious game rows removed; metadata retained"
+}

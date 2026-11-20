@@ -43,3 +43,14 @@ def test_hunt_rules_survive_initial_and_delta_bundle_transport():
     state["session"]["tutorial"]["repop_seconds"] = 180
     delta = encode(state, json.dumps(initial["hashes"]))
     assert delta["bundles"] == {"session/tutorial/repop_seconds": 180}
+
+
+def test_forge_unlock_and_material_labels_survive_initial_and_delta_transport():
+    tutorial = {'forge_unlocked': False, 'forge_unlock_quest': {'id': 'mira_hunt'}, 'material_names': {'croc': 'Croc de gobelin'}}
+    state = {'session': {'tutorial': tutorial}}
+    initial = encode(state)
+    for key, value in tutorial.items():
+        assert initial['bundles'][f'session/tutorial/{key}'] == value
+    tutorial['forge_unlocked'] = True
+    changed = encode(state, json.dumps(initial['hashes']))
+    assert changed['bundles'] == {'session/tutorial/forge_unlocked': True}

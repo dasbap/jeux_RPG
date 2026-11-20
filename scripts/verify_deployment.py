@@ -1,14 +1,15 @@
-import io
-import zipfile
 import asyncio
+import io
 import json
 import os
 import time
 import uuid
+import zipfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
+
 from websockets.asyncio.client import connect
 
 
@@ -55,16 +56,18 @@ async def verify_realtime(base, catalogue, token):
         for _ in range(4):
             state = await rpc('/api/state', token=token)
             timing = state['headers'].get('Server-Timing', '')
-            if state['status'] != 200 or state['headers'].get('X-RPG-Runtime') != 'memory' or 'trips;desc="0"' not in timing:
-                raise RuntimeError('Le rafraîchissement utilise encore la base distante')
-        for attempt in range(12):
+            runtime = state['headers'].get('X-RPG-Runtime')
+            expected_trips = state['headers'].get('X-RPG-D1-Trips', '0') if runtime == 'd1-transaction' else '0'
+            if state['status'] != 200 or runtime not in ('memory', 'd1-transaction') or f'trips;desc="{expected_trips}"' not in timing:
+                raise RuntimeError('Etat du moteur ou persistance inattendus')
+        for _attempt in range(12):
             await asyncio.sleep(1)
             state = await rpc('/api/state', token=token)
             if state['headers'].get('X-RPG-Save-Pending') == '0':
                 break
         if state['headers'].get('X-RPG-Save-Pending') != '0':
             raise RuntimeError('Sauvegarde initiale du tutoriel non terminée')
-        print('WebSocket, tutoriel, sauvegarde regroupée et rafraîchissements sans accès Turso vérifiés.')
+        print('WebSocket, tutoriel et sauvegarde du moteur verifies.')
 
 
 def deployment_base(url):

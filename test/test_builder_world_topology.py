@@ -77,85 +77,33 @@ from jeuxRPG.multiplayer.service import GameError
 known = set(world.PLACES)
 assert world.path("clearing", "rosee", known) == ["forest", "rosee"]
 assert world.path("forest", "rosee", known) == ["rosee"]
-assert world.path("lisiere", "rosee", known) == ["rosee_lisiere", "rosee"]
-assert world.path("hunt", "rosee", known) == ["lisiere", "rosee_lisiere", "rosee"]
+assert world.path("lisiere", "rosee", known) == ["rosee_remparts", "rosee"]
 assert world.path("clearing", "clearing_rosee", known) is None
-assert world.walking_seconds("forest", "rosee") == 30
-assert world.walking_seconds("rosee", "forest") == 30
 assert "forest" not in world.graph(known).get("zone_lisiere", [])
-p = tutorial.new_party([{"id":"p", "name":"Itinéraire", "class_name":"Knight"}])
-fields.start(p,0)
-p.update(position="lisiere", battle=None, mobs=[], mob=None, step="village")
-p.pop("field_map",None)
-tutorial.execute(p,"p","travel",{"destination":"cave_2"},0,GameError,lambda:1)
-tutorial.execute(p,"p","travel",{"destination":"rosee"},1,GameError,lambda:1)
-assert not any(point.startswith("cave_") for point in p["journey"])
-assert p["transit"]["destination"] in ("lisiere","rosee_lisiere"), p["transit"]
-for physical in (False, True):
-    p = tutorial.new_party([{"id":"p", "name":"Durée", "class_name":"Knight"}])
-    fields.start(p, 0)
-    fields.enter(p, "rosee", [2,20], 0)
-    p.update(mobs=[], mob=None)
-    if physical:
-        gate = next(g for g in fields.MAPS["rosee"]["exits"] if g.get("destination") == "forest")
-        assert gate["world_exit"] is True
-        fields.transition(p, gate, "p", 0)
-        tutorial.continue_journey(p, 0, lambda:1, [])
-        assert p["transit"] is None and p["journey"] == []
-        assert p.get("field_map") is None and p["position"] == "rosee"
-        tutorial.execute(p, "p", "travel", {"destination":"forest"}, 0, GameError, lambda:1)
-    else:
-        p.update(battle=None)
-        p.pop("field_map", None)
-        tutorial.execute(p, "p", "travel", {"destination":"foret_eveilles"}, 0, GameError, lambda:1)
-    assert p["transit"]["total"] == 30
-    for now in (0.3, 1, 2.99, 3):
-        tutorial.continue_journey(p, now, lambda:1, [])
-        assert p.get("field_map") is None, "Aucune arrivée pendant la première seconde réelle"
-    while p.get("transit") and p["transit"]["ready_at"] < 30:
-        tutorial.continue_journey(p, p["transit"]["ready_at"], lambda:1, [])
-    tutorial.continue_journey(p, 29.999, lambda:1, [])
-    assert p.get("field_map") is None, "La durée du Builder doit être entièrement écoulée"
-    tutorial.continue_journey(p, 30, lambda:1, [])
-    assert p["field_map"] == ("forest" if physical else "clearing")
-for source in ("rosee", "forest", "clearing"):
+for source in ("rosee", "forest", "clearing", "lisiere"):
     for gate in fields.MAPS[source]["exits"]:
-        assert gate["world_exit"] is True
-        p = tutorial.new_party([{"id":"p", "name":"Sortie", "class_name":"Knight"}])
+        assert gate["destination"] in fields.MAPS
+        assert not gate["world_exit"] and not gate["travel_minutes"]
+        p = tutorial.new_party([{"id":"p", "name":"Passage", "class_name":"Knight"}])
         fields.start(p, 0)
         fields.enter(p, source, gate["position"], 0)
-        p.update(journey=["rosee"], transit=None)
+        p.update(mobs=[], mob=None, journey=["rosee"], transit=None)
         fields.transition(p, gate, "p", 0)
-        tutorial.advance(p, 1000, lambda:1)
-        assert p["position"] == source
-        assert p.get("field_map") is None and p["battle"] is None
-        assert p["transit"] is None and p["journey"] == []
-        tutorial.execute(p,"p","enter_zone",{},1001,GameError,lambda:1)
-        assert p["field_map"] == source
-        assert p["battle"]["players"]["p"]["position"] == p["field_return_entry"]
+        assert p["field_map"] == gate["destination"]
+        assert p["battle"] and p["transit"] is None and p["journey"] == []
+        assert p["battle"]["players"]["p"]["position"] == gate["entry"]
+p = tutorial.new_party([{"id":"p", "name":"No atlas travel", "class_name":"Knight"}])
+fields.start(p, 0)
+try:
+    tutorial.execute(p,"p","travel",{"destination":"rosee"},0,GameError,lambda:1)
+except GameError as error:
+    assert error.code == "coach_only"
+else:
+    raise AssertionError("Travel must require a physical exit or coach")
 legacy = {"position":"clearing_rosee", "transit":{"source":"clearing", "destination":"clearing_rosee"}, "journey":["rosee"], "visited":["clearing", "deleted_zone"]}
 world.migrate_journey(legacy)
-assert legacy["position"] == "clearing"
-assert legacy["transit"] is None and legacy["journey"] == []
+assert legacy["position"] == "clearing" and legacy["transit"] is None and legacy["journey"] == []
 assert legacy["visited"] == ["clearing"]
-assert "clearing_rosee" not in world.ROAD_POINTS
-for target in ("rosee", "zone_rosee"):
-    p = tutorial.new_party([{"id":"p", "name":"Audit", "class_name":"Knight"}])
-    fields.start(p, 0)
-    p.update(mobs=[], mob=None)
-    gate = next(g for g in fields.MAPS["clearing"]["exits"] if not g.get("destination"))
-    fields.transition(p, gate, "p", 0)
-    tutorial.execute(p, "p", "travel", {"destination":target, "paths":{"clearing":["forest","rosee"]}}, 0, GameError, lambda:1)
-    assert p["position"] == "forest", p["position"]
-    assert p["transit"]["source"] == "forest"
-    assert p["transit"]["destination"] == "rosee"
-    assert p["transit"]["remaining"] == 30
-    assert p["transit"]["field_entry"] == [2,20]
-    for _ in range(8):
-        if not p.get("transit"): break
-        tutorial.continue_journey(p, p["transit"]["ready_at"], lambda:1, [])
-    assert p["field_map"] == "rosee"
-    assert p["battle"]["players"]["p"]["position"] == [2,20]
 print(json.dumps(world.graph(known), sort_keys=True))
 '''
     results = []
@@ -230,7 +178,7 @@ def test_builder_widgets_save_reopen_and_export_current_topology(tmp_path, monke
         topology = compile_world(reopened.maps)
         assert topology[0]["zone_rosee"]["name"] == "Rosée vérifiée"
         assert "rosee_lisiere" not in {route["id"] for route in topology[2]}
-        assert topology[-1]["forest"]["rosee"]["seconds"] == 30
+        assert topology[-1]["forest"]["rosee"]["seconds"] == 0
         exported = Project(tmp_path / "exported")
         exported.restore(reopened.state())
         exported.save()

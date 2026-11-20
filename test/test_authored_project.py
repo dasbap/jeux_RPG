@@ -22,6 +22,8 @@ def test_authored_catalogues_are_valid_and_all_spawners_can_create_their_mobs(tm
                 mob = map_building.create_mob(p.maps,identifier,config,index)
                 assert mob['stats']['hp']['max'] >= 1
                 assert mob['mob_id'] == config['mob_id']
+                if config.get('level') is not None:
+                    assert mob['level'] == config['level']
         before = {path.name:path.read_bytes() for path in source.glob('*.json')}
         p.save()
         assert {path.name:path.read_bytes() for path in source.glob('*.json')} == before

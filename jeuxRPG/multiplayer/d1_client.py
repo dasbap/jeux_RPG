@@ -8,6 +8,20 @@ class D1StorageError(sqlite3.OperationalError):
     pass
 
 
+class StaleRuntimeError(RuntimeError):
+    pass
+
+
+class SnapshotConflict(RuntimeError):
+    pass
+
+
+class RuntimeSnapshot(dict):
+    def __init__(self, data, sequences):
+        super().__init__(data)
+        self.sequences = sequences
+
+
 class D1Client:
     def __init__(self, environment):
         self.url = environment["RPG_D1_WORKER_URL"]
@@ -44,7 +58,14 @@ class D1Client:
                     isinstance(detail, dict)
                     and detail.get("error") == "stale_runtime_fence"
                 ):
-                    raise RuntimeError("Moteur remplacé") from error
+                    raise StaleRuntimeError("Moteur remplacé") from error
+                if (
+                    isinstance(detail, dict)
+                    and detail.get("error") == "transaction_conflict"
+                ):
+                    raise SnapshotConflict(
+                        "Etat D1 modifie par une autre instance"
+                    ) from error
             raise D1StorageError("Opération D1 refusée") from error
         except (urllib.error.URLError, TimeoutError, ValueError) as error:
             raise D1StorageError("Opération D1 indisponible") from error
@@ -55,9 +76,62 @@ class D1Client:
     def load_snapshot(self, fence):
         return self._snapshot(self.request("load_snapshot", fence=fence))
 
+    def claim_snapshot(self):
+        """Allocate a generation and load its snapshot in one primary batch."""
+        data = self._snapshot(self.request("claim_snapshot"))
+        try:
+            fence = int(
+                next(
+                    row["value"]
+                    for row in data["meta"]
+                    if row["key"] == "runtime_fence"
+                )
+            )
+        except (StopIteration, KeyError, TypeError, ValueError) as error:
+            raise D1StorageError("Génération D1 invalide") from error
+        if not 0 < fence <= 9_007_199_254_740_991:
+            raise D1StorageError("Génération D1 invalide")
+        return fence, data
+
     def read_snapshot(self):
         """Inspect durable state without taking over the running engine's fence."""
         return self._snapshot(self.request("read_snapshot"))
+
+    def runtime_snapshot(self):
+        from .d1_runtime import RUNTIME_KEYS
+
+        payload = self.request("runtime_snapshot")
+        data = payload.get("data")
+        if (
+            not isinstance(data, dict)
+            or set(data) != set(RUNTIME_KEYS)
+            or any(
+                not isinstance(rows, list)
+                or any(not isinstance(row, dict) for row in rows)
+                for rows in data.values()
+            )
+        ):
+            raise D1StorageError("Snapshot du moteur D1 invalide")
+        sequences = payload.get("sequences")
+        if not isinstance(sequences, list) or any(
+            not isinstance(row, dict)
+            or row.get("name") not in RUNTIME_KEYS
+            or type(row.get("seq")) is not int
+            or row["seq"] < 0
+            for row in sequences
+        ):
+            raise D1StorageError("Sequences du moteur D1 invalides")
+        return RuntimeSnapshot(data, sequences)
+
+    def commit_runtime(self, fence, batch):
+        changes = [
+            {"table": table, "key": list(key), "row": row}
+            for (table, key), row in batch.items()
+            if not (table == "meta" and key == ("runtime_fence",))
+        ]
+        result = self.request("commit_runtime", fence=fence, changes=changes)
+        if result.get("ok") is not True or result.get("fence") != fence + 1:
+            raise D1StorageError("Transaction D1 non confirmee")
 
     def backup_snapshot(self):
         result = self.request("read_snapshot")

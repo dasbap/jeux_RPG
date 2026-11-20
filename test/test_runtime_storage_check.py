@@ -29,13 +29,16 @@ def test_storage_failures_do_not_disclose_connection_or_player_data(error, expec
 ])
 def test_solo_publication_only_accepts_known_quota_failure(monkeypatch, allow, error, expected):
     from unittest.mock import Mock
+
     from scripts import verify_runtime_storage as storage
 
     client = Mock()
     client.__enter__ = Mock(return_value=client)
     client.__exit__ = Mock(return_value=False)
     client.ping.side_effect = error
-    monkeypatch.setattr(storage.Redis, "from_url", lambda *args, **kwargs: client)
+    from redis import Redis
+
+    monkeypatch.setattr(Redis, "from_url", lambda *args, **kwargs: client)
     store = Mock()
     load = Mock(return_value=store)
     monkeypatch.setattr(storage.RuntimeStore, "load", load)

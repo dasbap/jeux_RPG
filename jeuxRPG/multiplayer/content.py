@@ -443,6 +443,7 @@ def validate_content(data):
         "gameplay",
         "narrative",
         "interface",
+        "sprites",
     } != set(DEFAULTS):
         raise ValueError("Sections monde, quêtes et succès requises.")
     _validate_world_rules(data)
@@ -453,6 +454,10 @@ def validate_content(data):
     from .narrative_catalog import validate as validate_narrative
 
     validate_narrative(data)
+    from .sprite_catalog import catalog as sprite_catalog
+    from .sprite_catalog import validate as validate_sprites
+
+    validate_sprites(sprite_catalog(data))
     for section in ("classes", "skills"):
         if section in data and not isinstance(data[section], list):
             raise ValueError("Catalogue de classes/compétences invalide.")
@@ -470,6 +475,15 @@ def validate_content(data):
 
     result["interface"] = interface_settings(result)
     result["gameplay"] = validate_gameplay(result.get("gameplay", gameplay_defaults))
+    known_classes = {
+        item["id"]
+        for item in result.get("templates", {}).get("classes", [])
+        if item.get("playable")
+    }
+    known_classes.update(item["id"] for item in result.get("classes", []))
+    for recipe in result["gameplay"]["recipes"].values():
+        if set(recipe.get("classes", [])) - known_classes:
+            raise ValueError("Recette : classe autorisee inconnue ou non jouable.")
     return result
 
 

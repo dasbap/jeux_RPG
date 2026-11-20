@@ -3,19 +3,20 @@
 async function switchGameMode(mode, {resume = false} = {}) {
   if (busy || mode === gameMode) return;
   let resumeSelected = false;
+  const loading=globalThis.RPGLoading?.begin(mode === "solo" ? "Ouverture du mode solo" : "Connexion au monde en ligne");
   busy = true;
   stateEpoch++;
   message(mode === "solo" ? "Chargement du moteur solo… La première ouverture nécessite Internet." : "Ouverture du mode en ligne…");
   try {
     if (mode === "solo") {
-      const local = await createRpgSoloTransport();
+      const local = await createRpgSoloTransport({onProgress:progress=>loading?.update(progress.title,progress.detail)});
       globalThis.rpgRealtime?.close();
       soloTransport = local;
       globalThis.rpgRealtime = local;
       gameMode = "solo";
       token = "";
       bindTransport();
-      local.onError = error => message("Sauvegarde solo : " + error.message, true);
+      local.onError = error => error.operation === "state" ? recoverSoloResume(error) : message("Sauvegarde solo : " + error.message, true);
       local.onSave = () => { if (gameMode === "solo") $("connection").textContent = "Solo · sauvegarde locale effectuée"; };
       accountState = await api("/api/account/me", undefined, false);
       token = accountState.token;
@@ -36,7 +37,7 @@ async function switchGameMode(mode, {resume = false} = {}) {
       bindTransport();
     }
     localStorage.setItem("rpg-mode", gameMode);
-    resumeSelected = gameMode === "solo" && resume && Boolean(accountState.selected);
+    resumeSelected = gameMode === "solo" && resume && Boolean(accountState.selected) && accountState.characters.length <= 1;
     stateEpoch++;
     session = null; sessionId = ""; lastPlayer = null; socialState = null; presenceState = null;
     bundleToken = ""; bundleHashes = {}; bundleValues = {}; sectionSignatures.clear();
@@ -44,7 +45,7 @@ async function switchGameMode(mode, {resume = false} = {}) {
     $("show-social").hidden = gameMode === "solo";
     for (const id of ["lobby", "battle", "character-menu", "chat-panel", "characters", "invitation"]) $(id).hidden = true;
     $("registration").hidden = Boolean(token) || gameMode === "solo";
-    document.body.classList.remove("combat-active", "hud-menu-open", "chat-open");
+    document.body.classList.remove("combat-active", "hud-menu-open", "chat-open", "character-select");
     if (gameMode === "solo") {
       if (resumeSelected) soloTransport.subscribe(true);
       else renderCharacters();
@@ -57,8 +58,8 @@ async function switchGameMode(mode, {resume = false} = {}) {
   }
   finally {
     busy = false;
-    if (resumeSelected) await refresh(true);
-    scheduleRefresh();
+    try { if (resumeSelected) await refresh(true); }
+    finally { loading?.finish(); scheduleRefresh(); }
   }
 }
 $("solo-entry").addEventListener("click", () => switchGameMode("solo"));

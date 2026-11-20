@@ -57,7 +57,8 @@ try {
   distant.field_interactions = [];
   dom.window.driverRender(distant);
   craftStep(dom,'veste');
-  assert.equal(dom.window.driverCalls[0].action,'battle_move');
+  assert.equal(distant.battle.movement_model,'continuous-v1');
+  assert.equal(dom.window.driverCalls[0].action,'walk');
   const endpoint = dom.window.driverCalls[0].params;
   assert(Math.hypot(endpoint.x-site.position[0],endpoint.y-site.position[1])<=1.5);
   const poor = scenario();
@@ -75,7 +76,7 @@ try {
   dom.window.driverRender(road);
   assert.equal(resumeJourneyStep(dom), true);
   assert.equal(dom.window.driverCalls.length, 1);
-  assert.equal(dom.window.driverCalls[0].action, 'battle_move');
+  assert.equal(dom.window.driverCalls[0].action, 'walk');
   road.battle.corpses[0].harvested = [];
   dom.window.driverRender(road);
   assert.equal(resumeJourneyStep(dom), false);

@@ -1,4 +1,5 @@
 """Build the three local distributions from one Builder content export."""
+
 import hashlib
 import json
 import os
@@ -20,21 +21,40 @@ def wsl(script):
     run("wsl", "-d", "Ubuntu", "--", "bash", linux_root + "/scripts/" + script)
 
 
-def finalize():
+def finalize(windows_artifact=None):
     windows = ROOT / "dist/windows"
     windows.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "dist/client/Jeux-RPG.exe", windows / "Jeux-RPG.exe")
-    paths = [windows / "Jeux-RPG.exe", ROOT / "dist/mobile/Jeux-RPG-Android.apk",
-             ROOT / "dist/linux/Jeux-RPG-Linux-x86_64.AppImage", ROOT / "dist/linux/Jeux-RPG-Linux-x64.tar.gz"]
+    shutil.copy2(
+        Path(windows_artifact)
+        if windows_artifact
+        else ROOT / "dist/client/Jeux-RPG.exe",
+        windows / "Jeux-RPG.exe",
+    )
+    paths = [
+        windows / "Jeux-RPG.exe",
+        ROOT / "dist/mobile/Jeux-RPG-Android.apk",
+        ROOT / "dist/linux/Jeux-RPG-Linux-x86_64.AppImage",
+        ROOT / "dist/linux/Jeux-RPG-Linux-x64.tar.gz",
+    ]
     manifest = {}
     for path in paths:
         if not path.is_file():
             continue
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        manifest[path.relative_to(ROOT / "dist").as_posix()] = {"bytes": path.stat().st_size, "sha256": digest}
-    (ROOT / "dist/SHA256SUMS.txt").write_text("".join(value["sha256"] + "  " + name + "\n" for name, value in manifest.items()), encoding="utf-8")
-    (ROOT / "dist/artifacts.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        manifest[path.relative_to(ROOT / "dist").as_posix()] = {
+            "bytes": path.stat().st_size,
+            "sha256": digest,
+        }
+    (ROOT / "dist/SHA256SUMS.txt").write_text(
+        "".join(
+            value["sha256"] + "  " + name + "\n" for name, value in manifest.items()
+        ),
+        encoding="utf-8",
+    )
+    (ROOT / "dist/artifacts.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
     shutil.copy2(ROOT / "docs/DISTRIBUTION_LIREMOI.md", ROOT / "dist/LIREMOI.md")
     print("Distributions disponibles dans dist : " + ", ".join(manifest))
 
@@ -50,7 +70,12 @@ def main():
         run(sys.executable, "scripts/install_android_sdk.py")
         run(sys.executable, "scripts/prepare_android_client.py")
         wsl("build-android.sh")
-    finalize()
+    artifact = (
+        Path(sys.argv[sys.argv.index("--windows-artifact") + 1]).resolve()
+        if "--windows-artifact" in sys.argv
+        else None
+    )
+    finalize(artifact)
 
 
 if __name__ == "__main__":

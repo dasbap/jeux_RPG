@@ -105,6 +105,7 @@ function returnCameraToPlayer() {
 }
 const cameraSurface = $("world-map");
 cameraSurface.addEventListener("pointerdown", event => {
+  if(event.target.closest?.(".rpg-scene3d"))return;
   if (!event.isPrimary || event.button !== 0 || cameraDrag || !session?.tutorial?.battle || !fieldCamera) return;
   const node = cameraSurface.querySelector(".battle-map");
   if (!node) return;

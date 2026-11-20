@@ -141,3 +141,30 @@ def test_legacy_catalog_has_no_implicit_sets():
     data = deepcopy(gameplay_catalog.DEFAULTS)
     del data['equipment_sets']
     assert gameplay_catalog.validate(data)['equipment_sets'] == {}
+
+
+def test_unowned_set_preview_exposes_exact_tiers_without_activating_bonuses(configured):
+    equipment = {}
+    assert forge.set_catalogue(equipment) == []
+    preview = forge.set_catalogue(equipment, include_inactive=True)
+    assert preview[0]['pieces'] == 0
+    assert [tier['pieces'] for tier in preview[0]['tiers']] == [2, 4, 5]
+    assert all(not tier['active'] for tier in preview[0]['tiers'])
+    assert all(value == 0 for value in preview[0]['bonuses'].values())
+    assert preview[0]['tiers'][0]['bonuses'] == SET['bonuses']['2']
+    assert equipment == {}
+
+
+def test_unequip_and_reequip_recalculate_set_thresholds_without_healing(configured):
+    p = party()
+    base = deepcopy(p['characters']['p']['stats'])
+    for recipe in RECIPES[:5]:
+        forge.execute(p, 'p', 'craft', recipe, GameError)
+    p['characters']['p']['stats']['hp']['current'] = 5
+    forge.change_equipment(p, 'p', 'unequip', 'casque', GameError)
+    expected_stats(p, base)
+    assert forge.set_catalogue(p['equipment']['p'])[0]['pieces'] == 4
+    forge.change_equipment(p, 'p', 'equip', 'casque', GameError)
+    expected_stats(p, base)
+    assert forge.set_catalogue(p['equipment']['p'])[0]['pieces'] == 5
+    assert p['characters']['p']['stats']['hp']['current'] == 5

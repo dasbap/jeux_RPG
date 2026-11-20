@@ -1,5 +1,5 @@
 "use strict";
-let python, database, activeToken = "", subscribed = false, dirty = false;
+let python, database, activeToken = "", subscribed = false, dirty = false, stateQueued = false;
 let queue = Promise.resolve();
 function transaction(mode, operation) {
   return new Promise((resolve, reject) => {
@@ -19,7 +19,9 @@ async function save() {
   dirty = false;
   postMessage({type: "saved", at: Date.now()});
 }
+function progress(title,detail) { postMessage({type:"progress",title,detail}); }
 async function initialize() {
+  progress("Ouverture de la sauvegarde", "Lecture des personnages sur cet appareil.");
   database = await new Promise((resolve, reject) => {
     const request = indexedDB.open("jeux-rpg-solo", 1);
     request.onupgradeneeded = () => request.result.createObjectStore("saves");
@@ -27,12 +29,15 @@ async function initialize() {
     request.onerror = () => reject(request.error);
   });
   const saved = await transaction("readonly", store => store.get("game"));
+  progress("Chargement du moteur solo", "Initialisation du moteur Python et WebAssembly.");
   const {loadPyodide} = await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs");
   python = await loadPyodide({indexURL: "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"});
+  progress("Chargement du monde", "Lecture des cartes, des classes et des aventures.");
   const response = await fetch("/solo-engine.zip");
   if (!response.ok) throw new Error("Moteur solo indisponible.");
   python.unpackArchive(await response.arrayBuffer(), "zip", {extractDir: "/engine"});
   if (saved) python.FS.writeFile("/saved-game.sqlite3", new Uint8Array(saved));
+  progress("Restauration des personnages", "Ouverture de votre aventure locale.");
   python.runPython("import sys, json\nsys.path.insert(0, '/engine')\nfrom jeuxRPG.multiplayer.browser_solo import SoloGame\nfrom pathlib import Path\nsaved_path = Path('/saved-game.sqlite3')\nsolo = SoloGame(saved_path.read_bytes() if saved_path.exists() else None)");
 
 }
@@ -62,11 +67,12 @@ onmessage = event => {
   });
 };
 setInterval(() => {
-  if (!python || !subscribed || !activeToken) return;
+  if (!python || !subscribed || !activeToken || stateQueued) return;
+  stateQueued=true;
   queue = queue.then(() => {
     const result = request({path: "/api/state", token: activeToken});
     dirty = true;
     postMessage({type: "state", result});
-  }).catch(error => postMessage({type: "error", error: String(error)}));
-}, 250);
+  }).catch(error => postMessage({type: "error", operation: "state", error: String(error)})).finally(()=>{stateQueued=false;});
+}, 100);
 setInterval(() => { if (python) queue = queue.then(save).catch(error => postMessage({type: "error", error: String(error)})); }, 5000);

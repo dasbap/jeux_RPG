@@ -1,0 +1,11 @@
+{
+  "storage": "remote isolated D1",
+  "transport_failure": "injected in test engine",
+  "sigterm_handler": "invoked directly",
+  "drain_blocks_exit_during_failure": true,
+  "readiness_503_during_drain": true,
+  "exit_after_confirmation": true,
+  "progression_restored_from_d1": true,
+  "oracle_vm_validated": false,
+  "cleanup": "fictitious rows removed"
+}

@@ -1,0 +1,91 @@
+name: Vercel preview et parcours navigateur
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  # Keep preview deployment and its browser recipe together.
+  group: jeux-rpg-vercel-preview
+  cancel-in-progress: false
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: python -m pip install -c constraints.txt '.[test]'
+      - run: python -m pytest test/test_vercel_preview.py test/test_vercel_build_secrets.py test/test_deployment_health.py test/test_d1_configuration.py test/test_d1_runtime.py -q
+      - run: node --test scripts/verify_vercel_target.test.cjs
+  preview:
+    needs: configuration
+    if: vars.VERCEL_PREVIEW_ENABLED == '1' && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
+    environment: vercel-preview
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RPG_RELEASE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      VERCEL_ORG_ID: team_qde9V6kikwwSvLtNrjAsAkRY
+      VERCEL_PROJECT_ID: prj_fVH6vG7RCXf5OP3MIfTngxeCN8U2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: python -m pip install -c constraints.txt '.[test]' uv==0.13.0
+      - run: npm install --prefix .ui-test vercel@62.2.0 playwright@1.65.1
+      - name: Configurer exclusivement la preview fictive
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RPG_D1_WORKER_URL: https://jeux-rpg-d1-preview.dasbap-jeux-rpg.workers.dev
+          RPG_D1_SERVICE_TOKEN: ${{ secrets.VERCEL_PREVIEW_D1_SERVICE_TOKEN }}
+          RPG_ADMIN_TOKEN: ${{ secrets.VERCEL_PREVIEW_ADMIN_TOKEN }}
+        run: |
+          python -m scripts.prepare_vercel_preview sync --cli .ui-test/node_modules/.bin/vercel
+          .ui-test/node_modules/.bin/vercel pull --yes --environment=preview --scope "$VERCEL_ORG_ID"
+          python -m scripts.prepare_vercel_preview prepare
+          python -c 'import os; from scripts.prepare_vercel_preview import configuration; from scripts.verify_runtime_storage import verify; assert verify(configuration(os.environ)) == "online"'
+      - name: Construire le client et le moteur Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: .ui-test/node_modules/.bin/vercel build
+      - name: Deployer le commit exact en preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PREVIEW_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          mkdir -p .data
+          .ui-test/node_modules/.bin/vercel deploy --prebuilt --yes --scope "$VERCEL_ORG_ID" --env RPG_RELEASE_SHA="$RPG_RELEASE_SHA" --meta githubCommitSha="$RPG_RELEASE_SHA" --meta githubCommitRef="$PREVIEW_BRANCH" > .data/vercel-preview-url.txt
+          DEPLOYMENT_URL="$(tail -n 1 .data/vercel-preview-url.txt)"
+          .ui-test/node_modules/.bin/vercel api "/v13/deployments/${DEPLOYMENT_URL#https://}" --scope "$VERCEL_ORG_ID" > .data/vercel-preview-metadata.json
+      - run: .ui-test/node_modules/.bin/playwright install --with-deps --no-shell chromium
+      - name: Verifier inscription, reprise, WebSocket, solo et paysage
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: .ui-test/node_modules/.bin/vercel env run --scope "$VERCEL_ORG_ID" -- node scripts/verify_vercel_preview.cjs
+      - name: Effacer les fichiers prives du build
+        if: always()
+        run: rm -f .vercel/.env.preview.local .data/vercel-preview-metadata.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vercel-preview-${{ github.run_id }}
+          path: |
+            .data/vercel-preview-url.txt
+            .data/vercel-preview-report/
+          if-no-files-found: ignore
+          retention-days: 7
+          include-hidden-files: true

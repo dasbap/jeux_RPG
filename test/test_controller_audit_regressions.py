@@ -230,6 +230,7 @@ def test_builder_exports_copy_and_restores_globals(tmp_path, monkeypatch, fail):
     screen = controller.Controller.__new__(controller.Controller)
     screen.project = p
     screen.tk = screen.ttk = screen.messagebox = screen.simpledialog = None
+    screen.ttk = SimpleNamespace(Button=lambda *args, **kwargs: SimpleNamespace(pack=noop))
     screen.tables = {'maps': SimpleNamespace(selection=lambda: ())}
     screen.remember = screen.refresh = noop
     def export(window):
