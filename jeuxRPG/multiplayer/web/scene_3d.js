@@ -368,6 +368,43 @@
       return a.position.map((v,i)=>v+(b.position[i]-v)*mix);
     }
   }
+  const ROUTE_LEAD_MS=1500;
+  class RouteTrack {
+    constructor(position,route,at,rules,unit,gameNow,previous){
+      this.route=route;
+      this.at=at;
+      this.speed=(unit.hidden?rules.stealth_speed:rules.speed)*rules.ratio/1000;
+      this.slowFor=Math.max(0,Math.max(unit.attack_slow_until||0,unit.casting?.ends_at||0)-gameNow)*1000/rules.ratio;
+      this.slowFactor=rules.attack_factor;
+      this.points=[position,...route];
+      this.distances=[0];
+      for(let i=1;i<this.points.length;i++){
+        const a=this.points[i-1],b=this.points[i];
+        this.distances.push(this.distances.at(-1)+Math.hypot(b[0]-a[0],b[1]-a[1]));
+      }
+      this.length=this.distances.at(-1);
+      const offset=previous?previous.route.length-route.length:-1;
+      const continues=offset>=0&&route.every(([x,z],i)=>x===previous.route[i+offset][0]&&z===previous.route[i+offset][1]);
+      this.lead=continues?Math.max(0,Math.min(this.travel(ROUTE_LEAD_MS),this.length-previous.remaining(at))):0;
+    }
+    travel(ms){
+      const slow=Math.min(ms,this.slowFor);
+      return (ms-slow+slow*this.slowFactor)*this.speed;
+    }
+    remaining(at){
+      const budget=this.travel(ROUTE_LEAD_MS);
+      return Math.max(0,this.length-Math.min(budget,this.lead+this.travel(Math.max(0,at-this.at))));
+    }
+    sample(at){
+      const distance=this.length-this.remaining(at);
+      let i=1;
+      while(i<this.points.length-1&&this.distances[i]<=distance)i++;
+      const segment=this.distances[i]-this.distances[i-1];
+      if(!segment)return [...this.points[i]];
+      const fraction=(distance-this.distances[i-1])/segment;
+      return this.points[i-1].map((v,axis)=>v+(this.points[i][axis]-v)*fraction);
+    }
+  }
   class Scene {
     constructor(parent){
       this.parent=parent;this.root=document.createElement("div");this.root.className="rpg-scene3d";
@@ -408,6 +445,7 @@
       const received=performance.now();
       if(globalThis.RPGMotion?.sync(adventure,me,received)===false)return;
       const previousReceived=this.received,previousMap=this.adventure?.battle.map;
+      const sameEncounter=previousMap?.id===adventure.battle.map.id&&this.adventure?.encounter_number===adventure.encounter_number;
       this.adventure=adventure;this.me=me;this.received=received;
       const now=this.received/1000;
       this.items=actors(adventure,me).map(a=>{
@@ -421,7 +459,11 @@
           a.track.push(a.position,this.received);a.lastDisplay=prev?.display;
         }
         if(a.enemy&&!adventure.battle.continuous_agents)a.interpolation=Math.max(a.interpolation,Math.min(650,Math.max(0,(a.unit.next_move-adventure.battle.visual_now)/3)*1000));
-        if(delta>3)a.from=a.position;
+        if(delta>3||!sameEncounter)a.from=a.position;
+        const rules=adventure.battle.motion_rules;
+        if(a.hero&&me.hp>0&&!me.stunned&&a.unit?.route?.length&&rules){
+          a.routeTrack=new RouteTrack(a.position,a.unit.route,received,rules,a.unit,adventure.battle.visual_now,sameEncounter?prev?.routeTrack:null);
+        }
         a.moving=delta>.005||(prev?.display&&Math.hypot(...a.position.map((v,i)=>v-prev.display[i]))>.005)||a.unit?.route?.length||(a.unit?.motion_until>adventure.battle.visual_now&&Math.hypot(...(a.unit?.motion_axis||[0,0]))>0);
         const dx=a.position[0]-(prev?.position[0]??a.position[0]),dz=a.position[1]-(prev?.position[1]??a.position[1]);
         a.targetYaw=changed?Math.atan2(dx,dz):(prev?.targetYaw||0);a.yaw=prev?.yaw??a.targetYaw;
@@ -474,6 +516,7 @@
           if(a.moving)a.targetYaw=Math.atan2(dx,dz);
           a.lastDisplay=[...a.display];
         }
+        if(a.routeTrack)a.display=a.routeTrack.sample(ms);
         if(a.hero&&globalThis.RPGMotion){a.display=RPGMotion.sample(this.adventure,this.me,ms)||a.display;a.moving=RPGMotion.axis.some(Boolean)||Boolean(a.unit?.route?.length);}
         if(a.hero&&globalThis.RPGMotion?.axis.some(Boolean)){const [dx,dz]=RPGMotion.axis;a.targetYaw=Math.atan2(dx,dz);}
         const turn=Math.atan2(Math.sin(a.targetYaw-a.yaw),Math.cos(a.targetYaw-a.yaw));a.yaw+=turn*.35;
@@ -550,5 +593,5 @@
       return true;
     }catch(error){scene?.dispose();parent.classList.remove("has-scene3d");parent.dataset.renderer="svg";return false;}
   };
-  globalThis.RPGScene3D={Mesh,scenery,terrainWindow,sameExploration,environment,caveLights,CombatEffects,GuardTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
+  globalThis.RPGScene3D={Mesh,scenery,terrainWindow,sameExploration,environment,caveLights,CombatEffects,GuardTrack,RouteTrack,effectStyle,model,actors,project:(position,camera,height=0)=>[(position[0]-camera.x)/camera.halfW*.5+.5,((position[1]-camera.z)*TILT-height*LIFT)/camera.halfH*.5+.5],cameraAngle:Object.freeze({azimuth:0,tilt:TILT}),attack};
 })();

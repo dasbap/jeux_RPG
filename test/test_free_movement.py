@@ -475,3 +475,12 @@ def test_authenticated_position_report_and_stop(game):  # noqa: F811
             == position
         )
         state = result["session"]
+
+
+def test_click_route_keeps_its_speed_between_online_snapshots(arena):
+    from jeuxRPG.multiplayer.progression import RATIO
+
+    data, unit, _ = arena
+    unit.update(free_motion=True, route=[[8, 4]], motion_at=0)
+    step(data, RATIO)
+    assert unit["position"][0] == pytest.approx(4 + RATIO / tactics.MOVE_TIME)

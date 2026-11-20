@@ -138,3 +138,17 @@ test("discovery cache distinguishes different cells with the same count",()=>{
  assert(!sameExploration(new Set(["1,1"]),new Set(["2,2"])));
  assert(!sameExploration(null,new Set()));
 });
+
+test("online click movement follows bends between packets and never passes the target",()=>{
+ const {RouteTrack}=setup(),rules={speed:1,stealth_speed:.5,ratio:3,attack_factor:.55};
+ const first=new RouteTrack([0,0],[[2,0],[2,4]],0,rules,{},0);
+ assert.deepEqual(Array.from(first.sample(500)),[1.5,0]);
+ const second=new RouteTrack([1,0],[[2,0],[2,4]],1000,rules,{},3,first);
+ const atUpdate=second.sample(1000);
+ assert.deepEqual(Array.from(atUpdate),[2,1]);
+ assert(second.sample(1200)[1]>atUpdate[1]);
+ const nearEnd=new RouteTrack([2,3],[[2,4]],2000,rules,{},6,second);
+ assert.deepEqual(Array.from(nearEnd.sample(2500)),[2,4]);
+ assert.deepEqual(Array.from(nearEnd.sample(9000)),[2,4]);
+ assert.deepEqual(Array.from(first.sample(10000)),[2,2.5]);
+});
