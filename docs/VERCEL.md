@@ -69,6 +69,36 @@ de 40 joueurs. Voir [ARCHITECTURE.md](ARCHITECTURE.md#mesures-disponibles-et-lim
 
 ## Branche de publication
 
+### Controle de publication et synchronisation des branches
+
+Le job `quality` attend les huit controles requis par les protections GitHub
+et `d1-worker` sur le SHA exact de `prod`. Un controle absent, ignore, annule,
+en echec ou encore en cours interdit le deploiement. Ce job utilise uniquement
+le jeton GitHub en lecture des checks ; il n'a aucun secret de production.
+
+Apres la sauvegarde chiffree, le job `deploy` controle le Worker D1 avant de
+modifier les variables Vercel. Le code `d1_worker_upgrade_required` indique
+que le Worker cible n'expose pas encore les transactions atomiques. Relancer
+la CI sans mettre a jour ce Worker ne corrige pas cette incompatibilite.
+La mise a jour du Worker de production et l'arret des anciens moteurs restent
+une operation de bascule distincte, avec sauvegarde et verification du stockage.
+Le workflow ne remplace pas automatiquement le Worker de production.
+
+Les synchronisations passent par des PR avec une fusion **merge**, afin de
+conserver les ancetres des deux branches :
+
+1. Avant une publication, integrer `prod` dans `master` si des commits de
+   production n'y sont pas encore presents, puis attendre les controles.
+2. Ouvrir la PR `master` vers `prod`, attendre les controles et fusionner.
+   Cette fusion declenche la publication : elle doit respecter les prerequis
+   D1 et la procedure de bascule ci-dessus.
+3. Apres publication, reintegrer `prod` dans `master` par PR pour conserver
+   le commit de fusion et eviter une prochaine PR en retard sur sa base.
+
+Deux arbres identiques peuvent avoir des historiques differents. Ne pas
+utiliser de push force, de reset distant ni de squash pour simuler cette
+synchronisation. Les protections existantes restent actives.
+
 ### Recette Vercel des PR
 
 Le workflow **Vercel preview et parcours navigateur** valide la configuration
