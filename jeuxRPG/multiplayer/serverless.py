@@ -52,6 +52,8 @@ def validate_request_origin(environment, environ, path, method):
         allowed.update(("localhost", "127.0.0.1", "localhost:8080", "127.0.0.1:8080"))
     if host not in allowed:
         raise GameError("invalid_host", "Hôte non autorisé.", 403)
+    if method == "GET" and path == "/":
+        return host
     origin = environ.get("HTTP_ORIGIN")
     if (
         origin
@@ -68,7 +70,7 @@ def validate_request_origin(environment, environ, path, method):
         method == "GET"
         and environ.get("HTTP_SEC_FETCH_MODE") == "navigate"
         and environ.get("HTTP_SEC_FETCH_DEST") == "document"
-        and path in ("/", "/admin")
+        and path == "/admin"
     )
     if environ.get("HTTP_SEC_FETCH_SITE") == "cross-site" and not navigation:
         raise GameError("invalid_origin", "Origine non autorisée.", 403)
