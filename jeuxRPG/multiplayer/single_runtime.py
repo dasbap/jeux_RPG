@@ -19,7 +19,6 @@ class SingleCoordinator(Coordinator):
         if database_backend(environment) != "d1":
             raise ValueError("Le mode single requiert RPG_DATABASE_BACKEND=d1")
         super().__init__(environment)
-        self.local = True
         self.fenced = False
         self.draining = False
         self.shutdown_confirmed = False

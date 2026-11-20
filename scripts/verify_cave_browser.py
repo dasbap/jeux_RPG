@@ -21,7 +21,7 @@ def main(keyboard=False):
         ):
             os.environ.pop(key)
     from jeuxRPG.multiplayer import fields, tutorial
-    from jeuxRPG.multiplayer.distributed import PresenceRegistry
+    from jeuxRPG.multiplayer.local_state import PresenceRegistry
     from jeuxRPG.multiplayer.server import RPGServer
     from jeuxRPG.multiplayer.service import GameService
 

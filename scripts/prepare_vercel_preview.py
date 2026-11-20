@@ -100,7 +100,7 @@ def main():
                     "--scope",
                     TEAM,
                     "--sensitive"
-                    if key in {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN", "REDIS_URL"}
+                    if key in {"RPG_D1_SERVICE_TOKEN", "RPG_ADMIN_TOKEN"}
                     else "--no-sensitive",
                 ],
                 input=value,

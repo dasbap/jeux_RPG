@@ -27,8 +27,8 @@ from .command_journal import (
     encode_receipt,
     prune_receipts,
 )
-from .distributed import PresenceRegistry
 from .living_world_service import LivingWorldMixin
+from .local_state import PresenceRegistry
 from .network_log import create_chat_logger
 
 
@@ -102,9 +102,7 @@ class GameService(AccountMixin, LivingWorldMixin):
         self._chat_sent = {}
         self._chat_cleanup_at = 0
         self.runtime_presence = (
-            presence_registry
-            if presence_registry is not None
-            else PresenceRegistry.from_environment(os.environ)
+            presence_registry if presence_registry is not None else PresenceRegistry()
         )
         self.rallies = {}
         self.location_cache = {}
@@ -197,7 +195,6 @@ class GameService(AccountMixin, LivingWorldMixin):
 
     def close(self):
         with self._lock:
-            self.runtime_presence.close()
             self.db.close()
             for handler in self.chat_log.handlers:
                 handler.close()

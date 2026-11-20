@@ -5,7 +5,7 @@ import time
 from copy import deepcopy
 
 from .d1_client import D1Client
-from .distributed import PresenceRegistry
+from .local_state import PresenceRegistry
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
 from .runtime_configuration import account_auth_required
 from .schema import initialize

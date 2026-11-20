@@ -4,8 +4,6 @@ import json
 import logging
 import os
 import time
-import uuid
-from collections import OrderedDict, defaultdict
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,10 +13,10 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 
 from .browser_solo_assets import client_csp
-from .distributed import build_rate_limiter
 from .json_protocol import object_json
+from .local_state import LocalRateLimiter
 from .protocol_types import PendingBatch, RuntimeMessage, RuntimeResponse
-from .realtime_store import KEYS, RuntimeStore
+from .realtime_store import RuntimeStore
 from .runtime_configuration import (
     account_auth_required,
     runtime_environment,
@@ -27,309 +25,41 @@ from .runtime_configuration import (
 from .server import CLIENT_STATIC
 from .serverless import Application, validate_request_origin
 from .service import GameError
-from .storage_configuration import runtime_prefix
 
-LEASE = """
-local current = redis.call('GET', KEYS[1])
-if not current then
-  local previous = tonumber(redis.call('GET', KEYS[2]) or '0')
-  local fence = math.max(previous + 1, tonumber(ARGV[2]))
-  redis.call('SET', KEYS[2], string.format('%.0f', fence))
-  redis.call('SET', KEYS[1], ARGV[1] .. ':' .. string.format('%.0f', fence), 'PX', 30000)
-  return string.format('%.0f', fence)
-end
-if string.sub(current, 1, string.len(ARGV[1]) + 1) == ARGV[1] .. ':' then
-  redis.call('PEXPIRE', KEYS[1], 30000)
-  return string.sub(current, string.len(ARGV[1]) + 2)
-end
-return false
-"""
-OWNER = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-  return 1
-end
-return 0
-"""
-RETIRE_CHECKPOINT = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-  redis.call('DEL', KEYS[2])
-  return 1
-end
-return 0
-"""
-RELEASE = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-  return redis.call('DEL', KEYS[1])
-end
-return 0
-"""
 HIDDEN_REFRESH_SECONDS = 20
 
 
 class Coordinator:
-    def __init__(self, environment, redis=None, store=None):
+    def __init__(self, environment, store=None):
         self.environment = environment
-        self.redis = redis
         self.store = store
-        self.local = store is not None
-        self.uid = uuid.uuid4().hex
-        self.prefix = runtime_prefix(environment)
         self.fence = 0
-        self.deadline = 0
         self.tasks = []
-        self.pending = {}
-        self.messages = {}
-        self.next_election = 0
-        self.outgoing = defaultdict(list)
-        self.received = asyncio.Queue(maxsize=256)
-        self.seen = OrderedDict()
-        self.relay_tasks = {}
         self.lock = asyncio.Lock()
         self.save_lock = asyncio.Lock()
         self.start_lock = asyncio.Lock()
         self.started = False
         self.saving = None
-        self.pubsub = None
         self.connections = 0
         self.handshakes = 0
         self.auth_slots = asyncio.Semaphore(2)
-        self.password_limiter = build_rate_limiter(environment)
+        self.password_limiter = LocalRateLimiter()
         self.save_failures = 0
         self.checkpoint_rejections = 0
         self.owner_recoveries = 0
         self.owner_pending_drops = 0
 
     def owner(self):
-        return self.local or self.store is not None and time.monotonic() < self.deadline
+        return self.store is not None
 
     async def start(self):
         async with self.start_lock:
             if self.started:
                 return
-            if not self.local:
-                from redis.asyncio import Redis
-
-                from .redis_configuration import redis_url
-
-                url = redis_url(self.environment)
-                if not url and self.redis is None:
-                    raise RuntimeError("Stockage temps réel absent")
-                if self.redis is None:
-                    self.redis = Redis.from_url(
-                        url,
-                        decode_responses=True,
-                        socket_connect_timeout=5,
-                        socket_timeout=5,
-                    )
-                self.pubsub = self.redis.pubsub()
-                await self.pubsub.subscribe(
-                    self.prefix + "requests", self.prefix + "reply:" + self.uid
-                )
-                await self.elect()
-                self.tasks.extend(
-                    [
-                        asyncio.create_task(self.listen()),
-                        asyncio.create_task(self.leases()),
-                        asyncio.create_task(self.pump()),
-                    ]
-                )
+            if self.store is None:
+                self.store = await self.memory_call(RuntimeStore, self.environment)
             self.tasks.append(asyncio.create_task(self.ticker()))
             self.started = True
-
-    async def elect(self):
-        self.next_election = time.monotonic() + 8
-        result = await self.redis.eval(
-            LEASE,
-            2,
-            self.prefix + "lease",
-            self.prefix + "fence",
-            self.uid,
-            str(4_000_000_000_000_000 + time.time_ns() // 1000),
-        )
-        if not result:
-            self.deadline = 0
-            if self.store is not None:
-                async with self.lock:
-                    if self.store is None:
-                        return
-                    count = len(self.store.pending)
-                    if count:
-                        self.owner_pending_drops += count
-                        logging.getLogger(__name__).error(
-                            "Propriété perdue ; %d mutations locales en attente ; reprise depuis le dernier checkpoint accepté",
-                            count,
-                        )
-                    self.store.close()
-                    self.store = None
-            return
-        self.fence = int(result)
-        self.deadline = time.monotonic() + 25
-        if self.store is None:
-            self.owner_recoveries += 1
-            self.seen.clear()
-            saved = await self.redis.get(self.prefix + "checkpoint")
-            if saved and not await self.restore_legacy_checkpoint(saved):
-                self.deadline = 0
-                return
-            loaded = await asyncio.to_thread(
-                RuntimeStore.load, self.environment, self.fence
-            )
-            try:
-                if getattr(loaded, "reset_performed", False):
-                    await self.redis.set(
-                        "jeux-rpg:runtime:v1:lease",
-                        "retired-accounts-v1",
-                        px=600000,
-                    )
-                    await self.redis.delete(
-                        "jeux-rpg:runtime:v1:checkpoint",
-                        "jeux-rpg:runtime:v1:fence",
-                    )
-            except BaseException:
-                loaded.close()
-                raise
-            self.store = loaded
-            for identifier, message in list(self.messages.items()):
-                future = self.pending.get(identifier)
-                if future is not None and not future.done():
-                    future.set_result(await self.execute(message))
-
-    async def restore_legacy_checkpoint(self, saved):
-        checkpoint = json.loads(saved)
-        pending = checkpoint.get("pending", [])
-        if pending:
-            legacy = RuntimeStore(
-                self.environment, checkpoint.get("durable", checkpoint)
-            )
-            try:
-                for item in pending:
-                    table, row = item["table"], item["row"]
-                    key = (
-                        tuple(item.get("key", ()))
-                        if row is None
-                        else tuple(row[column] for column in KEYS[table])
-                    )
-                    legacy.pending[(table, key)] = row
-                accepted = await self.redis.eval(
-                    OWNER, 1, self.prefix + "lease", self.uid + ":" + str(self.fence)
-                )
-                if not accepted:
-                    return False
-                await asyncio.to_thread(
-                    legacy.persist, self.fence, legacy.pending_batch()
-                )
-            finally:
-                legacy.close()
-        return bool(
-            await self.redis.eval(
-                RETIRE_CHECKPOINT,
-                2,
-                self.prefix + "lease",
-                self.prefix + "checkpoint",
-                self.uid + ":" + str(self.fence),
-            )
-        )
-
-    async def leases(self):
-        while True:
-            await asyncio.sleep(8)
-            if not self.connections and not self.pending:
-                continue
-            try:
-                await self.elect()
-            except Exception:
-                logging.getLogger(__name__).warning("Coordination Redis indisponible")
-
-    async def listen(self):
-        while True:
-            try:
-                message = await self.pubsub.get_message(
-                    ignore_subscribe_messages=True, timeout=1
-                )
-                if message is None:
-                    await asyncio.sleep(0.02)
-                    continue
-                items = json.loads(message["data"])
-                if message["channel"] == self.prefix + "requests":
-                    if self.owner():
-                        for item in items:
-                            if not self.received.full():
-                                self.received.put_nowait(item)
-                else:
-                    for item in items:
-                        future = self.pending.get(item["id"])
-                        if future is not None and not future.done():
-                            future.set_result(item["result"])
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logging.getLogger(__name__).warning("Relais temps réel indisponible")
-                await asyncio.sleep(1)
-
-    async def pump(self):
-        while True:
-            await asyncio.sleep(0.5)
-            try:
-                while not self.received.empty():
-                    item = self.received.get_nowait()
-                    if not self.owner():
-                        continue
-                    if item["id"] in self.seen:
-                        self.outgoing["reply:" + item["source"]].append(
-                            {"id": item["id"], "result": self.seen[item["id"]]}
-                        )
-                    elif (
-                        item["id"] not in self.relay_tasks
-                        and len(self.relay_tasks) < 256
-                    ):
-                        self.relay_tasks[item["id"]] = asyncio.create_task(
-                            self.relay(item)
-                        )
-                for target in list(self.outgoing):
-                    queue = self.outgoing[target]
-                    if target == "requests":
-                        queue[:] = [
-                            item for item in queue if item["id"] in self.pending
-                        ]
-                    if not queue:
-                        self.outgoing.pop(target, None)
-                        continue
-                    items = queue[:64]
-                    payload = json.dumps(items, separators=(",", ":"))
-                    while len(payload.encode()) > 4 * 1024 * 1024 and len(items) > 1:
-                        items = items[: len(items) // 2]
-                        payload = json.dumps(items, separators=(",", ":"))
-                    await self.redis.publish(self.prefix + target, payload)
-                    del queue[: len(items)]
-                    if not queue:
-                        self.outgoing.pop(target, None)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logging.getLogger(__name__).warning("Lot temps réel non livré")
-
-    async def relay(self, item):
-        try:
-            try:
-                result = await self.execute(item["message"])
-            except Exception:
-                logging.getLogger(__name__).warning("Commande relayée interrompue")
-                result = {
-                    "status": 503,
-                    "headers": {},
-                    "body": {
-                        "error": "unavailable",
-                        "message": "Réessayez avec le même identifiant de commande.",
-                    },
-                }
-            self.seen[item["id"]] = result
-            if len(self.seen) > 256:
-                self.seen.popitem(last=False)
-            self.outgoing["reply:" + item["source"]].append(
-                {"id": item["id"], "result": result}
-            )
-        finally:
-            self.relay_tasks.pop(item["id"], None)
 
     async def memory_call(self, function, *args):
         task = asyncio.create_task(asyncio.to_thread(function, *args))
@@ -411,24 +141,7 @@ class Coordinator:
 
     async def rpc(self, message: RuntimeMessage) -> RuntimeResponse:
         await self.start()
-        if not self.owner() and time.monotonic() >= self.next_election:
-            await self.elect()
-        if self.owner():
-            return await self.execute(message)
-        if len(self.pending) >= 256:
-            raise RuntimeError("Relais saturé")
-        identifier = uuid.uuid4().hex
-        future = asyncio.get_running_loop().create_future()
-        self.pending[identifier] = future
-        self.messages[identifier] = message
-        try:
-            self.outgoing["requests"].append(
-                {"id": identifier, "source": self.uid, "message": message}
-            )
-            return await asyncio.wait_for(future, 25)
-        finally:
-            self.pending.pop(identifier, None)
-            self.messages.pop(identifier, None)
+        return await self.execute(message)
 
     async def save(self, store, fence):
         async with self.save_lock:
@@ -441,21 +154,6 @@ class Coordinator:
         self, store: RuntimeStore, batch: PendingBatch, fence: int
     ) -> None:
         try:
-            if not self.local:
-                accepted = await self.redis.eval(
-                    OWNER,
-                    1,
-                    self.prefix + "lease",
-                    self.uid + ":" + str(fence),
-                )
-                if not accepted:
-                    self.checkpoint_rejections += 1
-                    store.last_save_error = bool(store.pending)
-                    store.due = time.monotonic() + 5 if store.pending else None
-                    logging.getLogger(__name__).warning(
-                        "Checkpoint refusé ; changements encore en attente"
-                    )
-                    return
             await asyncio.to_thread(store.persist, fence, batch)
             store.saved(batch)
         except Exception:
@@ -490,7 +188,7 @@ class Coordinator:
                 )
 
     async def close(self):
-        tasks = [*self.tasks, *self.relay_tasks.values()]
+        tasks = self.tasks
         for task in tasks:
             task.cancel()
         for task in tasks:
@@ -499,17 +197,10 @@ class Coordinator:
         if self.saving is not None:
             with suppress(Exception):
                 await self.saving
-        if not self.local:
-            await self.flush()
-        if self.pubsub:
-            await self.pubsub.aclose()
-        if self.redis:
-            await self.redis.aclose()
-        if hasattr(self.password_limiter, "close"):
-            await asyncio.to_thread(self.password_limiter.close)
         async with self.lock:
             if self.store:
                 self.store.close()
+                self.store = None
         self.started = False
 
     async def flush(self):
@@ -522,27 +213,7 @@ class Coordinator:
         await self.save(store, fence)
 
     async def release(self):
-        if self.local or not self.owner() or self.connections:
-            return
-        from redis.exceptions import RedisError
-
-        await self.flush()
-        async with self.lock:
-            if not self.owner() or self.connections or self.store.pending:
-                return
-            try:
-                await self.redis.eval(
-                    RELEASE, 1, self.prefix + "lease", self.uid + ":" + str(self.fence)
-                )
-            except RedisError:
-                logging.getLogger(__name__).warning(
-                    "Libération Redis différée ; moteur conservé jusqu’à expiration du bail"
-                )
-                return
-            self.deadline = 0
-            self.next_election = 0
-            self.store.close()
-            self.store = None
+        return
 
 
 def _socket_origin_allowed(websocket, environment):

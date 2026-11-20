@@ -155,12 +155,7 @@ async def character(database, name="Alice", start=True):
     return token, result["body"]["session"]["id"]
 
 
-def test_cold_instances_resume_the_same_adventure_without_redis(monkeypatch):
-    def forbidden(*args, **kwargs):
-        raise AssertionError("Redis must not be instantiated")
-
-    monkeypatch.setattr("redis.Redis.from_url", forbidden)
-    monkeypatch.setattr("redis.asyncio.Redis.from_url", forbidden)
+def test_cold_instances_resume_the_same_adventure_without_redis():
     database = Database()
 
     async def scenario():

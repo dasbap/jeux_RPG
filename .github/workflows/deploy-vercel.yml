@@ -34,14 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
-    env:
-      RPG_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Verifier l'acces de deploiement
         env:
@@ -152,7 +144,6 @@ jobs:
           RPG_RUNTIME_MODE: d1
           RPG_D1_WORKER_URL: ${{ vars.RPG_D1_WORKER_URL || secrets.RPG_D1_WORKER_URL }}
           RPG_D1_SERVICE_TOKEN: ${{ secrets.RPG_D1_SERVICE_TOKEN }}
-          RPG_ALLOW_SOLO_RELEASE: '0'
         run: python -m scripts.verify_runtime_storage
       - name: Cibler exclusivement jeux-rpg
         run: |

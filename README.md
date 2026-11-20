@@ -1,6 +1,6 @@
 # RPG Python — Alpha multijoueur autonome
 
-Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une interface HTML/JavaScript et un monde éditable dans le Builder. La production utilise FastAPI sur Vercel, Redis pour la coordination et **Cloudflare D1 pour les données durables**. Le serveur local utilise un fichier SQLite ; le solo conserve sa sauvegarde sur le client.
+Un RPG jouable en solo hors ligne et en multijoueur, avec un moteur Python, une interface HTML/JavaScript et un monde éditable dans le Builder. La publication Vercel utilise FastAPI et **Cloudflare D1 pour l’état partagé et les données durables**. Le serveur local utilise un fichier SQLite ; le solo conserve sa sauvegarde sur le client.
 
 La [recette sur Render Free](docs/RENDER.md) remplace le projet Oracle abandonné faute de capacité. Le mode expérimental `single` utilise D1 sans service Redis. La production Vercel reste inchangée pendant la recette isolée.
 La [recette Render](docs/render-test-20261114/REPORT.md) confirme 40 connexions de joueurs distincts sous une charge légère, mais un p95 de 5,6 secondes ne valide pas les combats rapides à 40 joueurs. Le premier essai local avec D1 distant reste [documenté séparément](docs/oracle-test-20261113/REPORT.md).
@@ -8,7 +8,7 @@ Le [service Render de test](https://jeux-rpg-render-test.onrender.com) est dépl
 
 Le tutoriel utilise les cinq classes du moteur RPG et leurs compétences : attaques, soins, améliorations et invocations. Les compétences sont acquises aux niveaux définis dans les tables de chaque classe. Les duels simplifiés restent des démonstrations historiques ; le PvP est désactivé en production.
 
-L’[architecture actuelle](docs/ARCHITECTURE.md) est la référence pour les modes d’exécution, le stockage et la capacité. La [migration D1](docs/D1_PRODUCTION.md) est terminée depuis le 6 novembre 2026. Le réglage de 40 joueurs n’est pas une garantie de capacité : les anciens essais HTTP locaux ne mesurent pas 40 WebSockets sur Vercel/Redis/D1.
+L’[architecture actuelle](docs/ARCHITECTURE.md) est la référence pour les modes d’exécution, le stockage et la capacité. La [migration D1](docs/D1_PRODUCTION.md) est terminée depuis le 6 novembre 2026. Le réglage de 40 joueurs n’est pas une garantie de capacité : les anciens essais HTTP locaux ne mesurent pas 40 WebSockets sur Vercel/D1.
 
 ## Application Windows
 
@@ -53,7 +53,7 @@ python main.py
 
 Si le venv est déjà créé et activé, reprendre à `python -m pip install .`.
 
-`python -m pip install -r requirements.txt` installe également le projet et toutes ses dépendances. L’option `-r` est en minuscule ; `-R` n’existe pas. Le paquet Python `redis` est requis ; aucun serveur Redis externe n’est nécessaire pour le mode local.
+`python -m pip install -r requirements.txt` installe également le projet et toutes ses dépendances. L’option `-r` est en minuscule ; `-R` n’existe pas.
 
 Ouvrir **http://127.0.0.1:8080**.
 
@@ -179,7 +179,7 @@ Le bot doit afficher les résultats, désactiver les mentions, répondre aux int
 - SQLite applique les mutations et leurs reçus de commande dans une transaction unique. Une révision cliente ancienne n'annule pas automatiquement une commande : le serveur recharge l'état courant et revalide les préconditions métier. Une révision future reste refusée avec `stale_revision`, et un identifiant explicite d'ancien combat reste refusé avec `stale_encounter`.
 - Une commande rejouée avec le même identifiant et le même contenu retourne son résultat initial. Un contenu différent avec cet identifiant est refusé. Les identifiants et reçus sont persistés.
 - L'horloge utilise le temps monotone pendant l'exécution et un checkpoint persistant pour la reprise. Le serveur local réconcilie les échéances toutes les 100 ms. L’interface privilégie WebSocket et ne lance aucun polling périodique HTTP tant que cette connexion fonctionne. Le secours HTTP s’adapte : combat/déplacement 1 s en production, exploration 3,6 s, salon 5 s, menu 15 s et onglet caché 20 s, avec jitter et recul réseau. Ce n’est pas un système temps réel dur.
-- Un personnage ne peut participer qu’à une session active à la fois. En production, chaque personnage garde son aventure, son inventaire et ses quêtes ; les équipes sociales ne fusionnent pas ces sessions. Le mode coopératif historique à deux subsiste dans les tests de référence. Les combats évoluent dans la boucle du serveur, avec des positions individuelles. En mode serverless, un monde actif dépend du propriétaire Redis, de son bail et des connexions : une suspension complète du navigateur ou la fermeture du dernier socket ne garantit pas une simulation continue. Le contenu inclut les cartes du monde, des quêtes et des donjons ; le rapport d’audit distingue les parcours testés de la recette complète encore nécessaire.
+- Un personnage ne peut participer qu’à une session active à la fois. En production, chaque personnage garde son aventure, son inventaire et ses quêtes ; les équipes sociales ne fusionnent pas ces sessions. Le mode coopératif historique à deux subsiste dans les tests de référence. Les combats évoluent dans la boucle du serveur, avec des positions individuelles. En mode serverless, les opérations de jeu avancent la simulation et enregistrent l’état dans D1. Le contenu inclut les cartes du monde, des quêtes et des donjons ; le rapport d’audit distingue les parcours testés de la recette complète encore nécessaire.
 - Les comptes disposent de sessions révocables, d’une déconnexion globale et d’un changement de mot de passe qui révoque les anciennes sessions. OAuth et récupération par email ne sont pas fournis. Le POC reste destiné à un environnement contrôlé.
 - La nouvelle table des tutoriels est créée automatiquement sans modifier les données des anciens duels. Sauvegarder la base après arrêt du serveur avant une mise à jour. Un nouveau tutoriel recommence au niveau 1 ; la progression reste attachée à son aventure sauvegardée.
 
